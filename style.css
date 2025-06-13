@@ -1,0 +1,301 @@
+:root {
+    --primary-color: #0A192F; /* Deep Navy Blue from diagrams */
+    --secondary-color: #FF7A00; /* Orange accent from diagrams */
+    --accent-color: #64FFDA; /* Teal/Aqua accent from diagrams */
+    --text-color: #CCD6F6; /* Light text color */
+    --card-bg-color: #112240; /* Slightly lighter navy for cards */
+    --heading-font: 'Poppins', sans-serif;
+    --body-font: 'Poppins', sans-serif;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--body-font);
+    background-color: var(--primary-color);
+    color: var(--text-color);
+    line-height: 1.6;
+    overflow-x: hidden; /* Prevents horizontal scrolling on mobile */
+}
+
+.container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+header {
+    background-color: rgba(10, 25, 47, 0.85);
+    padding: 1rem 0;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--card-bg-color);
+}
+
+header .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo img {
+    height: 100px;
+}
+
+nav ul {
+    list-style: none;
+    display: flex;
+}
+
+nav ul li {
+    margin-left: 25px;
+}
+
+nav a {
+    color: var(--text-color);
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+
+nav a:hover {
+    color: var(--accent-color);
+}
+
+main {
+    padding-top: 130px; /* Adjusted for larger header */
+}
+
+section {
+    padding: 6rem 0;
+    text-align: center;
+}
+
+section:nth-child(even) {
+    background-color: var(--card-bg-color);
+}
+
+h1, h2, h3, h4 {
+    font-family: var(--heading-font);
+    font-weight: 700;
+    color: #FFF;
+    margin-bottom: 1rem;
+}
+
+h1 {
+    font-size: 3rem;
+    line-height: 1.2;
+}
+
+h2 {
+    font-size: 2.5rem;
+    margin-bottom: 2rem;
+}
+
+p.subtitle {
+    max-width: 600px;
+    margin: -1rem auto 2rem auto;
+    font-size: 1.1rem;
+    color: var(--accent-color);
+}
+
+.cta-button {
+    display: inline-block;
+    background-color: var(--secondary-color);
+    color: #FFF;
+    padding: 12px 25px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: transform 0.3s ease, background-color 0.3s ease;
+    border: 2px solid var(--secondary-color);
+}
+
+.cta-button:hover {
+    background-color: transparent;
+    border: 2px solid var(--secondary-color);
+    color: var(--secondary-color);
+    transform: translateY(-3px);
+}
+
+/* Hero Section */
+#hero .hero-container {
+    display: flex;
+    align-items: center;
+    text-align: left;
+    gap: 2rem;
+}
+#hero .hero-text {
+    flex: 1;
+}
+#hero .hero-image {
+    flex: 1;
+}
+#hero .hero-image img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 10px;
+}
+
+/* Core Engine Section */
+.core-engine-diagram img {
+    max-width: 800px;
+    margin: 1rem auto;
+    border-radius: 8px;
+}
+.engine-explanation {
+    max-width: 700px;
+    margin: 1rem auto 0 auto;
+    font-size: 1.1rem;
+}
+
+/* How It Works Section */
+.how-it-works-content {
+    display: flex;
+    align-items: center;
+    gap: 3rem;
+    text-align: left;
+}
+.how-it-works-image {
+    flex: 1;
+}
+.how-it-works-image img {
+    max-width: 100%;
+}
+.how-it-works-text {
+    flex: 1;
+}
+.how-it-works-text ul {
+    list-style-position: inside;
+    margin-top: 1rem;
+}
+.how-it-works-text li {
+    margin-bottom: 0.5rem;
+}
+
+
+/* Product Suite Section */
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.product-card {
+    background-color: var(--primary-color);
+    padding: 2rem;
+    border-radius: 8px;
+    text-align: center;
+    border: 1px solid #1d2d44;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.product-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+}
+
+.product-card img {
+    height: 80px;
+    margin-bottom: 1rem;
+}
+
+/* Roadmap Section */
+.roadmap-diagram img {
+    max-width: 100%;
+    margin-bottom: 2rem;
+}
+.roadmap-phases {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    text-align: left;
+}
+.phase {
+    background-color: var(--card-bg-color);
+    padding: 1.5rem;
+    border-radius: 5px;
+    border-left: 3px solid var(--accent-color);
+}
+
+/* Contact Section */
+#contact form {
+    max-width: 600px;
+    margin: 2rem auto 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+#contact input, #contact textarea {
+    padding: 12px;
+    border-radius: 5px;
+    border: 1px solid var(--card-bg-color);
+    background-color: #0E1D34;
+    color: var(--text-color);
+    font-size: 1rem;
+}
+
+#contact textarea {
+    min-height: 150px;
+    resize: vertical;
+}
+
+/* Footer */
+footer {
+    padding: 2rem 0;
+    text-align: center;
+    background-color: #081428;
+}
+
+/* Responsive */
+@media(max-width: 768px) {
+    h1 { font-size: 2.5rem; }
+    h2 { font-size: 2rem; }
+
+    nav ul { display: none; } /* Basic responsive: hide nav on small screens. Can be replaced with a hamburger menu. */
+    
+    #hero .hero-container {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .how-it-works-content {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .product-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .roadmap-phases {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Thank You Page Styles */
+.thank-you-body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    text-align: center;
+}
+
+.thank-you-container {
+    padding: 2rem;
+}
+
+.thank-you-logo {
+    height: 100px;
+    margin-bottom: 2rem;
+}
