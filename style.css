@@ -8,7 +8,6 @@
     --body-font: 'Poppins', sans-serif;
 }
 
-/* ===== THIS IS THE FIX ===== */
 html, body {
     overflow-x: hidden;
 }
@@ -24,7 +23,6 @@ body {
     background-color: var(--primary-color);
     color: var(--text-color);
     line-height: 1.6;
-    /* The overflow-x rule was moved from here up to the html,body rule */
 }
 
 .sr-only {
@@ -278,23 +276,59 @@ p.subtitle {
 }
 
 
-/* Roadmap Section */
-.roadmap-diagram img {
-    max-width: 100%;
+/* Roadmap Section - NEW TIMELINE STYLES */
+.timeline {
+    position: relative;
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 2rem 0;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 20px;
+    height: 100%;
+    width: 4px;
+    background: var(--card-bg-color);
+}
+
+.timeline-item {
+    position: relative;
     margin-bottom: 2rem;
 }
-.roadmap-phases {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1rem;
+
+.timeline-item:last-child {
+    margin-bottom: 0;
+}
+
+.timeline-item::after {
+    content: '';
+    position: absolute;
+    left: 10px;
+    top: 5px;
+    width: 24px;
+    height: 24px;
+    background: var(--primary-color);
+    border: 4px solid var(--accent-color);
+    border-radius: 50%;
+    z-index: 1;
+}
+
+.timeline-content {
+    position: relative;
+    padding: 0.5rem 2rem 0.5rem 60px;
     text-align: left;
+    background: var(--card-bg-color);
+    border-radius: 8px;
 }
-.phase {
-    background-color: var(--card-bg-color);
-    padding: 1.5rem;
-    border-radius: 5px;
-    border-left: 3px solid var(--accent-color);
+
+.timeline-content p {
+    font-size: 0.95rem;
+    color: var(--text-color);
 }
+
 
 /* Contact Section */
 #contact form {
@@ -384,18 +418,31 @@ footer {
 
     #hero .hero-text,
     .how-it-works-text,
-    .product-card {
+    .product-card,
+    #problem .container {
       text-align: left;
     }
     
-    #problem .container,
-    .phase {
-        text-align: left; /* Improve readability on mobile */
+    .product-grid {
+        grid-template-columns: 1fr;
     }
 
-    .product-grid,
-    .roadmap-phases {
-        grid-template-columns: 1fr;
+    /* Adjust timeline for mobile */
+    .timeline {
+        margin: 1rem 0;
+        padding-left: 0;
+    }
+    
+    .timeline::before {
+        left: 10px; /* Adjust line position for smaller screens */
+    }
+    
+    .timeline-item::after {
+        left: 0; /* Adjust circle position */
+    }
+
+    .timeline-content {
+        padding-left: 45px; /* More space for the timeline elements */
     }
 }
 
