@@ -1,11 +1,16 @@
 :root {
-    --primary-color: #0A192F; /* Deep Navy Blue from diagrams */
-    --secondary-color: #FF7A00; /* Orange accent from diagrams */
-    --accent-color: #64FFDA; /* Teal/Aqua accent from diagrams */
+    --primary-color: #0A192F; /* Deep Navy Blue */
+    --secondary-color: #FF7A00; /* Orange accent */
+    --accent-color: #64FFDA; /* Teal/Aqua accent */
     --text-color: #CCD6F6; /* Light text color */
     --card-bg-color: #112240; /* Slightly lighter navy for cards */
     --heading-font: 'Poppins', sans-serif;
     --body-font: 'Poppins', sans-serif;
+}
+
+/* ===== THIS IS THE FIX ===== */
+html, body {
+    overflow-x: hidden;
 }
 
 * {
@@ -19,7 +24,19 @@ body {
     background-color: var(--primary-color);
     color: var(--text-color);
     line-height: 1.6;
-    overflow-x: hidden; /* Prevents horizontal scrolling on mobile */
+    /* The overflow-x rule was moved from here up to the html,body rule */
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }
 
 .container {
@@ -46,35 +63,36 @@ header .container {
 }
 
 .logo img {
-    height: 100px;
+    height: 60px; /* Reduced logo size for a sleeker header */
 }
 
-nav ul {
+.primary-navigation {
     list-style: none;
     display: flex;
+    gap: 1.5rem; /* Use gap for spacing */
 }
 
-nav ul li {
-    margin-left: 25px;
-}
-
-nav a {
+.primary-navigation a {
     color: var(--text-color);
     text-decoration: none;
     font-weight: 600;
     transition: color 0.3s ease;
 }
 
-nav a:hover {
+.primary-navigation a:hover {
     color: var(--accent-color);
 }
 
+.mobile-nav-toggle {
+    display: none; /* Hidden on desktop */
+}
+
 main {
-    padding-top: 130px; /* Adjusted for larger header */
+    padding-top: 100px; /* Adjusted for smaller header */
 }
 
 section {
-    padding: 6rem 0;
+    padding: 6rem 20px; /* Use padding on the section itself */
     text-align: center;
 }
 
@@ -87,11 +105,11 @@ h1, h2, h3, h4 {
     font-weight: 700;
     color: #FFF;
     margin-bottom: 1rem;
+    line-height: 1.2;
 }
 
 h1 {
-    font-size: 3rem;
-    line-height: 1.2;
+    font-size: 3.5rem;
 }
 
 h2 {
@@ -99,9 +117,18 @@ h2 {
     margin-bottom: 2rem;
 }
 
+h3 {
+    font-size: 1.5rem;
+}
+
+h4 {
+    font-size: 1.1rem;
+    color: var(--accent-color);
+}
+
 p.subtitle {
     max-width: 600px;
-    margin: -1rem auto 2rem auto;
+    margin: -1rem auto 2.5rem auto;
     font-size: 1.1rem;
     color: var(--accent-color);
 }
@@ -130,13 +157,14 @@ p.subtitle {
     display: flex;
     align-items: center;
     text-align: left;
-    gap: 2rem;
+    gap: 3rem;
 }
 #hero .hero-text {
     flex: 1;
 }
 #hero .hero-image {
     flex: 1;
+    max-width: 450px;
 }
 #hero .hero-image img {
     max-width: 100%;
@@ -146,7 +174,7 @@ p.subtitle {
 
 /* Core Engine Section */
 .core-engine-diagram img {
-    max-width: 800px;
+    max-width: 100%; /* Make it responsive */
     margin: 1rem auto;
     border-radius: 8px;
 }
@@ -172,12 +200,36 @@ p.subtitle {
 .how-it-works-text {
     flex: 1;
 }
-.how-it-works-text ul {
-    list-style-position: inside;
-    margin-top: 1rem;
+
+.feature-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    margin-top: 1.5rem;
 }
-.how-it-works-text li {
-    margin-bottom: 0.5rem;
+
+.feature-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.5rem;
+}
+
+.feature-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--secondary-color);
+    background-color: rgba(255, 122, 0, 0.1);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-content: center;
+    flex-shrink: 0;
+}
+
+.feature-text p {
+    color: var(--text-color);
+    line-height: 1.5;
 }
 
 
@@ -187,15 +239,17 @@ p.subtitle {
     grid-template-columns: repeat(3, 1fr);
     gap: 2rem;
     margin-top: 2rem;
+    text-align: left;
 }
 
 .product-card {
     background-color: var(--primary-color);
-    padding: 2rem;
+    padding: 2.5rem;
     border-radius: 8px;
-    text-align: center;
     border: 1px solid #1d2d44;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
 }
 
 .product-card:hover {
@@ -204,9 +258,25 @@ p.subtitle {
 }
 
 .product-card img {
-    height: 80px;
-    margin-bottom: 1rem;
+    height: 60px; /* Refined icon size */
+    margin-bottom: 1.5rem;
+    align-self: flex-start;
 }
+
+.product-card p {
+    flex-grow: 1; /* Allows the main text to push the "solves" text down */
+    margin-bottom: 1.5rem;
+}
+
+.solves {
+    font-size: 0.9rem;
+    color: var(--accent-color);
+}
+
+.solves strong {
+    color: inherit;
+}
+
 
 /* Roadmap Section */
 .roadmap-diagram img {
@@ -256,31 +326,79 @@ footer {
     background-color: #081428;
 }
 
-/* Responsive */
+
+/* ================== */
+/* Responsive         */
+/* ================== */
 @media(max-width: 768px) {
+    section {
+        padding: 4rem 20px;
+    }
     h1 { font-size: 2.5rem; }
     h2 { font-size: 2rem; }
+    h3 { font-size: 1.3rem; }
 
-    nav ul { display: none; } /* Basic responsive: hide nav on small screens. Can be replaced with a hamburger menu. */
-    
-    #hero .hero-container {
+    /* --- Mobile Navigation --- */
+    .primary-navigation {
+        position: fixed;
+        z-index: 1000;
+        inset: 0 0 0 30%; /* top, right, bottom, left */
         flex-direction: column;
-        text-align: center;
+        padding: min(20vh, 10rem) 2rem;
+        background: rgba(10, 25, 47, 0.95);
+        backdrop-filter: blur(10px);
+        transform: translateX(100%);
+        transition: transform 350ms ease-out;
     }
 
+    .primary-navigation[data-visible="true"] {
+        transform: translateX(0%);
+    }
+
+    .mobile-nav-toggle {
+        display: block;
+        position: absolute;
+        z-index: 9999;
+        background-color: transparent;
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="%2364FFDA" viewBox="0 0 24 24" width="30" height="30"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg>');
+        background-repeat: no-repeat;
+        background-position: center;
+        width: 2rem;
+        height: 2rem;
+        border: 0;
+        top: 2rem;
+        right: 2rem;
+        cursor: pointer;
+    }
+
+    .mobile-nav-toggle[aria-expanded="true"] {
+         background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="%2364FFDA" viewBox="0 0 24 24" width="30" height="30"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>');
+    }
+
+    /* --- Section Layouts on Mobile --- */
+    #hero .hero-container,
     .how-it-works-content {
         flex-direction: column;
         text-align: center;
     }
 
-    .product-grid {
-        grid-template-columns: 1fr;
+    #hero .hero-text,
+    .how-it-works-text,
+    .product-card {
+      text-align: left;
     }
     
+    #problem .container,
+    .phase {
+        text-align: left; /* Improve readability on mobile */
+    }
+
+    .product-grid,
     .roadmap-phases {
         grid-template-columns: 1fr;
     }
 }
+
 
 /* Thank You Page Styles */
 .thank-you-body {
