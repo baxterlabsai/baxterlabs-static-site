@@ -56,18 +56,11 @@ header .container {
     display: flex;
     align-items: center;
     text-decoration: none;
-    gap: 0.75rem;
 }
 
 .logo {
-    height: 40px;
+    height: 55px; /* Larger logo size */
     border-radius: 6px;
-}
-
-.logo-link span {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--text-primary);
 }
 
 nav ul {
@@ -93,19 +86,32 @@ nav a:hover {
 
 /* Hero Section */
 #hero {
-    text-align: center;
-    padding: 8rem 0;
+    padding: 6rem 0;
     background-color: var(--secondary-bg);
 }
 
-#hero .hero-content {
-    max-width: 750px;
-    margin: 0 auto;
+.hero-container {
+    display: flex;
+    align-items: center;
+    gap: 4rem;
+}
+
+.hero-content {
+    flex: 1;
+}
+
+.hero-image {
+    flex: 1;
+}
+
+.hero-image img {
+    max-width: 100%;
+    border-radius: 12px;
 }
 
 h1 {
     font-family: var(--heading-font);
-    font-size: 3.5rem;
+    font-size: 3.25rem;
     font-weight: 700;
     line-height: 1.2;
     margin-bottom: 1rem;
@@ -124,7 +130,7 @@ p.subtitle {
     font-size: 1.25rem;
     color: var(--text-secondary);
     max-width: 600px;
-    margin: 0 auto 2rem auto;
+    margin-bottom: 2rem;
 }
 
 .cta-button {
@@ -194,35 +200,16 @@ h3 {
 #process {
     padding: 6rem 0;
     background-color: var(--secondary-bg);
+    text-align: center;
 }
 
-.process-timeline {
-    display: flex;
-    justify-content: space-between;
-    gap: 2rem;
-    position: relative;
+.process-image {
     margin-top: 2rem;
 }
 
-.process-step {
-    flex: 1;
-    text-align: center;
-    position: relative;
-    padding: 0 1rem;
-}
-
-.process-number {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    border: 2px solid var(--border-color);
-    background-color: #FFF;
-    display: grid;
-    place-content: center;
-    margin: 0 auto 1.5rem auto;
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--accent-primary);
+.process-image img {
+    max-width: 100%;
+    width: 800px; /* Control max size of the diagram */
 }
 
 /* Contact Section */
@@ -237,6 +224,8 @@ h3 {
 
 #contact .subtitle {
     margin-bottom: 2.5rem;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 #contact form {
@@ -305,12 +294,18 @@ footer {
 
     nav ul { display: none; } /* Simplified for now */
 
-    .service-grid {
-        grid-template-columns: 1fr;
+    .hero-container {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .hero-content .subtitle {
+        margin-left: auto;
+        margin-right: auto;
     }
 
-    .process-timeline {
-        flex-direction: column;
+    .service-grid {
+        grid-template-columns: 1fr;
     }
 }
 
@@ -366,4 +361,3 @@ footer {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
-
