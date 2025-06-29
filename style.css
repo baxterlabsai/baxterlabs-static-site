@@ -276,7 +276,7 @@ p.subtitle {
 }
 
 
-/* Roadmap Section - NEW TIMELINE STYLES */
+/* Roadmap Section */
 .timeline {
     position: relative;
     max-width: 800px;
@@ -339,12 +339,16 @@ p.subtitle {
     gap: 1rem;
 }
 
-#contact input, #contact textarea {
+/* This rule now includes 'select' so it gets the same base styles */
+#contact input, 
+#contact textarea, 
+#contact select {
     padding: 12px;
     border-radius: 5px;
     border: 1px solid var(--card-bg-color);
     background-color: #0E1D34;
     color: var(--text-color);
+    font-family: var(--body-font); /* Ensure font is consistent */
     font-size: 1rem;
 }
 
@@ -352,6 +356,17 @@ p.subtitle {
     min-height: 150px;
     resize: vertical;
 }
+
+/* New rule specifically for the select dropdown */
+#contact select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url('data:image/svg+xml;utf8,<svg fill="%23CCD6F6" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+}
+
 
 /* Footer */
 footer {
