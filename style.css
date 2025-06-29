@@ -339,7 +339,7 @@ p.subtitle {
     gap: 1rem;
 }
 
-/* This rule now includes 'select' so it gets the same base styles */
+/* Rule for all form elements */
 #contact input, 
 #contact textarea, 
 #contact select {
@@ -348,9 +348,18 @@ p.subtitle {
     border: 1px solid var(--card-bg-color);
     background-color: #0E1D34;
     color: var(--text-color);
-    font-family: var(--body-font); /* Ensure font is consistent */
+    font-family: var(--body-font);
     font-size: 1rem;
 }
+
+/* === THIS IS THE FIX === */
+/* Style placeholders to match the select's invalid color */
+#contact input::placeholder,
+#contact textarea::placeholder {
+    color: #8892b0;
+    opacity: 1; /* Override Firefox's default opacity */
+}
+
 
 #contact textarea {
     min-height: 150px;
@@ -367,7 +376,6 @@ p.subtitle {
     background-position: right 12px center;
 }
 
-/* == THIS IS THE FIX == */
 /* Makes the dropdown's default state look like a placeholder */
 #contact select:invalid {
     color: #8892b0;
