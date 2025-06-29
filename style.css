@@ -276,7 +276,7 @@ p.subtitle {
 }
 
 
-/* Roadmap Section */
+/* Roadmap Section - NEW TIMELINE STYLES */
 .timeline {
     position: relative;
     max-width: 800px;
@@ -339,53 +339,19 @@ p.subtitle {
     gap: 1rem;
 }
 
-/* Rule for all form elements */
-#contact input, 
-#contact textarea, 
-#contact select {
+#contact input, #contact textarea {
     padding: 12px;
     border-radius: 5px;
     border: 1px solid var(--card-bg-color);
     background-color: #0E1D34;
     color: var(--text-color);
-    font-family: var(--body-font);
     font-size: 1rem;
 }
-
-/* Style placeholders to match the select's invalid color */
-#contact input::placeholder,
-#contact textarea::placeholder {
-    color: #8892b0;
-    opacity: 1; /* Override Firefox's default opacity */
-}
-
 
 #contact textarea {
     min-height: 150px;
     resize: vertical;
 }
-
-/* Rule for the select dropdown */
-#contact select {
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    background-image: url('data:image/svg+xml;utf8,<svg fill="%23CCD6F6" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-}
-
-/* Makes the dropdown's default state look like a placeholder */
-#contact select:invalid {
-    color: #8892b0;
-}
-
-/* Styles the options in the list when it's opened */
-#contact option {
-    color: #0A192F;
-    background-color: #FFF;
-}
-
 
 /* Footer */
 footer {
