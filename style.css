@@ -139,7 +139,7 @@ p.subtitle {
     border-radius: 5px;
     text-decoration: none;
     font-weight: 600;
-    transition: transform 0.3s ease, background-color 0.3s ease;
+    transition: transform 0.3s ease, background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
     border: 2px solid var(--secondary-color);
 }
 
@@ -352,7 +352,6 @@ p.subtitle {
     font-size: 1rem;
 }
 
-/* === THIS IS THE FIX === */
 /* Style placeholders to match the select's invalid color */
 #contact input::placeholder,
 #contact textarea::placeholder {
@@ -385,6 +384,73 @@ p.subtitle {
 #contact option {
     color: #0A192F;
     background-color: #FFF;
+}
+
+/* == NEW AJAX STYLES == */
+#form-status {
+    margin-bottom: 1rem;
+    text-align: left;
+}
+
+.success-message {
+    background-color: rgba(100, 255, 218, 0.1);
+    border: 1px solid var(--accent-color);
+    color: var(--accent-color);
+    padding: 1rem;
+    border-radius: 5px;
+}
+.success-message h4 {
+    color: var(--accent-color);
+    margin-top: 0;
+}
+.success-message p {
+    color: var(--text-color);
+    margin: 0.5rem 0;
+}
+.success-message a {
+    color: var(--secondary-color);
+    font-weight: 600;
+    text-decoration: none;
+}
+.success-message a:hover {
+    text-decoration: underline;
+}
+
+.error-message {
+    background-color: rgba(255, 82, 82, 0.1);
+    border: 1px solid #ff5252;
+    color: #ff5252;
+    padding: 1rem;
+    border-radius: 5px;
+}
+.error-message h4 {
+    color: #ff5252;
+}
+.error-message p {
+    color: var(--text-color);
+}
+
+/* Button loader animation */
+.loader {
+    width: 1em;
+    height: 1em;
+    border: 2px solid #FFF;
+    border-bottom-color: transparent;
+    border-radius: 50%;
+    display: inline-block;
+    box-sizing: border-box;
+    animation: rotation 1s linear infinite;
+    vertical-align: middle;
+    margin-right: 0.5em;
+}
+
+@keyframes rotation {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 
