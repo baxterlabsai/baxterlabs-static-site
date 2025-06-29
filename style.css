@@ -357,7 +357,7 @@ p.subtitle {
     resize: vertical;
 }
 
-/* New rule specifically for the select dropdown */
+/* Rule for the select dropdown */
 #contact select {
     -webkit-appearance: none;
     -moz-appearance: none;
@@ -365,6 +365,18 @@ p.subtitle {
     background-image: url('data:image/svg+xml;utf8,<svg fill="%23CCD6F6" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
     background-repeat: no-repeat;
     background-position: right 12px center;
+}
+
+/* == THIS IS THE FIX == */
+/* Makes the dropdown's default state look like a placeholder */
+#contact select:invalid {
+    color: #8892b0;
+}
+
+/* Styles the options in the list when it's opened */
+#contact option {
+    color: #0A192F;
+    background-color: #FFF;
 }
 
 
