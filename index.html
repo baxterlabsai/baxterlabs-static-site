@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BaxterLabs.ai - Intelligent Automation for Your Business</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header>
+        <div class="container">
+            <a href="#" class="logo-link">
+                <img src="images/BaxterLabs AI Logo Transparent.jpg" alt="BaxterLabs.ai Logo" class="logo">
+                <span>BaxterLabs.ai</span>
+            </a>
+            <nav>
+                <button class="mobile-nav-toggle" aria-controls="primary-navigation" aria-expanded="false">
+                    <span class="sr-only">Menu</span>
+                </button>
+                <ul id="primary-navigation" class="primary-navigation" data-visible="false">
+                    <li><a href="#services">Services</a></li>
+                    <li><a href="#process">Our Process</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section id="hero">
+            <div class="container">
+                <div class="hero-content">
+                    <h1>Intelligent Automation That Works For You.</h1>
+                    <p class="subtitle">We build custom AI and workflow automation solutions that eliminate tedious tasks, streamline operations, and free you up to focus on what matters most.</p>
+                    <a href="#contact" class="cta-button">Get Your Free Automation Plan</a>
+                </div>
+            </div>
+        </section>
+
+        <section id="services">
+            <div class="container">
+                <h2>What We Automate</h2>
+                <div class="service-grid">
+                    <div class="service-card">
+                        <div class="service-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20Z"/><path d="M12 12v-4"/><path d="M12 16h.01"/></svg>
+                        </div>
+                        <h3>Client Intake & Onboarding</h3>
+                        <p>Turn your contact form into an intelligent system that qualifies leads, books meetings, and prepares new clients automatically.</p>
+                    </div>
+                    <div class="service-card">
+                        <div class="service-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 12c0-5.25-4.25-9.5-9.5-9.5S2.5 6.75 2.5 12Z"/><path d="M12 12a9.5 9.5 0 0 0 9.5 9.5c.74 0 1.45-.09 2.13-.25"/><path d="m15 13-3-3-3 3"/><path d="M12 10v9.5"/></svg>
+                        </div>
+                        <h3>Knowledge Management</h3>
+                        <p>Create a centralized "business brain" that your team can query in plain English to get instant, accurate answers from all your documents and data.</p>
+                    </div>
+                    <div class="service-card">
+                        <div class="service-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h18"/><path d="M3 6h18"/><path d="M3 14h18"/><path d="M3 18h18"/></svg>
+                        </div>
+                        <h3>Repetitive Data Tasks</h3>
+                        <p>Automate data entry, report generation, and information transfer between different apps, eliminating costly human error and saving hours of work.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="process">
+            <div class="container">
+                <h2>Our Simple 3-Step Process</h2>
+                <div class="process-timeline">
+                    <div class="process-step">
+                        <div class="process-number">1</div>
+                        <h3>Discovery & Strategy</h3>
+                        <p>We meet with you to understand your unique challenges and map out the highest-impact automation opportunities for your business.</p>
+                    </div>
+                    <div class="process-step">
+                        <div class="process-number">2</div>
+                        <h3>Build & Integration</h3>
+                        <p>Our team builds your custom solution and seamlessly integrates it into your existing workflow with minimal disruption.</p>
+                    </div>
+                    <div class="process-step">
+                        <div class="process-number">3</div>
+                        <h3>Deploy & Support</h3>
+                        <p>We launch your new automated system and provide ongoing support to ensure it runs smoothly and continues to deliver value.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="contact">
+            <div class="container">
+                <h2>Ready to Automate Your Business?</h2>
+                <p class="subtitle">Let's build your free, no-obligation automation plan. Tell us about your business, and we'll show you how AI can help.</p>
+                <div id="form-status"></div>
+                <form id="contact-form" action="https://n8n.baxterlabs.ai/webhook/new-client-inquiry" method="POST">
+                    <input type="text" name="name" placeholder="Your Name" required>
+                    <input type="email" name="email" placeholder="Your Email" required>
+                    <input type="tel" name="phone" placeholder="Phone Number" required>
+                    <select name="inquiry_type" required>
+                        <option value="">What can we help you automate?</option>
+                        <option value="AI Automation Consulting">AI Automation Consulting</option>
+                        <option value="Workflow Development">Workflow Development</option>
+                        <option value="Integration Services">Integration Services</option>
+                        <option value="Process Automation">Process Automation</option>
+                        <option value="General Inquiry">General Inquiry</option>
+                    </select>
+                    <textarea name="message" placeholder="Tell us about your biggest operational headache..." required></textarea>
+                    <button type="submit" class="cta-button">Submit for Your Free Plan</button>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 BaxterLabs.ai. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+    <script src="form-handler.js"></script>
+</body>
+</html>
