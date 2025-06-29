@@ -256,7 +256,7 @@ p.subtitle {
 }
 
 .product-card img {
-    height: 60px; /* Refined icon size */
+    height: 80px; /* Refined icon size */
     margin-bottom: 1.5rem;
     align-self: flex-start;
 }
