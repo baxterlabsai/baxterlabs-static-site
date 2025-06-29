@@ -159,9 +159,18 @@
             <div class="container">
                 <h2>Ready to Automate?</h2>
                 <p>Let's turn your business knowledge into your most powerful asset. Reach out for a free, no-obligation consultation.</p>
-                <form action="https://formspree.io/f/xldnjobo" method="POST">
+                <form action="https://n8n.baxterlabs.ai/webhook/new-client-inquiry" method="POST">
                     <input type="text" name="name" placeholder="Your Name" required>
                     <input type="email" name="email" placeholder="Your Email" required>
+                    <input type="tel" name="phone" placeholder="Phone Number" required>
+                    <select name="inquiry_type" required>
+                        <option value="">What type of project?</option>
+                        <option value="AI Automation Consulting">AI Automation Consulting</option>
+                        <option value="Workflow Development">Workflow Development</option>
+                        <option value="Integration Services">Integration Services</option>
+                        <option value="Process Automation">Process Automation</option>
+                        <option value="General Inquiry">General Inquiry</option>
+                    </select>
                     <textarea name="message" placeholder="Tell us about your business needs..." required></textarea>
                     <button type="submit" class="cta-button">Send Message</button>
                 </form>
