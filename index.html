@@ -9,6 +9,28 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Added for Twilio Verification */
+        .sms-opt-in {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            text-align: left;
+            max-width: 500px; /* Or adjust to your form width */
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .sms-opt-in input[type="checkbox"] {
+            margin-right: 10px;
+            margin-top: 5px;
+            flex-shrink: 0;
+        }
+        .sms-opt-in label {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.5;
+        }
+    </style>
 </head>
 <body>
 
@@ -109,6 +131,14 @@
                         <option value="General Inquiry">General Inquiry</option>
                     </select>
                     <textarea name="message" placeholder="Tell us about your biggest operational headache..." required></textarea>
+                    
+                    <!-- TWILIO OPT-IN ADDED HERE -->
+                    <div class="sms-opt-in">
+                        <input type="checkbox" id="sms-consent" name="sms-consent" required>
+                        <label for="sms-consent">By submitting this form, I consent to receive text messages from BaxterLabs.ai at the number provided. Message and data rates may apply. Reply STOP to opt out.</label>
+                    </div>
+                    <!-- END TWILIO OPT-IN -->
+                    
                     <button type="submit" class="cta-button">Submit for Your Free Plan</button>
                 </form>
             </div>
