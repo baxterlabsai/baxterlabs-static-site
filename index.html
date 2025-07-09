@@ -9,25 +9,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        /* Added for Twilio Verification */
-        .sms-opt-in {
-            display: flex;
-            align-items: flex-start;
-            margin-bottom: 20px;
-            text-align: left;
-        }
-        .sms-opt-in input[type="checkbox"] {
-            margin-right: 10px;
-            margin-top: 5px;
-            flex-shrink: 0;
-        }
-        .sms-opt-in label {
-            font-size: 12px;
-            color: #666;
-            line-height: 1.5;
-        }
-    </style>
 </head>
 <body>
 
@@ -85,9 +66,6 @@
 
                 <!-- THIS SECTION HAS BEEN FLIPPED -->
                 <div class="feature-layout-reverse">
-                    <div class="feature-image">
-                        <img src="images/ai_impact_dashboard.png" alt="A dashboard showing customer success metrics and business growth charts, illustrating the impact of AI.">
-                    </div>
                     <div class="feature-text">
                         <h3>Drive Growth with Data-Driven Automation</h3>
                         <p>Our systems don't just save you time—they unlock new opportunities. By turning your business data into an intelligent asset, we help you make better decisions and keep your customers happy.</p>
@@ -96,6 +74,9 @@
                             <li><span>Proactive Support:</span> Identify potential customer issues before they happen.</li>
                             <li><span>Measure Your Success:</span> Track key metrics with custom dashboards that show the real impact of automation.</li>
                         </ul>
+                    </div>
+                    <div class="feature-image">
+                        <img src="images/ai_impact_dashboard.png" alt="A dashboard showing customer success metrics and business growth charts, illustrating the impact of AI.">
                     </div>
                 </div>
                 <!-- END FLIPPED SECTION -->
@@ -131,12 +112,10 @@
                     </select>
                     <textarea name="message" placeholder="Tell us about your biggest operational headache..." required></textarea>
                     
-                    <!-- TWILIO OPT-IN ADDED HERE -->
                     <div class="sms-opt-in">
                         <input type="checkbox" id="sms-consent" name="sms-consent" required>
                         <label for="sms-consent">By submitting this form, I consent to receive text messages from BaxterLabs.ai at the number provided. Message and data rates may apply. Reply STOP to opt out.</label>
                     </div>
-                    <!-- END TWILIO OPT-IN -->
                     
                     <button type="submit" class="cta-button">Submit for Your Free Plan</button>
                 </form>
