@@ -5,6 +5,8 @@ body {
     background-color: #fff;
     margin: 0;
     line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 .container {
@@ -58,7 +60,7 @@ header .container {
 }
 
 .logo {
-    height: 40px;
+    height: 55px; /* LOGO SIZE CORRECTED */
 }
 
 nav ul {
@@ -244,3 +246,89 @@ footer {
 }
 
 /* --- END: Twilio Verification Fix --- */
+
+
+/* --- START: Mobile Responsive Fixes --- */
+
+/* For tablets and smaller devices */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 2.2rem;
+    }
+
+    h2 {
+        font-size: 1.8rem;
+    }
+
+    .hero-container,
+    .feature-layout,
+    .feature-layout-reverse {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .hero-content,
+    .feature-text {
+        text-align: center;
+    }
+    
+    .feature-layout-reverse .feature-text {
+        order: 2; /* Ensure text is below image when stacked */
+    }
+
+    .feature-layout-reverse .feature-image {
+        order: 1;
+    }
+
+    /* Basic mobile navigation - assumes JS will toggle visibility */
+    .primary-navigation {
+        display: none; /* Hide nav by default */
+        position: absolute;
+        top: 85px; /* Adjust based on your header height */
+        right: 20px;
+        background: white;
+        flex-direction: column;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .primary-navigation[data-visible="true"] {
+        display: flex;
+    }
+
+    .mobile-nav-toggle {
+        display: block;
+        background: none;
+        border: none;
+        cursor: pointer;
+        /* Add styles for your hamburger icon here */
+        width: 30px;
+        height: 30px;
+        position: relative;
+    }
+    .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+}
+
+/* For smaller phones */
+@media (max-width: 480px) {
+    h1 {
+        font-size: 1.8rem;
+    }
+
+    section {
+        padding: 60px 0;
+    }
+}
+
+/* --- END: Mobile Responsive Fixes --- */
