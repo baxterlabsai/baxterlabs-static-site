@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI & Workflow Automation Consulting | BaxterLabs.ai</title>
+    <meta name="description" content="BaxterLabs.ai provides custom AI and workflow automation solutions to streamline business operations, save time, and drive growth. Get your free automation plan today.">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header>
+        <div class="container">
+            <a href="#" class="logo-link">
+                <img src="images/baxterlabs-logo.png" alt="BaxterLabs.ai Logo" class="logo">
+            </a>
+            <nav>
+                <button class="mobile-nav-toggle" aria-controls="primary-navigation" aria-expanded="false">
+                    <span class="sr-only">Menu</span>
+                </button>
+                <ul id="primary-navigation" class="primary-navigation" data-visible="false">
+                    <li><a href="#services">Solutions</a></li>
+                    <li><a href="#process">Our Process</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section id="hero">
+            <div class="container hero-container">
+                <div class="hero-content">
+                    <h1>AI Workflow Automation That Works For You</h1>
+                    <p class="subtitle">We build custom AI solutions to eliminate tedious tasks, streamline your business operations, and free you up to focus on growth.</p>
+                    <a href="#contact" class="cta-button">Get Your Free Automation Plan</a>
+                </div>
+                <div class="hero-image">
+                    <img src="images/hero-image.png" alt="An illustration of a robotic arm automating a business workflow, representing AI workflow automation.">
+                </div>
+            </div>
+        </section>
+
+        <section id="services">
+            <div class="container">
+                <h2>Custom Automation Solutions for Business Challenges</h2>
+                
+                <div class="feature-layout">
+                    <div class="feature-image">
+                        <img src="images/ai_automation_solutions_grid.png" alt="Diagram showing examples of workflow automation: Real Estate Ingestion, RFP Automation, and AI Customer Support.">
+                    </div>
+                    <div class="feature-text">
+                        <h3>Automate Your Core Business Operations</h3>
+                        <p>Stop wasting time on repetitive, manual work. We identify your biggest operational bottlenecks and build tailored AI and workflow automation solutions to solve them.</p>
+                        <ul>
+                            <li><span>Real Estate Ingestion:</span> Instantly process and structure property data from any source.</li>
+                            <li><span>RFP Automation:</span> Automatically generate detailed responses to proposals.</li>
+                            <li><span>AI-Powered Customer Support:</span> Provide instant, 24/7 answers to your customers' most common questions.</li>
+                             <li><span>Sales Prep:</span> Equip your sales team with perfectly organized prospect data and meeting prep.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- THIS SECTION HAS BEEN FLIPPED -->
+                <div class="feature-layout-reverse">
+                    <div class="feature-text">
+                        <h3>Drive Growth with Data-Driven Automation</h3>
+                        <p>Our systems don't just save you time—they unlock new opportunities. By turning your business data into an intelligent asset, we help you make better decisions and keep your customers happy.</p>
+                        <ul>
+                            <li><span>Actionable Insights:</span> Get clear, data-driven insights from your business operations.</li>
+                            <li><span>Proactive Support:</span> Identify potential customer issues before they happen.</li>
+                            <li><span>Measure Your Success:</span> Track key metrics with custom dashboards that show the real impact of automation.</li>
+                        </ul>
+                    </div>
+                    <div class="feature-image">
+                        <img src="images/ai_impact_dashboard.png" alt="A dashboard showing customer success metrics and business growth charts, illustrating the impact of AI.">
+                    </div>
+                </div>
+                <!-- END FLIPPED SECTION -->
+
+            </div>
+        </section>
+
+        <section id="process">
+            <div class="container">
+                <h2>Our Simple 3-Step Automation Process</h2>
+                <div class="process-image">
+                    <img src="images/ai_workflow_steps.png" alt="Our 3-step process for AI automation: Collect, Analyze, and Automate.">
+                </div>
+            </div>
+        </section>
+
+        <section id="contact">
+            <div class="container">
+                <h2>Ready to Automate Your Business?</h2>
+                <p class="subtitle">Let's build your free, no-obligation automation plan. Tell us about your business, and we'll show you how AI can help.</p>
+                <div id="form-status"></div>
+                <form id="contact-form" action="https://n8n.baxterlabs.ai/webhook/new-client-inquiry" method="POST">
+                    <input type="text" name="name" placeholder="Your Name" required>
+                    <input type="email" name="email" placeholder="Your Email" required>
+                    <input type="tel" name="phone" placeholder="Phone Number" required>
+                    <select name="inquiry_type" required>
+                        <option value="">What can we help you automate?</option>
+                        <option value="AI Automation Consulting">AI Automation Consulting</option>
+                        <option value="Workflow Development">Workflow Development</option>
+                        <option value="Integration Services">Integration Services</option>
+                        <option value="Process Automation">Process Automation</option>
+                        <option value="General Inquiry">General Inquiry</option>
+                    </select>
+                    <textarea name="message" placeholder="Tell us about your biggest operational headache..." required></textarea>
+                    
+                    <div class="sms-opt-in">
+                        <input type="checkbox" id="sms-consent" name="sms-consent" required>
+                        <label for="sms-consent">By submitting this form, I consent to receive text messages from BaxterLabs.ai at the number provided. Message and data rates may apply. Reply STOP to opt out.</label>
+                    </div>
+                    
+                    <button type="submit" class="cta-button">Submit for Your Free Plan</button>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 BaxterLabs.ai. All Rights Reserved. | <a href="privacy-policy.html" style="color: white;">Privacy Policy</a></p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+    <script src="form-handler.js"></script>
+</body>
+</html>
