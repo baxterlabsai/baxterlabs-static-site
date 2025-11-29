@@ -83,26 +83,75 @@ nav a {
 /* Hero Section */
 #hero {
     padding: 80px 0;
+    background-color: #ffffff;
 }
 
 .hero-container {
     display: flex;
     align-items: center;
-    gap: 40px;
+    gap: 60px;
 }
 
 .hero-content {
-    flex: 1;
+    flex: 1.5; /* 60% width ratio */
     text-align: left;
 }
 
+.hero-content h1 {
+    font-size: 2.8rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: #1a1a1a;
+}
+
+.hero-headline {
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #1a1a1a;
+    margin-bottom: 24px;
+}
+
+.hero-description {
+    font-size: 1.125rem;
+    line-height: 1.6;
+    color: #4a5568;
+    margin-bottom: 24px;
+}
+
+.hero-features {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 32px 0;
+}
+
+.hero-features li {
+    font-size: 1.125rem;
+    line-height: 1.6;
+    color: #4a5568;
+    margin-bottom: 12px;
+    padding-left: 28px;
+    position: relative;
+}
+
+.hero-features li::before {
+    content: '•';
+    position: absolute;
+    left: 0;
+    color: #1a1a1a;
+    font-weight: 700;
+    font-size: 1.5rem;
+}
+
 .hero-image {
-    flex: 1;
+    flex: 1; /* 40% width ratio */
 }
 
 .hero-image img {
     max-width: 100%;
     height: auto;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
 }
 
 .subtitle {
@@ -260,6 +309,10 @@ footer {
         font-size: 1.8rem;
     }
 
+    .hero-headline {
+        font-size: 2rem;
+    }
+
     .hero-container,
     .feature-layout,
     .feature-layout-reverse {
@@ -270,6 +323,12 @@ footer {
     .hero-content,
     .feature-text {
         text-align: center;
+    }
+
+    .hero-features li {
+        text-align: left;
+        display: inline-block;
+        max-width: 100%;
     }
     
     .feature-layout-reverse .feature-text {
@@ -324,6 +383,15 @@ footer {
 @media (max-width: 480px) {
     h1 {
         font-size: 1.8rem;
+    }
+
+    .hero-headline {
+        font-size: 1.5rem;
+    }
+
+    .hero-description,
+    .hero-features li {
+        font-size: 1rem;
     }
 
     section {
