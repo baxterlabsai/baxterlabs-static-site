@@ -60,7 +60,7 @@ header .container {
 }
 
 .logo {
-    height: 55px; /* LOGO SIZE CORRECTED */
+    height: 70px; /* Increased to fill header space */
 }
 
 nav ul {
@@ -106,7 +106,7 @@ nav a {
 }
 
 .brand-baxter {
-    color: #dc3545; /* Crimson red to match CTA */
+    color: #8b0000; /* Crimson red */
 }
 
 .brand-labs {
@@ -171,7 +171,7 @@ nav a {
 
 .cta-button {
     display: inline-block;
-    background-color: #dc3545; /* Red button color */
+    background-color: #8b0000; /* Crimson red */
     color: white;
     padding: 15px 30px;
     border-radius: 5px;
@@ -183,17 +183,18 @@ nav a {
 
 /* Enterprise Scale Section */
 #enterprise-scale {
-    background-color: #dc3545; /* Crimson red */
+    background-color: #ffffff; /* White background */
     padding: 80px 0;
 }
 
 .enterprise-card {
-    max-width: 800px;
+    max-width: 75%; /* 70-80% width */
     margin: 0 auto;
     text-align: center;
-    padding: 40px;
-    background-color: rgba(255, 255, 255, 0.05); /* Subtle card effect */
+    padding: 60px 40px;
+    background-color: #8b0000; /* Crimson red card */
     border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Shadow like hero image */
 }
 
 .enterprise-card h2 {
@@ -375,7 +376,8 @@ footer {
     }
 
     .enterprise-card {
-        padding: 30px 20px;
+        max-width: 90%; /* Wider on mobile */
+        padding: 40px 30px;
     }
 
     .enterprise-card h2 {
