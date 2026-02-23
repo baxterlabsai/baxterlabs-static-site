@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI & Workflow Automation Consulting | BaxterLabs.ai</title>
+    <meta name="description" content="BaxterLabs.ai provides custom AI and workflow automation solutions to streamline business operations, save time, and drive growth. Get your free automation plan today.">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header>
+        <div class="container">
+            <a href="#" class="logo-link">
+                <img src="images/baxterlabs-logo.png" alt="BaxterLabs.ai Logo" class="logo">
+            </a>
+            <nav>
+                <button class="mobile-nav-toggle" aria-controls="primary-navigation" aria-expanded="false">
+                    <span class="sr-only">Menu</span>
+                </button>
+                <ul id="primary-navigation" class="primary-navigation" data-visible="false">
+                    <li><a href="#contact">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section id="hero">
+            <div class="container hero-container">
+                <div class="hero-content">
+                    <h1><span class="brand-baxter">Baxter</span><span class="brand-labs">Labs.ai</span></h1>
+                    <h2 class="hero-headline">Transforming Enterprise Consulting Through AI Automation</h2>
+                    <p class="hero-description">We're building intelligent software that accelerates business process consulting from weeks to hours—without sacrificing quality.</p>
+                    <ul class="hero-features">
+                        <li>Built for consulting firms serving Fortune 500 clients</li>
+                        <li>Launching Early 2026 for select enterprise partners</li>
+                    </ul>
+                    <a href="#contact" class="cta-button">Request Early Access</a>
+                </div>
+                <div class="hero-image">
+                    <img src="images/speed-efficiency.png" alt="AI automation transforming enterprise consulting workflows">
+                </div>
+            </div>
+        </section>
+
+        <section id="enterprise-scale">
+            <div class="container">
+                <div class="enterprise-card">
+                    <h2>Built for Enterprise Scale</h2>
+                    <p>Our platform serves consulting firms and enterprise teams tackling complex business transformation projects.</p>
+                    <p>Designed for engagements where quality, compliance, and auditability are non-negotiable.</p>
+                    <p>Built for teams who can't compromise on deliverable quality.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="contact">
+            <div class="container">
+                <h2>Interested in Enterprise Consulting Automation?</h2>
+                <p class="subtitle">We're building intelligent software for consulting firms tackling complex business transformation projects. Share your details to learn more.</p>
+                <div id="form-status"></div>
+                <form id="contact-form" action="https://n8n.baxterlabs.ai/webhook/new-client-inquiry" method="POST">
+                    <input type="text" name="name" placeholder="Your Name" required>
+                    <input type="email" name="email" placeholder="Your Email" required>
+                    <input type="tel" name="phone" placeholder="Phone Number" required>
+                    <select name="inquiry_type" required>
+                        <option value="">What can we help you automate?</option>
+                        <option value="AI Automation Consulting">AI Automation Consulting</option>
+                        <option value="Workflow Development">Workflow Development</option>
+                        <option value="Integration Services">Integration Services</option>
+                        <option value="Process Automation">Process Automation</option>
+                        <option value="General Inquiry">General Inquiry</option>
+                    </select>
+                    <textarea name="message" placeholder="Tell us about your biggest operational headache..." required></textarea>
+                    
+                    <div class="sms-opt-in">
+                        <input type="checkbox" id="sms-consent" name="sms-consent" required>
+                        <label for="sms-consent">By submitting this form, I consent to receive text messages from BaxterLabs.ai at the number provided. Message and data rates may apply. Reply STOP to opt out.</label>
+                    </div>
+                    
+                    <button type="submit" class="cta-button">Request Early Access</button>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 BaxterLabs.ai. All Rights Reserved. | <a href="privacy-policy.html" style="color: white;">Privacy Policy</a></p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+    <script src="form-handler.js"></script>
+</body>
+</html>
