@@ -333,6 +333,107 @@ class DocuSignService:
                 "error": str(e),
             }
 
+    def _build_agreement_html(
+        self, company_name: str, contact_name: str, fee: float, start_date: str, end_date: str,
+    ) -> str:
+        """Generate the Engagement Agreement as HTML."""
+        today = datetime.now(timezone.utc).strftime("%B %d, %Y")
+        fee_str = f"${fee:,.0f}" if fee else "$12,500"
+        return f"""<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body {{ font-family: 'Georgia', serif; color: #2D3436; line-height: 1.6; margin: 40px; }}
+  h1 {{ color: #66151C; text-align: center; border-bottom: 2px solid #C9A84C; padding-bottom: 16px; }}
+  h2 {{ color: #005454; margin-top: 24px; }}
+  .header {{ text-align: center; margin-bottom: 32px; }}
+  .header .logo {{ font-size: 24px; font-weight: bold; color: #66151C; }}
+  .highlight {{ background: #FAF8F2; padding: 16px; border-radius: 8px; margin: 16px 0; }}
+  .fee-box {{ background: #005454; color: white; padding: 20px; border-radius: 8px; text-align: center; margin: 24px 0; }}
+  .fee-box .amount {{ font-size: 32px; font-weight: bold; color: #C9A84C; }}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">BaxterLabs Advisory</div>
+  <p style="color: #C9A84C; margin-top: 4px;">Engagement Agreement</p>
+</div>
+
+<h1>Engagement Agreement</h1>
+
+<p>This Engagement Agreement ("Agreement") is entered into as of <strong>{today}</strong> by and between:</p>
+
+<div class="highlight">
+  <p><strong>Client:</strong> {company_name}, represented by {contact_name}</p>
+  <p><strong>Advisor:</strong> BaxterLabs Advisory LLC ("BaxterLabs")</p>
+</div>
+
+<h2>1. Scope of Work</h2>
+<p>BaxterLabs will conduct a <strong>14-Day Profit Leak Diagnostic</strong> for {company_name}. The engagement includes:</p>
+<ul>
+  <li>Comprehensive review of financial statements, payroll, vendor contracts, and revenue data</li>
+  <li>Up to 3 confidential interviews with key personnel</li>
+  <li>AI-assisted analysis across 6 operational categories</li>
+  <li>Board-ready deliverables including Executive Summary, Full Diagnostic Report, Profit Leak Quantification Workbook, and 90-Day Implementation Roadmap</li>
+  <li>Executive Debrief presentation with Q&A</li>
+</ul>
+
+<h2>2. Engagement Fee</h2>
+<div class="fee-box">
+  <p style="margin: 0;">Fixed Fee — All Inclusive</p>
+  <p class="amount" style="margin: 8px 0;">{fee_str}</p>
+  <p style="margin: 0; font-size: 14px; opacity: 0.8;">No hourly billing. No surprises. No scope creep charges.</p>
+</div>
+<p><strong>Payment Terms:</strong> 50% due upon signing ({f"${fee/2:,.0f}" if fee else "$6,250"}), 50% due upon delivery of Wave 1 deliverables ({f"${fee/2:,.0f}" if fee else "$6,250"}).</p>
+
+<h2>3. Timeline</h2>
+<p><strong>Start Date:</strong> {start_date or "To be confirmed"}</p>
+<p><strong>Target Completion:</strong> {end_date or "14 business days from start"}</p>
+<p>BaxterLabs will deliver Wave 1 deliverables within 14 business days of receiving all requested documents.</p>
+
+<h2>4. Client Responsibilities</h2>
+<p>Client agrees to: (a) provide all requested documents within 5 business days of the data request; (b) make designated interview contacts available within the engagement timeline; (c) designate a single point of contact for communication.</p>
+
+<h2>5. Confidentiality</h2>
+<p>This engagement is subject to the Non-Disclosure Agreement previously executed between the parties. All information shared remains confidential per the terms of that agreement.</p>
+
+<h2>6. Limitation of Liability</h2>
+<p>BaxterLabs' total liability under this Agreement shall not exceed the engagement fee. BaxterLabs provides advisory services only and does not guarantee specific financial outcomes.</p>
+
+<h2>7. Termination</h2>
+<p>Either party may terminate this Agreement with 5 business days written notice. If Client terminates after work has begun, the initial 50% payment is non-refundable.</p>
+
+<h2>8. Governing Law</h2>
+<p>This Agreement shall be governed by the laws of the State of Texas.</p>
+
+<div style="margin-top: 40px; page-break-inside: avoid;">
+  <p><strong>IN WITNESS WHEREOF</strong>, the parties have executed this Agreement.</p>
+
+  <table width="100%" style="margin-top: 32px;">
+    <tr>
+      <td width="50%">
+        <p><strong>Client — {company_name}</strong></p>
+        <p style="margin-top: 24px;">Signature:</p>
+        <p><span style="color: white; font-size: 1px;">/sn1/</span></p>
+        <p style="margin-top: 8px;">Name: <span style="color: white; font-size: 1px;">/fn1/</span></p>
+        <p>Date: <span style="color: white; font-size: 1px;">/ds1/</span></p>
+      </td>
+      <td width="50%">
+        <p><strong>BaxterLabs Advisory LLC</strong></p>
+        <p style="margin-top: 24px;">Signature:</p>
+        <p><span style="color: white; font-size: 1px;">/sn2/</span></p>
+        <p style="margin-top: 8px;">Name: George DeVries</p>
+        <p>Title: Managing Partner</p>
+        <p>Date: <span style="color: white; font-size: 1px;">/ds2/</span></p>
+      </td>
+    </tr>
+  </table>
+</div>
+
+</body>
+</html>"""
+
     def send_agreement(
         self,
         engagement_id: str,
@@ -343,55 +444,153 @@ class DocuSignService:
         start_date: str,
         end_date: str,
     ) -> dict:
-        """Send engagement agreement via DocuSign. (Phase 4 — full implementation later.)"""
-        logger.info(
-            f"send_agreement called — engagement={engagement_id} "
-            f"(full implementation in a future milestone)"
+        """Generate and send Engagement Agreement envelope via DocuSign (two signers)."""
+        self._ensure_auth()
+
+        agreement_html = self._build_agreement_html(
+            company_name, contact_name, fee, start_date, end_date,
         )
-        return {
-            "success": False,
-            "error": "Engagement agreement sending not yet implemented — future milestone",
-        }
+        doc_b64 = base64.b64encode(agreement_html.encode("utf-8")).decode("ascii")
+
+        document = Document(
+            document_base64=doc_b64,
+            name=f"Engagement Agreement — {company_name} & BaxterLabs Advisory",
+            file_extension="html",
+            document_id="1",
+        )
+
+        # Signer 1: Client
+        client_signer = Signer(
+            email=contact_email,
+            name=contact_name,
+            recipient_id="1",
+            routing_order="1",
+        )
+        client_signer.tabs = Tabs(
+            sign_here_tabs=[SignHere(
+                anchor_string="/sn1/", anchor_units="pixels",
+                anchor_y_offset="-5", anchor_x_offset="0",
+            )],
+            full_name_tabs=[FullName(
+                anchor_string="/fn1/", anchor_units="pixels",
+                anchor_y_offset="-5", anchor_x_offset="0",
+            )],
+            date_signed_tabs=[DateSigned(
+                anchor_string="/ds1/", anchor_units="pixels",
+                anchor_y_offset="-5", anchor_x_offset="0",
+            )],
+        )
+
+        # Signer 2: BaxterLabs (George)
+        partner_email = os.getenv("PARTNER_EMAIL", "george@baxterlabs.ai")
+        partner_signer = Signer(
+            email=partner_email,
+            name="George DeVries",
+            recipient_id="2",
+            routing_order="2",
+        )
+        partner_signer.tabs = Tabs(
+            sign_here_tabs=[SignHere(
+                anchor_string="/sn2/", anchor_units="pixels",
+                anchor_y_offset="-5", anchor_x_offset="0",
+            )],
+            date_signed_tabs=[DateSigned(
+                anchor_string="/ds2/", anchor_units="pixels",
+                anchor_y_offset="-5", anchor_x_offset="0",
+            )],
+        )
+
+        envelope_definition = EnvelopeDefinition(
+            email_subject=f"BaxterLabs Advisory — Engagement Agreement for {company_name}",
+            email_blurb=(
+                f"Dear {contact_name},\n\n"
+                f"Please review and sign the Engagement Agreement for your "
+                f"14-Day Profit Leak Diagnostic with BaxterLabs Advisory.\n\nThank you."
+            ),
+            documents=[document],
+            recipients=Recipients(signers=[client_signer, partner_signer]),
+            status="sent",
+        )
+
+        event_notification = self._make_event_notification()
+        if event_notification:
+            envelope_definition.event_notification = event_notification
+
+        try:
+            envelopes_api = EnvelopesApi(self._api_client)
+            result = envelopes_api.create_envelope(
+                account_id=self._ds_account_id,
+                envelope_definition=envelope_definition,
+            )
+
+            logger.info(
+                f"Agreement sent — envelope_id={result.envelope_id} to={contact_email} "
+                f"engagement={engagement_id}"
+            )
+
+            return {
+                "success": True,
+                "envelope_id": result.envelope_id,
+                "status": result.status,
+            }
+        except ApiException as e:
+            logger.error(f"DocuSign send_agreement failed: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+            }
+
+    def _lookup_doc_type(self, envelope_id: str) -> str:
+        """Look up document type (nda/agreement) from legal_documents table."""
+        try:
+            from services.supabase_client import get_supabase
+            sb = get_supabase()
+            result = (
+                sb.table("legal_documents")
+                .select("type")
+                .eq("docusign_envelope_id", envelope_id)
+                .execute()
+            )
+            if result.data:
+                return result.data[0]["type"]
+        except Exception as e:
+            logger.warning(f"Could not look up doc type for {envelope_id}: {e}")
+        return "nda"  # default fallback
 
     def handle_webhook(self, payload: dict) -> dict:
-        """Process DocuSign webhook callback."""
+        """Process DocuSign webhook callback. Returns action based on doc type."""
+        envelope_id = ""
+        event_type = ""
+
         # JSON SIM format (Connect 2.0)
         if "event" in payload and "data" in payload:
-            event = payload["event"]
-            data = payload["data"]
-            envelope_id = data.get("envelopeId", "")
-
-            logger.info(f"DocuSign webhook — event={event} envelope_id={envelope_id}")
-
-            if event == "envelope-completed":
-                return {
-                    "action": "nda_signed",
-                    "envelope_id": envelope_id,
-                    "completed_at": data.get("envelopeSummary", {}).get("completedDateTime"),
-                }
-            elif event == "envelope-declined":
-                return {
-                    "action": "nda_declined",
-                    "envelope_id": envelope_id,
-                }
-            elif event == "envelope-voided":
-                return {
-                    "action": "nda_voided",
-                    "envelope_id": envelope_id,
-                }
-
-        # Legacy XML-style format
+            event_type = payload["event"]
+            envelope_id = payload["data"].get("envelopeId", "")
+        # Legacy format
         elif "EnvelopeStatus" in payload:
             status = payload.get("EnvelopeStatus", {}).get("Status", "")
             envelope_id = payload.get("EnvelopeStatus", {}).get("EnvelopeID", "")
-
-            logger.info(f"DocuSign webhook (legacy) — status={status} envelope_id={envelope_id}")
-
             if status == "Completed":
-                return {
-                    "action": "nda_signed",
-                    "envelope_id": envelope_id,
-                }
+                event_type = "envelope-completed"
+            elif status == "Declined":
+                event_type = "envelope-declined"
+
+        if not envelope_id:
+            return {"action": "unknown", "raw": payload}
+
+        logger.info(f"DocuSign webhook — event={event_type} envelope_id={envelope_id}")
+
+        # Look up document type to differentiate NDA vs Agreement
+        doc_type = self._lookup_doc_type(envelope_id)
+
+        if event_type == "envelope-completed":
+            action = "nda_signed" if doc_type == "nda" else "agreement_signed"
+            return {"action": action, "envelope_id": envelope_id}
+        elif event_type == "envelope-declined":
+            action = "nda_declined" if doc_type == "nda" else "agreement_declined"
+            return {"action": action, "envelope_id": envelope_id}
+        elif event_type == "envelope-voided":
+            return {"action": f"{doc_type}_voided", "envelope_id": envelope_id}
 
         return {"action": "unknown", "raw": payload}
 

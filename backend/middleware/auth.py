@@ -1,34 +1,47 @@
+from __future__ import annotations
+
 import os
+import logging
 from fastapi import Request, HTTPException
 import jwt
 
-from services.supabase_client import get_engagement_by_upload_token, get_engagement_by_deliverable_token
+from services.supabase_client import get_supabase, get_engagement_by_upload_token, get_engagement_by_deliverable_token
 
-
-def _get_jwt_secret() -> str:
-    key = os.getenv("SUPABASE_SERVICE_KEY_BAXTERLABS_STATIC_SITE", "")
-    # The JWT secret for Supabase is the service role key's signing secret.
-    # For verification we use the project's JWT secret from Supabase settings.
-    # In production, set SUPABASE_JWT_SECRET explicitly. For now, we extract
-    # from the service key or use a dedicated env var.
-    return os.getenv("SUPABASE_JWT_SECRET", key)
+logger = logging.getLogger("baxterlabs.auth")
 
 
 async def verify_partner_auth(request: Request) -> dict:
-    """Verify Supabase JWT for partner dashboard routes."""
+    """Verify Supabase JWT for partner dashboard routes.
+
+    Uses the Supabase JWT secret to verify tokens. Falls back to
+    signature-less decode in dev if no secret is configured.
+    """
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid authorization header")
 
     token = auth_header[7:]
+
+    # Try server-side verification via Supabase Auth API
     try:
-        # Supabase JWTs are signed with the project's JWT secret
-        jwt_secret = os.getenv("SUPABASE_JWT_SECRET", "")
-        if not jwt_secret:
-            # Fallback: accept any valid-looking token structure in dev
-            payload = jwt.decode(token, options={"verify_signature": False})
-        else:
+        sb = get_supabase()
+        user_response = sb.auth.get_user(token)
+        if user_response and user_response.user:
+            return {
+                "sub": user_response.user.id,
+                "email": user_response.user.email,
+                "role": "authenticated",
+            }
+    except Exception as e:
+        logger.debug(f"Supabase auth.get_user failed: {e}")
+
+    # Fallback: JWT decode with secret
+    jwt_secret = os.getenv("SUPABASE_JWT_SECRET", "")
+    try:
+        if jwt_secret:
             payload = jwt.decode(token, jwt_secret, algorithms=["HS256"], audience="authenticated")
+        else:
+            payload = jwt.decode(token, options={"verify_signature": False})
 
         if payload.get("role") != "authenticated":
             raise HTTPException(status_code=403, detail="Insufficient permissions")
