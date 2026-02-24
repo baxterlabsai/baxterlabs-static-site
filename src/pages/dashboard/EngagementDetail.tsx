@@ -73,8 +73,19 @@ interface EngagementData {
 const ALL_STATUSES = [
   'nda_pending', 'nda_signed', 'discovery_done', 'agreement_pending', 'agreement_signed',
   'documents_pending', 'documents_received',
-  'phase_1', 'phase_2', 'phase_3', 'phase_4', 'phase_5', 'phase_6',
+  'phase_0', 'phase_1', 'phase_2', 'phase_3', 'phase_4', 'phase_5', 'phase_6', 'phase_7', 'phases_complete',
   'debrief', 'wave_1_released', 'wave_2_released', 'closed',
+]
+
+const PHASE_INFO = [
+  { num: 0, name: 'Proposal & Setup', short: 'Setup' },
+  { num: 1, name: 'Data Intake & Baseline', short: 'Intake', reviewGate: true },
+  { num: 2, name: 'Leadership Interviews', short: 'Interviews' },
+  { num: 3, name: 'Profit Leak Quantification', short: 'Quantify', reviewGate: true },
+  { num: 4, name: 'Optimization Analysis', short: 'Optimize' },
+  { num: 5, name: 'Report Assembly', short: 'Reports' },
+  { num: 6, name: 'Quality Control', short: 'QC', reviewGate: true },
+  { num: 7, name: 'Close & Archive', short: 'Archive' },
 ]
 
 const UPLOAD_LINK_STATUSES = new Set([
@@ -145,6 +156,14 @@ export default function EngagementDetail() {
   const [sendingUploadLink, setSendingUploadLink] = useState(false)
   const [uploadLinkSent, setUploadLinkSent] = useState(false)
   const [downloadingDocId, setDownloadingDocId] = useState<string | null>(null)
+  const [phasePrompt, setPhasePrompt] = useState<{ phase_number: number; name: string; rendered_text: string; variables_used: Record<string, string> } | null>(null)
+  const [promptLoading, setPromptLoading] = useState(false)
+  const [promptExpanded, setPromptExpanded] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [advanceLoading, setAdvanceLoading] = useState(false)
+  const [advanceDialog, setAdvanceDialog] = useState<'none' | 'simple' | 'review'>('none')
+  const [advanceNotes, setAdvanceNotes] = useState('')
+  const [beginLoading, setBeginLoading] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -188,6 +207,73 @@ export default function EngagementDetail() {
       }
     } catch {}
     setDownloadingDocId(null)
+  }
+
+  const isInPhases = data && /^phase_\d$/.test(data.status)
+
+  const loadPhasePrompt = async () => {
+    if (!id || !data) return
+    setPromptLoading(true)
+    try {
+      const result = await apiGet<{ phase_number: number; name: string; rendered_text: string; variables_used: Record<string, string> }>(`/api/engagements/${id}/prompt/${data.phase}`)
+      setPhasePrompt(result)
+    } catch {}
+    setPromptLoading(false)
+  }
+
+  const copyPrompt = async () => {
+    if (!phasePrompt) return
+    try {
+      await navigator.clipboard.writeText(phasePrompt.rendered_text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Fallback
+      const ta = document.createElement('textarea')
+      ta.value = phasePrompt.rendered_text
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
+  const handleAdvanceClick = () => {
+    if (!data) return
+    const isReviewGate = [1, 3, 6].includes(data.phase)
+    setAdvanceDialog(isReviewGate ? 'review' : 'simple')
+  }
+
+  const doAdvance = async (reviewConfirmed: boolean) => {
+    if (!id) return
+    setAdvanceLoading(true)
+    try {
+      await apiPost(`/api/engagements/${id}/advance-phase`, {
+        notes: advanceNotes || null,
+        review_confirmed: reviewConfirmed,
+      })
+      // Reload engagement
+      const d = await apiGet<EngagementData>(`/api/engagements/${id}`)
+      setData(d)
+      setPhasePrompt(null)
+      setPromptExpanded(false)
+      setAdvanceDialog('none')
+      setAdvanceNotes('')
+    } catch {}
+    setAdvanceLoading(false)
+  }
+
+  const beginPhases = async () => {
+    if (!id) return
+    setBeginLoading(true)
+    try {
+      await apiPost(`/api/engagements/${id}/begin-phases`)
+      const d = await apiGet<EngagementData>(`/api/engagements/${id}`)
+      setData(d)
+    } catch {}
+    setBeginLoading(false)
   }
 
   if (loading) {
@@ -248,6 +334,15 @@ export default function EngagementDetail() {
               Start Engagement &rarr;
             </Link>
           )}
+          {data.status === 'documents_received' && (
+            <button
+              onClick={beginPhases}
+              disabled={beginLoading}
+              className="px-5 py-2.5 bg-crimson text-white font-semibold rounded-lg hover:bg-crimson/90 text-sm disabled:opacity-50"
+            >
+              {beginLoading ? 'Starting...' : 'Begin Phase 0'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -271,6 +366,129 @@ export default function EngagementDetail() {
           ))}
         </div>
       </section>
+
+      {/* Phase Tracker Timeline */}
+      {(isInPhases || data.status === 'phases_complete' || data.status === 'debrief' || ALL_STATUSES.indexOf(data.status) > ALL_STATUSES.indexOf('documents_received')) && (
+        <section className="bg-white rounded-lg border border-gray-light p-5 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xs font-semibold text-gray-warm uppercase tracking-wider">Phase Progress</h3>
+            {isInPhases && (
+              <button
+                onClick={handleAdvanceClick}
+                className="px-4 py-2 bg-crimson text-white text-sm font-semibold rounded-lg hover:bg-crimson/90 transition-colors"
+              >
+                Advance Phase
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-0 overflow-x-auto pb-2">
+            {PHASE_INFO.map((p, i) => {
+              const completed = data.phase > p.num || data.status === 'phases_complete' || ALL_STATUSES.indexOf(data.status) > ALL_STATUSES.indexOf('phase_7')
+              const current = data.phase === p.num && isInPhases
+              return (
+                <div key={p.num} className="flex items-center flex-shrink-0">
+                  <div className="flex flex-col items-center gap-1">
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all ${
+                      completed
+                        ? 'bg-teal border-teal text-white'
+                        : current
+                        ? 'bg-white border-crimson text-crimson ring-2 ring-crimson/20'
+                        : 'bg-white border-gray-light text-gray-warm'
+                    }`}>
+                      {completed ? (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : p.num}
+                    </div>
+                    <span className={`text-xs text-center whitespace-nowrap ${current ? 'font-bold text-crimson' : completed ? 'text-teal font-medium' : 'text-gray-warm'}`}>
+                      {p.short}
+                    </span>
+                    {p.reviewGate && (
+                      <span className="text-xs bg-amber/10 text-amber px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                      </span>
+                    )}
+                  </div>
+                  {i < PHASE_INFO.length - 1 && (
+                    <div className={`w-8 h-0.5 mx-1 mt-[-16px] ${completed ? 'bg-teal' : 'bg-gray-light'}`} />
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          {isInPhases && (
+            <p className="mt-3 text-sm font-semibold text-charcoal">
+              Current: Phase {data.phase} — {PHASE_INFO[data.phase]?.name}
+            </p>
+          )}
+          {data.status === 'phases_complete' && (
+            <p className="mt-3 text-sm font-semibold text-teal">All phases complete</p>
+          )}
+        </section>
+      )}
+
+      {/* Current Phase Prompt */}
+      {isInPhases && (
+        <section className="bg-white rounded-lg border border-gray-light p-5 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-display text-lg font-bold text-teal">Phase {data.phase} Prompt</h3>
+            <div className="flex gap-2">
+              {!promptExpanded && (
+                <button
+                  onClick={() => { setPromptExpanded(true); loadPhasePrompt() }}
+                  className="text-sm text-teal font-semibold hover:underline"
+                >
+                  View Prompt
+                </button>
+              )}
+              {promptExpanded && (
+                <button
+                  onClick={() => setPromptExpanded(false)}
+                  className="text-sm text-gray-warm font-semibold hover:underline"
+                >
+                  Collapse
+                </button>
+              )}
+            </div>
+          </div>
+          {!promptExpanded && (
+            <p className="text-sm text-gray-warm">Click "View Prompt" to load the rendered prompt for this engagement.</p>
+          )}
+          {promptExpanded && (
+            <div>
+              {promptLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin w-6 h-6 border-3 border-teal border-t-transparent rounded-full" />
+                </div>
+              ) : phasePrompt ? (
+                <>
+                  <div className="bg-ivory rounded-lg p-4 mb-3 max-h-96 overflow-y-auto">
+                    <pre className="whitespace-pre-wrap text-sm text-charcoal font-mono leading-relaxed">{phasePrompt.rendered_text}</pre>
+                  </div>
+                  <button
+                    onClick={copyPrompt}
+                    className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
+                      copied
+                        ? 'bg-teal/10 text-teal'
+                        : 'bg-crimson text-white hover:bg-crimson/90'
+                    }`}
+                  >
+                    {copied ? '\u2713 Copied!' : `Copy Phase ${data.phase} Prompt`}
+                  </button>
+                </>
+              ) : (
+                <p className="text-sm text-gray-warm">Failed to load prompt.</p>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+      {!isInPhases && data.status === 'documents_received' && (
+        <p className="text-sm text-gray-warm mb-6 px-1">Phase prompts available after beginning Phase 0.</p>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Client Info */}
@@ -474,6 +692,77 @@ export default function EngagementDetail() {
           </div>
         )}
       </section>
+
+      {/* Advance Phase Dialog */}
+      {advanceDialog !== 'none' && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            {advanceDialog === 'review' ? (
+              <>
+                <div className="flex items-center gap-2 mb-3">
+                  <svg className="w-5 h-5 text-amber" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  <h3 className="font-display text-lg font-bold text-charcoal">Review Gate</h3>
+                </div>
+                <p className="text-sm text-charcoal mb-4">
+                  Phase {data?.phase} ({PHASE_INFO[data?.phase ?? 0]?.name}) is a review gate.
+                  Have you reviewed all outputs and confirmed quality? This cannot be undone.
+                </p>
+                <textarea
+                  value={advanceNotes}
+                  onChange={e => setAdvanceNotes(e.target.value)}
+                  placeholder="Optional review notes..."
+                  className="w-full border border-gray-light rounded-lg p-3 text-sm mb-4 resize-none h-20 focus:outline-none focus:ring-2 focus:ring-teal"
+                />
+                <div className="flex gap-3 justify-end">
+                  <button
+                    onClick={() => { setAdvanceDialog('none'); setAdvanceNotes('') }}
+                    className="px-4 py-2 text-sm font-semibold text-gray-warm hover:text-charcoal"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => doAdvance(true)}
+                    disabled={advanceLoading}
+                    className="px-4 py-2 bg-crimson text-white text-sm font-semibold rounded-lg hover:bg-crimson/90 disabled:opacity-50"
+                  >
+                    {advanceLoading ? 'Advancing...' : 'Yes, Advance'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="font-display text-lg font-bold text-charcoal mb-3">Advance Phase</h3>
+                <p className="text-sm text-charcoal mb-4">
+                  Advance from Phase {data?.phase} to Phase {(data?.phase ?? 0) + 1}?
+                </p>
+                <textarea
+                  value={advanceNotes}
+                  onChange={e => setAdvanceNotes(e.target.value)}
+                  placeholder="Optional notes..."
+                  className="w-full border border-gray-light rounded-lg p-3 text-sm mb-4 resize-none h-20 focus:outline-none focus:ring-2 focus:ring-teal"
+                />
+                <div className="flex gap-3 justify-end">
+                  <button
+                    onClick={() => { setAdvanceDialog('none'); setAdvanceNotes('') }}
+                    className="px-4 py-2 text-sm font-semibold text-gray-warm hover:text-charcoal"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => doAdvance(false)}
+                    disabled={advanceLoading}
+                    className="px-4 py-2 bg-crimson text-white text-sm font-semibold rounded-lg hover:bg-crimson/90 disabled:opacity-50"
+                  >
+                    {advanceLoading ? 'Advancing...' : 'Advance'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

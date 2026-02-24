@@ -11,6 +11,7 @@ import Login from './pages/dashboard/Login'
 import Overview from './pages/dashboard/Overview'
 import EngagementDetail from './pages/dashboard/EngagementDetail'
 import StartEngagement from './pages/dashboard/StartEngagement'
+import PromptLibrary from './pages/dashboard/PromptLibrary'
 import UploadPortal from './pages/UploadPortal'
 
 function ScrollToTop() {
@@ -46,6 +47,7 @@ export default function App() {
             <Route path="/dashboard" element={<Overview />} />
             <Route path="/dashboard/engagement/:id" element={<EngagementDetail />} />
             <Route path="/dashboard/engagement/:id/start" element={<StartEngagement />} />
+            <Route path="/dashboard/prompts" element={<PromptLibrary />} />
           </Route>
         </Route>
       </Routes>

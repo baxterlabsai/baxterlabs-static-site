@@ -143,41 +143,165 @@ async def start_engagement(
     }
 
 
+PHASE_STATUSES = {
+    0: "phase_1",
+    1: "phase_2",
+    2: "phase_3",
+    3: "phase_4",
+    4: "phase_5",
+    5: "phase_6",
+    6: "phase_7",
+    7: "phases_complete",
+}
+
+REVIEW_GATE_PHASES = {1, 3, 6}
+
+ACTIVE_PHASE_STATUSES = {f"phase_{i}" for i in range(8)}
+
+
+class AdvancePhaseInput(BaseModel):
+    notes: Optional[str] = None
+    review_confirmed: bool = False
+
+
 @router.post("/engagements/{engagement_id}/advance-phase")
-async def advance_phase(engagement_id: str, notes: Optional[str] = None, user: dict = Depends(verify_partner_auth)):
-    """Advance engagement to the next phase. Requires partner auth."""
+async def advance_phase(
+    engagement_id: str,
+    body: AdvancePhaseInput,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Advance engagement to the next phase. Requires partner auth.
+
+    Review gate phases (1, 3, 6) require explicit review_confirmed=True
+    before the phase will advance.
+    """
     sb = get_supabase()
     engagement = get_engagement_by_id(engagement_id)
     if not engagement:
         raise HTTPException(status_code=404, detail="Engagement not found")
 
-    current_phase = engagement["phase"]
-    if current_phase >= 7:
-        raise HTTPException(status_code=400, detail="Already at final phase")
+    # Ensure the engagement is in an active phase status
+    if engagement["status"] not in ACTIVE_PHASE_STATUSES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Engagement is not in an active phase (current status: '{engagement['status']}')",
+        )
 
-    new_phase = current_phase + 1
-    review_required = current_phase in (1, 3, 6)
+    current_phase: int = engagement["phase"]
+    if current_phase > 7:
+        raise HTTPException(status_code=400, detail="All phases are already complete")
 
+    # Review gate check — phases 1, 3, 6 require explicit confirmation
+    if current_phase in REVIEW_GATE_PHASES and not body.review_confirmed:
+        return JSONResponse(
+            status_code=200,
+            content={
+                "review_required": True,
+                "message": (
+                    f"Phase {current_phase} is a review gate. "
+                    "Please confirm the review before advancing."
+                ),
+            },
+        )
+
+    # Look up the current active prompt version for this phase
+    prompt_version: Optional[str] = None
+    try:
+        prompt_result = (
+            sb.table("phase_prompts")
+            .select("version")
+            .eq("phase", current_phase)
+            .eq("is_active", True)
+            .limit(1)
+            .execute()
+        )
+        if prompt_result.data:
+            prompt_version = prompt_result.data[0]["version"]
+    except Exception as e:
+        logger.warning(f"Could not fetch prompt version for phase {current_phase}: {e}")
+
+    # Create phase_execution record
     sb.table("phase_executions").insert({
         "engagement_id": engagement_id,
         "phase": current_phase,
-        "notes": notes,
+        "prompt_version": prompt_version,
+        "notes": body.notes,
     }).execute()
 
-    phase_status = f"phase_{new_phase}" if new_phase <= 6 else "debrief"
-    sb.table("engagements").update({"phase": new_phase, "status": phase_status}).eq("id", engagement_id).execute()
+    # Determine next status
+    new_phase = current_phase + 1
+    new_status = PHASE_STATUSES.get(current_phase, "phases_complete")
 
+    # Update engagement
+    sb.table("engagements").update({
+        "phase": new_phase,
+        "status": new_status,
+    }).eq("id", engagement_id).execute()
+
+    # Log activity
     log_activity(engagement_id, "partner", "phase_advanced", {
         "from_phase": current_phase,
         "to_phase": new_phase,
-        "notes": notes,
+        "new_status": new_status,
+        "prompt_version": prompt_version,
+        "notes": body.notes,
     })
 
     return {
         "success": True,
+        "from_phase": current_phase,
         "new_phase": new_phase,
-        "review_required": review_required,
-        "message": f"Advanced to phase {new_phase}." + (" Review required before proceeding." if review_required else ""),
+        "new_status": new_status,
+        "prompt_version": prompt_version,
+        "message": f"Advanced from phase {current_phase} to phase {new_phase} ({new_status}).",
+    }
+
+
+@router.post("/engagements/{engagement_id}/begin-phases")
+async def begin_phases(
+    engagement_id: str,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Start Phase 0 for an engagement that has received all documents.
+
+    The engagement must be in 'documents_received' status.
+    """
+    sb = get_supabase()
+    engagement = get_engagement_by_id(engagement_id)
+    if not engagement:
+        raise HTTPException(status_code=404, detail="Engagement not found")
+
+    if engagement["status"] != "documents_received":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot begin phases — engagement status is '{engagement['status']}', expected 'documents_received'",
+        )
+
+    # Update engagement to phase_0
+    sb.table("engagements").update({
+        "status": "phase_0",
+        "phase": 0,
+    }).eq("id", engagement_id).execute()
+
+    # Create phase_execution record for phase 0
+    sb.table("phase_executions").insert({
+        "engagement_id": engagement_id,
+        "phase": 0,
+    }).execute()
+
+    # Log activity
+    log_activity(engagement_id, "partner", "phases_began", {
+        "phase": 0,
+        "status": "phase_0",
+    })
+
+    # Re-fetch the updated engagement
+    updated = get_engagement_by_id(engagement_id)
+
+    return {
+        "success": True,
+        "message": "Began Phase 0. The engagement is now in active phase execution.",
+        "engagement": updated,
     }
 
 
