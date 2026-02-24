@@ -24,6 +24,9 @@ __pycache__/
 *.env.local
 master.env
 
+# Docs (internal, not deployed)
+docs/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
