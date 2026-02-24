@@ -14,8 +14,11 @@ import StartEngagement from './pages/dashboard/StartEngagement'
 import PromptLibrary from './pages/dashboard/PromptLibrary'
 import ClientDirectory from './pages/dashboard/ClientDirectory'
 import Calendar from './pages/dashboard/Calendar'
+import UserManagement from './pages/dashboard/UserManagement'
 import UploadPortal from './pages/UploadPortal'
 import DeliverablePortal from './pages/DeliverablePortal'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 import NotFound from './pages/NotFound'
 
 function ScrollToTop() {
@@ -43,6 +46,10 @@ export default function App() {
         <Route path="/upload/:token" element={<UploadPortal />} />
         <Route path="/deliverables/:token" element={<DeliverablePortal />} />
 
+        {/* Password reset (public, no auth) */}
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+
         {/* Dashboard login (no auth) */}
         <Route path="/dashboard/login" element={<Login />} />
 
@@ -55,6 +62,7 @@ export default function App() {
             <Route path="/dashboard/prompts" element={<PromptLibrary />} />
             <Route path="/dashboard/clients" element={<ClientDirectory />} />
             <Route path="/dashboard/calendar" element={<Calendar />} />
+            <Route path="/dashboard/users" element={<UserManagement />} />
           </Route>
         </Route>
 

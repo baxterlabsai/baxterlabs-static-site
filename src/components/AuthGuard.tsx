@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Navigate, Outlet } from 'react-router-dom'
+import { Navigate, Outlet, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 export default function AuthGuard() {
   const [loading, setLoading] = useState(true)
   const [authenticated, setAuthenticated] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -12,12 +13,16 @@ export default function AuthGuard() {
       setLoading(false)
     })
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        navigate('/reset-password')
+        return
+      }
       setAuthenticated(!!session)
     })
 
     return () => { listener.subscription.unsubscribe() }
-  }, [])
+  }, [navigate])
 
   if (loading) {
     return (
