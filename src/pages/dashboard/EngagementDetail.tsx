@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { apiGet, apiPost } from '../../lib/api'
+import { apiGet, apiPost, apiPut, apiUpload } from '../../lib/api'
 
 interface DocumentRecord {
   id: string
@@ -61,7 +61,17 @@ interface EngagementData {
     contact_name: string | null
     created_at: string
   }>
-  deliverables: Array<{ type: string; status: string; wave: number }>
+  debrief_complete: boolean
+  deliverables: Array<{
+    id: string
+    type: string
+    status: string
+    wave: number
+    storage_path: string | null
+    filename: string | null
+    approved_at: string | null
+    released_at: string | null
+  }>
   activity_log: Array<{
     actor: string
     action: string
@@ -91,6 +101,20 @@ const PHASE_INFO = [
 const UPLOAD_LINK_STATUSES = new Set([
   'agreement_signed', 'documents_pending', 'documents_received',
   'phase_1', 'phase_2', 'phase_3',
+])
+
+const DELIVERABLE_LABELS: Record<string, string> = {
+  exec_summary: 'Executive Summary',
+  full_report: 'Full Diagnostic Report',
+  workbook: 'Profit Leak Workbook',
+  roadmap: '90-Day Implementation Roadmap',
+  deck: 'Presentation Deck',
+  retainer_proposal: 'Phase 2 Retainer Proposal',
+}
+
+const DELIVERABLE_STATUSES_SHOWING = new Set([
+  'phase_5', 'phase_6', 'phase_7', 'phases_complete',
+  'debrief', 'wave_1_released', 'wave_2_released', 'closed',
 ])
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -164,6 +188,12 @@ export default function EngagementDetail() {
   const [advanceDialog, setAdvanceDialog] = useState<'none' | 'simple' | 'review'>('none')
   const [advanceNotes, setAdvanceNotes] = useState('')
   const [beginLoading, setBeginLoading] = useState(false)
+  const [uploadingDeliverableId, setUploadingDeliverableId] = useState<string | null>(null)
+  const [approvingDeliverableId, setApprovingDeliverableId] = useState<string | null>(null)
+  const [releasingWave, setReleasingWave] = useState<1 | 2 | null>(null)
+  const [debriefLoading, setDebriefLoading] = useState(false)
+  const [ensuringDeliverables, setEnsuringDeliverables] = useState(false)
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   useEffect(() => {
     if (!id) return
@@ -274,6 +304,74 @@ export default function EngagementDetail() {
       setData(d)
     } catch {}
     setBeginLoading(false)
+  }
+
+  const ensureDeliverables = async () => {
+    if (!id) return
+    setEnsuringDeliverables(true)
+    try {
+      await apiPost(`/api/engagements/${id}/deliverables/ensure`)
+      const d = await apiGet<EngagementData>(`/api/engagements/${id}`)
+      setData(d)
+    } catch {}
+    setEnsuringDeliverables(false)
+  }
+
+  const uploadDeliverable = async (deliverableId: string, file: File) => {
+    if (!id) return
+    setUploadingDeliverableId(deliverableId)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      await apiUpload(`/api/engagements/${id}/deliverables/${deliverableId}/upload`, formData)
+      const d = await apiGet<EngagementData>(`/api/engagements/${id}`)
+      setData(d)
+    } catch {}
+    setUploadingDeliverableId(null)
+  }
+
+  const approveDeliverable = async (deliverableId: string) => {
+    if (!id) return
+    setApprovingDeliverableId(deliverableId)
+    try {
+      await apiPut(`/api/deliverables/${deliverableId}/approve`)
+      const d = await apiGet<EngagementData>(`/api/engagements/${id}`)
+      setData(d)
+    } catch {}
+    setApprovingDeliverableId(null)
+  }
+
+  const releaseWave1 = async () => {
+    if (!id) return
+    setReleasingWave(1)
+    try {
+      await apiPost(`/api/engagements/${id}/release-wave1`)
+      const d = await apiGet<EngagementData>(`/api/engagements/${id}`)
+      setData(d)
+    } catch {}
+    setReleasingWave(null)
+  }
+
+  const markDebriefComplete = async () => {
+    if (!id) return
+    setDebriefLoading(true)
+    try {
+      await apiPost(`/api/engagements/${id}/debrief-complete`)
+      const d = await apiGet<EngagementData>(`/api/engagements/${id}`)
+      setData(d)
+    } catch {}
+    setDebriefLoading(false)
+  }
+
+  const releaseWave2 = async () => {
+    if (!id) return
+    setReleasingWave(2)
+    try {
+      await apiPost(`/api/engagements/${id}/release-deck`)
+      const d = await apiGet<EngagementData>(`/api/engagements/${id}`)
+      setData(d)
+    } catch {}
+    setReleasingWave(null)
   }
 
   if (loading) {
@@ -489,6 +587,180 @@ export default function EngagementDetail() {
       {!isInPhases && data.status === 'documents_received' && (
         <p className="text-sm text-gray-warm mb-6 px-1">Phase prompts available after beginning Phase 0.</p>
       )}
+
+      {/* Deliverables Section */}
+      {data && DELIVERABLE_STATUSES_SHOWING.has(data.status) && (() => {
+        const wave1 = data.deliverables.filter(d => d.wave === 1)
+        const wave2 = data.deliverables.filter(d => d.wave === 2)
+        const allWave1Approved = wave1.length === 4 && wave1.every(d => d.status === 'approved')
+        const allWave1Released = wave1.length > 0 && wave1.every(d => d.status === 'released')
+        const allWave2Approved = wave2.length === 2 && wave2.every(d => d.status === 'approved')
+        const allWave2Released = wave2.length > 0 && wave2.every(d => d.status === 'released')
+        const showDebriefButton = (data.status === 'wave_1_released' || allWave1Released) && !data.debrief_complete
+        const showReleaseWave2 = data.debrief_complete && allWave2Approved && !allWave2Released
+
+        const renderDeliverableRow = (d: typeof data.deliverables[0]) => (
+          <div key={d.id} className="flex items-center gap-3 py-3 px-4 bg-ivory rounded-lg">
+            {/* Status icon */}
+            <div className="flex-shrink-0">
+              {d.status === 'released' ? (
+                <span className="w-7 h-7 rounded-full bg-gold/10 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                </span>
+              ) : d.status === 'approved' ? (
+                <span className="w-7 h-7 rounded-full bg-green/10 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-green" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                </span>
+              ) : (
+                <span className="w-7 h-7 rounded-full bg-gray-light flex items-center justify-center">
+                  <svg className="w-4 h-4 text-gray-warm" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                </span>
+              )}
+            </div>
+
+            {/* Info */}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-charcoal">{DELIVERABLE_LABELS[d.type] || d.type}</p>
+              <p className="text-xs text-gray-warm">
+                {d.filename ? d.filename : d.storage_path ? d.storage_path.split('/').pop() : 'No file uploaded'}
+              </p>
+            </div>
+
+            {/* Status badge */}
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${
+              d.status === 'released' ? 'bg-gold/10 text-gold' :
+              d.status === 'approved' ? 'bg-green/10 text-green' :
+              'bg-gray-light text-gray-warm'
+            }`}>
+              {d.status === 'released' ? 'Released' : d.status === 'approved' ? 'Approved' : 'Draft'}
+            </span>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Upload button */}
+              {d.status === 'draft' && (
+                <>
+                  <input
+                    type="file"
+                    ref={el => { fileInputRefs.current[d.id] = el }}
+                    className="hidden"
+                    accept=".pdf,.docx,.xlsx,.pptx,.csv"
+                    onChange={e => {
+                      const file = e.target.files?.[0]
+                      if (file) uploadDeliverable(d.id, file)
+                      e.target.value = ''
+                    }}
+                  />
+                  <button
+                    onClick={() => fileInputRefs.current[d.id]?.click()}
+                    disabled={uploadingDeliverableId === d.id}
+                    className="text-xs text-teal font-semibold hover:underline disabled:opacity-50"
+                  >
+                    {uploadingDeliverableId === d.id ? 'Uploading...' : d.storage_path ? 'Replace' : 'Upload'}
+                  </button>
+                </>
+              )}
+
+              {/* Approve button */}
+              {d.status === 'draft' && d.storage_path && (
+                <button
+                  onClick={() => approveDeliverable(d.id)}
+                  disabled={approvingDeliverableId === d.id}
+                  className="text-xs bg-teal text-white px-3 py-1 rounded font-semibold hover:bg-teal/90 disabled:opacity-50"
+                >
+                  {approvingDeliverableId === d.id ? '...' : 'Approve'}
+                </button>
+              )}
+            </div>
+          </div>
+        )
+
+        return (
+          <section className="bg-white rounded-lg border border-gray-light p-5 mb-6">
+            {data.deliverables.length === 0 ? (
+              <div className="text-center py-6">
+                <p className="text-gray-warm text-sm mb-3">No deliverable records yet.</p>
+                <button
+                  onClick={ensureDeliverables}
+                  disabled={ensuringDeliverables}
+                  className="px-5 py-2.5 bg-crimson text-white font-semibold rounded-lg hover:bg-crimson/90 text-sm disabled:opacity-50"
+                >
+                  {ensuringDeliverables ? 'Creating...' : 'Create Deliverable Records'}
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Wave 1 */}
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-display text-lg font-bold text-teal">Wave 1 — Core Deliverables</h3>
+                    {allWave1Approved && !allWave1Released && (
+                      <button
+                        onClick={releaseWave1}
+                        disabled={releasingWave === 1}
+                        className="px-4 py-2 bg-crimson text-white text-sm font-semibold rounded-lg hover:bg-crimson/90 disabled:opacity-50"
+                      >
+                        {releasingWave === 1 ? 'Releasing...' : 'Release Wave 1 to Client'}
+                      </button>
+                    )}
+                    {allWave1Released && (
+                      <span className="text-xs font-semibold text-gold bg-gold/10 px-3 py-1 rounded-full">Wave 1 Released</span>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    {wave1.map(renderDeliverableRow)}
+                  </div>
+                </div>
+
+                {/* Debrief Complete */}
+                {showDebriefButton && (
+                  <div className="mb-6 p-4 bg-ivory rounded-lg border border-gold/20 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-charcoal">Executive Debrief</p>
+                      <p className="text-xs text-gray-warm">Mark as complete after the client debrief meeting to unlock Wave 2 release.</p>
+                    </div>
+                    <button
+                      onClick={markDebriefComplete}
+                      disabled={debriefLoading}
+                      className="px-4 py-2 bg-teal text-white text-sm font-semibold rounded-lg hover:bg-teal/90 disabled:opacity-50"
+                    >
+                      {debriefLoading ? 'Saving...' : 'Mark Debrief Complete'}
+                    </button>
+                  </div>
+                )}
+                {data.debrief_complete && (
+                  <div className="mb-6 p-4 bg-green/5 rounded-lg border border-green/20 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-green" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    <span className="text-sm font-semibold text-green">Debrief Completed</span>
+                  </div>
+                )}
+
+                {/* Wave 2 */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-display text-lg font-bold text-teal">Wave 2 — Post-Debrief Materials</h3>
+                    {showReleaseWave2 && (
+                      <button
+                        onClick={releaseWave2}
+                        disabled={releasingWave === 2}
+                        className="px-4 py-2 bg-crimson text-white text-sm font-semibold rounded-lg hover:bg-crimson/90 disabled:opacity-50"
+                      >
+                        {releasingWave === 2 ? 'Releasing...' : 'Release Presentation + Retainer Proposal'}
+                      </button>
+                    )}
+                    {allWave2Released && (
+                      <span className="text-xs font-semibold text-gold bg-gold/10 px-3 py-1 rounded-full">Wave 2 Released</span>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    {wave2.map(renderDeliverableRow)}
+                  </div>
+                </div>
+              </>
+            )}
+          </section>
+        )
+      })()}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Client Info */}
