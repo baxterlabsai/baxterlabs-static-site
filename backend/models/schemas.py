@@ -1,6 +1,8 @@
-from pydantic import BaseModel, EmailStr
-from datetime import date, datetime
-from typing import Optional
+from __future__ import annotations
+
+from pydantic import BaseModel
+from datetime import date
+from typing import Optional, List
 
 
 class InterviewContactInput(BaseModel):
@@ -23,13 +25,23 @@ class IntakeFormInput(BaseModel):
     pain_points: Optional[str] = None
     referral_source: Optional[str] = None
     preferred_start_date: Optional[date] = None
-    interview_contacts: list[InterviewContactInput] = []
+    interview_contacts: List[InterviewContactInput] = []
 
 
 class IntakeResponse(BaseModel):
     success: bool
     engagement_id: str
     client_id: str
+    message: str
+
+
+class DocuSignSendRequest(BaseModel):
+    engagement_id: str
+
+
+class DocuSignResponse(BaseModel):
+    success: bool
+    envelope_id: Optional[str] = None
     message: str
 
 
@@ -52,7 +64,7 @@ class EngagementResponse(BaseModel):
 
 
 class EngagementListResponse(BaseModel):
-    engagements: list[EngagementResponse]
+    engagements: List[EngagementResponse]
     count: int
 
 
