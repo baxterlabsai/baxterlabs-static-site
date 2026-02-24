@@ -1,0 +1,39 @@
+# ═══════════════════════════════════════════════════════════════
+# BaxterLabs Backend — Render Environment Variables
+# ═══════════════════════════════════════════════════════════════
+# Copy these to your Render web service environment variables.
+# Replace all placeholder values with your actual credentials.
+
+# ── Supabase ─────────────────────────────────────────────────
+SUPABASE_URL_BAXTERLABS_STATIC_SITE=https://xxxxx.supabase.co
+SUPABASE_SERVICE_KEY_BAXTERLABS_STATIC_SITE=eyJhbGci...
+# Service role key — NEVER expose in frontend code
+
+# ── DocuSign ─────────────────────────────────────────────────
+DOCUSIGN_INTEGRATION_KEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+DOCUSIGN_USER_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+DOCUSIGN_ACCOUNT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+DOCUSIGN_PRIVATE_KEY_PATH=./docusign_private.pem
+DOCUSIGN_BASE_URL=https://demo.docusign.net/restapi
+# Production: https://na4.docusign.net/restapi (or your region)
+DOCUSIGN_NDA_TEMPLATE_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+DOCUSIGN_AGREEMENT_TEMPLATE_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+DOCUSIGN_WEBHOOK_SECRET=your-webhook-hmac-secret
+
+# ── Firecrawl ────────────────────────────────────────────────
+FIRECRAWL_API_KEY=fc-xxxxxxxx
+
+# ── Email (SMTP / Gmail) ────────────────────────────────────
+SMTP_SERVER=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+FROM_EMAIL=notifications@baxterlabs.ai
+FROM_NAME=BaxterLabs Advisory
+
+# ── Frontend URL (for email links) ──────────────────────────
+FRONTEND_URL=https://baxterlabs.ai
+
+# ── Mode ─────────────────────────────────────────────────────
+DEVELOPMENT_MODE=false
+# Set to true to log emails instead of sending them

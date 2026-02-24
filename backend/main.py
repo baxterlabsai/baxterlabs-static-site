@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import intake, engagements, docusign, upload, deliverables, research, prompts, clients
+from routers import intake, engagements, docusign, upload, deliverables, research, prompts, clients, archive
 from services.supabase_client import get_supabase
 from models.schemas import HealthResponse
 
@@ -47,6 +47,7 @@ app.include_router(upload.router)
 app.include_router(deliverables.router)
 app.include_router(research.router)
 app.include_router(prompts.router)
+app.include_router(archive.router)
 
 
 @app.get("/api/health", response_model=HealthResponse)

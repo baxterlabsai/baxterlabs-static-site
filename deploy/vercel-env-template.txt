@@ -1,0 +1,12 @@
+# ═══════════════════════════════════════════════════════════════
+# BaxterLabs Frontend — Vercel Environment Variables
+# ═══════════════════════════════════════════════════════════════
+# Add these in Vercel Project Settings → Environment Variables.
+# All frontend env vars must be prefixed with VITE_.
+
+VITE_API_URL=https://baxterlabs-api.onrender.com
+# Replace with your actual Render backend URL
+
+VITE_SUPABASE_URL=https://xxxxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGci...
+# This is the anon/public key — safe to expose in frontend

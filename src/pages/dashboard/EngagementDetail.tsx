@@ -193,6 +193,8 @@ export default function EngagementDetail() {
   const [releasingWave, setReleasingWave] = useState<1 | 2 | null>(null)
   const [debriefLoading, setDebriefLoading] = useState(false)
   const [ensuringDeliverables, setEnsuringDeliverables] = useState(false)
+  const [archiveDialog, setArchiveDialog] = useState(false)
+  const [archiving, setArchiving] = useState(false)
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   useEffect(() => {
@@ -374,6 +376,18 @@ export default function EngagementDetail() {
     setReleasingWave(null)
   }
 
+  const archiveEngagement = async () => {
+    if (!id) return
+    setArchiving(true)
+    try {
+      await apiPost(`/api/engagements/${id}/archive`)
+      const d = await apiGet<EngagementData>(`/api/engagements/${id}`)
+      setData(d)
+      setArchiveDialog(false)
+    } catch {}
+    setArchiving(false)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -406,7 +420,8 @@ export default function EngagementDetail() {
     docsByCategory[doc.category].push(doc)
   }
 
-  const showUploadLinkButton = UPLOAD_LINK_STATUSES.has(data.status)
+  const isClosed = data.status === 'closed'
+  const showUploadLinkButton = !isClosed && UPLOAD_LINK_STATUSES.has(data.status)
 
   return (
     <div className="max-w-5xl">
@@ -427,7 +442,7 @@ export default function EngagementDetail() {
               {sendingUploadLink ? 'Sending...' : uploadLinkSent ? 'Resend Upload Link' : 'Send Upload Link'}
             </button>
           )}
-          {['nda_signed', 'discovery_done'].includes(data.status) && (
+          {!isClosed && ['nda_signed', 'discovery_done'].includes(data.status) && (
             <Link to={`/dashboard/engagement/${id}/start`} className="px-5 py-2.5 bg-crimson text-white font-semibold rounded-lg hover:bg-crimson/90 text-sm">
               Start Engagement &rarr;
             </Link>
@@ -441,8 +456,29 @@ export default function EngagementDetail() {
               {beginLoading ? 'Starting...' : 'Begin Phase 0'}
             </button>
           )}
+          {data.status === 'wave_2_released' && (
+            <button
+              onClick={() => setArchiveDialog(true)}
+              className="px-5 py-2.5 bg-charcoal text-white font-semibold rounded-lg hover:bg-charcoal/90 text-sm"
+            >
+              Archive Engagement
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Closed Banner */}
+      {data.status === 'closed' && (
+        <div className="mb-6 p-4 bg-charcoal/5 border-2 border-charcoal/20 rounded-lg flex items-center gap-3">
+          <svg className="w-6 h-6 text-charcoal flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+          </svg>
+          <div>
+            <p className="font-semibold text-charcoal">Engagement Closed &amp; Archived</p>
+            <p className="text-sm text-gray-warm">All files have been moved to the archive. This engagement is read-only.</p>
+          </div>
+        </div>
+      )}
 
       {/* Status Tracker */}
       <section className="bg-white rounded-lg border border-gray-light p-5 mb-6">
@@ -964,6 +1000,38 @@ export default function EngagementDetail() {
           </div>
         )}
       </section>
+
+      {/* Archive Confirmation Dialog */}
+      {archiveDialog && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center gap-2 mb-3">
+              <svg className="w-5 h-5 text-crimson" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <h3 className="font-display text-lg font-bold text-charcoal">Archive Engagement</h3>
+            </div>
+            <p className="text-sm text-charcoal mb-4">
+              This will archive all files and close the engagement. <strong>This action cannot be undone.</strong> Are you sure?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setArchiveDialog(false)}
+                className="px-4 py-2 text-sm font-semibold text-gray-warm hover:text-charcoal"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={archiveEngagement}
+                disabled={archiving}
+                className="px-4 py-2 bg-charcoal text-white text-sm font-semibold rounded-lg hover:bg-charcoal/90 disabled:opacity-50"
+              >
+                {archiving ? 'Archiving...' : 'Yes, Archive'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Advance Phase Dialog */}
       {advanceDialog !== 'none' && (
