@@ -18,9 +18,11 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 
-# Environment
+# Environment / secrets
 .env
+*.env
 *.env.local
+master.env
 
 # Editor directories and files
 .vscode/*

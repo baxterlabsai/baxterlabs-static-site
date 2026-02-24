@@ -19,7 +19,11 @@ if not url or not key:
 sb = create_client(url, key)
 
 EMAIL = "george@baxterlabs.ai"
-PASSWORD = "os.getenv("PARTNER_PASSWORD")"
+PASSWORD = os.getenv("PARTNER_PASSWORD")
+
+if not PASSWORD:
+    print("Missing PARTNER_PASSWORD in environment")
+    sys.exit(1)
 
 try:
     result = sb.auth.admin.create_user({
@@ -34,7 +38,6 @@ except Exception as e:
     error_str = str(e)
     if "already been registered" in error_str or "already exists" in error_str:
         print(f"User {EMAIL} already exists — no action needed.")
-        print(f"  Email: {EMAIL}")
     else:
         print(f"Error creating user: {e}")
         sys.exit(1)
