@@ -179,12 +179,20 @@ class EmailService:
         return self._send_email(PARTNER_EMAIL, f"Agreement Signed: {company}", body)
 
     def send_upload_link(self, engagement: dict) -> dict:
-        """Send client their secure upload portal link."""
+        """Send client their secure upload portal link with required items list."""
+        from config.upload_checklist import REQUIRED_ITEMS
+
         client = engagement.get("clients", {})
         company = client.get("company_name", "Unknown")
         contact_name = client.get("primary_contact_name", "there")
         contact_email = client.get("primary_contact_email")
         upload_token = engagement.get("upload_token")
+
+        required_list = "".join(
+            f'<li style="padding:4px 0;color:{CHARCOAL};">{item["name"]}</li>'
+            for item in REQUIRED_ITEMS
+        )
+
         body = f"""
         <h2 style="color:{CRIMSON};font-family:Georgia,serif;margin-top:0;">Your Document Upload Portal</h2>
         <p>Hi {contact_name},</p>
@@ -195,9 +203,37 @@ class EmailService:
             Open Upload Portal
           </a>
         </p>
+        <p style="font-weight:600;color:{TEAL};margin-top:24px;">Required Documents ({len(REQUIRED_ITEMS)} items):</p>
+        <ul style="margin:8px 0 24px;padding-left:20px;font-size:14px;">
+          {required_list}
+        </ul>
         <p style="color:{CHARCOAL};font-size:14px;">This link is unique to your engagement. Do not share it with anyone outside your organization.</p>
         """
         return self._send_email(contact_email, f"BaxterLabs — Document Upload Portal for {company}", body)
+
+    def send_document_uploaded_notification(self, engagement: dict, filename: str, item_display_name: str, category: str) -> dict:
+        """Notify partner: a client uploaded a document."""
+        client = engagement.get("clients", {})
+        company = client.get("company_name", "Unknown")
+        body = f"""
+        <h2 style="color:{CRIMSON};font-family:Georgia,serif;margin-top:0;">Document Uploaded</h2>
+        <p>A new document has been uploaded for <strong>{company}</strong>.</p>
+        <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+          <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;width:140px;">Item</td>
+              <td style="padding:8px;border-bottom:1px solid #E5E7EB;">{item_display_name}</td></tr>
+          <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;">Category</td>
+              <td style="padding:8px;border-bottom:1px solid #E5E7EB;">{category.title()}</td></tr>
+          <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;">Filename</td>
+              <td style="padding:8px;border-bottom:1px solid #E5E7EB;">{filename}</td></tr>
+        </table>
+        <p style="margin-top:24px;">
+          <a href="{self.frontend_url}/dashboard/engagement/{engagement.get('id')}"
+             style="display:inline-block;padding:12px 24px;background-color:{CRIMSON};color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">
+            View Engagement
+          </a>
+        </p>
+        """
+        return self._send_email(PARTNER_EMAIL, f"Document Uploaded: {company} — {item_display_name}", body)
 
     def send_upload_complete_notification(self, engagement: dict) -> dict:
         """Notify partner: client has submitted all documents."""

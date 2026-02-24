@@ -2,6 +2,18 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { apiGet, apiPost } from '../../lib/api'
 
+interface DocumentRecord {
+  id: string
+  category: string
+  filename: string
+  storage_path: string
+  file_size: number | null
+  uploaded_at: string
+  document_type: string
+  item_name: string | null
+  uploaded_by: string
+}
+
 interface EngagementData {
   id: string
   client_id: string
@@ -42,7 +54,7 @@ interface EngagementData {
     sent_at: string | null
     signed_at: string | null
   }>
-  documents: Array<{ category: string }>
+  documents: DocumentRecord[]
   research_documents: Array<{
     type: string
     content: string
@@ -65,6 +77,46 @@ const ALL_STATUSES = [
   'debrief', 'wave_1_released', 'wave_2_released', 'closed',
 ]
 
+const UPLOAD_LINK_STATUSES = new Set([
+  'agreement_signed', 'documents_pending', 'documents_received',
+  'phase_1', 'phase_2', 'phase_3',
+])
+
+const CATEGORY_LABELS: Record<string, string> = {
+  financial: 'A. Financial Statements',
+  payroll: 'B. Payroll & Compensation',
+  vendor: 'C. Vendor & Expense',
+  revenue: 'D. Revenue & Collections',
+  operations: 'E. Operations',
+  legal: 'F. Legal & Tax',
+}
+
+const CATEGORY_ORDER = ['financial', 'payroll', 'vendor', 'revenue', 'operations', 'legal']
+
+// The 12 required item keys (must match backend checklist)
+const REQUIRED_ITEM_KEYS = new Set([
+  'income_stmt_ytd', 'balance_sheet', 'cash_flow_stmt', 'trial_balance', 'chart_of_accounts',
+  'payroll_register', 'benefits_summary',
+  'ap_aging', 'vendor_list',
+  'ar_aging', 'revenue_by_customer',
+  'tax_returns',
+])
+
+const REQUIRED_ITEM_NAMES: Record<string, string> = {
+  income_stmt_ytd: 'Income Statement (YTD + prior 2 years)',
+  balance_sheet: 'Balance Sheet (current + prior 2 years)',
+  cash_flow_stmt: 'Cash Flow Statement (prior 2 years)',
+  trial_balance: 'Trial Balance (current period)',
+  chart_of_accounts: 'Chart of Accounts',
+  payroll_register: 'Payroll Register (last 12 months)',
+  benefits_summary: 'Benefits Summary / Enrollment',
+  ap_aging: 'Accounts Payable Aging Report',
+  vendor_list: 'Vendor List with Annual Spend',
+  ar_aging: 'Accounts Receivable Aging Report',
+  revenue_by_customer: 'Revenue by Customer / Segment (last 12 months)',
+  tax_returns: 'Tax Returns (prior 2 years)',
+}
+
 function statusLabel(s: string) { return s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) }
 
 function formatDate(d: string | null) {
@@ -76,6 +128,13 @@ function formatTime(d: string) {
   return new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
+function formatFileSize(bytes: number | null): string {
+  if (!bytes) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
 export default function EngagementDetail() {
   const { id } = useParams<{ id: string }>()
   const [data, setData] = useState<EngagementData | null>(null)
@@ -83,11 +142,19 @@ export default function EngagementDetail() {
   const [error, setError] = useState('')
   const [researchLoading, setResearchLoading] = useState('')
   const [expandedBrief, setExpandedBrief] = useState<string | null>(null)
+  const [sendingUploadLink, setSendingUploadLink] = useState(false)
+  const [uploadLinkSent, setUploadLinkSent] = useState(false)
+  const [downloadingDocId, setDownloadingDocId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!id) return
     apiGet<EngagementData>(`/api/engagements/${id}`)
-      .then(setData)
+      .then(d => {
+        setData(d)
+        // Check if upload link was already sent
+        const linkSent = d.activity_log.some(l => l.action === 'upload_link_sent')
+        if (linkSent) setUploadLinkSent(true)
+      })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
   }, [id])
@@ -99,6 +166,28 @@ export default function EngagementDetail() {
       await apiPost(`/api/engagements/${id}/research/${type}`)
     } catch {}
     setResearchLoading('')
+  }
+
+  const sendUploadLink = async () => {
+    if (!id) return
+    setSendingUploadLink(true)
+    try {
+      await apiPost(`/api/engagements/${id}/send-upload-link`)
+      setUploadLinkSent(true)
+    } catch {}
+    setSendingUploadLink(false)
+  }
+
+  const downloadDoc = async (docId: string) => {
+    if (!id) return
+    setDownloadingDocId(docId)
+    try {
+      const result = await apiGet<{ url: string; filename: string }>(`/api/engagements/${id}/documents/${docId}/download`)
+      if (result.url) {
+        window.open(result.url, '_blank')
+      }
+    } catch {}
+    setDownloadingDocId(null)
   }
 
   if (loading) {
@@ -120,11 +209,20 @@ export default function EngagementDetail() {
   const briefs = data.research_documents.filter(d => d.type === 'interview_brief')
   const currentIdx = ALL_STATUSES.indexOf(data.status)
 
-  // Group documents by category
-  const docCounts: Record<string, number> = {}
-  for (const doc of data.documents) {
-    docCounts[doc.category] = (docCounts[doc.category] || 0) + 1
+  // Documents analysis
+  const clientDocs = data.documents.filter(d => d.document_type === 'client_upload')
+  const uploadedItemKeys = new Set(clientDocs.map(d => d.item_name).filter(Boolean))
+  const requiredUploaded = [...REQUIRED_ITEM_KEYS].filter(k => uploadedItemKeys.has(k)).length
+  const missingRequired = [...REQUIRED_ITEM_KEYS].filter(k => !uploadedItemKeys.has(k))
+
+  // Group docs by category
+  const docsByCategory: Record<string, DocumentRecord[]> = {}
+  for (const doc of clientDocs) {
+    if (!docsByCategory[doc.category]) docsByCategory[doc.category] = []
+    docsByCategory[doc.category].push(doc)
   }
+
+  const showUploadLinkButton = UPLOAD_LINK_STATUSES.has(data.status)
 
   return (
     <div className="max-w-5xl">
@@ -136,6 +234,15 @@ export default function EngagementDetail() {
           <p className="text-gray-warm text-sm">{client.primary_contact_name} · {statusLabel(data.status)}</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          {showUploadLinkButton && (
+            <button
+              onClick={sendUploadLink}
+              disabled={sendingUploadLink}
+              className="px-5 py-2.5 bg-teal text-white font-semibold rounded-lg hover:bg-teal/90 text-sm disabled:opacity-50"
+            >
+              {sendingUploadLink ? 'Sending...' : uploadLinkSent ? 'Resend Upload Link' : 'Send Upload Link'}
+            </button>
+          )}
           {['nda_signed', 'discovery_done'].includes(data.status) && (
             <Link to={`/dashboard/engagement/${id}/start`} className="px-5 py-2.5 bg-crimson text-white font-semibold rounded-lg hover:bg-crimson/90 text-sm">
               Start Engagement &rarr;
@@ -272,19 +379,79 @@ export default function EngagementDetail() {
         </div>
       </section>
 
-      {/* Document Inventory */}
+      {/* Document Inventory — Enhanced */}
       <section className="bg-white rounded-lg border border-gray-light p-5 mt-6">
-        <h3 className="font-display text-lg font-bold text-teal mb-4">Document Inventory</h3>
-        {data.documents.length === 0 ? (
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-display text-lg font-bold text-teal">Document Inventory</h3>
+          <span className="text-sm text-gray-warm">
+            <span className="font-bold text-teal">{requiredUploaded}</span> of {REQUIRED_ITEM_KEYS.size} required
+          </span>
+        </div>
+
+        {/* Progress bar */}
+        <div className="w-full h-2 bg-gray-light rounded-full overflow-hidden mb-5">
+          <div
+            className="h-full bg-teal rounded-full transition-all duration-500"
+            style={{ width: `${REQUIRED_ITEM_KEYS.size > 0 ? Math.round((requiredUploaded / REQUIRED_ITEM_KEYS.size) * 100) : 0}%` }}
+          />
+        </div>
+
+        {clientDocs.length === 0 ? (
           <p className="text-gray-warm text-sm">No documents uploaded yet.</p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {['financial', 'payroll', 'vendor', 'revenue', 'operations', 'legal'].map(cat => (
-              <div key={cat} className="p-3 bg-ivory rounded-lg">
-                <p className="text-xs font-semibold text-gray-warm uppercase">{cat}</p>
-                <p className="text-xl font-bold text-charcoal mt-1">{docCounts[cat] || 0}</p>
-              </div>
-            ))}
+          <div className="space-y-4">
+            {CATEGORY_ORDER.map(cat => {
+              const catDocs = docsByCategory[cat]
+              if (!catDocs || catDocs.length === 0) return null
+              return (
+                <div key={cat}>
+                  <h4 className="text-xs font-semibold text-gray-warm uppercase tracking-wider mb-2">{CATEGORY_LABELS[cat]}</h4>
+                  <div className="space-y-1">
+                    {catDocs.map(doc => (
+                      <div key={doc.id} className="flex items-center gap-3 text-sm py-2 px-3 bg-ivory rounded-lg">
+                        <svg className="w-4 h-4 text-green flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-charcoal font-medium truncate">{doc.filename}</p>
+                          <p className="text-xs text-gray-warm">
+                            {doc.item_name ? (REQUIRED_ITEM_NAMES[doc.item_name] || doc.item_name) : doc.category}
+                            {doc.file_size ? ` · ${formatFileSize(doc.file_size)}` : ''}
+                            {doc.uploaded_at ? ` · ${formatDate(doc.uploaded_at)}` : ''}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => downloadDoc(doc.id)}
+                          disabled={downloadingDocId === doc.id}
+                          className="text-xs text-teal font-semibold hover:underline disabled:opacity-50 flex-shrink-0"
+                        >
+                          {downloadingDocId === doc.id ? '...' : 'Download'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Document Gaps */}
+        {missingRequired.length > 0 && (
+          <div className="mt-5 pt-4 border-t border-gray-light">
+            <h4 className="text-xs font-semibold text-amber uppercase tracking-wider mb-2">
+              Missing Required Documents ({missingRequired.length})
+            </h4>
+            <div className="space-y-1">
+              {missingRequired.map(key => (
+                <div key={key} className="flex items-center gap-2 text-sm py-1.5 px-3 bg-amber/5 border border-amber/20 rounded-lg">
+                  <svg className="w-4 h-4 text-amber flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-charcoal">{REQUIRED_ITEM_NAMES[key] || key}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </section>

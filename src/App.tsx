@@ -11,6 +11,7 @@ import Login from './pages/dashboard/Login'
 import Overview from './pages/dashboard/Overview'
 import EngagementDetail from './pages/dashboard/EngagementDetail'
 import StartEngagement from './pages/dashboard/StartEngagement'
+import UploadPortal from './pages/UploadPortal'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -32,6 +33,9 @@ export default function App() {
           <Route path="/about" element={<About />} />
           <Route path="/get-started" element={<GetStarted />} />
         </Route>
+
+        {/* Public upload portal (token-based, no auth) */}
+        <Route path="/upload/:token" element={<UploadPortal />} />
 
         {/* Dashboard login (no auth) */}
         <Route path="/dashboard/login" element={<Login />} />

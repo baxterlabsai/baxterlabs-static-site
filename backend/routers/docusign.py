@@ -234,6 +234,10 @@ async def docusign_webhook(request: Request, background_tasks: BackgroundTasks):
                 email_svc.send_agreement_signed_notification(engagement)
                 # Send upload link to client
                 email_svc.send_upload_link(engagement)
+                log_activity(engagement_id, "system", "upload_link_sent", {
+                    "trigger": "agreement_signed",
+                    "to": engagement.get("clients", {}).get("primary_contact_email"),
+                })
 
             logger.info(f"Agreement signed — envelope={envelope_id} engagement={engagement_id}")
 

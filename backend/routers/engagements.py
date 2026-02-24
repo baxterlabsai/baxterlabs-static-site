@@ -5,8 +5,10 @@ import logging
 from typing import Optional
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi.responses import JSONResponse
 from middleware.auth import verify_partner_auth
 from services.supabase_client import get_supabase, get_engagement_by_id, update_engagement_status, log_activity
+from services.email_service import get_email_service
 from services.docusign_service import get_docusign_service
 from services.firecrawl_service import research_contacts
 
@@ -177,3 +179,47 @@ async def advance_phase(engagement_id: str, notes: Optional[str] = None, user: d
         "review_required": review_required,
         "message": f"Advanced to phase {new_phase}." + (" Review required before proceeding." if review_required else ""),
     }
+
+
+@router.post("/engagements/{engagement_id}/send-upload-link")
+async def send_upload_link(engagement_id: str, user: dict = Depends(verify_partner_auth)):
+    """Send (or resend) the upload portal link to the client. Requires partner auth."""
+    engagement = get_engagement_by_id(engagement_id)
+    if not engagement:
+        raise HTTPException(status_code=404, detail="Engagement not found")
+
+    email_svc = get_email_service()
+    result = email_svc.send_upload_link(engagement)
+
+    log_activity(engagement_id, "partner", "upload_link_sent", {
+        "to": engagement.get("clients", {}).get("primary_contact_email"),
+    })
+
+    return {"success": True, "email_result": result}
+
+
+@router.get("/engagements/{engagement_id}/documents/{doc_id}/download")
+async def download_document(engagement_id: str, doc_id: str, user: dict = Depends(verify_partner_auth)):
+    """Generate a signed download URL for a document. Requires partner auth."""
+    sb = get_supabase()
+
+    doc_result = (
+        sb.table("documents")
+        .select("*")
+        .eq("id", doc_id)
+        .eq("engagement_id", engagement_id)
+        .execute()
+    )
+
+    if not doc_result.data:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    doc = doc_result.data[0]
+    storage_path = doc["storage_path"]
+
+    try:
+        signed = sb.storage.from_("engagements").create_signed_url(storage_path, 3600)
+        return {"success": True, "url": signed.get("signedURL") or signed.get("signedUrl", ""), "filename": doc["filename"]}
+    except Exception as e:
+        logger.error(f"Failed to create signed URL for {storage_path}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate download link")

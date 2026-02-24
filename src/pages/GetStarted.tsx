@@ -253,7 +253,7 @@ export default function GetStarted() {
             </p>
             <div className="bg-white rounded-lg shadow-sm overflow-hidden" style={{ minHeight: '700px' }}>
               <iframe
-                src="https://calendly.com/george-baxterlabs/discovery-call"
+                src="https://calendly.com/george-baxterlabs"
                 width="100%"
                 height="700"
                 frameBorder="0"
