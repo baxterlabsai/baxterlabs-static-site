@@ -26,20 +26,22 @@ export default function About() {
           <h2 className="font-display text-3xl font-bold text-crimson mb-12 text-center">Our Partners</h2>
 
           <div className="space-y-8">
-            {/* George DeVries */}
-            <div className="bg-white border-l-4 border-l-crimson rounded-lg p-8">
+            {/* George DeVries — PLACEHOLDER: Replace with real bio */}
+            <div className="bg-white border-l-4 border-l-crimson rounded-lg p-8 border-2 border-dashed border-gold/50">
               <h3 className="text-xl font-semibold text-teal mb-4">George DeVries</h3>
               <p className="text-charcoal">
                 George DeVries is a [TITLE / BACKGROUND]. He has spent [X] years helping [TYPE OF BUSINESSES] [SPECIFIC OUTCOME]. At BaxterLabs, George leads business development, client relationships, and engagement delivery.
               </p>
+              <p className="text-xs text-gold mt-3 font-medium">Placeholder — replace with real bio</p>
             </div>
 
-            {/* Alfonso Cordon */}
-            <div className="bg-white border-l-4 border-l-crimson rounded-lg p-8">
+            {/* Alfonso Cordon — PLACEHOLDER: Replace with real bio */}
+            <div className="bg-white border-l-4 border-l-crimson rounded-lg p-8 border-2 border-dashed border-gold/50">
               <h3 className="text-xl font-semibold text-teal mb-4">Alfonso Cordon</h3>
               <p className="text-charcoal">
                 Alfonso Cordon is a [TITLE / BACKGROUND]. He brings deep expertise in [SPECIALTY] and has previously [KEY EXPERIENCE]. At BaxterLabs, Alfonso leads financial modeling, data analysis, and report development.
               </p>
+              <p className="text-xs text-gold mt-3 font-medium">Placeholder — replace with real bio</p>
             </div>
           </div>
         </div>

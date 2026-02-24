@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import intake, engagements, docusign, upload, deliverables, research, prompts
+from routers import intake, engagements, docusign, upload, deliverables, research, prompts, clients
 from services.supabase_client import get_supabase
 from models.schemas import HealthResponse
 
@@ -37,7 +37,10 @@ app.add_middleware(
 )
 
 # Register routers
+# NOTE: clients router must come before engagements so that the fixed path
+# /api/engagements/calendar is matched before /api/engagements/{engagement_id}
 app.include_router(intake.router)
+app.include_router(clients.router)
 app.include_router(engagements.router)
 app.include_router(docusign.router)
 app.include_router(upload.router)
