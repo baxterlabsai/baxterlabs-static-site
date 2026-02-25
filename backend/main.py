@@ -19,6 +19,7 @@ from models.schemas import HealthResponse
 
 # Logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="BaxterLabs API",
@@ -26,11 +27,15 @@ app = FastAPI(
     description="Backend API for BaxterLabs Advisory engagement platform",
 )
 
-# CORS
-frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+# CORS — parse comma-separated ALLOWED_ORIGINS env var (set on Render)
+_raw_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173")
+allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+if "http://localhost:5173" not in allowed_origins:
+    allowed_origins.append("http://localhost:5173")
+logger.info("CORS allowed_origins=%s", allowed_origins)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[frontend_url, "http://localhost:5173"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
