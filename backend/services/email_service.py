@@ -52,7 +52,7 @@ class EmailService:
         <!-- Footer -->
         <tr><td style="height:1px;background-color:{GOLD};"></td></tr>
         <tr><td style="background-color:{TEAL};padding:20px;text-align:center;">
-          <span style="color:rgba(255,255,255,0.7);font-size:12px;">&copy; 2026 BaxterLabs Advisory &middot; george@baxterlabs.ai</span>
+          <span style="color:rgba(255,255,255,0.7);font-size:12px;">&copy; 2026 BaxterLabs Advisory &middot; baxterlabs.ai</span>
         </td></tr>
       </table>
     </td></tr>
@@ -301,6 +301,83 @@ class EmailService:
         </p>
         """
         return self._send_email(contact_email, f"BaxterLabs — Additional Materials for {company}", body)
+
+    def send_deliverables_ready_notification(self, engagement: dict, wave: int = 1) -> dict:
+        """Notify partner: deliverables from a wave are ready/released."""
+        client = engagement.get("clients", {})
+        company = client.get("company_name", "Unknown")
+        wave_label = "Wave 1" if wave == 1 else "Wave 2"
+        items = (
+            "Executive Summary, Full Diagnostic Report, Profit Leak Workbook, 90-Day Roadmap"
+            if wave == 1
+            else "Presentation Deck, Phase 2 Retainer Proposal"
+        )
+        body = f"""
+        <h2 style="color:{CRIMSON};font-family:Georgia,serif;margin-top:0;">Deliverables Ready — {wave_label}</h2>
+        <p><strong>{company}</strong> — {wave_label} deliverables have been released to the client.</p>
+        <p><strong>Deliverables:</strong> {items}</p>
+        <p style="margin-top:24px;">
+          <a href="{self.frontend_url}/dashboard/engagement/{engagement.get('id')}"
+             style="display:inline-block;padding:12px 24px;background-color:{CRIMSON};color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">
+            View Engagement
+          </a>
+        </p>
+        """
+        return self._send_email(PARTNER_EMAIL, f"Deliverables Ready — {company}", body)
+
+    def send_reminder_nda(self, engagement: dict) -> dict:
+        """Send client a reminder to sign the NDA."""
+        client = engagement.get("clients", {})
+        company = client.get("company_name", "Unknown")
+        contact_name = client.get("primary_contact_name", "there")
+        contact_email = client.get("primary_contact_email")
+        body = f"""
+        <h2 style="color:{CRIMSON};font-family:Georgia,serif;margin-top:0;">Friendly Reminder: Sign Your NDA</h2>
+        <p>Hi {contact_name},</p>
+        <p>We noticed you haven't yet signed the Non-Disclosure Agreement for your engagement with BaxterLabs Advisory.</p>
+        <p>Please check your email for the DocuSign envelope and complete the signature so we can get started. If you can't find it, please let us know and we'll resend it.</p>
+        <p style="color:{TEAL};font-weight:600;margin-top:24px;">— The BaxterLabs Team</p>
+        """
+        return self._send_email(contact_email, f"Reminder: Sign Your NDA — {company}", body)
+
+    def send_reminder_agreement(self, engagement: dict) -> dict:
+        """Send client a reminder to sign the Engagement Agreement."""
+        client = engagement.get("clients", {})
+        company = client.get("company_name", "Unknown")
+        contact_name = client.get("primary_contact_name", "there")
+        contact_email = client.get("primary_contact_email")
+        body = f"""
+        <h2 style="color:{CRIMSON};font-family:Georgia,serif;margin-top:0;">Friendly Reminder: Sign Your Engagement Agreement</h2>
+        <p>Hi {contact_name},</p>
+        <p>We're ready to kick off your BaxterLabs engagement, but we're still waiting on your signed Engagement Agreement.</p>
+        <p>Please check your email for the DocuSign envelope and complete the signature. If you can't find it, please let us know and we'll resend it.</p>
+        <p style="color:{TEAL};font-weight:600;margin-top:24px;">— The BaxterLabs Team</p>
+        """
+        return self._send_email(contact_email, f"Reminder: Sign Your Agreement — {company}", body)
+
+    def send_reminder_documents(self, engagement: dict, uploaded_count: int, total_required: int) -> dict:
+        """Send client a reminder to upload outstanding documents."""
+        client = engagement.get("clients", {})
+        company = client.get("company_name", "Unknown")
+        contact_name = client.get("primary_contact_name", "there")
+        contact_email = client.get("primary_contact_email")
+        upload_token = engagement.get("upload_token")
+        remaining = total_required - uploaded_count
+        body = f"""
+        <h2 style="color:{CRIMSON};font-family:Georgia,serif;margin-top:0;">Friendly Reminder: Upload Your Documents</h2>
+        <p>Hi {contact_name},</p>
+        <p>We're making progress on your BaxterLabs engagement, but we're still waiting on some documents from your team.</p>
+        <p><strong>Status:</strong> {uploaded_count} of {total_required} required documents uploaded ({remaining} remaining).</p>
+        <p>Please use the secure link below to upload the remaining items:</p>
+        <p style="margin:24px 0;text-align:center;">
+          <a href="{self.frontend_url}/upload/{upload_token}"
+             style="display:inline-block;padding:14px 32px;background-color:{CRIMSON};color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;font-size:16px;">
+            Open Upload Portal
+          </a>
+        </p>
+        <p style="color:{TEAL};font-weight:600;">— The BaxterLabs Team</p>
+        """
+        return self._send_email(contact_email, f"Reminder: Upload Documents — {company}", body)
 
     def send_engagement_archived(self, engagement: dict) -> dict:
         """Notify partner: engagement has been archived."""

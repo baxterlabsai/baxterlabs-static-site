@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from fastapi import APIRouter
 from models.schemas import IntakeFormInput, IntakeResponse
 from services.supabase_client import get_supabase, log_activity, create_engagement_folders
@@ -34,12 +35,13 @@ async def submit_intake(form: IntakeFormInput):
     client_result = sb.table("clients").insert(client_data).execute()
     client = client_result.data[0]
 
-    # 2. Create engagement
+    # 2. Create engagement (generate upload_token upfront so it's ready when needed)
     engagement_data = {
         "client_id": client["id"],
         "status": "nda_pending",
         "pain_points": form.pain_points,
         "preferred_start_date": form.preferred_start_date.isoformat() if form.preferred_start_date else None,
+        "upload_token": str(uuid.uuid4()),
     }
     engagement_result = sb.table("engagements").insert(engagement_data).execute()
     engagement = engagement_result.data[0]

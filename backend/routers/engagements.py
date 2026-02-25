@@ -26,10 +26,17 @@ def _run_async_in_background(coro):
 
 
 @router.get("/engagements")
-async def list_engagements(user: dict = Depends(verify_partner_auth)):
-    """List all engagements with client info. Requires partner auth."""
+async def list_engagements(
+    user: dict = Depends(verify_partner_auth),
+    include_deleted: bool = False,
+):
+    """List all engagements with client info. Requires partner auth.
+    Excludes soft-deleted engagements by default."""
     sb = get_supabase()
-    result = sb.table("engagements").select("*, clients(*)").order("created_at", desc=True).execute()
+    query = sb.table("engagements").select("*, clients(*)")
+    if not include_deleted:
+        query = query.eq("is_deleted", False)
+    result = query.order("created_at", desc=True).execute()
     return {"engagements": result.data, "count": len(result.data)}
 
 
@@ -46,7 +53,8 @@ async def get_engagement(engagement_id: str, user: dict = Depends(verify_partner
     docs = sb.table("documents").select("*").eq("engagement_id", engagement_id).execute()
     research = sb.table("research_documents").select("*").eq("engagement_id", engagement_id).execute()
     deliverables_result = sb.table("deliverables").select("*").eq("engagement_id", engagement_id).execute()
-    activity = sb.table("activity_log").select("*").eq("engagement_id", engagement_id).order("created_at", desc=True).limit(20).execute()
+    phase_outputs_result = sb.table("phase_outputs").select("*").eq("engagement_id", engagement_id).order("phase").order("output_number").execute()
+    activity = sb.table("activity_log").select("*").eq("engagement_id", engagement_id).order("created_at", desc=True).limit(50).execute()
 
     return {
         **engagement,
@@ -55,6 +63,7 @@ async def get_engagement(engagement_id: str, user: dict = Depends(verify_partner
         "documents": docs.data,
         "research_documents": research.data,
         "deliverables": deliverables_result.data,
+        "phase_outputs": phase_outputs_result.data,
         "activity_log": activity.data,
     }
 
@@ -203,6 +212,30 @@ async def advance_phase(
                 ),
             },
         )
+
+    # Phase output acceptance check — review gate phases require all outputs accepted
+    if current_phase in REVIEW_GATE_PHASES:
+        phase_outputs = (
+            sb.table("phase_outputs")
+            .select("id, status")
+            .eq("engagement_id", engagement_id)
+            .eq("phase", current_phase)
+            .execute()
+        )
+        if phase_outputs.data:
+            unaccepted = [o for o in phase_outputs.data if o["status"] != "accepted"]
+            if unaccepted:
+                return JSONResponse(
+                    status_code=200,
+                    content={
+                        "outputs_not_accepted": True,
+                        "unaccepted_count": len(unaccepted),
+                        "message": (
+                            f"All Phase {current_phase} outputs must be accepted before advancing. "
+                            f"{len(unaccepted)} output(s) still pending review."
+                        ),
+                    },
+                )
 
     # Look up the current active prompt version for this phase
     prompt_version: Optional[str] = None

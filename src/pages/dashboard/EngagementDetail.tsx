@@ -1,6 +1,27 @@
 import { useEffect, useState, useRef } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { apiGet, apiPost, apiPut, apiUpload } from '../../lib/api'
+import { useParams, Link, useNavigate } from 'react-router-dom'
+import { apiGet, apiPost, apiPut, apiUpload, apiDelete } from '../../lib/api'
+
+interface PhaseOutput {
+  id: string
+  engagement_id: string
+  phase: number
+  output_number: number
+  name: string
+  description: string | null
+  file_type: string | null
+  destination_folder: string
+  storage_path: string | null
+  file_size: number | null
+  status: string
+  is_review_gate: boolean
+  is_client_deliverable: boolean
+  wave: number | null
+  uploaded_at: string | null
+  accepted_at: string | null
+  accepted_by: string | null
+  download_url?: string | null
+}
 
 interface DocumentRecord {
   id: string
@@ -62,6 +83,7 @@ interface EngagementData {
     created_at: string
   }>
   debrief_complete: boolean
+  phase_outputs: PhaseOutput[]
   deliverables: Array<{
     id: string
     type: string
@@ -95,8 +117,25 @@ const PHASE_INFO = [
   { num: 4, name: 'Optimization Analysis', short: 'Optimize' },
   { num: 5, name: 'Report Assembly', short: 'Reports' },
   { num: 6, name: 'Quality Control', short: 'QC', reviewGate: true },
-  { num: 7, name: 'Close & Archive', short: 'Archive' },
+  { num: 7, name: 'Close & Archive', short: 'Archive', reviewGate: true },
 ]
+
+const PHASE_NAMES: Record<number, string> = {
+  0: 'Proposal & Engagement Setup',
+  1: 'Data Intake & Financial Baseline',
+  2: 'Leadership Interviews',
+  3: 'Profit Leak Quantification',
+  4: 'Optimization Analysis',
+  5: 'Report Assembly + Retainer',
+  6: 'Quality Control',
+  7: 'Engagement Close & Archive',
+}
+
+const REVIEW_GATE_PHASES = new Set([1, 3, 6, 7])
+
+const FILE_TYPE_ICONS: Record<string, string> = {
+  docx: 'W', xlsx: 'X', pptx: 'P', md: 'M', pdf: 'PDF',
+}
 
 const UPLOAD_LINK_STATUSES = new Set([
   'agreement_signed', 'documents_pending', 'documents_received',
@@ -195,6 +234,19 @@ export default function EngagementDetail() {
   const [ensuringDeliverables, setEnsuringDeliverables] = useState(false)
   const [archiveDialog, setArchiveDialog] = useState(false)
   const [archiving, setArchiving] = useState(false)
+  const [deleteDialog, setDeleteDialog] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [reminderLoading, setReminderLoading] = useState<string | null>(null)
+  const [lastReminders, setLastReminders] = useState<{ nda: string; agreement: string; documents: string }>({ nda: '', agreement: '', documents: '' })
+  const [expandedPhases, setExpandedPhases] = useState<Set<number>>(new Set())
+  const [copyingPrompt, setCopyingPrompt] = useState<number | null>(null)
+  const [promptCopied, setPromptCopied] = useState<number | null>(null)
+  const [seedingOutputs, setSeedingOutputs] = useState(false)
+  const [uploadingOutputId, setUploadingOutputId] = useState<string | null>(null)
+  const [acceptingOutputId, setAcceptingOutputId] = useState<string | null>(null)
+  const [acceptingPhase, setAcceptingPhase] = useState<number | null>(null)
+  const outputFileRefs = useRef<Record<string, HTMLInputElement | null>>({})
+  const navigate = useNavigate()
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   useEffect(() => {
@@ -202,12 +254,15 @@ export default function EngagementDetail() {
     apiGet<EngagementData>(`/api/engagements/${id}`)
       .then(d => {
         setData(d)
-        // Check if upload link was already sent
         const linkSent = d.activity_log.some(l => l.action === 'upload_link_sent')
         if (linkSent) setUploadLinkSent(true)
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
+    // Fetch last reminder timestamps
+    apiGet<{ nda: string; agreement: string; documents: string }>(`/api/engagements/${id}/reminders/last`)
+      .then(setLastReminders)
+      .catch(() => {})
   }, [id])
 
   const triggerResearch = async (type: 'discovery' | 'interviews') => {
@@ -388,6 +443,109 @@ export default function EngagementDetail() {
     setArchiving(false)
   }
 
+  const deleteEngagement = async () => {
+    if (!id) return
+    setDeleting(true)
+    try {
+      await apiDelete(`/api/engagements/${id}`)
+      navigate('/dashboard')
+    } catch {}
+    setDeleting(false)
+  }
+
+  const sendReminder = async (type: 'nda' | 'agreement' | 'documents') => {
+    if (!id) return
+    setReminderLoading(type)
+    try {
+      await apiPost(`/api/engagements/${id}/remind/${type}`)
+      // Refresh last reminder timestamps
+      const reminders = await apiGet<{ nda: string; agreement: string; documents: string }>(`/api/engagements/${id}/reminders/last`)
+      setLastReminders(reminders)
+    } catch {}
+    setReminderLoading(null)
+  }
+
+  const isReminderDisabled = (type: 'nda' | 'agreement' | 'documents') => {
+    const last = lastReminders[type]
+    if (!last) return false
+    const diff = Date.now() - new Date(last).getTime()
+    return diff < 24 * 60 * 60 * 1000
+  }
+
+  const formatReminderTime = (ts: string) => {
+    if (!ts) return ''
+    return new Date(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+  }
+
+  const togglePhase = (phase: number) => {
+    setExpandedPhases(prev => {
+      const next = new Set(prev)
+      if (next.has(phase)) next.delete(phase)
+      else next.add(phase)
+      return next
+    })
+  }
+
+  const copyPhasePrompt = async (phase: number) => {
+    if (!id) return
+    setCopyingPrompt(phase)
+    try {
+      const result = await apiGet<{ rendered_text: string }>(`/api/engagements/${id}/prompt/${phase}`)
+      await navigator.clipboard.writeText(result.rendered_text)
+      setPromptCopied(phase)
+      setTimeout(() => setPromptCopied(null), 2000)
+    } catch {
+      // Error toast would be nice but we'll just silently fail for now
+    }
+    setCopyingPrompt(null)
+  }
+
+  const seedOutputs = async () => {
+    if (!id) return
+    setSeedingOutputs(true)
+    try {
+      await apiPost(`/api/engagements/${id}/seed-outputs`)
+      const d = await apiGet<EngagementData>(`/api/engagements/${id}`)
+      setData(d)
+    } catch {}
+    setSeedingOutputs(false)
+  }
+
+  const uploadPhaseOutput = async (outputId: string, file: File) => {
+    if (!id) return
+    setUploadingOutputId(outputId)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      await apiUpload(`/api/phase-outputs/${outputId}/upload`, formData)
+      const d = await apiGet<EngagementData>(`/api/engagements/${id}`)
+      setData(d)
+    } catch {}
+    setUploadingOutputId(null)
+  }
+
+  const acceptPhaseOutput = async (outputId: string) => {
+    if (!id) return
+    setAcceptingOutputId(outputId)
+    try {
+      await apiPut(`/api/phase-outputs/${outputId}/accept`)
+      const d = await apiGet<EngagementData>(`/api/engagements/${id}`)
+      setData(d)
+    } catch {}
+    setAcceptingOutputId(null)
+  }
+
+  const acceptAllPhaseOutputs = async (phase: number) => {
+    if (!id) return
+    setAcceptingPhase(phase)
+    try {
+      await apiPut(`/api/engagements/${id}/phase-outputs/${phase}/accept-all`)
+      const d = await apiGet<EngagementData>(`/api/engagements/${id}`)
+      setData(d)
+    } catch {}
+    setAcceptingPhase(null)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -456,7 +614,7 @@ export default function EngagementDetail() {
               {beginLoading ? 'Starting...' : 'Begin Phase 0'}
             </button>
           )}
-          {data.status === 'wave_2_released' && (
+          {['wave_2_released', 'debrief', 'closed'].includes(data.status) && data.status !== 'closed' && (
             <button
               onClick={() => setArchiveDialog(true)}
               className="px-5 py-2.5 bg-charcoal text-white font-semibold rounded-lg hover:bg-charcoal/90 text-sm"
@@ -466,6 +624,51 @@ export default function EngagementDetail() {
           )}
         </div>
       </div>
+
+      {/* Reminder Buttons */}
+      {!isClosed && (
+        <div className="mb-6 flex flex-wrap gap-3">
+          {data.status === 'nda_pending' && (
+            <div className="flex flex-col items-start">
+              <button
+                onClick={() => sendReminder('nda')}
+                disabled={reminderLoading === 'nda' || isReminderDisabled('nda')}
+                title={isReminderDisabled('nda') ? 'Reminder already sent today' : ''}
+                className="px-4 py-2 border border-crimson text-crimson text-sm font-semibold rounded-lg hover:bg-crimson/5 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {reminderLoading === 'nda' ? 'Sending...' : 'Remind: Sign NDA'}
+              </button>
+              {lastReminders.nda && <span className="text-xs text-gray-warm mt-1">Last reminded: {formatReminderTime(lastReminders.nda)}</span>}
+            </div>
+          )}
+          {data.status === 'agreement_pending' && (
+            <div className="flex flex-col items-start">
+              <button
+                onClick={() => sendReminder('agreement')}
+                disabled={reminderLoading === 'agreement' || isReminderDisabled('agreement')}
+                title={isReminderDisabled('agreement') ? 'Reminder already sent today' : ''}
+                className="px-4 py-2 border border-crimson text-crimson text-sm font-semibold rounded-lg hover:bg-crimson/5 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {reminderLoading === 'agreement' ? 'Sending...' : 'Remind: Sign Agreement'}
+              </button>
+              {lastReminders.agreement && <span className="text-xs text-gray-warm mt-1">Last reminded: {formatReminderTime(lastReminders.agreement)}</span>}
+            </div>
+          )}
+          {['agreement_signed', 'documents_pending'].includes(data.status) && (
+            <div className="flex flex-col items-start">
+              <button
+                onClick={() => sendReminder('documents')}
+                disabled={reminderLoading === 'documents' || isReminderDisabled('documents')}
+                title={isReminderDisabled('documents') ? 'Reminder already sent today' : ''}
+                className="px-4 py-2 border border-crimson text-crimson text-sm font-semibold rounded-lg hover:bg-crimson/5 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {reminderLoading === 'documents' ? 'Sending...' : 'Remind: Upload Documents'}
+              </button>
+              {lastReminders.documents && <span className="text-xs text-gray-warm mt-1">Last reminded: {formatReminderTime(lastReminders.documents)}</span>}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Closed Banner */}
       {data.status === 'closed' && (
@@ -623,6 +826,190 @@ export default function EngagementDetail() {
       {!isInPhases && data.status === 'documents_received' && (
         <p className="text-sm text-gray-warm mb-6 px-1">Phase prompts available after beginning Phase 0.</p>
       )}
+
+      {/* Phase Outputs Viewer */}
+      {data && (isInPhases || data.status === 'phases_complete' || data.status === 'debrief' ||
+        ALL_STATUSES.indexOf(data.status) > ALL_STATUSES.indexOf('documents_received')) && (() => {
+        const outputs = data.phase_outputs || []
+        const phaseGroups: Record<number, PhaseOutput[]> = {}
+        for (const o of outputs) {
+          if (!phaseGroups[o.phase]) phaseGroups[o.phase] = []
+          phaseGroups[o.phase].push(o)
+        }
+
+        return (
+          <section className="bg-white rounded-lg border border-gray-light p-5 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-display text-lg font-bold text-teal">Phase Outputs</h3>
+              {outputs.length === 0 && (
+                <button
+                  onClick={seedOutputs}
+                  disabled={seedingOutputs}
+                  className="px-4 py-2 bg-crimson text-white text-sm font-semibold rounded-lg hover:bg-crimson/90 disabled:opacity-50"
+                >
+                  {seedingOutputs ? 'Creating...' : 'Initialize Phase Outputs'}
+                </button>
+              )}
+            </div>
+
+            {outputs.length === 0 ? (
+              <p className="text-gray-warm text-sm">No phase outputs created yet. Click "Initialize Phase Outputs" to set up all 23 output tracking records.</p>
+            ) : (
+              <div className="space-y-3">
+                {[0, 1, 2, 3, 4, 5, 6, 7].map(phase => {
+                  const phaseOutputs = phaseGroups[phase] || []
+                  if (phaseOutputs.length === 0) return null
+                  const accepted = phaseOutputs.filter(o => o.status === 'accepted').length
+                  const uploaded = phaseOutputs.filter(o => o.status === 'uploaded').length
+                  const total = phaseOutputs.length
+                  const allAccepted = accepted === total
+                  const isGate = REVIEW_GATE_PHASES.has(phase)
+                  const isExpanded = expandedPhases.has(phase)
+
+                  return (
+                    <div key={phase} className="border border-gray-light rounded-lg overflow-hidden">
+                      {/* Phase header */}
+                      <button
+                        onClick={() => togglePhase(phase)}
+                        className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-ivory/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                            allAccepted ? 'bg-teal text-white' : uploaded > 0 || accepted > 0 ? 'bg-amber/10 text-amber' : 'bg-gray-light text-gray-warm'
+                          }`}>
+                            {allAccepted ? (
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                            ) : phase}
+                          </span>
+                          <div>
+                            <span className="font-semibold text-charcoal text-sm">Phase {phase} — {PHASE_NAMES[phase]}</span>
+                            <span className="text-xs text-gray-warm ml-2">{total} output{total !== 1 ? 's' : ''}</span>
+                          </div>
+                          {isGate && (
+                            <span className="text-xs bg-amber/10 text-amber px-2 py-0.5 rounded flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                              </svg>
+                              Review Gate
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-gray-warm">{accepted}/{total} accepted</span>
+                          {/* Copy prompt button */}
+                          <button
+                            onClick={e => { e.stopPropagation(); copyPhasePrompt(phase) }}
+                            disabled={copyingPrompt === phase}
+                            className={`text-xs px-2 py-1 rounded font-semibold transition-colors ${
+                              promptCopied === phase
+                                ? 'bg-teal/10 text-teal'
+                                : 'bg-ivory text-teal hover:bg-teal/10'
+                            }`}
+                            title={`Copy Phase ${phase} prompt to clipboard`}
+                          >
+                            {copyingPrompt === phase ? '...' : promptCopied === phase ? 'Copied!' : `Copy Prompt`}
+                          </button>
+                          <svg className={`w-4 h-4 text-gray-warm transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </button>
+
+                      {/* Phase outputs list */}
+                      {isExpanded && (
+                        <div className="border-t border-gray-light">
+                          {/* Accept All button */}
+                          {uploaded > 0 && (
+                            <div className="px-4 py-2 bg-ivory/50 border-b border-gray-light flex justify-end">
+                              <button
+                                onClick={() => acceptAllPhaseOutputs(phase)}
+                                disabled={acceptingPhase === phase}
+                                className="text-xs bg-teal text-white px-3 py-1.5 rounded font-semibold hover:bg-teal/90 disabled:opacity-50"
+                              >
+                                {acceptingPhase === phase ? 'Accepting...' : `Accept All Phase ${phase}`}
+                              </button>
+                            </div>
+                          )}
+                          <div className="divide-y divide-gray-light">
+                            {phaseOutputs.map(output => (
+                              <div key={output.id} className="px-4 py-3 flex items-center gap-3">
+                                {/* File type icon */}
+                                <span className="w-8 h-8 rounded bg-ivory flex items-center justify-center text-xs font-bold text-gray-warm flex-shrink-0">
+                                  {FILE_TYPE_ICONS[output.file_type || ''] || '?'}
+                                </span>
+
+                                {/* Info */}
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-semibold text-charcoal">{output.name}</p>
+                                  <p className="text-xs text-gray-warm">
+                                    .{output.file_type} &rarr; {output.destination_folder}/
+                                    {output.file_size ? ` · ${formatFileSize(output.file_size)}` : ''}
+                                    {output.uploaded_at ? ` · ${formatDate(output.uploaded_at)}` : ''}
+                                    {output.accepted_at ? ` · Accepted ${formatDate(output.accepted_at)}` : ''}
+                                    {output.is_client_deliverable && <span className="ml-1 text-gold font-semibold">Client Deliverable</span>}
+                                  </p>
+                                </div>
+
+                                {/* Status badge */}
+                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                                  output.status === 'accepted' ? 'bg-green/10 text-green' :
+                                  output.status === 'uploaded' ? 'bg-amber/10 text-amber' :
+                                  'bg-gray-light text-gray-warm'
+                                }`}>
+                                  {output.status === 'accepted' ? 'Accepted' : output.status === 'uploaded' ? 'Awaiting review' : 'Not yet created'}
+                                </span>
+
+                                {/* Actions */}
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  {/* Download */}
+                                  {output.download_url && (
+                                    <a href={output.download_url} target="_blank" rel="noreferrer" className="text-xs text-teal font-semibold hover:underline">
+                                      Download
+                                    </a>
+                                  )}
+                                  {/* Upload */}
+                                  <input
+                                    type="file"
+                                    ref={el => { outputFileRefs.current[output.id] = el }}
+                                    className="hidden"
+                                    accept=".docx,.xlsx,.pptx,.pdf,.md"
+                                    onChange={e => {
+                                      const file = e.target.files?.[0]
+                                      if (file) uploadPhaseOutput(output.id, file)
+                                      e.target.value = ''
+                                    }}
+                                  />
+                                  <button
+                                    onClick={() => outputFileRefs.current[output.id]?.click()}
+                                    disabled={uploadingOutputId === output.id}
+                                    className="text-xs text-teal font-semibold hover:underline disabled:opacity-50"
+                                  >
+                                    {uploadingOutputId === output.id ? 'Uploading...' : output.storage_path ? 'Replace' : 'Upload'}
+                                  </button>
+                                  {/* Accept */}
+                                  {output.status === 'uploaded' && (
+                                    <button
+                                      onClick={() => acceptPhaseOutput(output.id)}
+                                      disabled={acceptingOutputId === output.id}
+                                      className="text-xs bg-teal text-white px-3 py-1 rounded font-semibold hover:bg-teal/90 disabled:opacity-50"
+                                    >
+                                      {acceptingOutputId === output.id ? '...' : 'Accept'}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+        )
+      })()}
 
       {/* Deliverables Section */}
       {data && DELIVERABLE_STATUSES_SHOWING.has(data.status) && (() => {
@@ -1000,6 +1387,61 @@ export default function EngagementDetail() {
           </div>
         )}
       </section>
+
+      {/* Actions Section */}
+      {!isClosed && (
+        <section className="mt-6 pt-6 border-t border-gray-light">
+          <h3 className="text-xs font-semibold text-gray-warm uppercase tracking-wider mb-3">Actions</h3>
+          <div className="flex gap-3 flex-wrap">
+            {['wave_2_released', 'debrief'].includes(data.status) && (
+              <button
+                onClick={() => setArchiveDialog(true)}
+                className="px-4 py-2 bg-charcoal text-white text-sm font-semibold rounded-lg hover:bg-charcoal/90"
+              >
+                Archive Engagement
+              </button>
+            )}
+            <button
+              onClick={() => setDeleteDialog(true)}
+              className="px-4 py-2 border border-red-soft text-red-soft text-sm font-semibold rounded-lg hover:bg-red-soft/5"
+            >
+              Delete Engagement
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deleteDialog && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center gap-2 mb-3">
+              <svg className="w-5 h-5 text-red-soft" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              <h3 className="font-display text-lg font-bold text-charcoal">Delete Engagement</h3>
+            </div>
+            <p className="text-sm text-charcoal mb-4">
+              This will remove the engagement from your dashboard. This action can be undone by contacting support. Are you sure?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteDialog(false)}
+                className="px-4 py-2 text-sm font-semibold text-gray-warm hover:text-charcoal"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={deleteEngagement}
+                disabled={deleting}
+                className="px-4 py-2 bg-red-soft text-white text-sm font-semibold rounded-lg hover:bg-red-soft/90 disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Archive Confirmation Dialog */}
       {archiveDialog && (

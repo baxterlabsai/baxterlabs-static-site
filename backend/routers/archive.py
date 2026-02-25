@@ -83,6 +83,33 @@ def _list_all_files(sb, bucket: str, prefix: str) -> List[str]:
     return all_files
 
 
+@router.delete("/engagements/{engagement_id}")
+async def delete_engagement(
+    engagement_id: str,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Soft-delete an engagement. Sets is_deleted=True and deleted_at timestamp.
+    The engagement will no longer appear in dashboard queries."""
+    engagement = get_engagement_by_id(engagement_id)
+    if not engagement:
+        raise HTTPException(status_code=404, detail="Engagement not found")
+
+    if engagement.get("is_deleted"):
+        raise HTTPException(status_code=400, detail="Engagement is already deleted")
+
+    sb = get_supabase()
+    sb.table("engagements").update({
+        "is_deleted": True,
+        "deleted_at": datetime.now(timezone.utc).isoformat(),
+    }).eq("id", engagement_id).execute()
+
+    log_activity(engagement_id, "partner", "engagement_deleted", {
+        "deleted_by": user.get("email"),
+    })
+
+    return {"success": True, "message": "Engagement deleted."}
+
+
 @router.post("/engagements/{engagement_id}/archive")
 async def archive_engagement(
     engagement_id: str,
@@ -264,10 +291,13 @@ async def archive_engagement(
         )
 
     # ------------------------------------------------------------------
-    # 5. Update status to closed
+    # 5. Update status to closed + set archived_at
     # ------------------------------------------------------------------
     try:
-        update_engagement_status(engagement_id, "closed")
+        sb.table("engagements").update({
+            "status": "closed",
+            "archived_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("id", engagement_id).execute()
     except Exception as exc:
         logger.error(
             "Failed to update status for engagement %s: %s",

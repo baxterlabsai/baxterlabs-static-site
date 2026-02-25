@@ -5,7 +5,7 @@ export default function Footer() {
     <footer className="bg-teal text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-8">
-          {/* Logo + Contact */}
+          {/* Logo + CTA */}
           <div className="flex flex-col items-center md:items-start gap-4">
             <Link to="/">
               <img
@@ -14,12 +14,12 @@ export default function Footer() {
                 className="h-[55px] w-auto"
               />
             </Link>
-            <a
-              href="mailto:george@baxterlabs.ai"
-              className="text-white/80 hover:text-white transition-colors"
+            <Link
+              to="/get-started"
+              className="text-white/80 hover:text-white transition-colors font-medium"
             >
-              george@baxterlabs.ai
-            </a>
+              Book a Discovery Call
+            </Link>
           </div>
 
           {/* Navigation */}

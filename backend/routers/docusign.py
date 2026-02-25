@@ -179,7 +179,12 @@ async def docusign_webhook(request: Request, background_tasks: BackgroundTasks):
             engagement = get_engagement_by_id(engagement_id)
             if engagement:
                 email_svc = get_email_service()
-                email_svc.send_nda_signed_notification(engagement)
+                nda_email_result = email_svc.send_nda_signed_notification(engagement)
+                log_activity(engagement_id, "system", "email_sent", {
+                    "type": "nda_signed_notification",
+                    "to": "partner",
+                    "result": nda_email_result,
+                })
 
             # Trigger company research in background
             background_tasks.add_task(
@@ -231,12 +236,23 @@ async def docusign_webhook(request: Request, background_tasks: BackgroundTasks):
             engagement = get_engagement_by_id(engagement_id)
             if engagement:
                 email_svc = get_email_service()
-                email_svc.send_agreement_signed_notification(engagement)
+                agreement_email_result = email_svc.send_agreement_signed_notification(engagement)
+                log_activity(engagement_id, "system", "email_sent", {
+                    "type": "agreement_signed_notification",
+                    "to": "partner",
+                    "result": agreement_email_result,
+                })
                 # Send upload link to client
-                email_svc.send_upload_link(engagement)
+                upload_token = engagement.get("upload_token")
+                client_email = engagement.get("clients", {}).get("primary_contact_email")
+                logger.info(f"Sending upload link: token={upload_token}, to={client_email}")
+                upload_email_result = email_svc.send_upload_link(engagement)
+                logger.info(f"Upload link email result: {upload_email_result}")
                 log_activity(engagement_id, "system", "upload_link_sent", {
                     "trigger": "agreement_signed",
-                    "to": engagement.get("clients", {}).get("primary_contact_email"),
+                    "to": client_email,
+                    "upload_token": upload_token,
+                    "result": upload_email_result,
                 })
 
             logger.info(f"Agreement signed — envelope={envelope_id} engagement={engagement_id}")

@@ -246,14 +246,14 @@ export default function GetStarted() {
         <section className="bg-ivory py-16 md:py-20">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="font-display text-2xl md:text-3xl font-bold text-teal text-center mb-2">
-              Book Your Discovery Call
+              Schedule Your Discovery Call
             </h2>
             <p className="text-gray-warm text-center mb-8">
               Pick a time that works for you. This is a free, no-obligation conversation.
             </p>
             <div className="bg-white rounded-lg shadow-sm overflow-hidden" style={{ minHeight: '700px' }}>
               <iframe
-                src="https://calendly.com/george-baxterlabs"
+                src={`https://calendly.com/george-baxterlabs?name=${encodeURIComponent(form.primary_contact_name)}&email=${encodeURIComponent(form.primary_contact_email)}`}
                 width="100%"
                 height="700"
                 frameBorder="0"
@@ -264,17 +264,6 @@ export default function GetStarted() {
           </div>
         </section>
 
-        {/* Contact Fallback */}
-        <section className="bg-white py-12">
-          <div className="max-w-2xl mx-auto px-4 text-center">
-            <p className="text-gray-warm text-sm">
-              Prefer email? Reach out directly at{' '}
-              <a href="mailto:george@baxterlabs.ai" className="text-teal font-semibold hover:underline">
-                george@baxterlabs.ai
-              </a>
-            </p>
-          </div>
-        </section>
       </>
     )
   }
@@ -659,18 +648,6 @@ export default function GetStarted() {
         </div>
       </section>
 
-      {/* Contact Fallback */}
-      <section className="bg-white py-12">
-        <div className="max-w-2xl mx-auto px-4 text-center">
-          <p className="text-charcoal mb-2">Prefer to talk first?</p>
-          <a
-            href="mailto:george@baxterlabs.ai"
-            className="text-teal font-semibold text-lg hover:underline"
-          >
-            george@baxterlabs.ai
-          </a>
-        </div>
-      </section>
     </>
   )
 }

@@ -65,6 +65,10 @@ export default function PromptLibrary() {
         <p className="text-gray-warm text-sm mt-1">
           8-phase engagement methodology. Click any phase to view the full prompt template.
         </p>
+        <p className="text-gray-warm text-xs mt-2">
+          To copy an engagement-specific prompt with variables filled in, use the "Copy Prompt" button on the{' '}
+          <span className="text-teal font-semibold">Engagement Detail</span> page's Phase Outputs section.
+        </p>
       </div>
 
       {error && (

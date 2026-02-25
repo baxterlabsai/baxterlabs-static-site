@@ -357,6 +357,13 @@ async def release_wave1(
 
     log_activity(engagement_id, "partner", "wave1_released", {})
     email_svc.send_wave1_released(engagement)
+    # Notify partner that deliverables have been released
+    partner_result = email_svc.send_deliverables_ready_notification(engagement, wave=1)
+    log_activity(engagement_id, "system", "email_sent", {
+        "type": "deliverables_ready_partner",
+        "wave": 1,
+        "result": partner_result,
+    })
 
     return {"success": True, "message": "Wave 1 deliverables released to client."}
 
@@ -437,5 +444,12 @@ async def release_deck(
 
     log_activity(engagement_id, "partner", "wave2_released", {})
     email_svc.send_wave2_released(engagement)
+    # Notify partner that deliverables have been released
+    partner_result = email_svc.send_deliverables_ready_notification(engagement, wave=2)
+    log_activity(engagement_id, "system", "email_sent", {
+        "type": "deliverables_ready_partner",
+        "wave": 2,
+        "result": partner_result,
+    })
 
     return {"success": True, "message": "Wave 2 deliverables released to client."}
