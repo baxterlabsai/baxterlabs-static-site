@@ -252,10 +252,20 @@ export default function EngagementDetail() {
   useEffect(() => {
     if (!id) return
     apiGet<EngagementData>(`/api/engagements/${id}`)
-      .then(d => {
+      .then(async (d) => {
         setData(d)
         const linkSent = d.activity_log.some(l => l.action === 'upload_link_sent')
         if (linkSent) setUploadLinkSent(true)
+        // Auto-seed phase outputs if empty
+        if (!d.phase_outputs || d.phase_outputs.length === 0) {
+          try {
+            await apiPost(`/api/engagements/${id}/seed-outputs`)
+            const refreshed = await apiGet<EngagementData>(`/api/engagements/${id}`)
+            setData(refreshed)
+          } catch {
+            // Seed failed (maybe table doesn't exist or auth issue) — non-blocking
+          }
+        }
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
@@ -591,15 +601,6 @@ export default function EngagementDetail() {
           <p className="text-gray-warm text-sm">{client.primary_contact_name} · {statusLabel(data.status)}</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {showUploadLinkButton && (
-            <button
-              onClick={sendUploadLink}
-              disabled={sendingUploadLink}
-              className="px-5 py-2.5 bg-teal text-white font-semibold rounded-lg hover:bg-teal/90 text-sm disabled:opacity-50"
-            >
-              {sendingUploadLink ? 'Sending...' : uploadLinkSent ? 'Resend Upload Link' : 'Send Upload Link'}
-            </button>
-          )}
           {!isClosed && ['nda_signed', 'discovery_done'].includes(data.status) && (
             <Link to={`/dashboard/engagement/${id}/start`} className="px-5 py-2.5 bg-crimson text-white font-semibold rounded-lg hover:bg-crimson/90 text-sm">
               Start Engagement &rarr;
@@ -625,16 +626,25 @@ export default function EngagementDetail() {
         </div>
       </div>
 
-      {/* Dynamic Reminder Button — one contextual button based on what's pending */}
+      {/* Smart Reminder Button — one contextual button based on what the client needs to do next */}
       {!isClosed && (() => {
-        const reminderConfig: { type: 'nda' | 'agreement' | 'documents'; label: string; icon: string } | null =
-          data.status === 'nda_pending'
-            ? { type: 'nda', label: 'Remind Client: Sign NDA', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' }
-          : data.status === 'agreement_pending'
-            ? { type: 'agreement', label: 'Remind Client: Sign Agreement', icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' }
-          : ['agreement_signed', 'documents_pending'].includes(data.status)
-            ? { type: 'documents', label: 'Remind Client: Upload Documents', icon: 'M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12' }
-          : null
+        // Determine what the client's next required action is
+        const ndaDoc = data.legal_documents.find(d => d.type === 'nda')
+        const agreementDoc = data.legal_documents.find(d => d.type === 'agreement')
+
+        let reminderConfig: { type: 'nda' | 'agreement' | 'documents'; label: string; icon: string } | null = null
+
+        if (ndaDoc && ndaDoc.status === 'sent') {
+          reminderConfig = { type: 'nda', label: 'Remind Client: Sign NDA', icon: 'M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z' }
+        } else if (data.status === 'nda_pending') {
+          reminderConfig = { type: 'nda', label: 'Remind Client: Sign NDA', icon: 'M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z' }
+        } else if (agreementDoc && agreementDoc.status === 'sent') {
+          reminderConfig = { type: 'agreement', label: 'Remind Client: Sign Agreement', icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' }
+        } else if (data.status === 'agreement_pending') {
+          reminderConfig = { type: 'agreement', label: 'Remind Client: Sign Agreement', icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' }
+        } else if (['agreement_signed', 'documents_pending'].includes(data.status)) {
+          reminderConfig = { type: 'documents', label: 'Remind Client: Upload Documents', icon: 'M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12' }
+        }
 
         if (!reminderConfig) return null
 
@@ -648,7 +658,7 @@ export default function EngagementDetail() {
               <button
                 onClick={() => sendReminder(type)}
                 disabled={disabled}
-                title={isReminderDisabled(type) ? 'Reminder already sent in the last 24 hours' : `Send ${label.replace('Remind Client: ', '')} reminder to ${data.clients.primary_contact_email}`}
+                title={isReminderDisabled(type) ? 'Reminder already sent in the last 24 hours' : `Send reminder to ${data.clients.primary_contact_email}`}
                 className="inline-flex items-center gap-2 px-4 py-2 border border-crimson text-crimson text-sm font-semibold rounded-lg hover:bg-crimson/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -824,20 +834,29 @@ export default function EngagementDetail() {
         <p className="text-sm text-gray-warm mb-6 px-1">Phase prompts available after beginning Phase 0.</p>
       )}
 
-      {/* Phase Outputs Viewer */}
-      {data && (isInPhases || data.status === 'phases_complete' || data.status === 'debrief' ||
-        ALL_STATUSES.indexOf(data.status) > ALL_STATUSES.indexOf('documents_received')) && (() => {
+      {/* Phase Outputs Viewer — ALWAYS visible */}
+      {data && (() => {
         const outputs = data.phase_outputs || []
         const phaseGroups: Record<number, PhaseOutput[]> = {}
         for (const o of outputs) {
           if (!phaseGroups[o.phase]) phaseGroups[o.phase] = []
           phaseGroups[o.phase].push(o)
         }
+        const PHASE_TIMING: Record<number, string> = {
+          0: 'Pre-Engagement', 1: 'Days 1–3', 2: 'Days 4–6', 3: 'Days 7–9',
+          4: 'Days 10–11', 5: 'Days 12–13', 6: 'Pre-Delivery', 7: 'Post-Debrief',
+        }
+        const totalAccepted = outputs.filter(o => o.status === 'accepted').length
 
         return (
           <section className="bg-white rounded-lg border border-gray-light p-5 mb-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-display text-lg font-bold text-teal">Phase Outputs</h3>
+              <div>
+                <h3 className="font-display text-lg font-bold text-teal">Phase Outputs</h3>
+                {outputs.length > 0 && (
+                  <p className="text-xs text-gray-warm mt-0.5">{totalAccepted} of {outputs.length} outputs accepted across 8 phases</p>
+                )}
+              </div>
               {outputs.length === 0 && (
                 <button
                   onClick={seedOutputs}
@@ -850,9 +869,15 @@ export default function EngagementDetail() {
             </div>
 
             {outputs.length === 0 ? (
-              <p className="text-gray-warm text-sm">No phase outputs created yet. Click "Initialize Phase Outputs" to set up all 23 output tracking records.</p>
+              <div className="py-6 text-center">
+                <svg className="mx-auto w-10 h-10 text-gray-warm/50 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                </svg>
+                <p className="text-gray-warm text-sm mb-1">No phase outputs created yet.</p>
+                <p className="text-gray-warm text-xs">Click "Initialize Phase Outputs" to set up all 23 output tracking records.</p>
+              </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {[0, 1, 2, 3, 4, 5, 6, 7].map(phase => {
                   const phaseOutputs = phaseGroups[phase] || []
                   if (phaseOutputs.length === 0) return null
@@ -864,47 +889,48 @@ export default function EngagementDetail() {
                   const isExpanded = expandedPhases.has(phase)
 
                   return (
-                    <div key={phase} className="border border-gray-light rounded-lg overflow-hidden">
+                    <div key={phase} className={`border rounded-lg overflow-hidden ${allAccepted ? 'border-green/30' : 'border-gray-light'}`}>
                       {/* Phase header */}
                       <button
                         onClick={() => togglePhase(phase)}
-                        className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-ivory/50 transition-colors"
+                        className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-ivory/50 transition-colors cursor-pointer"
                       >
-                        <div className="flex items-center gap-3">
-                          <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
-                            allAccepted ? 'bg-teal text-white' : uploaded > 0 || accepted > 0 ? 'bg-amber/10 text-amber' : 'bg-gray-light text-gray-warm'
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                            allAccepted ? 'bg-teal text-white' : uploaded > 0 || accepted > 0 ? 'bg-crimson/10 text-crimson' : 'bg-crimson text-white'
                           }`}>
                             {allAccepted ? (
                               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                             ) : phase}
                           </span>
-                          <div>
-                            <span className="font-semibold text-charcoal text-sm">Phase {phase} — {PHASE_NAMES[phase]}</span>
-                            <span className="text-xs text-gray-warm ml-2">{total} output{total !== 1 ? 's' : ''}</span>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-charcoal text-sm">{PHASE_NAMES[phase]}</span>
+                              <span className="text-xs text-gray-warm">{PHASE_TIMING[phase]}</span>
+                              {isGate && (
+                                <span className="inline-flex items-center gap-1 text-xs bg-amber/10 text-amber px-1.5 py-0.5 rounded">
+                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" /></svg>
+                                  Review Gate
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-warm mt-0.5">{accepted} of {total} accepted{uploaded > 0 ? ` · ${uploaded} awaiting review` : ''}</p>
                           </div>
-                          {isGate && (
-                            <span className="text-xs bg-amber/10 text-amber px-2 py-0.5 rounded flex items-center gap-1">
-                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                              </svg>
-                              Review Gate
-                            </span>
-                          )}
                         </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs text-gray-warm">{accepted}/{total} accepted</span>
+                        <div className="flex items-center gap-2 flex-shrink-0">
                           {/* Copy prompt button */}
                           <button
                             onClick={e => { e.stopPropagation(); copyPhasePrompt(phase) }}
                             disabled={copyingPrompt === phase}
-                            className={`text-xs px-2 py-1 rounded font-semibold transition-colors ${
+                            className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded font-semibold transition-colors ${
                               promptCopied === phase
                                 ? 'bg-teal/10 text-teal'
                                 : 'bg-ivory text-teal hover:bg-teal/10'
                             }`}
                             title={`Copy Phase ${phase} prompt to clipboard`}
                           >
-                            {copyingPrompt === phase ? '...' : promptCopied === phase ? 'Copied!' : `Copy Prompt`}
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                            {copyingPrompt === phase ? '...' : promptCopied === phase ? 'Copied!' : 'Copy Prompt'}
                           </button>
                           <svg className={`w-4 h-4 text-gray-warm transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -958,13 +984,11 @@ export default function EngagementDetail() {
 
                                 {/* Actions */}
                                 <div className="flex items-center gap-2 flex-shrink-0">
-                                  {/* Download */}
                                   {output.download_url && (
                                     <a href={output.download_url} target="_blank" rel="noreferrer" className="text-xs text-teal font-semibold hover:underline">
                                       Download
                                     </a>
                                   )}
-                                  {/* Upload */}
                                   <input
                                     type="file"
                                     ref={el => { outputFileRefs.current[output.id] = el }}
@@ -983,7 +1007,6 @@ export default function EngagementDetail() {
                                   >
                                     {uploadingOutputId === output.id ? 'Uploading...' : output.storage_path ? 'Replace' : 'Upload'}
                                   </button>
-                                  {/* Accept */}
                                   {output.status === 'uploaded' && (
                                     <button
                                       onClick={() => acceptPhaseOutput(output.id)}
@@ -1390,14 +1413,13 @@ export default function EngagementDetail() {
         <section className="mt-6 pt-6 border-t border-gray-light">
           <h3 className="text-xs font-semibold text-gray-warm uppercase tracking-wider mb-3">Actions</h3>
           <div className="flex gap-3 flex-wrap">
-            {['phases_complete', 'debrief', 'wave_1_released', 'wave_2_released'].includes(data.status) && (
-              <button
-                onClick={() => setArchiveDialog(true)}
-                className="px-4 py-2 bg-charcoal text-white text-sm font-semibold rounded-lg hover:bg-charcoal/90"
-              >
-                Archive Engagement
-              </button>
-            )}
+            <button
+              onClick={() => setArchiveDialog(true)}
+              className="px-4 py-2 bg-charcoal text-white text-sm font-semibold rounded-lg hover:bg-charcoal/90 inline-flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+              Archive Engagement
+            </button>
             <button
               onClick={() => setDeleteDialog(true)}
               className="px-4 py-2 border border-red-soft text-red-soft text-sm font-semibold rounded-lg hover:bg-red-soft/5"
@@ -1555,20 +1577,39 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   )
 }
 
-function LegalDoc({ label, doc }: { label: string; doc?: { status: string; sent_at: string | null; signed_at: string | null } }) {
+function LegalDoc({ label, doc }: { label: string; doc?: { status: string; docusign_envelope_id: string | null; sent_at: string | null; signed_at: string | null } }) {
   return (
     <div className="p-4 bg-ivory rounded-lg">
-      <p className="font-semibold text-charcoal text-sm mb-2">{label}</p>
+      <div className="flex items-center justify-between mb-2">
+        <p className="font-semibold text-charcoal text-sm">{label}</p>
+        {doc?.status === 'signed' && (
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-green bg-green/10 px-2 py-0.5 rounded-full">
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+            Signed
+          </span>
+        )}
+        {doc?.status === 'sent' && (
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber bg-amber/10 px-2 py-0.5 rounded-full">
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            Awaiting Signature
+          </span>
+        )}
+      </div>
       {doc ? (
-        <div className="space-y-1 text-xs">
-          <p>
-            Status:{' '}
-            <span className={`font-semibold ${doc.status === 'signed' ? 'text-green' : doc.status === 'sent' ? 'text-amber' : 'text-gray-warm'}`}>
-              {statusLabel(doc.status)}
-            </span>
-          </p>
+        <div className="space-y-1.5 text-xs">
           {doc.sent_at && <p className="text-gray-warm">Sent: {formatDate(doc.sent_at)}</p>}
           {doc.signed_at && <p className="text-gray-warm">Signed: {formatDate(doc.signed_at)}</p>}
+          {doc.docusign_envelope_id && (
+            <a
+              href={`https://app.docusign.com/documents/details/${doc.docusign_envelope_id}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-teal font-semibold hover:underline mt-1"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+              View in DocuSign
+            </a>
+          )}
         </div>
       ) : (
         <p className="text-gray-warm text-xs">Not yet sent</p>

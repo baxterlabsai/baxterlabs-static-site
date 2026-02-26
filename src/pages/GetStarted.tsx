@@ -158,6 +158,16 @@ export default function GetStarted() {
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.primary_contact_email)) {
       errs.primary_contact_email = 'Please enter a valid email'
     }
+    if (!form.website_url.trim()) {
+      errs.website_url = 'Company website is required'
+    } else {
+      // Auto-prepend https:// if missing
+      let url = form.website_url.trim()
+      if (!/^https?:\/\//i.test(url)) {
+        url = `https://${url}`
+        setForm(prev => ({ ...prev, website_url: url }))
+      }
+    }
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -441,13 +451,13 @@ export default function GetStarted() {
                     />
                   </Field>
 
-                  <Field label="Company Website">
+                  <Field label="Company Website" required error={errors.website_url}>
                     <input
                       type="url"
                       value={form.website_url}
                       onChange={e => updateField('website_url', e.target.value)}
                       placeholder="https://www.acmeindustries.com"
-                      className={inputClass()}
+                      className={inputClass(errors.website_url)}
                     />
                   </Field>
                 </div>
