@@ -242,6 +242,13 @@ async def docusign_webhook(request: Request, background_tasks: BackgroundTasks):
                     "to": "partner",
                     "result": agreement_email_result,
                 })
+                # Generate upload_token on the fly if missing (legacy engagements)
+                if not engagement.get("upload_token"):
+                    import uuid as _uuid
+                    new_token = str(_uuid.uuid4())
+                    sb.table("engagements").update({"upload_token": new_token}).eq("id", engagement_id).execute()
+                    engagement["upload_token"] = new_token
+                    logger.info(f"Generated upload_token for engagement {engagement_id}: {new_token}")
                 # Send upload link to client
                 upload_token = engagement.get("upload_token")
                 client_email = engagement.get("clients", {}).get("primary_contact_email")

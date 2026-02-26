@@ -22,7 +22,7 @@ PARTNER_EMAIL = "george@baxterlabs.ai"
 
 class EmailService:
     def __init__(self):
-        self.development_mode = os.getenv("DEVELOPMENT_MODE", "true").lower() == "true"
+        self.development_mode = os.getenv("DEVELOPMENT_MODE", "false").lower() == "true"
         self.smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
         self.smtp_port = int(os.getenv("SMTP_PORT", "587"))
         self.smtp_username = os.getenv("SMTP_USERNAME", "")
@@ -89,7 +89,8 @@ class EmailService:
             with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
                 server.starttls()
                 server.login(self.smtp_username, self.smtp_password)
-                server.send_message(msg)
+                smtp_response = server.send_message(msg)
+                logger.info(f"SMTP response for to={to_email}: {smtp_response}")
 
             logger.info(f"Email sent to={to_email} subject='{subject}'")
             return {

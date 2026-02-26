@@ -131,13 +131,13 @@ async def archive_engagement(
     if current_status == "closed":
         raise HTTPException(status_code=400, detail="Engagement is already archived")
 
-    wave_2_idx = _status_index("wave_2_released")
+    phases_complete_idx = _status_index("phases_complete")
     current_idx = _status_index(current_status)
 
-    if current_idx < wave_2_idx:
+    if current_idx < phases_complete_idx:
         raise HTTPException(
             status_code=400,
-            detail="Engagement must have status 'wave_2_released' or later to archive",
+            detail="Engagement must have status 'phases_complete' or later to archive",
         )
 
     # ------------------------------------------------------------------

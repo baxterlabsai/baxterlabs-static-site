@@ -341,15 +341,27 @@ async def begin_phases(
 @router.post("/engagements/{engagement_id}/send-upload-link")
 async def send_upload_link(engagement_id: str, user: dict = Depends(verify_partner_auth)):
     """Send (or resend) the upload portal link to the client. Requires partner auth."""
+    import uuid as _uuid
+
+    sb = get_supabase()
     engagement = get_engagement_by_id(engagement_id)
     if not engagement:
         raise HTTPException(status_code=404, detail="Engagement not found")
+
+    # Generate upload_token on the fly if missing (legacy engagements)
+    if not engagement.get("upload_token"):
+        new_token = str(_uuid.uuid4())
+        sb.table("engagements").update({"upload_token": new_token}).eq("id", engagement_id).execute()
+        engagement["upload_token"] = new_token
+        logger.info(f"Generated upload_token for engagement {engagement_id}: {new_token}")
 
     email_svc = get_email_service()
     result = email_svc.send_upload_link(engagement)
 
     log_activity(engagement_id, "partner", "upload_link_sent", {
         "to": engagement.get("clients", {}).get("primary_contact_email"),
+        "upload_token": engagement.get("upload_token"),
+        "email_result": result,
     })
 
     return {"success": True, "email_result": result}

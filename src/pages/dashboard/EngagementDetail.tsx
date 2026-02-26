@@ -614,7 +614,7 @@ export default function EngagementDetail() {
               {beginLoading ? 'Starting...' : 'Begin Phase 0'}
             </button>
           )}
-          {['wave_2_released', 'debrief', 'closed'].includes(data.status) && data.status !== 'closed' && (
+          {['phases_complete', 'debrief', 'wave_1_released', 'wave_2_released'].includes(data.status) && (
             <button
               onClick={() => setArchiveDialog(true)}
               className="px-5 py-2.5 bg-charcoal text-white font-semibold rounded-lg hover:bg-charcoal/90 text-sm"
@@ -625,50 +625,47 @@ export default function EngagementDetail() {
         </div>
       </div>
 
-      {/* Reminder Buttons */}
-      {!isClosed && (
-        <div className="mb-6 flex flex-wrap gap-3">
-          {data.status === 'nda_pending' && (
-            <div className="flex flex-col items-start">
+      {/* Dynamic Reminder Button — one contextual button based on what's pending */}
+      {!isClosed && (() => {
+        const reminderConfig: { type: 'nda' | 'agreement' | 'documents'; label: string; icon: string } | null =
+          data.status === 'nda_pending'
+            ? { type: 'nda', label: 'Remind Client: Sign NDA', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' }
+          : data.status === 'agreement_pending'
+            ? { type: 'agreement', label: 'Remind Client: Sign Agreement', icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' }
+          : ['agreement_signed', 'documents_pending'].includes(data.status)
+            ? { type: 'documents', label: 'Remind Client: Upload Documents', icon: 'M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12' }
+          : null
+
+        if (!reminderConfig) return null
+
+        const { type, label, icon } = reminderConfig
+        const disabled = reminderLoading === type || isReminderDisabled(type)
+        const lastTs = lastReminders[type]
+
+        return (
+          <div className="mb-6">
+            <div className="inline-flex flex-col items-start">
               <button
-                onClick={() => sendReminder('nda')}
-                disabled={reminderLoading === 'nda' || isReminderDisabled('nda')}
-                title={isReminderDisabled('nda') ? 'Reminder already sent today' : ''}
-                className="px-4 py-2 border border-crimson text-crimson text-sm font-semibold rounded-lg hover:bg-crimson/5 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => sendReminder(type)}
+                disabled={disabled}
+                title={isReminderDisabled(type) ? 'Reminder already sent in the last 24 hours' : `Send ${label.replace('Remind Client: ', '')} reminder to ${data.clients.primary_contact_email}`}
+                className="inline-flex items-center gap-2 px-4 py-2 border border-crimson text-crimson text-sm font-semibold rounded-lg hover:bg-crimson/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {reminderLoading === 'nda' ? 'Sending...' : 'Remind: Sign NDA'}
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d={icon} />
+                </svg>
+                {reminderLoading === type ? 'Sending...' : label}
               </button>
-              {lastReminders.nda && <span className="text-xs text-gray-warm mt-1">Last reminded: {formatReminderTime(lastReminders.nda)}</span>}
+              {lastTs && (
+                <span className="text-xs text-gray-warm mt-1 ml-1">
+                  Last sent: {formatReminderTime(lastTs)}
+                  {isReminderDisabled(type) && ' (wait 24h)'}
+                </span>
+              )}
             </div>
-          )}
-          {data.status === 'agreement_pending' && (
-            <div className="flex flex-col items-start">
-              <button
-                onClick={() => sendReminder('agreement')}
-                disabled={reminderLoading === 'agreement' || isReminderDisabled('agreement')}
-                title={isReminderDisabled('agreement') ? 'Reminder already sent today' : ''}
-                className="px-4 py-2 border border-crimson text-crimson text-sm font-semibold rounded-lg hover:bg-crimson/5 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {reminderLoading === 'agreement' ? 'Sending...' : 'Remind: Sign Agreement'}
-              </button>
-              {lastReminders.agreement && <span className="text-xs text-gray-warm mt-1">Last reminded: {formatReminderTime(lastReminders.agreement)}</span>}
-            </div>
-          )}
-          {['agreement_signed', 'documents_pending'].includes(data.status) && (
-            <div className="flex flex-col items-start">
-              <button
-                onClick={() => sendReminder('documents')}
-                disabled={reminderLoading === 'documents' || isReminderDisabled('documents')}
-                title={isReminderDisabled('documents') ? 'Reminder already sent today' : ''}
-                className="px-4 py-2 border border-crimson text-crimson text-sm font-semibold rounded-lg hover:bg-crimson/5 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {reminderLoading === 'documents' ? 'Sending...' : 'Remind: Upload Documents'}
-              </button>
-              {lastReminders.documents && <span className="text-xs text-gray-warm mt-1">Last reminded: {formatReminderTime(lastReminders.documents)}</span>}
-            </div>
-          )}
-        </div>
-      )}
+          </div>
+        )
+      })()}
 
       {/* Closed Banner */}
       {data.status === 'closed' && (
@@ -1393,7 +1390,7 @@ export default function EngagementDetail() {
         <section className="mt-6 pt-6 border-t border-gray-light">
           <h3 className="text-xs font-semibold text-gray-warm uppercase tracking-wider mb-3">Actions</h3>
           <div className="flex gap-3 flex-wrap">
-            {['wave_2_released', 'debrief'].includes(data.status) && (
+            {['phases_complete', 'debrief', 'wave_1_released', 'wave_2_released'].includes(data.status) && (
               <button
                 onClick={() => setArchiveDialog(true)}
                 className="px-4 py-2 bg-charcoal text-white text-sm font-semibold rounded-lg hover:bg-charcoal/90"

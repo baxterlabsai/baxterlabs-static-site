@@ -95,8 +95,17 @@ export default function GetStarted() {
   const [submitError, setSubmitError] = useState('')
   const [currentStep, setCurrentStep] = useState(1)
 
+  const formatPhone = (raw: string): string => {
+    const digits = raw.replace(/\D/g, '').slice(0, 10)
+    if (digits.length === 0) return ''
+    if (digits.length <= 3) return `(${digits}`
+    if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+  }
+
   const updateField = (field: keyof FormData, value: string) => {
-    setForm(prev => ({ ...prev, [field]: value }))
+    const formatted = field === 'primary_contact_phone' ? formatPhone(value) : value
+    setForm(prev => ({ ...prev, [field]: formatted }))
     if (errors[field]) {
       setErrors(prev => {
         const next = { ...prev }
@@ -107,11 +116,19 @@ export default function GetStarted() {
   }
 
   const updateContact = (index: number, field: keyof InterviewContact, value: string) => {
+    const formatted = field === 'phone' ? formatPhone(value) : value
     setForm(prev => {
       const contacts = [...prev.interview_contacts]
-      contacts[index] = { ...contacts[index], [field]: value }
+      contacts[index] = { ...contacts[index], [field]: formatted }
       return { ...prev, interview_contacts: contacts }
     })
+    if (errors[`contact_${index}_${field}`]) {
+      setErrors(prev => {
+        const next = { ...prev }
+        delete next[`contact_${index}_${field}`]
+        return next
+      })
+    }
   }
 
   const addContact = () => {
@@ -149,6 +166,7 @@ export default function GetStarted() {
     const errs: Record<string, string> = {}
     if (!form.industry) errs.industry = 'Please select an industry'
     if (!form.revenue_range) errs.revenue_range = 'Please select a revenue range'
+    if (!form.employee_count) errs.employee_count = 'Please select an employee range'
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -169,7 +187,36 @@ export default function GetStarted() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const validateStep3 = (): boolean => {
+    const errs: Record<string, string> = {}
+    // Contact 1 is required
+    const c1 = form.interview_contacts[0]
+    if (!c1 || !c1.name.trim()) errs.contact_0_name = 'Contact 1 name is required'
+    if (!c1 || !c1.title.trim()) errs.contact_0_title = 'Contact 1 title is required'
+    if (!c1 || !c1.email.trim()) {
+      errs.contact_0_email = 'Contact 1 email is required'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c1.email)) {
+      errs.contact_0_email = 'Please enter a valid email'
+    }
+    // Contacts 2-3: if name is provided, require title and email
+    for (let i = 1; i < form.interview_contacts.length; i++) {
+      const c = form.interview_contacts[i]
+      if (c.name.trim()) {
+        if (!c.title.trim()) errs[`contact_${i}_title`] = 'Title is required'
+        if (!c.email.trim()) {
+          errs[`contact_${i}_email`] = 'Email is required'
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)) {
+          errs[`contact_${i}_email`] = 'Please enter a valid email'
+        }
+      }
+    }
+    setErrors(errs)
+    return Object.keys(errs).length === 0
+  }
+
   const handleSubmit = async () => {
+    if (!validateStep3()) return
+
     setSubmitting(true)
     setSubmitError('')
 
@@ -459,11 +506,11 @@ export default function GetStarted() {
                       </select>
                     </Field>
 
-                    <Field label="Number of Employees">
+                    <Field label="Number of Employees" required error={errors.employee_count}>
                       <select
                         value={form.employee_count}
                         onChange={e => updateField('employee_count', e.target.value)}
-                        className={selectClass()}
+                        className={selectClass(errors.employee_count)}
                       >
                         <option value="">Select range...</option>
                         {EMPLOYEE_OPTIONS.map(opt => (
@@ -532,7 +579,7 @@ export default function GetStarted() {
                   Interview Contacts
                 </h2>
                 <p className="text-gray-warm text-sm mb-6">
-                  Provide up to 3 people we may interview during the audit — department heads, controllers, operations leads, etc. At least one contact is recommended.
+                  Provide up to 3 people we may interview during the audit — department heads, controllers, operations leads, etc. <strong className="text-charcoal">At least one contact is required.</strong>
                 </p>
 
                 <div className="space-y-6">
@@ -551,29 +598,38 @@ export default function GetStarted() {
                       </div>
                       <div className="space-y-3">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <input
-                            type="text"
-                            value={contact.name}
-                            onChange={e => updateContact(idx, 'name', e.target.value)}
-                            placeholder="Full name"
-                            className={inputClass()}
-                          />
-                          <input
-                            type="text"
-                            value={contact.title}
-                            onChange={e => updateContact(idx, 'title', e.target.value)}
-                            placeholder="Title (e.g., CFO)"
-                            className={inputClass()}
-                          />
+                          <div>
+                            <input
+                              type="text"
+                              value={contact.name}
+                              onChange={e => updateContact(idx, 'name', e.target.value)}
+                              placeholder={idx === 0 ? 'Full name *' : 'Full name'}
+                              className={inputClass(errors[`contact_${idx}_name`])}
+                            />
+                            {errors[`contact_${idx}_name`] && <p className="mt-1 text-xs text-red-soft font-medium">{errors[`contact_${idx}_name`]}</p>}
+                          </div>
+                          <div>
+                            <input
+                              type="text"
+                              value={contact.title}
+                              onChange={e => updateContact(idx, 'title', e.target.value)}
+                              placeholder={idx === 0 ? 'Title (e.g., CFO) *' : 'Title (e.g., CFO)'}
+                              className={inputClass(errors[`contact_${idx}_title`])}
+                            />
+                            {errors[`contact_${idx}_title`] && <p className="mt-1 text-xs text-red-soft font-medium">{errors[`contact_${idx}_title`]}</p>}
+                          </div>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <input
-                            type="email"
-                            value={contact.email}
-                            onChange={e => updateContact(idx, 'email', e.target.value)}
-                            placeholder="Email"
-                            className={inputClass()}
-                          />
+                          <div>
+                            <input
+                              type="email"
+                              value={contact.email}
+                              onChange={e => updateContact(idx, 'email', e.target.value)}
+                              placeholder={idx === 0 ? 'Email *' : 'Email'}
+                              className={inputClass(errors[`contact_${idx}_email`])}
+                            />
+                            {errors[`contact_${idx}_email`] && <p className="mt-1 text-xs text-red-soft font-medium">{errors[`contact_${idx}_email`]}</p>}
+                          </div>
                           <input
                             type="tel"
                             value={contact.phone}
