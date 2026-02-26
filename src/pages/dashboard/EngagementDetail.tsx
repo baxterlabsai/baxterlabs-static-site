@@ -137,11 +137,6 @@ const FILE_TYPE_ICONS: Record<string, string> = {
   docx: 'W', xlsx: 'X', pptx: 'P', md: 'M', pdf: 'PDF',
 }
 
-const UPLOAD_LINK_STATUSES = new Set([
-  'agreement_signed', 'documents_pending', 'documents_received',
-  'phase_1', 'phase_2', 'phase_3',
-])
-
 const DELIVERABLE_LABELS: Record<string, string> = {
   exec_summary: 'Executive Summary',
   full_report: 'Full Diagnostic Report',
@@ -216,8 +211,6 @@ export default function EngagementDetail() {
   const [error, setError] = useState('')
   const [researchLoading, setResearchLoading] = useState('')
   const [expandedBrief, setExpandedBrief] = useState<string | null>(null)
-  const [sendingUploadLink, setSendingUploadLink] = useState(false)
-  const [uploadLinkSent, setUploadLinkSent] = useState(false)
   const [downloadingDocId, setDownloadingDocId] = useState<string | null>(null)
   const [phasePrompt, setPhasePrompt] = useState<{ phase_number: number; name: string; rendered_text: string; variables_used: Record<string, string> } | null>(null)
   const [promptLoading, setPromptLoading] = useState(false)
@@ -254,8 +247,6 @@ export default function EngagementDetail() {
     apiGet<EngagementData>(`/api/engagements/${id}`)
       .then(async (d) => {
         setData(d)
-        const linkSent = d.activity_log.some(l => l.action === 'upload_link_sent')
-        if (linkSent) setUploadLinkSent(true)
         // Auto-seed phase outputs if empty
         if (!d.phase_outputs || d.phase_outputs.length === 0) {
           try {
@@ -282,16 +273,6 @@ export default function EngagementDetail() {
       await apiPost(`/api/engagements/${id}/research/${type}`)
     } catch {}
     setResearchLoading('')
-  }
-
-  const sendUploadLink = async () => {
-    if (!id) return
-    setSendingUploadLink(true)
-    try {
-      await apiPost(`/api/engagements/${id}/send-upload-link`)
-      setUploadLinkSent(true)
-    } catch {}
-    setSendingUploadLink(false)
   }
 
   const downloadDoc = async (docId: string) => {
@@ -589,7 +570,6 @@ export default function EngagementDetail() {
   }
 
   const isClosed = data.status === 'closed'
-  const showUploadLinkButton = !isClosed && UPLOAD_LINK_STATUSES.has(data.status)
 
   return (
     <div className="max-w-5xl">
