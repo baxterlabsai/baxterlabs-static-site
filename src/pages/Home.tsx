@@ -5,18 +5,18 @@ export default function Home() {
   return (
     <>
       <SEO
-        title="BaxterLabs Advisory | 14-Day Profit Leak Audit"
-        description="BaxterLabs Advisory delivers a 14-day fixed-fee audit that pinpoints where your business is losing margin. $12,500 all-in. Board-ready deliverables."
+        title="BaxterLabs Advisory | 14-Day Profit Leak Diagnostic"
+        description="BaxterLabs Advisory delivers a 14-day fixed-fee diagnostic that pinpoints where your business is losing margin. $12,500 all-in. Board-ready deliverables."
       />
 
       {/* Hero */}
       <section className="bg-white py-20 md:py-28">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-crimson mb-6">
-            Find the Profit You're Leaving on the Table.
+            Get Back in Control of Your Margins.
           </h1>
           <p className="text-lg md:text-xl text-charcoal max-w-3xl mx-auto mb-10">
-            BaxterLabs Advisory delivers a 14-day fixed-fee audit that pinpoints exactly where your business is losing margin — and shows you how to get it back.
+            BaxterLabs Advisory delivers a 14-day fixed-fee diagnostic that pinpoints exactly where your business is losing margin — and shows you how to get it back.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
@@ -85,7 +85,7 @@ export default function Home() {
             A 14-Day Diagnostic That Pays for Itself.
           </h2>
           <p className="text-charcoal text-base md:text-lg">
-            The BaxterLabs 14-Day Profit Leak &amp; Operational Efficiency Audit is a fixed-scope, fixed-fee engagement that delivers enterprise-level analytical rigor in two weeks. We collect your financials, interview your leadership, map your workflows, and hand you a board-ready report that tells you exactly what's leaking, how much, and how to stop it.
+            The BaxterLabs 14-Day Profit Leak &amp; Operational Efficiency Diagnostic is a fixed-scope, fixed-fee engagement that delivers enterprise-level analytical rigor in two weeks. We collect your financials, interview your leadership, map your workflows, and hand you a board-ready report that tells you exactly what's leaking, how much, and how to stop it.
           </p>
         </div>
       </section>
@@ -180,10 +180,10 @@ export default function Home() {
       <section className="bg-crimson py-16 md:py-20">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="font-display text-3xl md:text-4xl font-bold text-white mb-6">
-            Ready to Find Your Profit Leaks?
+            Ready to Get Your Margins Back on Track?
           </h2>
           <p className="text-white/90 text-base md:text-lg mb-10 max-w-2xl mx-auto">
-            A 30-minute discovery call is free and confidential. We'll ask a few questions, share what we're seeing in your industry, and tell you honestly whether this engagement makes sense for your business.
+            A 30-minute discovery call is free and confidential. We'll ask a few questions, share what we're seeing in your industry, and tell you honestly whether this engagement makes sense for your business. We work with a limited number of firms each quarter to ensure dedicated partner attention.
           </p>
           <Link
             to="/get-started"

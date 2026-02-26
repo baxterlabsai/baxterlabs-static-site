@@ -330,14 +330,14 @@ export default function GetStarted() {
     <>
       <SEO
         title="Get Started | BaxterLabs Advisory"
-        description="Book a free 30-minute discovery call with BaxterLabs Advisory. We'll tell you honestly whether a profit leak audit makes sense for your business."
+        description="Book a free 30-minute discovery call with BaxterLabs Advisory. We'll tell you honestly whether a profit leak diagnostic makes sense for your business."
       />
 
       {/* Header */}
       <section className="bg-white py-16 md:py-20">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="font-display text-4xl md:text-5xl font-bold text-crimson mb-6">
-            Let's Find Your Profit Leaks.
+            Let's Get Your Margins Back on Track.
           </h1>
           <p className="text-charcoal text-base md:text-lg max-w-2xl mx-auto">
             Complete the form below to get started. We'll send you an NDA, then schedule a free discovery call to see if a BaxterLabs engagement is the right fit.
@@ -589,7 +589,7 @@ export default function GetStarted() {
                   Interview Contacts
                 </h2>
                 <p className="text-gray-warm text-sm mb-6">
-                  Provide up to 3 people we may interview during the audit — department heads, controllers, operations leads, etc. <strong className="text-charcoal">At least one contact is required.</strong>
+                  Provide up to 3 people we may interview during the diagnostic — department heads, controllers, operations leads, etc. <strong className="text-charcoal">At least one contact is required.</strong>
                 </p>
 
                 <div className="space-y-6">

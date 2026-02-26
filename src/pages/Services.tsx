@@ -6,13 +6,13 @@ export default function Services() {
     <>
       <SEO
         title="Services | BaxterLabs Advisory"
-        description="14-day fixed-fee profit leak audit ($12,500) and optional implementation retainer. Enterprise-level analytical rigor for mid-market businesses."
+        description="14-day fixed-fee profit leak diagnostic ($12,500) and optional implementation retainer. Enterprise-level analytical rigor for mid-market businesses."
       />
 
-      {/* Phase 1 — The 14-Day Audit */}
+      {/* Phase 1 — The 14-Day Diagnostic */}
       <section className="bg-white py-16 md:py-20">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-sm font-semibold text-teal uppercase tracking-wide mb-4">Phase 1 — The 14-Day Audit</p>
+          <p className="text-sm font-semibold text-teal uppercase tracking-wide mb-4">Phase 1 — The 14-Day Diagnostic</p>
           <h1 className="font-display text-4xl md:text-5xl font-bold text-crimson mb-8">
             Stop Guessing. Start Knowing.
           </h1>
@@ -38,7 +38,7 @@ export default function Services() {
           </h2>
           <div className="space-y-5 text-charcoal text-base md:text-lg">
             <p>
-              After the audit, we offer an optional Implementation Retainer to support your team in executing the recommendations. Whether you need strategic guidance or hands-on support, we have a tier that fits your pace and bandwidth.
+              After the diagnostic, we offer an optional Implementation Retainer to support your team in executing the recommendations. Whether you need strategic guidance or hands-on support, we have a tier that fits your pace and bandwidth.
             </p>
           </div>
           <div className="mt-8 bg-white border-l-4 border-l-crimson rounded-lg p-6">
