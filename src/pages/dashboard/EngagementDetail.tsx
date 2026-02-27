@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { apiGet, apiPost, apiPut, apiPatch, apiUpload, apiDelete } from '../../lib/api'
+import { useToast } from '../../components/Toast'
 
 interface PhaseOutput {
   id: string
@@ -240,6 +241,7 @@ export default function EngagementDetail() {
   const [acceptingPhase, setAcceptingPhase] = useState<number | null>(null)
   const outputFileRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const navigate = useNavigate()
+  const { toast } = useToast()
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   // Pipeline source and referrals
@@ -479,9 +481,13 @@ export default function EngagementDetail() {
     if (!id) return
     setDeleting(true)
     try {
-      await apiDelete(`/api/engagements/${id}`)
+      const result = await apiDelete<{ message: string }>(`/api/engagements/${id}`)
+      toast(result.message || 'Engagement permanently deleted.', 'success')
       navigate('/dashboard')
-    } catch {}
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to delete engagement.'
+      toast(message, 'error')
+    }
     setDeleting(false)
   }
 
@@ -1716,13 +1722,21 @@ export default function EngagementDetail() {
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
             <div className="flex items-center gap-2 mb-3">
               <svg className="w-5 h-5 text-red-soft" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
-              <h3 className="font-display text-lg font-bold text-charcoal">Delete Engagement</h3>
+              <h3 className="font-display text-lg font-bold text-charcoal">Permanently Delete Engagement</h3>
             </div>
-            <p className="text-sm text-charcoal mb-4">
-              This will remove the engagement from your dashboard. This action can be undone by contacting support. Are you sure?
+            <p className="text-sm text-charcoal mb-2">
+              This will permanently delete <strong>{data?.clients?.company_name || 'this engagement'}</strong> and all associated data:
             </p>
+            <ul className="text-sm text-charcoal mb-3 list-disc pl-5 space-y-0.5">
+              <li>Documents & uploaded files</li>
+              <li>Deliverables & phase outputs</li>
+              <li>Invoices & follow-up sequences</li>
+              <li>Research, legal documents & activity log</li>
+              <li>Storage files</li>
+            </ul>
+            <p className="text-sm text-red-soft font-semibold mb-4">This action cannot be undone.</p>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setDeleteDialog(false)}
@@ -1735,7 +1749,7 @@ export default function EngagementDetail() {
                 disabled={deleting}
                 className="px-4 py-2 bg-red-soft text-white text-sm font-semibold rounded-lg hover:bg-red-soft/90 disabled:opacity-50"
               >
-                {deleting ? 'Deleting...' : 'Yes, Delete'}
+                {deleting ? 'Deleting...' : 'Permanently Delete'}
               </button>
             </div>
           </div>

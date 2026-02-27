@@ -88,26 +88,119 @@ async def delete_engagement(
     engagement_id: str,
     user: dict = Depends(verify_partner_auth),
 ):
-    """Soft-delete an engagement. Sets is_deleted=True and deleted_at timestamp.
-    The engagement will no longer appear in dashboard queries."""
+    """Permanently delete an engagement and all related data.
+
+    Deletion order:
+    1. invoices (no cascade constraint)
+    2. follow_up_sequences (no cascade constraint)
+    3. NULL out pipeline_opportunities refs (bare FK would block delete)
+    4. Storage files in engagements bucket
+    5. Hard-delete engagement (ON DELETE CASCADE handles 8 child tables)
+    6. Delete orphaned client if no other engagements reference it
+    """
     engagement = get_engagement_by_id(engagement_id)
     if not engagement:
         raise HTTPException(status_code=404, detail="Engagement not found")
 
-    if engagement.get("is_deleted"):
-        raise HTTPException(status_code=400, detail="Engagement is already deleted")
+    client_id: Optional[str] = engagement.get("client_id")
+    company_name = (engagement.get("clients") or {}).get("company_name", "unknown")
+    deleted_by = user.get("email", "unknown")
+
+    logger.info(
+        "Deleting engagement %s (%s) — requested by %s",
+        engagement_id,
+        company_name,
+        deleted_by,
+    )
 
     sb = get_supabase()
-    sb.table("engagements").update({
-        "is_deleted": True,
-        "deleted_at": datetime.now(timezone.utc).isoformat(),
-    }).eq("id", engagement_id).execute()
+    summary: dict = {}
 
-    log_activity(engagement_id, "partner", "engagement_deleted", {
-        "deleted_by": user.get("email"),
-    })
+    # ------------------------------------------------------------------
+    # 1. Delete invoices (no ON DELETE CASCADE)
+    # ------------------------------------------------------------------
+    try:
+        result = sb.table("invoices").delete().eq("engagement_id", engagement_id).execute()
+        summary["invoices_deleted"] = len(result.data) if result.data else 0
+    except Exception as exc:
+        logger.warning("Failed to delete invoices for %s: %s", engagement_id, exc)
+        summary["invoices_deleted"] = "error"
 
-    return {"success": True, "message": "Engagement deleted."}
+    # ------------------------------------------------------------------
+    # 2. Delete follow_up_sequences (no ON DELETE CASCADE)
+    # ------------------------------------------------------------------
+    try:
+        result = sb.table("follow_up_sequences").delete().eq("engagement_id", engagement_id).execute()
+        summary["follow_ups_deleted"] = len(result.data) if result.data else 0
+    except Exception as exc:
+        logger.warning("Failed to delete follow_up_sequences for %s: %s", engagement_id, exc)
+        summary["follow_ups_deleted"] = "error"
+
+    # ------------------------------------------------------------------
+    # 3. NULL out pipeline_opportunities (bare FK would block delete)
+    # ------------------------------------------------------------------
+    try:
+        result = (
+            sb.table("pipeline_opportunities")
+            .update({"converted_engagement_id": None, "converted_client_id": None, "stage": "negotiation"})
+            .eq("converted_engagement_id", engagement_id)
+            .execute()
+        )
+        summary["pipeline_unlinked"] = len(result.data) if result.data else 0
+    except Exception as exc:
+        logger.warning("Failed to unlink pipeline_opportunities for %s: %s", engagement_id, exc)
+        summary["pipeline_unlinked"] = "error"
+
+    # ------------------------------------------------------------------
+    # 4. Delete storage files
+    # ------------------------------------------------------------------
+    try:
+        all_files = _list_all_files(sb, "engagements", engagement_id)
+        if all_files:
+            sb.storage.from_("engagements").remove(all_files)
+        summary["files_deleted"] = len(all_files)
+    except Exception as exc:
+        logger.warning("Failed to delete storage files for %s: %s", engagement_id, exc)
+        summary["files_deleted"] = "error"
+
+    # ------------------------------------------------------------------
+    # 5. Hard-delete engagement (CASCADE handles child tables)
+    # ------------------------------------------------------------------
+    try:
+        sb.table("engagements").delete().eq("id", engagement_id).execute()
+    except Exception as exc:
+        logger.error("Failed to delete engagement %s: %s", engagement_id, exc)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete engagement: {exc}",
+        )
+
+    # ------------------------------------------------------------------
+    # 6. Delete orphaned client
+    # ------------------------------------------------------------------
+    try:
+        if client_id:
+            remaining = (
+                sb.table("engagements")
+                .select("id")
+                .eq("client_id", client_id)
+                .limit(1)
+                .execute()
+            )
+            if not remaining.data:
+                sb.table("clients").delete().eq("id", client_id).execute()
+                summary["client_deleted"] = True
+            else:
+                summary["client_deleted"] = False
+    except Exception as exc:
+        logger.warning("Failed to clean up client %s: %s", client_id, exc)
+        summary["client_deleted"] = "error"
+
+    return {
+        "success": True,
+        "message": f"Engagement for {company_name} permanently deleted.",
+        "summary": summary,
+    }
 
 
 @router.post("/engagements/{engagement_id}/archive")
