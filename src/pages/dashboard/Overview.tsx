@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { apiGet } from '../../lib/api'
+import { apiGet, apiPatch } from '../../lib/api'
 
 interface Engagement {
   id: string
@@ -24,6 +24,31 @@ interface RevenueSummary {
   invoice_count: number
   deposit_count: number
   final_count: number
+}
+
+interface FollowUp {
+  id: string
+  engagement_id: string
+  touchpoint: string
+  scheduled_date: string
+  status: string
+  snoozed_until: string | null
+  subject_template: string
+  body_template: string
+  actual_subject: string | null
+  actual_body: string | null
+  clients: {
+    id: string
+    company_name: string
+    primary_contact_name: string
+    primary_contact_email: string
+  } | null
+  engagements: {
+    id: string
+    partner_lead: string | null
+    fee: number | null
+    status: string
+  } | null
 }
 
 interface PipelineStats {
@@ -123,6 +148,11 @@ export default function Overview() {
   const [engagements, setEngagements] = useState<Engagement[]>([])
   const [pipelineStats, setPipelineStats] = useState<PipelineStats | null>(null)
   const [revenueSummary, setRevenueSummary] = useState<RevenueSummary | null>(null)
+  const [followUps, setFollowUps] = useState<FollowUp[]>([])
+  const [expandedFollowUp, setExpandedFollowUp] = useState<string | null>(null)
+  const [editedSubjects, setEditedSubjects] = useState<Record<string, string>>({})
+  const [editedBodies, setEditedBodies] = useState<Record<string, string>>({})
+  const [followUpActionLoading, setFollowUpActionLoading] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [sortField, setSortField] = useState<SortField>('created')
@@ -134,11 +164,13 @@ export default function Overview() {
       apiGet<{ engagements: Engagement[] }>('/api/engagements'),
       apiGet<PipelineStats>('/api/pipeline/stats').catch(() => null),
       apiGet<RevenueSummary>('/api/invoices/revenue-summary').catch(() => null),
+      apiGet<{ follow_ups: FollowUp[] }>('/api/follow-ups?upcoming_only=true').catch(() => null),
     ])
-      .then(([engData, statsData, revenueData]) => {
+      .then(([engData, statsData, revenueData, followUpData]) => {
         setEngagements(engData.engagements)
         if (statsData) setPipelineStats(statsData)
         if (revenueData) setRevenueSummary(revenueData)
+        if (followUpData) setFollowUps(followUpData.follow_ups)
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
@@ -297,6 +329,150 @@ export default function Overview() {
                 <p className="text-lg font-bold text-charcoal">{revenueSummary.invoice_count}</p>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Follow-Up Queue */}
+      {followUps.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-xl font-bold text-charcoal flex items-center gap-2">
+              Follow-Up Queue
+              <span className="bg-gold text-charcoal text-xs font-bold px-2 py-0.5 rounded-full">{followUps.length}</span>
+            </h2>
+          </div>
+          <div className="space-y-3">
+            {followUps.map(fu => {
+              const today = new Date()
+              today.setHours(0, 0, 0, 0)
+              const scheduled = new Date(fu.scheduled_date + 'T00:00:00')
+              const diffDays = Math.ceil((scheduled.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+              const isOverdue = diffDays < 0
+              const isExpanded = expandedFollowUp === fu.id
+              const touchpointLabels: Record<string, string> = { '30_day': '30-Day', '60_day': '60-Day', '90_day': '90-Day' }
+              const touchpointColors: Record<string, string> = { '30_day': 'bg-blue-100 text-blue-800', '60_day': 'bg-amber/20 text-charcoal', '90_day': 'bg-teal/10 text-teal' }
+              const clientEmail = fu.clients?.primary_contact_email || ''
+
+              // Render template variables inline
+              const vars: Record<string, string> = {
+                contact_name: fu.clients?.primary_contact_name || 'there',
+                company_name: fu.clients?.company_name || 'your company',
+                partner_name: fu.engagements?.partner_lead || 'George DeVries',
+                metric_1_from_diagnostic: '[Key metric 1 — edit before sending]',
+                metric_2_from_diagnostic: '[Key metric 2 — edit before sending]',
+              }
+              const renderTpl = (tpl: string) => {
+                let r = tpl
+                for (const [k, v] of Object.entries(vars)) r = r.replaceAll(`{${k}}`, v)
+                return r
+              }
+              const renderedSubject = editedSubjects[fu.id] ?? fu.actual_subject ?? renderTpl(fu.subject_template)
+              const renderedBody = editedBodies[fu.id] ?? fu.actual_body ?? renderTpl(fu.body_template)
+
+              return (
+                <div key={fu.id} className={`bg-white rounded-lg border ${isOverdue ? 'border-red-soft/40' : 'border-gray-light'} overflow-hidden`}>
+                  {/* Collapsed header */}
+                  <button
+                    onClick={() => setExpandedFollowUp(isExpanded ? null : fu.id)}
+                    className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-ivory/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-semibold text-charcoal">{fu.clients?.company_name || '—'}</span>
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${touchpointColors[fu.touchpoint] || 'bg-gray-light text-charcoal'}`}>
+                        {touchpointLabels[fu.touchpoint] || fu.touchpoint}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`text-xs font-medium ${isOverdue ? 'text-red-soft' : diffDays <= 3 ? 'text-amber' : 'text-gray-warm'}`}>
+                        {isOverdue ? `${Math.abs(diffDays)}d overdue` : diffDays === 0 ? 'Due today' : `Due in ${diffDays}d`}
+                      </span>
+                      <svg className={`w-4 h-4 text-gray-warm transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                      </svg>
+                    </div>
+                  </button>
+
+                  {/* Expanded content */}
+                  {isExpanded && (
+                    <div className="border-t border-gray-light px-4 py-4">
+                      <div className="mb-3">
+                        <label className="text-xs font-semibold text-gray-warm uppercase tracking-wider">Subject</label>
+                        <input
+                          type="text"
+                          value={renderedSubject}
+                          onChange={e => setEditedSubjects(prev => ({ ...prev, [fu.id]: e.target.value }))}
+                          className="mt-1 w-full px-3 py-2 border border-gray-light rounded-lg text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-teal/30"
+                        />
+                      </div>
+                      <div className="mb-4">
+                        <label className="text-xs font-semibold text-gray-warm uppercase tracking-wider">Body</label>
+                        <textarea
+                          value={renderedBody}
+                          onChange={e => setEditedBodies(prev => ({ ...prev, [fu.id]: e.target.value }))}
+                          rows={10}
+                          className="mt-1 w-full px-3 py-2 border border-gray-light rounded-lg text-sm text-charcoal font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-teal/30"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          disabled={followUpActionLoading === fu.id}
+                          onClick={async () => {
+                            setFollowUpActionLoading(fu.id)
+                            try {
+                              await apiPatch(`/api/follow-ups/${fu.id}`, { action: 'send', actual_subject: renderedSubject, actual_body: renderedBody })
+                              // Open mailto
+                              const mailtoUrl = `mailto:${encodeURIComponent(clientEmail)}?subject=${encodeURIComponent(renderedSubject)}&body=${encodeURIComponent(renderedBody)}`
+                              window.open(mailtoUrl, '_blank')
+                              setFollowUps(prev => prev.filter(f => f.id !== fu.id))
+                              setExpandedFollowUp(null)
+                            } catch {}
+                            setFollowUpActionLoading(null)
+                          }}
+                          className="px-4 py-2 bg-teal text-white text-sm font-semibold rounded-lg hover:bg-teal/90 disabled:opacity-50 inline-flex items-center gap-1.5"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                          </svg>
+                          Send
+                        </button>
+                        <button
+                          disabled={followUpActionLoading === fu.id}
+                          onClick={async () => {
+                            setFollowUpActionLoading(fu.id)
+                            try {
+                              await apiPatch(`/api/follow-ups/${fu.id}`, { action: 'snooze', snooze_days: 7 })
+                              setFollowUps(prev => prev.filter(f => f.id !== fu.id))
+                              setExpandedFollowUp(null)
+                            } catch {}
+                            setFollowUpActionLoading(null)
+                          }}
+                          className="px-4 py-2 bg-gray-light text-charcoal text-sm font-semibold rounded-lg hover:bg-gray-light/80 disabled:opacity-50"
+                        >
+                          Snooze 7 Days
+                        </button>
+                        <button
+                          disabled={followUpActionLoading === fu.id}
+                          onClick={async () => {
+                            if (!confirm('Skip this touchpoint? It won\'t appear again.')) return
+                            setFollowUpActionLoading(fu.id)
+                            try {
+                              await apiPatch(`/api/follow-ups/${fu.id}`, { action: 'skip' })
+                              setFollowUps(prev => prev.filter(f => f.id !== fu.id))
+                              setExpandedFollowUp(null)
+                            } catch {}
+                            setFollowUpActionLoading(null)
+                          }}
+                          className="px-4 py-2 text-red-soft text-sm font-semibold hover:bg-red-soft/10 rounded-lg disabled:opacity-50"
+                        >
+                          Skip
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
       )}

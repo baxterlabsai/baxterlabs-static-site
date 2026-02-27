@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { apiGet, apiPost, apiPut, apiUpload, apiDelete } from '../../lib/api'
+import { apiGet, apiPost, apiPut, apiPatch, apiUpload, apiDelete } from '../../lib/api'
 
 interface PhaseOutput {
   id: string
@@ -253,6 +253,10 @@ export default function EngagementDetail() {
   const [voidingInvoiceId, setVoidingInvoiceId] = useState<string | null>(null)
   const [markingPaidId, setMarkingPaidId] = useState<string | null>(null)
 
+  // Follow-ups
+  const [followUps, setFollowUps] = useState<Array<{ id: string; touchpoint: string; status: string; scheduled_date: string; sent_at: string | null; skipped_at: string | null; snoozed_until: string | null }>>([])
+  const [followUpActionLoading, setFollowUpActionLoading] = useState<string | null>(null)
+
   useEffect(() => {
     if (!id) return
     // Check if engagement was created from pipeline
@@ -272,6 +276,10 @@ export default function EngagementDetail() {
     // Fetch invoices
     apiGet<{ invoices: typeof invoices }>(`/api/engagements/${id}/invoices`)
       .then(data => setInvoices(data.invoices))
+      .catch(() => {})
+    // Fetch follow-ups
+    apiGet<{ follow_ups: typeof followUps }>(`/api/engagements/${id}/follow-ups`)
+      .then(data => setFollowUps(data.follow_ups))
       .catch(() => {})
   }, [id])
 
@@ -1605,6 +1613,61 @@ export default function EngagementDetail() {
           </div>
         )}
       </section>
+
+      {/* Follow-Up Sequence */}
+      {followUps.length > 0 && (
+        <section className="bg-white rounded-lg border border-gray-light p-5 mt-6">
+          <h3 className="font-display text-lg font-bold text-teal flex items-center gap-2 mb-4">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+            </svg>
+            Post-Engagement Follow-Ups
+          </h3>
+          <div className="space-y-2">
+            {followUps.map(fu => {
+              const touchpointLabels: Record<string, string> = { '30_day': '30-Day Check-In', '60_day': '60-Day Pulse Check', '90_day': '90-Day Review Offer' }
+              const statusColors: Record<string, string> = {
+                scheduled: 'bg-blue-100 text-blue-800',
+                sent: 'bg-green/10 text-green',
+                skipped: 'bg-gray-light text-gray-warm',
+                snoozed: 'bg-amber/20 text-charcoal',
+              }
+              return (
+                <div key={fu.id} className="flex items-center justify-between py-2.5 px-4 border border-gray-light rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-charcoal">{touchpointLabels[fu.touchpoint] || fu.touchpoint}</span>
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${statusColors[fu.status] || 'bg-gray-light text-charcoal'}`}>
+                      {statusLabel(fu.status)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-warm">
+                      {fu.sent_at ? `Sent ${formatDate(fu.sent_at)}` : fu.skipped_at ? `Skipped ${formatDate(fu.skipped_at)}` : `Scheduled ${formatDate(fu.scheduled_date)}`}
+                    </span>
+                    {fu.status === 'scheduled' && (
+                      <button
+                        disabled={followUpActionLoading === fu.id}
+                        onClick={async () => {
+                          if (!confirm(`Skip the ${touchpointLabels[fu.touchpoint] || fu.touchpoint} follow-up?`)) return
+                          setFollowUpActionLoading(fu.id)
+                          try {
+                            await apiPatch(`/api/follow-ups/${fu.id}`, { action: 'skip' })
+                            setFollowUps(prev => prev.map(f => f.id === fu.id ? { ...f, status: 'skipped', skipped_at: new Date().toISOString() } : f))
+                          } catch {}
+                          setFollowUpActionLoading(null)
+                        }}
+                        className="text-xs text-gray-warm hover:text-red-soft font-medium disabled:opacity-50"
+                      >
+                        Skip
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Activity Log */}
       <section className="bg-white rounded-lg border border-gray-light p-5 mt-6">

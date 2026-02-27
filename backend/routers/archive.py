@@ -343,7 +343,21 @@ async def archive_engagement(
         )
 
     # ------------------------------------------------------------------
-    # 8. Return
+    # 8. Create post-engagement follow-up sequence
+    # ------------------------------------------------------------------
+    try:
+        from services.follow_up_service import create_follow_up_sequence
+        client = engagement.get("clients", {})
+        create_follow_up_sequence(engagement, client)
+    except Exception as exc:
+        logger.warning(
+            "Failed to create follow-up sequence for engagement %s: %s",
+            engagement_id,
+            exc,
+        )
+
+    # ------------------------------------------------------------------
+    # 9. Return
     # ------------------------------------------------------------------
     return {
         "success": True,

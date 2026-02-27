@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { apiGet } from '../lib/api'
 import ChangePasswordModal from './ChangePasswordModal'
 import ProfileModal from './ProfileModal'
 
@@ -26,6 +27,7 @@ export default function DashboardLayout() {
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
+  const [followUpCount, setFollowUpCount] = useState(0)
   const menuRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
 
@@ -45,6 +47,13 @@ export default function DashboardLayout() {
     })
 
     return () => { listener.subscription.unsubscribe() }
+  }, [])
+
+  // Fetch actionable follow-up count for sidebar badge
+  useEffect(() => {
+    apiGet<{ count: number }>('/api/follow-ups?upcoming_only=true')
+      .then(data => setFollowUpCount(data.count))
+      .catch(() => {})
   }, [])
 
   // Close menu on outside click
@@ -105,6 +114,11 @@ export default function DashboardLayout() {
                 <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
               </svg>
               {item.label}
+              {item.label === 'Overview' && followUpCount > 0 && (
+                <span className="ml-auto bg-gold text-charcoal text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                  {followUpCount}
+                </span>
+              )}
             </NavLink>
           ))}
 

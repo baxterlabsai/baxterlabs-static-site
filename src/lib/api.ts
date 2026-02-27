@@ -47,6 +47,27 @@ export async function apiPost<T = unknown>(path: string, body?: unknown): Promis
   return res.json()
 }
 
+export async function apiPatch<T = unknown>(path: string, body?: unknown): Promise<T> {
+  const headers = await getAuthHeaders()
+  const res = await fetch(`${API_URL}${path}`, {
+    method: 'PATCH',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  })
+
+  if (res.status === 401) {
+    window.location.href = '/dashboard/login'
+    throw new Error('Unauthorized')
+  }
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.detail || `API error (${res.status})`)
+  }
+
+  return res.json()
+}
+
 export async function apiPut<T = unknown>(path: string, body?: unknown): Promise<T> {
   const headers = await getAuthHeaders()
   const res = await fetch(`${API_URL}${path}`, {
