@@ -1,4 +1,5 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api'
 
@@ -566,35 +567,87 @@ function OpportunityCard({
         )}
       </div>
       {/* Stage move button */}
-      <div className="border-t border-gray-light px-3 py-1.5 relative">
-        <button
-          onClick={(e) => { e.stopPropagation(); onOpenStageMenu() }}
-          className="text-xs text-teal font-medium hover:text-teal/80 flex items-center gap-1"
-        >
-          Move
-          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-          </svg>
-        </button>
-        {stageMenuOpen && (
-          <div ref={stageMenuRef} className="absolute left-0 bottom-full mb-1 w-48 bg-white rounded-lg shadow-lg border border-gray-light py-1 z-50">
-            {ALL_STAGES.filter(s => s !== currentStage).map(stageKey => {
-              const stageMeta = STAGES.find(s => s.key === stageKey)
-              const label = stageMeta?.label || 'Dormant'
-              return (
-                <button
-                  key={stageKey}
-                  onClick={(e) => { e.stopPropagation(); onStageChange(stageKey) }}
-                  className="w-full text-left px-3 py-1.5 text-xs text-charcoal hover:bg-ivory transition-colors"
-                >
-                  {label}
-                </button>
-              )
-            })}
-          </div>
-        )}
+      <div className="border-t border-gray-light px-3 py-1.5">
+        <StageDropdown
+          stageMenuOpen={stageMenuOpen}
+          stageMenuRef={stageMenuRef}
+          currentStage={currentStage}
+          onOpenStageMenu={onOpenStageMenu}
+          onStageChange={onStageChange}
+        />
       </div>
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Portal-rendered Stage Dropdown (escapes overflow-hidden ancestors)
+// ---------------------------------------------------------------------------
+
+function StageDropdown({
+  stageMenuOpen,
+  stageMenuRef,
+  currentStage,
+  onOpenStageMenu,
+  onStageChange,
+}: {
+  stageMenuOpen: boolean
+  stageMenuRef?: React.RefObject<HTMLDivElement | null>
+  currentStage: string
+  onOpenStageMenu: () => void
+  onStageChange: (stage: string) => void
+}) {
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+
+  const updatePos = useCallback(() => {
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect()
+      setPos({ top: rect.bottom + 4, left: rect.left })
+    }
+  }, [])
+
+  useEffect(() => {
+    if (stageMenuOpen) {
+      updatePos()
+    }
+  }, [stageMenuOpen, updatePos])
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        onClick={(e) => { e.stopPropagation(); onOpenStageMenu() }}
+        className="text-xs text-teal font-medium hover:text-teal/80 flex items-center gap-1"
+      >
+        Move
+        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+        </svg>
+      </button>
+      {stageMenuOpen && pos && createPortal(
+        <div
+          ref={stageMenuRef}
+          className="fixed w-48 bg-white rounded-lg shadow-lg border border-gray-light py-1"
+          style={{ top: pos.top, left: pos.left, zIndex: 9999 }}
+        >
+          {ALL_STAGES.filter(s => s !== currentStage).map(stageKey => {
+            const stageMeta = STAGES.find(s => s.key === stageKey)
+            const label = stageMeta?.label || 'Dormant'
+            return (
+              <button
+                key={stageKey}
+                onClick={(e) => { e.stopPropagation(); onStageChange(stageKey) }}
+                className="w-full text-left px-3 py-1.5 text-xs text-charcoal hover:bg-ivory transition-colors"
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>,
+        document.body,
+      )}
+    </>
   )
 }
 
