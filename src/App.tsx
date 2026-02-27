@@ -15,6 +15,11 @@ import PromptLibrary from './pages/dashboard/PromptLibrary'
 import ClientDirectory from './pages/dashboard/ClientDirectory'
 import Calendar from './pages/dashboard/Calendar'
 import UserManagement from './pages/dashboard/UserManagement'
+import PipelineBoard from './pages/dashboard/pipeline/Board'
+import PipelineCompanies from './pages/dashboard/pipeline/Companies'
+import PipelineContacts from './pages/dashboard/pipeline/Contacts'
+import PipelineActivities from './pages/dashboard/pipeline/Activities'
+import PipelineTasks from './pages/dashboard/pipeline/Tasks'
 import UploadPortal from './pages/UploadPortal'
 import DeliverablePortal from './pages/DeliverablePortal'
 import ForgotPassword from './pages/ForgotPassword'
@@ -63,6 +68,11 @@ export default function App() {
             <Route path="/dashboard/clients" element={<ClientDirectory />} />
             <Route path="/dashboard/calendar" element={<Calendar />} />
             <Route path="/dashboard/users" element={<UserManagement />} />
+            <Route path="/dashboard/pipeline" element={<PipelineBoard />} />
+            <Route path="/dashboard/pipeline/companies" element={<PipelineCompanies />} />
+            <Route path="/dashboard/pipeline/contacts" element={<PipelineContacts />} />
+            <Route path="/dashboard/pipeline/activities" element={<PipelineActivities />} />
+            <Route path="/dashboard/pipeline/tasks" element={<PipelineTasks />} />
           </Route>
         </Route>
 
