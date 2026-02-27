@@ -182,7 +182,7 @@ async def archive_engagement(
     try:
         phase_executions = (
             sb.table("phase_executions")
-            .select("phase, created_at, prompt_version")
+            .select("phase, executed_at, prompt_version")
             .eq("engagement_id", engagement_id)
             .order("phase")
             .execute()
@@ -231,7 +231,7 @@ async def archive_engagement(
             "phases_executed": [
                 {
                     "phase": pe["phase"],
-                    "executed_at": pe["created_at"],
+                    "executed_at": pe["executed_at"],
                     "prompt_version": pe.get("prompt_version"),
                 }
                 for pe in phase_executions.data

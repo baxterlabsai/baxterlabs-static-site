@@ -1470,7 +1470,7 @@ export default function EngagementDetail() {
           </h3>
           {!isClosed && (
             <div className="flex gap-2">
-              {!invoices.some(inv => inv.type === 'deposit' && inv.status !== 'voided') && (
+              {!invoices.some(inv => inv.type === 'deposit' && inv.status !== 'void') && (
                 <button
                   disabled={generatingInvoice}
                   onClick={async () => {
@@ -1487,7 +1487,7 @@ export default function EngagementDetail() {
                   {generatingInvoice ? 'Generating...' : 'Generate Deposit Invoice'}
                 </button>
               )}
-              {!invoices.some(inv => inv.type === 'final' && inv.status !== 'voided') && (
+              {!invoices.some(inv => inv.type === 'final' && inv.status !== 'void') && (
                 <button
                   disabled={generatingInvoice}
                   onClick={async () => {
@@ -1516,10 +1516,10 @@ export default function EngagementDetail() {
                 sent: 'bg-blue-100 text-blue-800',
                 paid: 'bg-green/10 text-green',
                 overdue: 'bg-red-soft/10 text-red-soft',
-                voided: 'bg-gray-light text-gray-warm line-through',
+                void: 'bg-gray-light text-gray-warm line-through',
                 draft: 'bg-gray-light text-charcoal',
               }
-              const isActive = inv.status !== 'voided' && inv.status !== 'paid'
+              const isActive = inv.status !== 'void' && inv.status !== 'paid'
               return (
                 <div key={inv.id} className="flex items-center justify-between py-3 px-4 border border-gray-light rounded-lg">
                   <div className="flex items-center gap-4">

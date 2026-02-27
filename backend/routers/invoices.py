@@ -18,7 +18,7 @@ logger = logging.getLogger("baxterlabs.invoices")
 
 router = APIRouter(prefix="/api", tags=["invoices"])
 
-VALID_INVOICE_STATUSES = {"draft", "sent", "paid", "voided", "overdue"}
+VALID_INVOICE_STATUSES = {"draft", "sent", "paid", "void", "overdue"}
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────
@@ -81,7 +81,7 @@ def create_and_send_invoice(
         .select("id")
         .eq("engagement_id", engagement_id)
         .eq("type", invoice_type)
-        .neq("status", "voided")
+        .neq("status", "void")
         .execute()
     )
     if existing.data:
@@ -210,7 +210,7 @@ async def revenue_summary(user: dict = Depends(verify_partner_auth)):
     for inv in invoices.data:
         amt = float(inv.get("amount") or 0)
         status = inv.get("status")
-        if status == "voided":
+        if status == "void":
             continue
         total_invoiced += amt
         if status == "paid":
@@ -319,7 +319,7 @@ async def resend_invoice(invoice_id: str, user: dict = Depends(verify_partner_au
         raise HTTPException(status_code=404, detail="Invoice not found")
     invoice = result.data[0]
 
-    if invoice["status"] == "voided":
+    if invoice["status"] == "void":
         raise HTTPException(status_code=400, detail="Cannot resend a voided invoice")
 
     engagement = get_engagement_by_id(invoice["engagement_id"])
@@ -355,11 +355,11 @@ async def void_invoice(invoice_id: str, user: dict = Depends(verify_partner_auth
 
     if invoice["status"] == "paid":
         raise HTTPException(status_code=400, detail="Cannot void a paid invoice")
-    if invoice["status"] == "voided":
+    if invoice["status"] == "void":
         raise HTTPException(status_code=400, detail="Invoice is already voided")
 
     sb.table("invoices").update({
-        "status": "voided",
+        "status": "void",
         "voided_at": datetime.now(timezone.utc).isoformat(),
     }).eq("id", invoice_id).execute()
 
@@ -381,7 +381,7 @@ async def mark_paid(invoice_id: str, user: dict = Depends(verify_partner_auth)):
 
     if invoice["status"] == "paid":
         raise HTTPException(status_code=400, detail="Invoice is already paid")
-    if invoice["status"] == "voided":
+    if invoice["status"] == "void":
         raise HTTPException(status_code=400, detail="Cannot mark a voided invoice as paid")
 
     sb.table("invoices").update({
