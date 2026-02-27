@@ -5,15 +5,17 @@ import logging
 from datetime import date, datetime, timedelta
 from typing import Optional
 
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query
 from middleware.auth import verify_partner_auth
-from services.supabase_client import get_supabase
+from services.supabase_client import get_supabase, log_activity, create_engagement_folders
 from models.pipeline import (
     CompanyCreate, CompanyUpdate,
     ContactCreate, ContactUpdate,
     OpportunityCreate, OpportunityUpdate,
     ActivityCreate, ActivityUpdate, ActivityFromNotesInput,
     TaskCreate, TaskUpdate,
+    ConversionRequest,
 )
 
 logger = logging.getLogger("baxterlabs.pipeline")
@@ -271,51 +273,176 @@ async def update_opportunity(opp_id: str, body: OpportunityUpdate, user: dict = 
     return result.data[0]
 
 
-@router.post("/opportunities/{opp_id}/convert")
-async def convert_opportunity(opp_id: str, user: dict = Depends(verify_partner_auth)):
-    """Convert a won opportunity into a client + engagement."""
-    sb = get_supabase()
-
-    # 1. Validate opportunity exists and stage is 'won'
+def _gather_conversion_data(sb, opp_id: str):
+    """Shared logic for gathering conversion data (used by both preview and convert)."""
+    # Fetch opportunity
     opp = sb.table("pipeline_opportunities").select("*").eq("id", opp_id).eq("is_deleted", False).execute()
     if not opp.data:
         raise HTTPException(status_code=404, detail="Opportunity not found")
     opp = opp.data[0]
-    if opp["stage"] != "won":
-        raise HTTPException(status_code=400, detail=f"Opportunity stage must be 'won' to convert (current: '{opp['stage']}')")
-    if opp.get("converted_client_id"):
-        raise HTTPException(status_code=400, detail="Opportunity has already been converted")
 
-    # 2. Get company data
+    # Get company data
     company = sb.table("pipeline_companies").select("*").eq("id", opp["company_id"]).execute()
     if not company.data:
         raise HTTPException(status_code=404, detail="Associated company not found")
     company = company.data[0]
 
-    # 3. Get primary contact data (if set)
+    # Get primary contact
     contact = None
     if opp.get("primary_contact_id"):
         contact_result = sb.table("pipeline_contacts").select("*").eq("id", opp["primary_contact_id"]).execute()
         if contact_result.data:
             contact = contact_result.data[0]
 
-    # 4. Gather discovery notes from activities
-    discovery_notes_parts = []
-    activities = (
-        sb.table("pipeline_activities")
-        .select("subject, body, outcome")
-        .eq("opportunity_id", opp_id)
+    # Get all contacts for this company
+    all_contacts = (
+        sb.table("pipeline_contacts")
+        .select("*")
+        .eq("company_id", opp["company_id"])
         .eq("is_deleted", False)
-        .order("occurred_at")
+        .order("created_at")
         .execute()
     )
-    for act in activities.data:
-        if act.get("body"):
-            discovery_notes_parts.append(act["body"])
-        if act.get("outcome"):
-            discovery_notes_parts.append(f"Outcome: {act['outcome']}")
 
-    # 5. Create client record
+    # Gather activities for discovery notes extraction
+    activities = (
+        sb.table("pipeline_activities")
+        .select("type, subject, body, outcome, next_action, occurred_at")
+        .eq("opportunity_id", opp_id)
+        .eq("is_deleted", False)
+        .order("occurred_at", desc=True)
+        .execute()
+    )
+
+    # Extract discovery notes from meeting-type activities
+    discovery_parts = []
+    pain_points_parts = []
+    meeting_types = {"video_call", "phone_call", "meeting"}
+
+    for act in activities.data:
+        if act.get("type") in meeting_types:
+            if act.get("body"):
+                discovery_parts.append(act["body"])
+            if act.get("outcome"):
+                discovery_parts.append(f"Outcome: {act['outcome']}")
+
+        # Scan all activity bodies for pain point language
+        body_text = (act.get("body") or "") + " " + (act.get("outcome") or "")
+        pain_keywords = ["pain point", "challenge", "problem", "issue", "struggle",
+                         "bottleneck", "waste", "leak", "loss", "inefficien"]
+        for keyword in pain_keywords:
+            if keyword in body_text.lower():
+                # Extract the sentence containing the keyword
+                for sentence in body_text.replace("\n", ". ").split(". "):
+                    if keyword in sentence.lower() and sentence.strip():
+                        pain_points_parts.append(sentence.strip())
+                break
+
+    discovery_notes = "\n\n".join(discovery_parts) if discovery_parts else None
+    pain_points = "\n".join(list(dict.fromkeys(pain_points_parts))) if pain_points_parts else None
+
+    # Suggested start date: estimated_close_date + 7 days or None
+    suggested_start = None
+    if opp.get("estimated_close_date"):
+        try:
+            close_dt = date.fromisoformat(str(opp["estimated_close_date"]))
+            suggested_start = (close_dt + timedelta(days=7)).isoformat()
+        except (ValueError, TypeError):
+            pass
+
+    return {
+        "opportunity": opp,
+        "company": company,
+        "primary_contact": contact,
+        "all_contacts": all_contacts.data,
+        "activities": activities.data,
+        "discovery_notes": discovery_notes,
+        "pain_points": pain_points,
+        "suggested_start_date": suggested_start,
+    }
+
+
+@router.get("/opportunities/{opp_id}/conversion-preview")
+async def conversion_preview(opp_id: str, user: dict = Depends(verify_partner_auth)):
+    """Return all data that would be used in conversion, without actually converting."""
+    sb = get_supabase()
+    data = _gather_conversion_data(sb, opp_id)
+    opp = data["opportunity"]
+    company = data["company"]
+    contact = data["primary_contact"]
+
+    return {
+        "opportunity_id": opp_id,
+        "company": {
+            "name": company.get("name"),
+            "website": company.get("website"),
+            "industry": company.get("industry"),
+            "revenue_range": company.get("revenue_range"),
+            "employee_count": company.get("employee_count"),
+            "location": company.get("location"),
+        },
+        "primary_contact": {
+            "id": contact["id"] if contact else None,
+            "name": contact["name"] if contact else None,
+            "email": contact.get("email") if contact else None,
+            "phone": contact.get("phone") if contact else None,
+            "title": contact.get("title") if contact else None,
+            "linkedin_url": contact.get("linkedin_url") if contact else None,
+        } if contact else None,
+        "all_contacts": [
+            {
+                "id": c["id"],
+                "name": c["name"],
+                "title": c.get("title"),
+                "email": c.get("email"),
+                "phone": c.get("phone"),
+                "linkedin_url": c.get("linkedin_url"),
+                "is_decision_maker": c.get("is_decision_maker", False),
+            }
+            for c in data["all_contacts"]
+        ],
+        "discovery_notes": data["discovery_notes"],
+        "pain_points": data["pain_points"],
+        "suggested_fee": opp.get("estimated_value") or 12500,
+        "suggested_partner_lead": opp.get("assigned_to") or "George DeVries",
+        "suggested_start_date": data["suggested_start_date"],
+        "referral_source": company.get("source"),
+        "already_converted": opp.get("converted_engagement_id") is not None,
+        "stage": opp.get("stage"),
+    }
+
+
+@router.post("/opportunities/{opp_id}/convert")
+async def convert_opportunity(
+    opp_id: str,
+    body: Optional[ConversionRequest] = None,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Convert a won/negotiation/proposal_sent opportunity into a client + engagement."""
+    sb = get_supabase()
+    req = body or ConversionRequest()
+
+    # 1. Gather all data
+    data = _gather_conversion_data(sb, opp_id)
+    opp = data["opportunity"]
+    company = data["company"]
+    contact = data["primary_contact"]
+
+    # 2. Validate
+    allowed_stages = {"won", "negotiation", "proposal_sent"}
+    if opp["stage"] not in allowed_stages:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Opportunity stage must be won, negotiation, or proposal_sent (current: '{opp['stage']}')",
+        )
+    if opp.get("converted_engagement_id"):
+        raise HTTPException(status_code=400, detail="Opportunity has already been converted")
+
+    # 3. Use overrides or extracted data
+    discovery_notes = req.discovery_notes_override or data["discovery_notes"]
+    pain_points = req.pain_points_override or data["pain_points"]
+
+    # 4. Create client record
     client_row = {
         "company_name": company["name"],
         "primary_contact_name": contact["name"] if contact else company["name"],
@@ -325,35 +452,140 @@ async def convert_opportunity(opp_id: str, user: dict = Depends(verify_partner_a
         "revenue_range": company.get("revenue_range"),
         "employee_count": company.get("employee_count"),
         "website_url": company.get("website"),
-        "referral_source": company.get("source"),
+        "referral_source": req.referral_source or company.get("source"),
     }
     client_result = sb.table("clients").insert(client_row).execute()
     new_client_id = client_result.data[0]["id"]
 
-    # 6. Create engagement record
+    # 5. Create engagement record — status is nda_pending (skips intake)
     engagement_row = {
         "client_id": new_client_id,
-        "status": "intake",
-        "fee": opp.get("estimated_value") or 12500,
-        "partner_lead": opp.get("assigned_to") or "George DeVries",
-        "discovery_notes": "\n\n".join(discovery_notes_parts) if discovery_notes_parts else None,
+        "status": "nda_pending",
+        "phase": 0,
+        "fee": req.fee,
+        "partner_lead": req.partner_lead,
+        "discovery_notes": discovery_notes,
+        "pain_points": pain_points,
+        "upload_token": str(uuid.uuid4()),
     }
+    if req.preferred_start_date:
+        engagement_row["preferred_start_date"] = req.preferred_start_date
     engagement_result = sb.table("engagements").insert(engagement_row).execute()
-    new_engagement_id = engagement_result.data[0]["id"]
+    new_engagement = engagement_result.data[0]
+    new_engagement_id = new_engagement["id"]
 
-    # 7. Update opportunity with converted IDs
+    # 6. Create interview contacts
+    created_contacts_count = 0
+    if req.interview_contacts:
+        # Use explicit mapping from the request
+        for mapping in req.interview_contacts[:3]:
+            pc = sb.table("pipeline_contacts").select("*").eq("id", mapping.pipeline_contact_id).execute()
+            if pc.data:
+                pc = pc.data[0]
+                sb.table("interview_contacts").insert({
+                    "engagement_id": new_engagement_id,
+                    "contact_number": mapping.contact_number,
+                    "name": pc["name"],
+                    "title": pc.get("title"),
+                    "email": pc.get("email"),
+                    "phone": pc.get("phone"),
+                    "linkedin_url": pc.get("linkedin_url"),
+                }).execute()
+                created_contacts_count += 1
+    else:
+        # Auto-select: primary contact first, then decision makers, up to 3
+        all_contacts = data["all_contacts"]
+        selected = []
+        # Primary contact first
+        if contact:
+            selected.append(contact)
+        # Then decision makers
+        for c in all_contacts:
+            if c["id"] != (contact or {}).get("id") and c.get("is_decision_maker"):
+                selected.append(c)
+        # Then remaining contacts
+        for c in all_contacts:
+            if c["id"] not in [s["id"] for s in selected]:
+                selected.append(c)
+
+        for i, c in enumerate(selected[:3], start=1):
+            sb.table("interview_contacts").insert({
+                "engagement_id": new_engagement_id,
+                "contact_number": i,
+                "name": c["name"],
+                "title": c.get("title"),
+                "email": c.get("email"),
+                "phone": c.get("phone"),
+                "linkedin_url": c.get("linkedin_url"),
+            }).execute()
+            created_contacts_count += 1
+
+    # 7. Update pipeline opportunity
     sb.table("pipeline_opportunities").update({
         "converted_client_id": new_client_id,
         "converted_engagement_id": new_engagement_id,
+        "stage": "won",
     }).eq("id", opp_id).execute()
+
+    # 8. Create storage folders (non-blocking)
+    try:
+        create_engagement_folders(new_engagement_id)
+    except Exception as e:
+        logger.warning(f"Failed to create storage folders: {e}")
+
+    # 9. Trigger NDA (non-blocking)
+    nda_sent = False
+    if req.send_nda and contact and contact.get("email"):
+        try:
+            from services.docusign_service import get_docusign_service
+            ds = get_docusign_service()
+            if ds._is_configured():
+                nda_result = ds.send_nda(
+                    engagement_id=new_engagement_id,
+                    contact_email=contact["email"],
+                    contact_name=contact["name"],
+                    company_name=company["name"],
+                )
+                if nda_result.get("success"):
+                    sb.table("legal_documents").insert({
+                        "engagement_id": new_engagement_id,
+                        "type": "nda",
+                        "docusign_envelope_id": nda_result["envelope_id"],
+                        "status": "sent",
+                    }).execute()
+                    nda_sent = True
+                    logger.info(f"NDA sent for converted engagement {new_engagement_id}")
+                else:
+                    logger.warning(f"DocuSign NDA send failed: {nda_result.get('error')}")
+            else:
+                logger.info("DocuSign not configured — skipping NDA send")
+        except Exception as e:
+            logger.warning(f"DocuSign NDA trigger failed (non-blocking): {e}")
+
+    # 10. Log activity
+    log_activity(
+        engagement_id=new_engagement_id,
+        actor="system",
+        action="engagement_created_from_pipeline",
+        details={
+            "opportunity_id": opp_id,
+            "company_name": company["name"],
+            "primary_contact": contact["name"] if contact else None,
+            "interview_contacts_count": created_contacts_count,
+            "nda_sent": nda_sent,
+            "fee": req.fee,
+        },
+    )
 
     logger.info(f"Converted opportunity {opp_id} → client {new_client_id}, engagement {new_engagement_id}")
 
     return {
-        "success": True,
         "client_id": new_client_id,
         "engagement_id": new_engagement_id,
-        "message": f"Created client and engagement from opportunity '{opp['title']}'.",
+        "nda_sent": nda_sent,
+        "interview_contacts_created": created_contacts_count,
+        "status": "nda_pending",
+        "message": f"Opportunity converted successfully. Engagement created for {company['name']}.",
     }
 
 
@@ -737,6 +969,19 @@ async def pipeline_stats(user: dict = Depends(verify_partner_auth)):
         .execute()
     )
 
+    # Referral stats
+    referral_opps = (
+        sb.table("pipeline_opportunities")
+        .select("stage, estimated_value")
+        .eq("is_deleted", False)
+        .not_.is_("referred_by_engagement_id", "null")
+        .execute()
+    )
+    referral_total = len(referral_opps.data)
+    referral_value = sum(float(r.get("estimated_value") or 0) for r in referral_opps.data)
+    referral_won = sum(1 for r in referral_opps.data if r["stage"] == "won")
+    referral_rate = (referral_won / referral_total * 100) if referral_total > 0 else 0
+
     return {
         "stage_counts": stage_counts,
         "total_pipeline_value": total_value,
@@ -744,4 +989,10 @@ async def pipeline_stats(user: dict = Depends(verify_partner_auth)):
         "tasks_due_today": tasks_today.count or 0,
         "tasks_overdue": tasks_overdue.count or 0,
         "recent_activities": recent.data,
+        "referrals": {
+            "total_opportunities": referral_total,
+            "total_value": referral_value,
+            "won": referral_won,
+            "conversion_rate": round(referral_rate, 1),
+        },
     }

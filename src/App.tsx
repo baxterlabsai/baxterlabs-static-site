@@ -20,6 +20,7 @@ import PipelineCompanies from './pages/dashboard/pipeline/Companies'
 import PipelineContacts from './pages/dashboard/pipeline/Contacts'
 import PipelineActivities from './pages/dashboard/pipeline/Activities'
 import PipelineTasks from './pages/dashboard/pipeline/Tasks'
+import ConversionReview from './pages/dashboard/pipeline/ConversionReview'
 import UploadPortal from './pages/UploadPortal'
 import DeliverablePortal from './pages/DeliverablePortal'
 import ForgotPassword from './pages/ForgotPassword'
@@ -73,6 +74,7 @@ export default function App() {
             <Route path="/dashboard/pipeline/contacts" element={<PipelineContacts />} />
             <Route path="/dashboard/pipeline/activities" element={<PipelineActivities />} />
             <Route path="/dashboard/pipeline/tasks" element={<PipelineTasks />} />
+            <Route path="/dashboard/pipeline/convert/:opportunityId" element={<ConversionReview />} />
           </Route>
         </Route>
 

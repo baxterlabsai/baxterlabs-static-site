@@ -242,6 +242,28 @@ export default function EngagementDetail() {
   const navigate = useNavigate()
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
+  // Pipeline source and referrals
+  const [pipelineSource, setPipelineSource] = useState<{ id: string; company_id: string } | null>(null)
+  const [referralsGenerated, setReferralsGenerated] = useState<Array<{ id: string; title: string; stage: string; estimated_value: number | null; pipeline_companies: { id: string; name: string } | null }>>([])
+
+  useEffect(() => {
+    if (!id) return
+    // Check if engagement was created from pipeline
+    apiGet<{ opportunities: Array<{ id: string; company_id: string; converted_engagement_id: string | null }> }>('/api/pipeline/opportunities')
+      .then(data => {
+        const source = data.opportunities.find(o => o.converted_engagement_id === id)
+        if (source) setPipelineSource({ id: source.id, company_id: source.company_id })
+      })
+      .catch(() => {})
+    // Fetch referrals generated from this engagement
+    apiGet<{ opportunities: Array<{ id: string; title: string; stage: string; estimated_value: number | null; referred_by_engagement_id: string | null; pipeline_companies: { id: string; name: string } | null }> }>('/api/pipeline/opportunities')
+      .then(data => {
+        const refs = data.opportunities.filter(o => o.referred_by_engagement_id === id)
+        setReferralsGenerated(refs)
+      })
+      .catch(() => {})
+  }, [id])
+
   useEffect(() => {
     if (!id) return
     apiGet<EngagementData>(`/api/engagements/${id}`)
@@ -577,7 +599,21 @@ export default function EngagementDetail() {
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <Link to="/dashboard" className="text-teal text-sm font-medium hover:underline mb-1 inline-block">&larr; All Engagements</Link>
-          <h1 className="font-display text-2xl font-bold text-charcoal">{client.company_name}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="font-display text-2xl font-bold text-charcoal">{client.company_name}</h1>
+            {pipelineSource && (
+              <Link
+                to={`/dashboard/pipeline`}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-teal/10 text-teal hover:bg-teal/20 transition-colors"
+                title="Created from pipeline opportunity"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                </svg>
+                From Pipeline
+              </Link>
+            )}
+          </div>
           <p className="text-gray-warm text-sm">{client.primary_contact_name} · {statusLabel(data.status)}</p>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -1368,6 +1404,41 @@ export default function EngagementDetail() {
           </div>
         )}
       </section>
+
+      {/* Referrals Generated */}
+      {referralsGenerated.length > 0 && (
+        <section className="bg-white rounded-lg border border-gray-light p-5 mt-6">
+          <h3 className="font-display text-lg font-bold text-teal mb-4 flex items-center gap-2">
+            <svg className="w-5 h-5 text-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+            </svg>
+            Referrals Generated
+          </h3>
+          <div className="space-y-2">
+            {referralsGenerated.map(ref => {
+              const stageColors: Record<string, string> = {
+                won: 'bg-green/10 text-green',
+                lost: 'bg-red-soft/10 text-red-soft',
+                dormant: 'bg-gray-light text-gray-warm',
+              }
+              const badgeClass = stageColors[ref.stage] || 'bg-teal/10 text-teal'
+              return (
+                <div key={ref.id} className="flex items-center justify-between py-2 border-b border-gray-light/50 last:border-0">
+                  <div>
+                    <p className="text-sm font-medium text-charcoal">{ref.pipeline_companies?.name || ref.title}</p>
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${badgeClass}`}>
+                      {ref.stage.replace(/_/g, ' ')}
+                    </span>
+                  </div>
+                  <span className="text-sm text-charcoal font-medium">
+                    {ref.estimated_value ? `$${ref.estimated_value.toLocaleString()}` : '—'}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Activity Log */}
       <section className="bg-white rounded-lg border border-gray-light p-5 mt-6">

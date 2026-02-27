@@ -73,6 +73,8 @@ class OpportunityCreate(BaseModel):
     loss_reason: Optional[str] = None
     notes: Optional[str] = None
     assigned_to: Optional[str] = None
+    referred_by_engagement_id: Optional[str] = None
+    referred_by_contact_name: Optional[str] = None
 
 
 class OpportunityUpdate(BaseModel):
@@ -85,6 +87,28 @@ class OpportunityUpdate(BaseModel):
     loss_reason: Optional[str] = None
     notes: Optional[str] = None
     assigned_to: Optional[str] = None
+    referred_by_engagement_id: Optional[str] = None
+    referred_by_contact_name: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# Conversion
+# ---------------------------------------------------------------------------
+
+class InterviewContactMapping(BaseModel):
+    pipeline_contact_id: str
+    contact_number: int  # 1, 2, or 3
+
+
+class ConversionRequest(BaseModel):
+    fee: float = 12500.0
+    partner_lead: str = "George DeVries"
+    preferred_start_date: Optional[str] = None  # ISO date
+    discovery_notes_override: Optional[str] = None
+    pain_points_override: Optional[str] = None
+    interview_contacts: Optional[List[InterviewContactMapping]] = None
+    send_nda: bool = True
+    referral_source: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------

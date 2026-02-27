@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api'
 
 // ---------------------------------------------------------------------------
@@ -34,6 +34,8 @@ interface Opportunity {
   assigned_to: string | null
   converted_client_id: string | null
   converted_engagement_id: string | null
+  referred_by_engagement_id: string | null
+  referred_by_contact_name: string | null
   created_at: string
   updated_at: string
   pipeline_companies: { id: string; name: string } | null
@@ -41,6 +43,12 @@ interface Opportunity {
   // Enriched client-side
   activities?: Activity[]
   tasks?: Task[]
+}
+
+interface EngagementSummary {
+  id: string
+  company_name: string | null
+  status: string
 }
 
 interface Activity {
@@ -125,6 +133,7 @@ function nextActionDateClass(dateStr: string | null): string {
 // ---------------------------------------------------------------------------
 
 export default function PipelineBoard() {
+  const navigate = useNavigate()
   const [opportunities, setOpportunities] = useState<Opportunity[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
   const [contacts, setContacts] = useState<Contact[]>([])
@@ -227,13 +236,10 @@ export default function PipelineBoard() {
     }
   }
 
-  // Convert — returns result so modal can show success state
-  async function handleConvert(oppId: string): Promise<{ client_id: string; engagement_id: string }> {
-    const result = await apiPost<{ client_id: string; engagement_id: string }>(`/api/pipeline/opportunities/${oppId}/convert`)
-    setOpportunities(prev => prev.map(o =>
-      o.id === oppId ? { ...o, converted_client_id: result.client_id, converted_engagement_id: result.engagement_id } : o
-    ))
-    return result
+  // Convert — navigate to the full ConversionReview page
+  function handleConvertNavigate(oppId: string) {
+    setShowConvertConfirm(null)
+    navigate(`/dashboard/pipeline/convert/${oppId}`)
   }
 
   // Loss reason submit
@@ -258,6 +264,8 @@ export default function PipelineBoard() {
     title: string
     estimated_value: number
     stage: string
+    referred_by_engagement_id?: string
+    referred_by_contact_name?: string
   }) {
     try {
       let companyId = data.company_id
@@ -280,13 +288,17 @@ export default function PipelineBoard() {
         setContacts(prev => [...prev, newContact])
       }
 
-      await apiPost<Opportunity>('/api/pipeline/opportunities', {
+      const oppPayload: Record<string, unknown> = {
         company_id: companyId,
         primary_contact_id: contactId || null,
         title: data.title,
         estimated_value: data.estimated_value,
         stage: data.stage,
-      })
+      }
+      if (data.referred_by_engagement_id) oppPayload.referred_by_engagement_id = data.referred_by_engagement_id
+      if (data.referred_by_contact_name) oppPayload.referred_by_contact_name = data.referred_by_contact_name
+
+      await apiPost<Opportunity>('/api/pipeline/opportunities', oppPayload)
       // Re-fetch to get joined company/contact names on the new card
       const refreshed = await apiGet<{ opportunities: Opportunity[] }>('/api/pipeline/opportunities')
       setOpportunities(refreshed.opportunities)
@@ -469,7 +481,7 @@ export default function PipelineBoard() {
       {showConvertConfirm && (
         <ConvertModal
           opp={opportunities.find(o => o.id === showConvertConfirm)!}
-          onConvert={() => handleConvert(showConvertConfirm)}
+          onConvert={() => handleConvertNavigate(showConvertConfirm)}
           onClose={() => setShowConvertConfirm(null)}
         />
       )}
@@ -519,6 +531,14 @@ function OpportunityCard({
           <p className="text-sm font-semibold text-charcoal truncate flex-1">
             {opp.pipeline_companies?.name || 'Unknown Company'}
           </p>
+          {opp.referred_by_engagement_id && (
+            <span className="flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-gold/20 text-charcoal" title={`Referred by ${opp.referred_by_contact_name || 'referral'}`}>
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+              </svg>
+              Ref
+            </span>
+          )}
           {opp.converted_engagement_id && (
             <span className="flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-green/10 text-green">
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -600,7 +620,7 @@ function QuickAddModal({
 }: {
   companies: Company[]
   contacts: Contact[]
-  onSubmit: (data: { company_name: string; company_id?: string; contact_name?: string; contact_id?: string; title: string; estimated_value: number; stage: string }) => void
+  onSubmit: (data: { company_name: string; company_id?: string; contact_name?: string; contact_id?: string; title: string; estimated_value: number; stage: string; referred_by_engagement_id?: string; referred_by_contact_name?: string }) => void
   onClose: () => void
 }) {
   useEscapeKey(onClose)
@@ -614,6 +634,20 @@ function QuickAddModal({
   const [submitting, setSubmitting] = useState(false)
   const [showCompanyDropdown, setShowCompanyDropdown] = useState(false)
   const [showContactDropdown, setShowContactDropdown] = useState(false)
+
+  // Source / Referral
+  const [source, setSource] = useState('')
+  const [referralEngagementId, setReferralEngagementId] = useState('')
+  const [referralContactName, setReferralContactName] = useState('')
+  const [engagementSummaries, setEngagementSummaries] = useState<EngagementSummary[]>([])
+
+  useEffect(() => {
+    if (source === 'Referral' && engagementSummaries.length === 0) {
+      apiGet<{ engagements: EngagementSummary[] }>('/api/engagements/summary')
+        .then(data => setEngagementSummaries(data.engagements))
+        .catch(() => {})
+    }
+  }, [source]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const filteredCompanies = companySearch.length > 0
     ? companies.filter(c => c.name.toLowerCase().includes(companySearch.toLowerCase()))
@@ -644,6 +678,8 @@ function QuickAddModal({
       title,
       estimated_value: parseFloat(value) || 12500,
       stage,
+      referred_by_engagement_id: source === 'Referral' && referralEngagementId ? referralEngagementId : undefined,
+      referred_by_contact_name: source === 'Referral' && referralContactName ? referralContactName : undefined,
     })
     setSubmitting(false)
   }
@@ -773,6 +809,55 @@ function QuickAddModal({
             </div>
           </div>
 
+          {/* Source */}
+          <div>
+            <label className="block text-sm font-semibold text-charcoal mb-1.5">Source</label>
+            <select
+              value={source}
+              onChange={e => setSource(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+            >
+              <option value="">Select...</option>
+              <option value="Cold Outreach">Cold Outreach</option>
+              <option value="LinkedIn">LinkedIn</option>
+              <option value="Warm Network">Warm Network</option>
+              <option value="Referral">Referral</option>
+              <option value="Event">Event</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          {/* Referral fields (conditional) */}
+          {source === 'Referral' && (
+            <div className="space-y-3 pl-3 border-l-2 border-gold/30">
+              <div>
+                <label className="block text-sm font-semibold text-charcoal mb-1.5">Referring Engagement</label>
+                <select
+                  value={referralEngagementId}
+                  onChange={e => setReferralEngagementId(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+                >
+                  <option value="">Select engagement...</option>
+                  {engagementSummaries.map(e => (
+                    <option key={e.id} value={e.id}>
+                      {e.company_name || 'Unknown'} ({e.status.replace(/_/g, ' ')})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-charcoal mb-1.5">Referred By</label>
+                <input
+                  type="text"
+                  value={referralContactName}
+                  onChange={e => setReferralContactName(e.target.value)}
+                  placeholder="Person's name"
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+                />
+              </div>
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-semibold text-charcoal border border-gray-light rounded-lg hover:bg-ivory transition-colors">
@@ -855,46 +940,19 @@ function ConvertModal({
   onClose,
 }: {
   opp: Opportunity
-  onConvert: () => Promise<{ client_id: string; engagement_id: string }>
+  onConvert: () => void
   onClose: () => void
 }) {
   useEscapeKey(onClose)
-  const [step, setStep] = useState<'confirm' | 'preview' | 'success'>('confirm')
-  const [converting, setConverting] = useState(false)
-  const [convertError, setConvertError] = useState('')
-  const [result, setResult] = useState<{ client_id: string; engagement_id: string } | null>(null)
-
-  // Editable fields for preview step
-  const [editClientName, setEditClientName] = useState(opp.pipeline_companies?.name || opp.title)
-  const [editFee, setEditFee] = useState(String(opp.estimated_value || 12500))
 
   const companyName = opp.pipeline_companies?.name || opp.title
   const contactName = opp.pipeline_contacts?.name
 
-  async function handleConvert() {
-    setConverting(true)
-    setConvertError('')
-    try {
-      const res = await onConvert()
-      setResult(res)
-      setStep('success')
-    } catch (err: unknown) {
-      setConvertError(err instanceof Error ? err.message : 'Failed to convert opportunity')
-    } finally {
-      setConverting(false)
-    }
-  }
-
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white w-full max-w-md rounded-xl shadow-xl" onClick={e => e.stopPropagation()}>
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-light">
-          <h2 className="font-display text-lg font-bold text-charcoal">
-            {step === 'confirm' && 'Opportunity Won'}
-            {step === 'preview' && 'Conversion Preview'}
-            {step === 'success' && 'Conversion Complete'}
-          </h2>
+          <h2 className="font-display text-lg font-bold text-charcoal">Opportunity Won</h2>
           <button onClick={onClose} className="text-charcoal/50 hover:text-charcoal">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -903,151 +961,31 @@ function ConvertModal({
         </div>
 
         <div className="px-6 py-5 space-y-4">
-          {/* Step 1: Confirm Win */}
-          {step === 'confirm' && (
-            <>
-              <div className="bg-ivory rounded-lg px-4 py-3 text-sm">
-                <p className="font-semibold text-charcoal">{companyName}</p>
-                {contactName && <p className="text-gray-warm">{contactName}</p>}
-                <p className="text-gray-warm mt-1">{formatCurrency(opp.estimated_value)}</p>
-              </div>
-              <p className="text-sm text-charcoal">
-                This opportunity has been marked as <strong className="text-green">Won</strong>. Would you like to convert it into a client engagement?
-              </p>
-              <div className="flex flex-col gap-2">
-                <button
-                  onClick={() => setStep('preview')}
-                  className="w-full px-4 py-2.5 text-sm font-semibold text-white bg-green rounded-lg hover:bg-green/90 transition-colors flex items-center justify-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                  </svg>
-                  Convert to Engagement
-                </button>
-                <button
-                  onClick={onClose}
-                  className="w-full px-4 py-2 text-sm font-semibold text-charcoal border border-gray-light rounded-lg hover:bg-ivory transition-colors"
-                >
-                  Just Mark as Won
-                </button>
-              </div>
-            </>
-          )}
-
-          {/* Step 2: Preview */}
-          {step === 'preview' && (
-            <>
-              <p className="text-sm text-gray-warm">
-                This will create a <strong className="text-charcoal">client record</strong> and an <strong className="text-charcoal">engagement</strong> in the BaxterLabs system.
-              </p>
-
-              {convertError && (
-                <div className="p-3 bg-crimson/10 border border-crimson/20 rounded-lg text-crimson text-sm">{convertError}</div>
-              )}
-
-              {/* Client preview */}
-              <div className="bg-ivory rounded-lg p-4 space-y-3">
-                <p className="text-xs font-semibold text-gray-warm uppercase tracking-wider">New Client</p>
-                <div>
-                  <label className="block text-xs font-semibold text-charcoal mb-1">Company Name</label>
-                  <input
-                    type="text"
-                    value={editClientName}
-                    onChange={e => setEditClientName(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-light rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
-                  />
-                </div>
-                {contactName && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-gray-warm">Primary Contact:</span>
-                    <span className="text-charcoal font-medium">{contactName}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Engagement preview */}
-              <div className="bg-ivory rounded-lg p-4 space-y-3">
-                <p className="text-xs font-semibold text-gray-warm uppercase tracking-wider">New Engagement</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-charcoal mb-1">Fee ($)</label>
-                    <input
-                      type="number"
-                      value={editFee}
-                      onChange={e => setEditFee(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-light rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-charcoal mb-1">Status</label>
-                    <div className="px-3 py-2 border border-gray-light rounded-lg text-sm bg-gray-light/30 text-charcoal">
-                      Intake
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-gray-warm">Partner:</span>
-                  <span className="text-charcoal font-medium">{opp.assigned_to || 'George DeVries'}</span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-1">
-                <button
-                  onClick={() => setStep('confirm')}
-                  className="px-4 py-2 text-sm font-semibold text-charcoal border border-gray-light rounded-lg hover:bg-ivory transition-colors"
-                >
-                  Back
-                </button>
-                <button
-                  onClick={handleConvert}
-                  disabled={converting}
-                  className="px-4 py-2 text-sm font-semibold text-white bg-green rounded-lg hover:bg-green/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {converting ? (
-                    <span className="flex items-center gap-2">
-                      <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                      Creating...
-                    </span>
-                  ) : 'Create Engagement'}
-                </button>
-              </div>
-            </>
-          )}
-
-          {/* Step 3: Success */}
-          {step === 'success' && result && (
-            <>
-              <div className="bg-green/10 border border-green/30 rounded-lg px-4 py-4 flex items-start gap-3">
-                <svg className="w-6 h-6 text-green flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div>
-                  <p className="text-sm font-semibold text-green">Engagement created successfully</p>
-                  <p className="text-xs text-green/80 mt-1">
-                    Client and engagement records have been created from <strong>{companyName}</strong>.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Link
-                  to={`/dashboard/engagement/${result.engagement_id}`}
-                  className="w-full px-4 py-2.5 text-sm font-semibold text-white bg-teal rounded-lg hover:bg-teal/90 transition-colors flex items-center justify-center gap-2"
-                >
-                  View Engagement
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                  </svg>
-                </Link>
-                <button
-                  onClick={onClose}
-                  className="w-full px-4 py-2 text-sm font-semibold text-charcoal border border-gray-light rounded-lg hover:bg-ivory transition-colors"
-                >
-                  Stay on Board
-                </button>
-              </div>
-            </>
-          )}
+          <div className="bg-ivory rounded-lg px-4 py-3 text-sm">
+            <p className="font-semibold text-charcoal">{companyName}</p>
+            {contactName && <p className="text-gray-warm">{contactName}</p>}
+            <p className="text-gray-warm mt-1">{formatCurrency(opp.estimated_value)}</p>
+          </div>
+          <p className="text-sm text-charcoal">
+            This opportunity has been marked as <strong className="text-green">Won</strong>. Would you like to convert it into a client engagement?
+          </p>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={onConvert}
+              className="w-full px-4 py-2.5 text-sm font-semibold text-white bg-green rounded-lg hover:bg-green/90 transition-colors flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+              </svg>
+              Convert to Engagement
+            </button>
+            <button
+              onClick={onClose}
+              className="w-full px-4 py-2 text-sm font-semibold text-charcoal border border-gray-light rounded-lg hover:bg-ivory transition-colors"
+            >
+              Just Mark as Won
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1179,6 +1117,27 @@ function OpportunitySlideOver({
                 </div>
               </div>
 
+              {/* Referral attribution */}
+              {opp.referred_by_engagement_id && (
+                <div className="bg-gold/10 border border-gold/30 rounded-lg px-4 py-3">
+                  <p className="text-sm text-charcoal font-medium flex items-center gap-1.5">
+                    <svg className="w-4 h-4 text-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+                    </svg>
+                    Referral
+                  </p>
+                  {opp.referred_by_contact_name && (
+                    <p className="text-xs text-gray-warm mt-1">Referred by: {opp.referred_by_contact_name}</p>
+                  )}
+                  <Link
+                    to={`/dashboard/engagement/${opp.referred_by_engagement_id}`}
+                    className="text-xs text-teal underline hover:text-teal/80"
+                  >
+                    View referring engagement
+                  </Link>
+                </div>
+              )}
+
               {/* Converted banner */}
               {opp.converted_engagement_id && (
                 <div className="bg-green/10 border border-green/30 rounded-lg px-4 py-3">
@@ -1192,6 +1151,19 @@ function OpportunitySlideOver({
                     View engagement
                   </Link>
                 </div>
+              )}
+
+              {/* Convert to Engagement button */}
+              {!opp.converted_engagement_id && ['won', 'negotiation', 'proposal_sent'].includes(opp.stage) && (
+                <Link
+                  to={`/dashboard/pipeline/convert/${opp.id}`}
+                  className="w-full px-4 py-2.5 text-sm font-semibold text-white bg-teal rounded-lg hover:bg-teal/90 transition-colors flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                  </svg>
+                  Convert to Engagement
+                </Link>
               )}
 
               {/* Activities */}

@@ -40,6 +40,30 @@ async def list_engagements(
     return {"engagements": result.data, "count": len(result.data)}
 
 
+@router.get("/engagements/summary")
+async def list_engagements_summary(user: dict = Depends(verify_partner_auth)):
+    """Lightweight list of engagements with just id, company name, and status.
+    Used for referral attribution dropdowns."""
+    sb = get_supabase()
+    result = (
+        sb.table("engagements")
+        .select("id, status, clients(company_name)")
+        .eq("is_deleted", False)
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return {
+        "engagements": [
+            {
+                "id": e["id"],
+                "status": e["status"],
+                "company_name": e.get("clients", {}).get("company_name") if e.get("clients") else None,
+            }
+            for e in result.data
+        ],
+    }
+
+
 @router.get("/engagements/{engagement_id}")
 async def get_engagement(engagement_id: str, user: dict = Depends(verify_partner_auth)):
     """Get full engagement detail with all related data. Requires partner auth."""
