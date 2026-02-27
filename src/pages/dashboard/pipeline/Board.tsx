@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api'
 
 // ---------------------------------------------------------------------------
@@ -189,6 +190,17 @@ export default function PipelineBoard() {
     setStageMenuOppId(null)
 
     if (newStage === 'won') {
+      const opp = opportunities.find(o => o.id === oppId)
+      // If already converted, just move stage without showing dialog
+      if (opp?.converted_client_id) {
+        try {
+          await apiPut(`/api/pipeline/opportunities/${oppId}`, { stage: 'won' })
+          setOpportunities(prev => prev.map(o => o.id === oppId ? { ...o, stage: 'won' } : o))
+        } catch (err: unknown) {
+          setError(err instanceof Error ? err.message : 'Failed to update stage')
+        }
+        return
+      }
       setShowConvertConfirm(oppId)
       // Update stage to won first
       try {
@@ -215,17 +227,13 @@ export default function PipelineBoard() {
     }
   }
 
-  // Convert
-  async function handleConvert(oppId: string) {
-    try {
-      const result = await apiPost<{ client_id: string; engagement_id: string }>(`/api/pipeline/opportunities/${oppId}/convert`)
-      setOpportunities(prev => prev.map(o =>
-        o.id === oppId ? { ...o, converted_client_id: result.client_id, converted_engagement_id: result.engagement_id } : o
-      ))
-      setShowConvertConfirm(null)
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to convert opportunity')
-    }
+  // Convert — returns result so modal can show success state
+  async function handleConvert(oppId: string): Promise<{ client_id: string; engagement_id: string }> {
+    const result = await apiPost<{ client_id: string; engagement_id: string }>(`/api/pipeline/opportunities/${oppId}/convert`)
+    setOpportunities(prev => prev.map(o =>
+      o.id === oppId ? { ...o, converted_client_id: result.client_id, converted_engagement_id: result.engagement_id } : o
+    ))
+    return result
   }
 
   // Loss reason submit
@@ -272,14 +280,16 @@ export default function PipelineBoard() {
         setContacts(prev => [...prev, newContact])
       }
 
-      const opp = await apiPost<Opportunity>('/api/pipeline/opportunities', {
+      await apiPost<Opportunity>('/api/pipeline/opportunities', {
         company_id: companyId,
         primary_contact_id: contactId || null,
         title: data.title,
         estimated_value: data.estimated_value,
         stage: data.stage,
       })
-      setOpportunities(prev => [...prev, opp])
+      // Re-fetch to get joined company/contact names on the new card
+      const refreshed = await apiGet<{ opportunities: Opportunity[] }>('/api/pipeline/opportunities')
+      setOpportunities(refreshed.opportunities)
       setShowQuickAdd(false)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to create opportunity')
@@ -457,9 +467,9 @@ export default function PipelineBoard() {
 
       {/* Convert confirmation */}
       {showConvertConfirm && (
-        <ConvertConfirmModal
+        <ConvertModal
           opp={opportunities.find(o => o.id === showConvertConfirm)!}
-          onConfirm={() => handleConvert(showConvertConfirm)}
+          onConvert={() => handleConvert(showConvertConfirm)}
           onClose={() => setShowConvertConfirm(null)}
         />
       )}
@@ -503,11 +513,21 @@ function OpportunityCard({
   const latestActionDate = opp.estimated_close_date
 
   return (
-    <div className="bg-white rounded-lg border border-gray-light shadow-sm hover:shadow transition-shadow">
+    <div className={`bg-white rounded-lg border shadow-sm hover:shadow transition-shadow ${opp.converted_engagement_id ? 'border-green/40' : 'border-gray-light'}`}>
       <div className="p-3 cursor-pointer" onClick={onOpenDetail}>
-        <p className="text-sm font-semibold text-charcoal truncate">
-          {opp.pipeline_companies?.name || 'Unknown Company'}
-        </p>
+        <div className="flex items-center gap-1.5">
+          <p className="text-sm font-semibold text-charcoal truncate flex-1">
+            {opp.pipeline_companies?.name || 'Unknown Company'}
+          </p>
+          {opp.converted_engagement_id && (
+            <span className="flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-green/10 text-green">
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+              </svg>
+              Converted
+            </span>
+          )}
+        </div>
         {opp.pipeline_contacts?.name && (
           <p className="text-xs text-gray-warm truncate">{opp.pipeline_contacts.name}</p>
         )}
@@ -562,6 +582,16 @@ function OpportunityCard({
 // Quick Add Modal
 // ---------------------------------------------------------------------------
 
+function useEscapeKey(onClose: () => void) {
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [onClose])
+}
+
 function QuickAddModal({
   companies,
   contacts,
@@ -573,6 +603,7 @@ function QuickAddModal({
   onSubmit: (data: { company_name: string; company_id?: string; contact_name?: string; contact_id?: string; title: string; estimated_value: number; stage: string }) => void
   onClose: () => void
 }) {
+  useEscapeKey(onClose)
   const [companySearch, setCompanySearch] = useState('')
   const [selectedCompanyId, setSelectedCompanyId] = useState('')
   const [contactSearch, setContactSearch] = useState('')
@@ -771,6 +802,7 @@ function QuickAddModal({
 // ---------------------------------------------------------------------------
 
 function LossReasonModal({ onSubmit, onClose }: { onSubmit: (reason: string) => void; onClose: () => void }) {
+  useEscapeKey(onClose)
   const [reason, setReason] = useState('')
 
   return (
@@ -814,69 +846,208 @@ function LossReasonModal({ onSubmit, onClose }: { onSubmit: (reason: string) => 
 }
 
 // ---------------------------------------------------------------------------
-// Convert Confirmation Modal
+// Convert Modal — Multi-step: Confirm → Preview → Success
 // ---------------------------------------------------------------------------
 
-function ConvertConfirmModal({
+function ConvertModal({
   opp,
-  onConfirm,
+  onConvert,
   onClose,
 }: {
   opp: Opportunity
-  onConfirm: () => void
+  onConvert: () => Promise<{ client_id: string; engagement_id: string }>
   onClose: () => void
 }) {
+  useEscapeKey(onClose)
+  const [step, setStep] = useState<'confirm' | 'preview' | 'success'>('confirm')
   const [converting, setConverting] = useState(false)
+  const [convertError, setConvertError] = useState('')
+  const [result, setResult] = useState<{ client_id: string; engagement_id: string } | null>(null)
 
-  async function handleConfirm() {
+  // Editable fields for preview step
+  const [editClientName, setEditClientName] = useState(opp.pipeline_companies?.name || opp.title)
+  const [editFee, setEditFee] = useState(String(opp.estimated_value || 12500))
+
+  const companyName = opp.pipeline_companies?.name || opp.title
+  const contactName = opp.pipeline_contacts?.name
+
+  async function handleConvert() {
     setConverting(true)
-    await onConfirm()
-    setConverting(false)
+    setConvertError('')
+    try {
+      const res = await onConvert()
+      setResult(res)
+      setStep('success')
+    } catch (err: unknown) {
+      setConvertError(err instanceof Error ? err.message : 'Failed to convert opportunity')
+    } finally {
+      setConverting(false)
+    }
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-sm rounded-lg shadow-lg">
-        <div className="flex items-center justify-between px-6 py-4">
-          <h2 className="font-display text-lg font-bold text-charcoal">Convert to Engagement</h2>
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white w-full max-w-md rounded-xl shadow-xl" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-light">
+          <h2 className="font-display text-lg font-bold text-charcoal">
+            {step === 'confirm' && 'Opportunity Won'}
+            {step === 'preview' && 'Conversion Preview'}
+            {step === 'success' && 'Conversion Complete'}
+          </h2>
           <button onClick={onClose} className="text-charcoal/50 hover:text-charcoal">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
-        <div className="border-b border-gray-light" />
+
         <div className="px-6 py-5 space-y-4">
-          <p className="text-sm text-charcoal">
-            This will create a <strong>client record</strong> and an <strong>engagement</strong> from:
-          </p>
-          <div className="bg-ivory rounded-lg px-4 py-3 text-sm">
-            <p className="font-semibold text-charcoal">{opp.pipeline_companies?.name || opp.title}</p>
-            {opp.pipeline_contacts?.name && <p className="text-gray-warm">{opp.pipeline_contacts.name}</p>}
-            <p className="text-gray-warm">{formatCurrency(opp.estimated_value)}</p>
-          </div>
-          {opp.converted_client_id && (
-            <p className="text-sm text-green font-medium">Already converted.</p>
+          {/* Step 1: Confirm Win */}
+          {step === 'confirm' && (
+            <>
+              <div className="bg-ivory rounded-lg px-4 py-3 text-sm">
+                <p className="font-semibold text-charcoal">{companyName}</p>
+                {contactName && <p className="text-gray-warm">{contactName}</p>}
+                <p className="text-gray-warm mt-1">{formatCurrency(opp.estimated_value)}</p>
+              </div>
+              <p className="text-sm text-charcoal">
+                This opportunity has been marked as <strong className="text-green">Won</strong>. Would you like to convert it into a client engagement?
+              </p>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => setStep('preview')}
+                  className="w-full px-4 py-2.5 text-sm font-semibold text-white bg-green rounded-lg hover:bg-green/90 transition-colors flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                  </svg>
+                  Convert to Engagement
+                </button>
+                <button
+                  onClick={onClose}
+                  className="w-full px-4 py-2 text-sm font-semibold text-charcoal border border-gray-light rounded-lg hover:bg-ivory transition-colors"
+                >
+                  Just Mark as Won
+                </button>
+              </div>
+            </>
           )}
-          <div className="flex items-center justify-end gap-3">
-            <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-charcoal border border-gray-light rounded-lg hover:bg-ivory transition-colors">
-              {opp.converted_client_id ? 'Close' : 'Not Yet'}
-            </button>
-            {!opp.converted_client_id && (
-              <button
-                onClick={handleConfirm}
-                disabled={converting}
-                className="px-4 py-2 text-sm font-semibold text-white bg-green rounded-lg hover:bg-green/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {converting ? (
-                  <span className="flex items-center gap-2">
-                    <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                    Converting...
-                  </span>
-                ) : 'Convert'}
-              </button>
-            )}
-          </div>
+
+          {/* Step 2: Preview */}
+          {step === 'preview' && (
+            <>
+              <p className="text-sm text-gray-warm">
+                This will create a <strong className="text-charcoal">client record</strong> and an <strong className="text-charcoal">engagement</strong> in the BaxterLabs system.
+              </p>
+
+              {convertError && (
+                <div className="p-3 bg-crimson/10 border border-crimson/20 rounded-lg text-crimson text-sm">{convertError}</div>
+              )}
+
+              {/* Client preview */}
+              <div className="bg-ivory rounded-lg p-4 space-y-3">
+                <p className="text-xs font-semibold text-gray-warm uppercase tracking-wider">New Client</p>
+                <div>
+                  <label className="block text-xs font-semibold text-charcoal mb-1">Company Name</label>
+                  <input
+                    type="text"
+                    value={editClientName}
+                    onChange={e => setEditClientName(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-light rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+                  />
+                </div>
+                {contactName && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-gray-warm">Primary Contact:</span>
+                    <span className="text-charcoal font-medium">{contactName}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Engagement preview */}
+              <div className="bg-ivory rounded-lg p-4 space-y-3">
+                <p className="text-xs font-semibold text-gray-warm uppercase tracking-wider">New Engagement</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-charcoal mb-1">Fee ($)</label>
+                    <input
+                      type="number"
+                      value={editFee}
+                      onChange={e => setEditFee(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-light rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-charcoal mb-1">Status</label>
+                    <div className="px-3 py-2 border border-gray-light rounded-lg text-sm bg-gray-light/30 text-charcoal">
+                      Intake
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-gray-warm">Partner:</span>
+                  <span className="text-charcoal font-medium">{opp.assigned_to || 'George DeVries'}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-1">
+                <button
+                  onClick={() => setStep('confirm')}
+                  className="px-4 py-2 text-sm font-semibold text-charcoal border border-gray-light rounded-lg hover:bg-ivory transition-colors"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleConvert}
+                  disabled={converting}
+                  className="px-4 py-2 text-sm font-semibold text-white bg-green rounded-lg hover:bg-green/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {converting ? (
+                    <span className="flex items-center gap-2">
+                      <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                      Creating...
+                    </span>
+                  ) : 'Create Engagement'}
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Step 3: Success */}
+          {step === 'success' && result && (
+            <>
+              <div className="bg-green/10 border border-green/30 rounded-lg px-4 py-4 flex items-start gap-3">
+                <svg className="w-6 h-6 text-green flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p className="text-sm font-semibold text-green">Engagement created successfully</p>
+                  <p className="text-xs text-green/80 mt-1">
+                    Client and engagement records have been created from <strong>{companyName}</strong>.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Link
+                  to={`/dashboard/engagement/${result.engagement_id}`}
+                  className="w-full px-4 py-2.5 text-sm font-semibold text-white bg-teal rounded-lg hover:bg-teal/90 transition-colors flex items-center justify-center gap-2"
+                >
+                  View Engagement
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                  </svg>
+                </Link>
+                <button
+                  onClick={onClose}
+                  className="w-full px-4 py-2 text-sm font-semibold text-charcoal border border-gray-light rounded-lg hover:bg-ivory transition-colors"
+                >
+                  Stay on Board
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -898,6 +1069,7 @@ function OpportunitySlideOver({
   onStageChange: (oppId: string, stage: string) => void
   onDelete: (oppId: string) => void
 }) {
+  useEscapeKey(onClose)
   const [opp, setOpp] = useState<Opportunity | null>(null)
   const [activities, setActivities] = useState<Activity[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
@@ -1013,12 +1185,12 @@ function OpportunitySlideOver({
                   <p className="text-sm text-green font-medium">
                     Converted to engagement
                   </p>
-                  <a
-                    href={`/dashboard/engagement/${opp.converted_engagement_id}`}
+                  <Link
+                    to={`/dashboard/engagement/${opp.converted_engagement_id}`}
                     className="text-xs text-teal underline hover:text-teal/80"
                   >
                     View engagement
-                  </a>
+                  </Link>
                 </div>
               )}
 
