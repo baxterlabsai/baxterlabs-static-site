@@ -1,8 +1,6 @@
-import { useSearchParams, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 
 export default function PaymentCancelled() {
-  const [params] = useSearchParams()
-  const invoiceId = params.get('invoice')
 
   return (
     <div className="min-h-screen bg-ivory flex items-center justify-center p-6">
