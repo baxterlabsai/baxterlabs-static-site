@@ -17,7 +17,20 @@ GOLD = "#C9A84C"
 CHARCOAL = "#2D3436"
 IVORY = "#FAF8F2"
 
-PARTNER_EMAIL = "george@baxterlabs.ai"
+# Three-tier sender addresses
+EMAIL_ACCOUNTING = "accounting@baxterlabs.ai"
+EMAIL_INFO = "info@baxterlabs.ai"
+
+PARTNER_EMAILS = {
+    "George DeVries": "george@baxterlabs.ai",
+    "Alfonso Cordon": "alfonso@baxterlabs.ai",
+}
+DEFAULT_PARTNER_EMAIL = "george@baxterlabs.ai"
+
+
+def get_partner_email(partner_lead: str) -> str:
+    """Resolve partner_lead name to email. Defaults to George."""
+    return PARTNER_EMAILS.get(partner_lead, DEFAULT_PARTNER_EMAIL)
 
 
 class EmailService:
@@ -60,17 +73,27 @@ class EmailService:
 </body>
 </html>"""
 
-    def _send_email(self, to_email: str, subject: str, html_body: str) -> dict:
+    def _send_email(
+        self,
+        to_email: str,
+        subject: str,
+        html_body: str,
+        from_email: Optional[str] = None,
+        from_name: Optional[str] = None,
+    ) -> dict:
         """Core send method using SMTP."""
         full_html = self._wrap_html(html_body)
+        sender_email = from_email or self.from_email
+        sender_name = from_name or self.from_name
 
         if self.development_mode:
-            logger.info(f"[DEV MODE] Email to={to_email} subject='{subject}'")
+            logger.info(f"[DEV MODE] Email from={sender_name} <{sender_email}> to={to_email} subject='{subject}'")
             logger.debug(f"[DEV MODE] Body preview: {html_body[:200]}...")
             return {
                 "success": True,
                 "mode": "development",
                 "to": to_email,
+                "from": f"{sender_name} <{sender_email}>",
                 "subject": subject,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
@@ -78,8 +101,9 @@ class EmailService:
         try:
             msg = MIMEMultipart("alternative")
             msg["Subject"] = subject
-            msg["From"] = f"{self.from_name} <{self.from_email}>"
+            msg["From"] = f"{sender_name} <{sender_email}>"
             msg["To"] = to_email
+            msg["Reply-To"] = sender_email
 
             text_part = MIMEText(f"This email requires an HTML-capable email client. Subject: {subject}", "plain")
             html_part = MIMEText(full_html, "html")
@@ -92,11 +116,12 @@ class EmailService:
                 smtp_response = server.send_message(msg)
                 logger.info(f"SMTP response for to={to_email}: {smtp_response}")
 
-            logger.info(f"Email sent to={to_email} subject='{subject}'")
+            logger.info(f"Email sent from={sender_email} to={to_email} subject='{subject}'")
             return {
                 "success": True,
                 "mode": "production",
                 "to": to_email,
+                "from": f"{sender_name} <{sender_email}>",
                 "subject": subject,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
@@ -126,7 +151,10 @@ class EmailService:
         </table>
         <p style="color:{TEAL};font-weight:600;">NDA will be sent automatically.</p>
         """
-        return self._send_email(PARTNER_EMAIL, f"New Intake: {company}", body)
+        return self._send_email(
+            DEFAULT_PARTNER_EMAIL, f"New Intake: {company}", body,
+            from_email=EMAIL_INFO, from_name="BaxterLabs",
+        )
 
     def send_nda_signed_notification(self, engagement: dict) -> dict:
         """Notify partner: client signed the NDA."""
@@ -143,7 +171,10 @@ class EmailService:
           </a>
         </p>
         """
-        return self._send_email(PARTNER_EMAIL, f"NDA Signed: {company}", body)
+        return self._send_email(
+            DEFAULT_PARTNER_EMAIL, f"NDA Signed: {company}", body,
+            from_email=EMAIL_INFO, from_name="BaxterLabs",
+        )
 
     def send_research_ready_notification(self, engagement: dict, research_type: str) -> dict:
         """Notify partner: research dossier or interview briefs are ready."""
@@ -160,7 +191,10 @@ class EmailService:
           </a>
         </p>
         """
-        return self._send_email(PARTNER_EMAIL, f"Research Ready: {company} — {label}", body)
+        return self._send_email(
+            DEFAULT_PARTNER_EMAIL, f"Research Ready: {company} — {label}", body,
+            from_email=EMAIL_INFO, from_name="BaxterLabs",
+        )
 
     def send_agreement_signed_notification(self, engagement: dict) -> dict:
         """Notify partner: client signed the engagement agreement."""
@@ -177,7 +211,10 @@ class EmailService:
           </a>
         </p>
         """
-        return self._send_email(PARTNER_EMAIL, f"Agreement Signed: {company}", body)
+        return self._send_email(
+            DEFAULT_PARTNER_EMAIL, f"Agreement Signed: {company}", body,
+            from_email=EMAIL_INFO, from_name="BaxterLabs",
+        )
 
     def send_upload_link(self, engagement: dict) -> dict:
         """Send client their secure upload portal link with required items list."""
@@ -210,7 +247,13 @@ class EmailService:
         </ul>
         <p style="color:{CHARCOAL};font-size:14px;">This link is unique to your engagement. Do not share it with anyone outside your organization.</p>
         """
-        return self._send_email(contact_email, f"BaxterLabs — Document Upload Portal for {company}", body)
+        partner_lead = engagement.get("partner_lead", "")
+        p_email = get_partner_email(partner_lead)
+        p_name = f"{partner_lead or 'George DeVries'} — BaxterLabs"
+        return self._send_email(
+            contact_email, f"BaxterLabs — Document Upload Portal for {company}", body,
+            from_email=p_email, from_name=p_name,
+        )
 
     def send_document_uploaded_notification(self, engagement: dict, filename: str, item_display_name: str, category: str) -> dict:
         """Notify partner: a client uploaded a document."""
@@ -234,7 +277,10 @@ class EmailService:
           </a>
         </p>
         """
-        return self._send_email(PARTNER_EMAIL, f"Document Uploaded: {company} — {item_display_name}", body)
+        return self._send_email(
+            DEFAULT_PARTNER_EMAIL, f"Document Uploaded: {company} — {item_display_name}", body,
+            from_email=EMAIL_INFO, from_name="BaxterLabs",
+        )
 
     def send_upload_complete_notification(self, engagement: dict) -> dict:
         """Notify partner: client has submitted all documents."""
@@ -251,7 +297,10 @@ class EmailService:
           </a>
         </p>
         """
-        return self._send_email(PARTNER_EMAIL, f"Documents Received: {company}", body)
+        return self._send_email(
+            DEFAULT_PARTNER_EMAIL, f"Documents Received: {company}", body,
+            from_email=EMAIL_INFO, from_name="BaxterLabs",
+        )
 
     def send_wave1_released(self, engagement: dict) -> dict:
         """Notify client: Wave 1 deliverables are available."""
@@ -277,7 +326,13 @@ class EmailService:
           </a>
         </p>
         """
-        return self._send_email(contact_email, f"BaxterLabs Deliverables Ready — {company}", body)
+        partner_lead = engagement.get("partner_lead", "")
+        p_email = get_partner_email(partner_lead)
+        p_name = f"{partner_lead or 'George DeVries'} — BaxterLabs"
+        return self._send_email(
+            contact_email, f"BaxterLabs Deliverables Ready — {company}", body,
+            from_email=p_email, from_name=p_name,
+        )
 
     def send_wave2_released(self, engagement: dict) -> dict:
         """Notify client: Wave 2 deliverables (deck + retainer proposal) available."""
@@ -301,7 +356,13 @@ class EmailService:
           </a>
         </p>
         """
-        return self._send_email(contact_email, f"BaxterLabs — Additional Materials for {company}", body)
+        partner_lead = engagement.get("partner_lead", "")
+        p_email = get_partner_email(partner_lead)
+        p_name = f"{partner_lead or 'George DeVries'} — BaxterLabs"
+        return self._send_email(
+            contact_email, f"BaxterLabs — Additional Materials for {company}", body,
+            from_email=p_email, from_name=p_name,
+        )
 
     def send_deliverables_ready_notification(self, engagement: dict, wave: int = 1) -> dict:
         """Notify partner: deliverables from a wave are ready/released."""
@@ -324,7 +385,10 @@ class EmailService:
           </a>
         </p>
         """
-        return self._send_email(PARTNER_EMAIL, f"Deliverables Ready — {company}", body)
+        return self._send_email(
+            DEFAULT_PARTNER_EMAIL, f"Deliverables Ready — {company}", body,
+            from_email=EMAIL_INFO, from_name="BaxterLabs",
+        )
 
     def send_reminder_nda(self, engagement: dict) -> dict:
         """Send client a reminder to sign the NDA."""
@@ -339,7 +403,13 @@ class EmailService:
         <p>Please check your email for the DocuSign envelope and complete the signature so we can get started. If you can't find it, please let us know and we'll resend it.</p>
         <p style="color:{TEAL};font-weight:600;margin-top:24px;">— The BaxterLabs Team</p>
         """
-        return self._send_email(contact_email, f"Reminder: Sign Your NDA — {company}", body)
+        partner_lead = engagement.get("partner_lead", "")
+        p_email = get_partner_email(partner_lead)
+        p_name = f"{partner_lead or 'George DeVries'} — BaxterLabs"
+        return self._send_email(
+            contact_email, f"Reminder: Sign Your NDA — {company}", body,
+            from_email=p_email, from_name=p_name,
+        )
 
     def send_reminder_agreement(self, engagement: dict) -> dict:
         """Send client a reminder to sign the Engagement Agreement."""
@@ -354,7 +424,13 @@ class EmailService:
         <p>Please check your email for the DocuSign envelope and complete the signature. If you can't find it, please let us know and we'll resend it.</p>
         <p style="color:{TEAL};font-weight:600;margin-top:24px;">— The BaxterLabs Team</p>
         """
-        return self._send_email(contact_email, f"Reminder: Sign Your Agreement — {company}", body)
+        partner_lead = engagement.get("partner_lead", "")
+        p_email = get_partner_email(partner_lead)
+        p_name = f"{partner_lead or 'George DeVries'} — BaxterLabs"
+        return self._send_email(
+            contact_email, f"Reminder: Sign Your Agreement — {company}", body,
+            from_email=p_email, from_name=p_name,
+        )
 
     def send_reminder_documents(self, engagement: dict, uploaded_count: int, total_required: int) -> dict:
         """Send client a reminder to upload outstanding documents."""
@@ -378,7 +454,13 @@ class EmailService:
         </p>
         <p style="color:{TEAL};font-weight:600;">— The BaxterLabs Team</p>
         """
-        return self._send_email(contact_email, f"Reminder: Upload Documents — {company}", body)
+        partner_lead = engagement.get("partner_lead", "")
+        p_email = get_partner_email(partner_lead)
+        p_name = f"{partner_lead or 'George DeVries'} — BaxterLabs"
+        return self._send_email(
+            contact_email, f"Reminder: Upload Documents — {company}", body,
+            from_email=p_email, from_name=p_name,
+        )
 
     # ── Invoice & Payment Templates ────────────────────────────────────
 
@@ -427,7 +509,10 @@ class EmailService:
         {payment_button}
         <p style="color:#6B7280;font-size:13px;">Payment is due within 14 days. If you have questions about this invoice, please contact info@baxterlabs.ai.</p>
         """
-        return self._send_email(contact_email, f"BaxterLabs Invoice {invoice_number} — {company}", body)
+        return self._send_email(
+            contact_email, f"BaxterLabs Invoice {invoice_number} — {company}", body,
+            from_email=EMAIL_ACCOUNTING, from_name="BaxterLabs Accounting",
+        )
 
     def send_payment_received(
         self,
@@ -457,7 +542,10 @@ class EmailService:
         <p>No further action is required. We appreciate your prompt payment.</p>
         <p style="color:{TEAL};font-weight:600;margin-top:24px;">— The BaxterLabs Team</p>
         """
-        return self._send_email(contact_email, f"Payment Received — Invoice {invoice_number}", body)
+        return self._send_email(
+            contact_email, f"Payment Received — Invoice {invoice_number}", body,
+            from_email=EMAIL_ACCOUNTING, from_name="BaxterLabs Accounting",
+        )
 
     def send_payment_notification(
         self,
@@ -488,7 +576,10 @@ class EmailService:
           </a>
         </p>
         """
-        return self._send_email(PARTNER_EMAIL, f"Payment Received: {company} — {invoice_number}", body)
+        return self._send_email(
+            DEFAULT_PARTNER_EMAIL, f"Payment Received: {company} — {invoice_number}", body,
+            from_email=EMAIL_INFO, from_name="BaxterLabs",
+        )
 
     def send_invoice_overdue_reminder(
         self,
@@ -524,7 +615,10 @@ class EmailService:
         {payment_button}
         <p style="color:#6B7280;font-size:13px;">If you've already made this payment, please disregard this reminder. For questions, contact info@baxterlabs.ai.</p>
         """
-        return self._send_email(contact_email, f"Payment Reminder — Invoice {invoice_number}", body)
+        return self._send_email(
+            contact_email, f"Payment Reminder — Invoice {invoice_number}", body,
+            from_email=EMAIL_ACCOUNTING, from_name="BaxterLabs Accounting",
+        )
 
     def send_engagement_archived(self, engagement: dict) -> dict:
         """Notify partner: engagement has been archived."""
@@ -535,7 +629,10 @@ class EmailService:
         <p>The engagement for <strong>{company}</strong> has been archived.</p>
         <p>All files have been moved to the archive bucket and the engagement is now closed.</p>
         """
-        return self._send_email(PARTNER_EMAIL, f"Engagement Archived: {company}", body)
+        return self._send_email(
+            DEFAULT_PARTNER_EMAIL, f"Engagement Archived: {company}", body,
+            from_email=EMAIL_INFO, from_name="BaxterLabs",
+        )
 
 
 # Singleton

@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from middleware.auth import verify_partner_auth
 from services.supabase_client import get_supabase, log_activity
-from services.email_service import get_email_service
+from services.email_service import get_email_service, EMAIL_INFO
 
 logger = logging.getLogger("baxterlabs.users")
 
@@ -148,7 +148,10 @@ async def invite_user(
             Please change your password immediately after your first login.
         </p>
         """
-        email_svc._send_email(email, "Welcome to BaxterLabs Advisory", html_body)
+        email_svc._send_email(
+            email, "Welcome to BaxterLabs Advisory", html_body,
+            from_email=EMAIL_INFO, from_name="BaxterLabs",
+        )
     except Exception as exc:
         # Non-fatal — user was still created successfully.
         logger.warning("Failed to send welcome email to %s: %s", email, exc)
