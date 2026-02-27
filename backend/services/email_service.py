@@ -380,6 +380,152 @@ class EmailService:
         """
         return self._send_email(contact_email, f"Reminder: Upload Documents — {company}", body)
 
+    # ── Invoice & Payment Templates ────────────────────────────────────
+
+    def send_invoice(
+        self,
+        engagement: dict,
+        invoice_number: str,
+        invoice_type: str,
+        amount: float,
+        due_date: str,
+        payment_link: Optional[str] = None,
+    ) -> dict:
+        """Send invoice to client with payment link."""
+        client = engagement.get("clients", {})
+        company = client.get("company_name", "Unknown")
+        contact_name = client.get("primary_contact_name", "there")
+        contact_email = client.get("primary_contact_email")
+        type_label = "Deposit (50%)" if invoice_type == "deposit" else "Final (50%)"
+        amount_str = f"${amount:,.2f}"
+
+        payment_button = ""
+        if payment_link:
+            payment_button = f"""
+            <p style="margin:24px 0;text-align:center;">
+              <a href="{payment_link}"
+                 style="display:inline-block;padding:14px 32px;background-color:{CRIMSON};color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;font-size:16px;">
+                Pay {amount_str} Now
+              </a>
+            </p>
+            """
+
+        body = f"""
+        <h2 style="color:{CRIMSON};font-family:Georgia,serif;margin-top:0;">Invoice {invoice_number}</h2>
+        <p>Hi {contact_name},</p>
+        <p>Please find your invoice details below for the BaxterLabs Operational Diagnostic engagement.</p>
+        <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+          <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;width:140px;">Invoice #</td>
+              <td style="padding:8px;border-bottom:1px solid #E5E7EB;">{invoice_number}</td></tr>
+          <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;">Type</td>
+              <td style="padding:8px;border-bottom:1px solid #E5E7EB;">{type_label}</td></tr>
+          <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;">Amount Due</td>
+              <td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:700;color:{CRIMSON};">{amount_str}</td></tr>
+          <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;">Due Date</td>
+              <td style="padding:8px;border-bottom:1px solid #E5E7EB;">{due_date}</td></tr>
+        </table>
+        {payment_button}
+        <p style="color:#6B7280;font-size:13px;">Payment is due within 14 days. If you have questions about this invoice, please contact info@baxterlabs.ai.</p>
+        """
+        return self._send_email(contact_email, f"BaxterLabs Invoice {invoice_number} — {company}", body)
+
+    def send_payment_received(
+        self,
+        engagement: dict,
+        invoice_number: str,
+        amount: float,
+    ) -> dict:
+        """Send payment receipt/confirmation to client."""
+        client = engagement.get("clients", {})
+        company = client.get("company_name", "Unknown")
+        contact_name = client.get("primary_contact_name", "there")
+        contact_email = client.get("primary_contact_email")
+        amount_str = f"${amount:,.2f}"
+
+        body = f"""
+        <h2 style="color:{TEAL};font-family:Georgia,serif;margin-top:0;">Payment Received</h2>
+        <p>Hi {contact_name},</p>
+        <p>Thank you! We've received your payment of <strong>{amount_str}</strong> for invoice <strong>{invoice_number}</strong>.</p>
+        <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+          <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;width:140px;">Invoice #</td>
+              <td style="padding:8px;border-bottom:1px solid #E5E7EB;">{invoice_number}</td></tr>
+          <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;">Amount Paid</td>
+              <td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:700;color:{TEAL};">{amount_str}</td></tr>
+          <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;">Status</td>
+              <td style="padding:8px;border-bottom:1px solid #E5E7EB;"><span style="color:{TEAL};font-weight:600;">Paid</span></td></tr>
+        </table>
+        <p>No further action is required. We appreciate your prompt payment.</p>
+        <p style="color:{TEAL};font-weight:600;margin-top:24px;">— The BaxterLabs Team</p>
+        """
+        return self._send_email(contact_email, f"Payment Received — Invoice {invoice_number}", body)
+
+    def send_payment_notification(
+        self,
+        engagement: dict,
+        invoice_number: str,
+        amount: float,
+        method: str = "stripe",
+    ) -> dict:
+        """Notify partner that a payment was received."""
+        client = engagement.get("clients", {})
+        company = client.get("company_name", "Unknown")
+        amount_str = f"${amount:,.2f}"
+        method_label = "Stripe" if method == "stripe" else "Manual"
+
+        body = f"""
+        <h2 style="color:{TEAL};font-family:Georgia,serif;margin-top:0;">Payment Received</h2>
+        <p><strong>{company}</strong> has paid invoice <strong>{invoice_number}</strong>.</p>
+        <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+          <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;width:140px;">Amount</td>
+              <td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:700;color:{TEAL};">{amount_str}</td></tr>
+          <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;">Method</td>
+              <td style="padding:8px;border-bottom:1px solid #E5E7EB;">{method_label}</td></tr>
+        </table>
+        <p style="margin-top:24px;">
+          <a href="{self.frontend_url}/dashboard/engagement/{engagement.get('id')}"
+             style="display:inline-block;padding:12px 24px;background-color:{CRIMSON};color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">
+            View Engagement
+          </a>
+        </p>
+        """
+        return self._send_email(PARTNER_EMAIL, f"Payment Received: {company} — {invoice_number}", body)
+
+    def send_invoice_overdue_reminder(
+        self,
+        engagement: dict,
+        invoice_number: str,
+        amount: float,
+        due_date: str,
+        payment_link: Optional[str] = None,
+    ) -> dict:
+        """Send overdue reminder to client."""
+        client = engagement.get("clients", {})
+        company = client.get("company_name", "Unknown")
+        contact_name = client.get("primary_contact_name", "there")
+        contact_email = client.get("primary_contact_email")
+        amount_str = f"${amount:,.2f}"
+
+        payment_button = ""
+        if payment_link:
+            payment_button = f"""
+            <p style="margin:24px 0;text-align:center;">
+              <a href="{payment_link}"
+                 style="display:inline-block;padding:14px 32px;background-color:{CRIMSON};color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;font-size:16px;">
+                Pay {amount_str} Now
+              </a>
+            </p>
+            """
+
+        body = f"""
+        <h2 style="color:{CRIMSON};font-family:Georgia,serif;margin-top:0;">Payment Reminder</h2>
+        <p>Hi {contact_name},</p>
+        <p>This is a friendly reminder that invoice <strong>{invoice_number}</strong> for <strong>{amount_str}</strong> was due on <strong>{due_date}</strong>.</p>
+        <p>Please arrange payment at your earliest convenience.</p>
+        {payment_button}
+        <p style="color:#6B7280;font-size:13px;">If you've already made this payment, please disregard this reminder. For questions, contact info@baxterlabs.ai.</p>
+        """
+        return self._send_email(contact_email, f"Payment Reminder — Invoice {invoice_number}", body)
+
     def send_engagement_archived(self, engagement: dict) -> dict:
         """Notify partner: engagement has been archived."""
         client = engagement.get("clients", {})

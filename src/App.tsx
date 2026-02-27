@@ -23,6 +23,8 @@ import PipelineTasks from './pages/dashboard/pipeline/Tasks'
 import ConversionReview from './pages/dashboard/pipeline/ConversionReview'
 import UploadPortal from './pages/UploadPortal'
 import DeliverablePortal from './pages/DeliverablePortal'
+import PaymentSuccess from './pages/PaymentSuccess'
+import PaymentCancelled from './pages/PaymentCancelled'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import NotFound from './pages/NotFound'
@@ -51,6 +53,10 @@ export default function App() {
         {/* Public portals (token-based, no auth) */}
         <Route path="/upload/:token" element={<UploadPortal />} />
         <Route path="/deliverables/:token" element={<DeliverablePortal />} />
+
+        {/* Payment result pages (no auth) */}
+        <Route path="/payment/success" element={<PaymentSuccess />} />
+        <Route path="/payment/cancelled" element={<PaymentCancelled />} />
 
         {/* Password reset (public, no auth) */}
         <Route path="/forgot-password" element={<ForgotPassword />} />

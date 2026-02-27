@@ -246,6 +246,13 @@ export default function EngagementDetail() {
   const [pipelineSource, setPipelineSource] = useState<{ id: string; company_id: string } | null>(null)
   const [referralsGenerated, setReferralsGenerated] = useState<Array<{ id: string; title: string; stage: string; estimated_value: number | null; pipeline_companies: { id: string; name: string } | null }>>([])
 
+  // Invoices
+  const [invoices, setInvoices] = useState<Array<{ id: string; invoice_number: string; type: string; amount: number; status: string; payment_link: string | null; issued_at: string; due_date: string; paid_at: string | null }>>([])
+  const [generatingInvoice, setGeneratingInvoice] = useState(false)
+  const [resendingInvoiceId, setResendingInvoiceId] = useState<string | null>(null)
+  const [voidingInvoiceId, setVoidingInvoiceId] = useState<string | null>(null)
+  const [markingPaidId, setMarkingPaidId] = useState<string | null>(null)
+
   useEffect(() => {
     if (!id) return
     // Check if engagement was created from pipeline
@@ -261,6 +268,10 @@ export default function EngagementDetail() {
         const refs = data.opportunities.filter(o => o.referred_by_engagement_id === id)
         setReferralsGenerated(refs)
       })
+      .catch(() => {})
+    // Fetch invoices
+    apiGet<{ invoices: typeof invoices }>(`/api/engagements/${id}/invoices`)
+      .then(data => setInvoices(data.invoices))
       .catch(() => {})
   }, [id])
 
@@ -1439,6 +1450,161 @@ export default function EngagementDetail() {
           </div>
         </section>
       )}
+
+      {/* Invoices */}
+      <section className="bg-white rounded-lg border border-gray-light p-5 mt-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-display text-lg font-bold text-teal flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+            </svg>
+            Invoices
+          </h3>
+          {!isClosed && (
+            <div className="flex gap-2">
+              {!invoices.some(inv => inv.type === 'deposit' && inv.status !== 'voided') && (
+                <button
+                  disabled={generatingInvoice}
+                  onClick={async () => {
+                    setGeneratingInvoice(true)
+                    try {
+                      await apiPost(`/api/engagements/${id}/generate-invoice`, { invoice_type: 'deposit', send_email: true })
+                      const updated = await apiGet<{ invoices: typeof invoices }>(`/api/engagements/${id}/invoices`)
+                      setInvoices(updated.invoices)
+                    } catch {}
+                    setGeneratingInvoice(false)
+                  }}
+                  className="px-3 py-1.5 bg-teal text-white text-xs font-semibold rounded-lg hover:bg-teal/90 disabled:opacity-50"
+                >
+                  {generatingInvoice ? 'Generating...' : 'Generate Deposit Invoice'}
+                </button>
+              )}
+              {!invoices.some(inv => inv.type === 'final' && inv.status !== 'voided') && (
+                <button
+                  disabled={generatingInvoice}
+                  onClick={async () => {
+                    setGeneratingInvoice(true)
+                    try {
+                      await apiPost(`/api/engagements/${id}/generate-invoice`, { invoice_type: 'final', send_email: true })
+                      const updated = await apiGet<{ invoices: typeof invoices }>(`/api/engagements/${id}/invoices`)
+                      setInvoices(updated.invoices)
+                    } catch {}
+                    setGeneratingInvoice(false)
+                  }}
+                  className="px-3 py-1.5 bg-charcoal text-white text-xs font-semibold rounded-lg hover:bg-charcoal/90 disabled:opacity-50"
+                >
+                  {generatingInvoice ? 'Generating...' : 'Generate Final Invoice'}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+        {invoices.length === 0 ? (
+          <p className="text-gray-warm text-sm">No invoices yet. Deposit invoice is generated when the engagement agreement is signed.</p>
+        ) : (
+          <div className="space-y-3">
+            {invoices.map(inv => {
+              const statusColors: Record<string, string> = {
+                sent: 'bg-blue-100 text-blue-800',
+                paid: 'bg-green/10 text-green',
+                overdue: 'bg-red-soft/10 text-red-soft',
+                voided: 'bg-gray-light text-gray-warm line-through',
+                draft: 'bg-gray-light text-charcoal',
+              }
+              const isActive = inv.status !== 'voided' && inv.status !== 'paid'
+              return (
+                <div key={inv.id} className="flex items-center justify-between py-3 px-4 border border-gray-light rounded-lg">
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <p className="text-sm font-semibold text-charcoal">{inv.invoice_number}</p>
+                      <p className="text-xs text-gray-warm">{inv.type === 'deposit' ? 'Deposit (50%)' : 'Final (50%)'}</p>
+                    </div>
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${statusColors[inv.status] || 'bg-gray-light text-charcoal'}`}>
+                      {statusLabel(inv.status)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-charcoal">${Number(inv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                      <p className="text-xs text-gray-warm">
+                        {inv.paid_at ? `Paid ${formatDate(inv.paid_at)}` : `Due ${formatDate(inv.due_date)}`}
+                      </p>
+                    </div>
+                    {isActive && (
+                      <div className="flex gap-1">
+                        {inv.payment_link && (
+                          <a
+                            href={inv.payment_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 text-teal hover:bg-teal/10 rounded-md"
+                            title="Open payment link"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                            </svg>
+                          </a>
+                        )}
+                        <button
+                          disabled={resendingInvoiceId === inv.id}
+                          onClick={async () => {
+                            setResendingInvoiceId(inv.id)
+                            try { await apiPost(`/api/invoices/${inv.id}/resend`) } catch {}
+                            setResendingInvoiceId(null)
+                          }}
+                          className="p-1.5 text-gray-warm hover:text-charcoal hover:bg-gray-light rounded-md disabled:opacity-50"
+                          title="Resend invoice email"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                          </svg>
+                        </button>
+                        <button
+                          disabled={markingPaidId === inv.id}
+                          onClick={async () => {
+                            setMarkingPaidId(inv.id)
+                            try {
+                              await apiPost(`/api/invoices/${inv.id}/mark-paid`)
+                              const updated = await apiGet<{ invoices: typeof invoices }>(`/api/engagements/${id}/invoices`)
+                              setInvoices(updated.invoices)
+                            } catch {}
+                            setMarkingPaidId(null)
+                          }}
+                          className="p-1.5 text-green hover:bg-green/10 rounded-md disabled:opacity-50"
+                          title="Mark as paid"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                          </svg>
+                        </button>
+                        <button
+                          disabled={voidingInvoiceId === inv.id}
+                          onClick={async () => {
+                            if (!confirm(`Void invoice ${inv.invoice_number}? This cannot be undone.`)) return
+                            setVoidingInvoiceId(inv.id)
+                            try {
+                              await apiPost(`/api/invoices/${inv.id}/void`)
+                              const updated = await apiGet<{ invoices: typeof invoices }>(`/api/engagements/${id}/invoices`)
+                              setInvoices(updated.invoices)
+                            } catch {}
+                            setVoidingInvoiceId(null)
+                          }}
+                          className="p-1.5 text-red-soft hover:bg-red-soft/10 rounded-md disabled:opacity-50"
+                          title="Void invoice"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </section>
 
       {/* Activity Log */}
       <section className="bg-white rounded-lg border border-gray-light p-5 mt-6">

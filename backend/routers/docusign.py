@@ -262,6 +262,18 @@ async def docusign_webhook(request: Request, background_tasks: BackgroundTasks):
                     "result": upload_email_result,
                 })
 
+            # Trigger deposit invoice generation
+            try:
+                from routers.invoices import create_and_send_invoice
+                create_and_send_invoice(
+                    engagement_id=engagement_id,
+                    invoice_type="deposit",
+                    send_email=True,
+                )
+                logger.info(f"Deposit invoice triggered for engagement {engagement_id}")
+            except Exception as inv_err:
+                logger.error(f"Deposit invoice generation failed (non-blocking): {inv_err}")
+
             logger.info(f"Agreement signed — envelope={envelope_id} engagement={engagement_id}")
 
     return Response(status_code=200)

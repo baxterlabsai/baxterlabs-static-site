@@ -16,6 +16,16 @@ interface Engagement {
   }
 }
 
+interface RevenueSummary {
+  total_invoiced: number
+  total_paid: number
+  total_outstanding: number
+  total_overdue: number
+  invoice_count: number
+  deposit_count: number
+  final_count: number
+}
+
 interface PipelineStats {
   stage_counts: Record<string, number>
   total_pipeline_value: number
@@ -112,6 +122,7 @@ type SortDir = 'asc' | 'desc'
 export default function Overview() {
   const [engagements, setEngagements] = useState<Engagement[]>([])
   const [pipelineStats, setPipelineStats] = useState<PipelineStats | null>(null)
+  const [revenueSummary, setRevenueSummary] = useState<RevenueSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [sortField, setSortField] = useState<SortField>('created')
@@ -122,10 +133,12 @@ export default function Overview() {
     Promise.all([
       apiGet<{ engagements: Engagement[] }>('/api/engagements'),
       apiGet<PipelineStats>('/api/pipeline/stats').catch(() => null),
+      apiGet<RevenueSummary>('/api/invoices/revenue-summary').catch(() => null),
     ])
-      .then(([engData, statsData]) => {
+      .then(([engData, statsData, revenueData]) => {
         setEngagements(engData.engagements)
         if (statsData) setPipelineStats(statsData)
+        if (revenueData) setRevenueSummary(revenueData)
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
@@ -244,6 +257,46 @@ export default function Overview() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Revenue Summary */}
+      {revenueSummary && revenueSummary.invoice_count > 0 && (
+        <div className="mb-8">
+          <h2 className="font-display text-xl font-bold text-charcoal mb-4">Revenue</h2>
+          <div className="bg-white rounded-lg border border-gray-light p-5">
+            <div className="flex flex-wrap items-center gap-4">
+              <div>
+                <p className="text-xs text-gray-warm">Total Invoiced</p>
+                <p className="text-lg font-bold text-charcoal">${revenueSummary.total_invoiced.toLocaleString()}</p>
+              </div>
+              <div className="w-px h-8 bg-gray-light hidden sm:block" />
+              <div>
+                <p className="text-xs text-gray-warm">Collected</p>
+                <p className="text-lg font-bold text-teal">${revenueSummary.total_paid.toLocaleString()}</p>
+              </div>
+              <div className="w-px h-8 bg-gray-light hidden sm:block" />
+              <div>
+                <p className="text-xs text-gray-warm">Outstanding</p>
+                <p className="text-lg font-bold text-charcoal">${revenueSummary.total_outstanding.toLocaleString()}</p>
+              </div>
+              <div className="w-px h-8 bg-gray-light hidden sm:block" />
+              <div>
+                <p className="text-xs text-gray-warm">Overdue</p>
+                <p className={`text-lg font-bold ${revenueSummary.total_overdue > 0 ? 'text-red-soft' : 'text-charcoal'}`}>
+                  ${revenueSummary.total_overdue.toLocaleString()}
+                  {revenueSummary.total_overdue > 0 && (
+                    <span className="ml-1.5 inline-flex items-center justify-center w-2 h-2 rounded-full bg-red-soft" />
+                  )}
+                </p>
+              </div>
+              <div className="w-px h-8 bg-gray-light hidden sm:block" />
+              <div>
+                <p className="text-xs text-gray-warm">Invoices</p>
+                <p className="text-lg font-bold text-charcoal">{revenueSummary.invoice_count}</p>
+              </div>
+            </div>
           </div>
         </div>
       )}

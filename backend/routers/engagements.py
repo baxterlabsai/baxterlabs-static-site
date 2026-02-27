@@ -304,6 +304,19 @@ async def advance_phase(
         "notes": body.notes,
     })
 
+    # Trigger final invoice when all phases complete
+    if new_status == "phases_complete":
+        try:
+            from routers.invoices import create_and_send_invoice
+            create_and_send_invoice(
+                engagement_id=engagement_id,
+                invoice_type="final",
+                send_email=True,
+            )
+            logger.info(f"Final invoice triggered for engagement {engagement_id}")
+        except Exception as inv_err:
+            logger.error(f"Final invoice generation failed (non-blocking): {inv_err}")
+
     return {
         "success": True,
         "from_phase": current_phase,
