@@ -286,8 +286,9 @@ async def advance_phase(
     }).execute()
 
     # Determine next status
-    new_phase = current_phase + 1
     new_status = PHASE_STATUSES.get(current_phase, "phases_complete")
+    # Keep phase capped at 7 (DB constraint: 0-7)
+    new_phase = min(current_phase + 1, 7)
 
     # Update engagement
     sb.table("engagements").update({

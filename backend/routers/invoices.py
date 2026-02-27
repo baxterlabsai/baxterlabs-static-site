@@ -138,8 +138,8 @@ def create_and_send_invoice(
         "type": invoice_type,
         "amount": amount,
         "status": "sent",
-        "stripe_checkout_session_id": stripe_session_id,
-        "payment_link": payment_link,
+        "stripe_session_id": stripe_session_id,
+        "stripe_payment_link": payment_link,
         "pdf_storage_path": pdf_path,
         "issued_at": issued_at,
         "due_date": due_date,
@@ -333,7 +333,7 @@ async def resend_invoice(invoice_id: str, user: dict = Depends(verify_partner_au
         invoice_type=invoice["type"],
         amount=float(invoice["amount"]),
         due_date=invoice["due_date"],
-        payment_link=invoice.get("payment_link"),
+        payment_link=invoice.get("stripe_payment_link"),
     )
 
     log_activity(invoice["engagement_id"], "partner", "invoice_resent", {
