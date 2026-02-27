@@ -143,7 +143,7 @@ export default function PipelineCompanies() {
       )
     : companies
 
-  async function handleAdd(data: Omit<Company, 'id' | 'created_at' | 'updated_at'>) {
+  async function handleAdd(data: Record<string, unknown>) {
     try {
       const result = await apiPost<Company>('/api/pipeline/companies', data)
       setCompanies(prev => [result, ...prev])
