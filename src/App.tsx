@@ -11,7 +11,6 @@ import Login from './pages/dashboard/Login'
 import Overview from './pages/dashboard/Overview'
 import EngagementDetail from './pages/dashboard/EngagementDetail'
 import StartEngagement from './pages/dashboard/StartEngagement'
-import PromptLibrary from './pages/dashboard/PromptLibrary'
 import ClientDirectory from './pages/dashboard/ClientDirectory'
 import Calendar from './pages/dashboard/Calendar'
 import UserManagement from './pages/dashboard/UserManagement'
@@ -73,7 +72,6 @@ export default function App() {
             <Route path="/dashboard" element={<Overview />} />
             <Route path="/dashboard/engagement/:id" element={<EngagementDetail />} />
             <Route path="/dashboard/engagement/:id/start" element={<StartEngagement />} />
-            <Route path="/dashboard/prompts" element={<PromptLibrary />} />
             <Route path="/dashboard/clients" element={<ClientDirectory />} />
             <Route path="/dashboard/calendar" element={<Calendar />} />
             <Route path="/dashboard/users" element={<UserManagement />} />

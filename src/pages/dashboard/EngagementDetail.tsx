@@ -213,10 +213,7 @@ export default function EngagementDetail() {
   const [researchLoading, setResearchLoading] = useState('')
   const [expandedBrief, setExpandedBrief] = useState<string | null>(null)
   const [downloadingDocId, setDownloadingDocId] = useState<string | null>(null)
-  const [phasePrompt, setPhasePrompt] = useState<{ phase_number: number; name: string; rendered_text: string; variables_used: Record<string, string> } | null>(null)
-  const [promptLoading, setPromptLoading] = useState(false)
-  const [promptExpanded, setPromptExpanded] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [copiedCommand, setCopiedCommand] = useState<number | null>(null)
   const [advanceLoading, setAdvanceLoading] = useState(false)
   const [advanceDialog, setAdvanceDialog] = useState<'none' | 'simple' | 'review'>('none')
   const [advanceNotes, setAdvanceNotes] = useState('')
@@ -233,8 +230,6 @@ export default function EngagementDetail() {
   const [reminderLoading, setReminderLoading] = useState<string | null>(null)
   const [lastReminders, setLastReminders] = useState<{ nda: string; agreement: string; documents: string }>({ nda: '', agreement: '', documents: '' })
   const [expandedPhases, setExpandedPhases] = useState<Set<number>>(new Set())
-  const [copyingPrompt, setCopyingPrompt] = useState<number | null>(null)
-  const [promptCopied, setPromptCopied] = useState<number | null>(null)
   const [seedingOutputs, setSeedingOutputs] = useState(false)
   const [uploadingOutputId, setUploadingOutputId] = useState<string | null>(null)
   const [acceptingOutputId, setAcceptingOutputId] = useState<string | null>(null)
@@ -332,33 +327,29 @@ export default function EngagementDetail() {
 
   const isInPhases = data && /^phase_\d$/.test(data.status)
 
-  const loadPhasePrompt = async () => {
-    if (!id || !data) return
-    setPromptLoading(true)
-    try {
-      const result = await apiGet<{ phase_number: number; name: string; rendered_text: string; variables_used: Record<string, string> }>(`/api/engagements/${id}/prompt/${data.phase}`)
-      setPhasePrompt(result)
-    } catch {}
-    setPromptLoading(false)
+  const getPhaseCommand = (phase: number) => {
+    if (!data) return ''
+    const rawName = data.clients.company_name
+    const slug = rawName.replace(/,?\s*(Inc\.?|LLC|Corp\.?|Ltd\.?)$/i, '').replace(/[^a-zA-Z0-9]/g, '')
+    const year = data.start_date ? new Date(data.start_date).getFullYear() : new Date().getFullYear()
+    return `/run-phase ${phase} ${slug}_${year}`
   }
 
-  const copyPrompt = async () => {
-    if (!phasePrompt) return
+  const copyPhaseCommand = async (phase: number) => {
+    const cmd = getPhaseCommand(phase)
     try {
-      await navigator.clipboard.writeText(phasePrompt.rendered_text)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      await navigator.clipboard.writeText(cmd)
     } catch {
-      // Fallback
       const ta = document.createElement('textarea')
-      ta.value = phasePrompt.rendered_text
+      ta.value = cmd
       document.body.appendChild(ta)
       ta.select()
       document.execCommand('copy')
       document.body.removeChild(ta)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
     }
+    setCopiedCommand(phase)
+    toast(`Copied: ${cmd}`)
+    setTimeout(() => setCopiedCommand(null), 2000)
   }
 
   const handleAdvanceClick = () => {
@@ -378,8 +369,6 @@ export default function EngagementDetail() {
       // Reload engagement
       const d = await apiGet<EngagementData>(`/api/engagements/${id}`)
       setData(d)
-      setPhasePrompt(null)
-      setPromptExpanded(false)
       setAdvanceDialog('none')
       setAdvanceNotes('')
     } catch {}
@@ -522,20 +511,6 @@ export default function EngagementDetail() {
       else next.add(phase)
       return next
     })
-  }
-
-  const copyPhasePrompt = async (phase: number) => {
-    if (!id) return
-    setCopyingPrompt(phase)
-    try {
-      const result = await apiGet<{ rendered_text: string }>(`/api/engagements/${id}/prompt/${phase}`)
-      await navigator.clipboard.writeText(result.rendered_text)
-      setPromptCopied(phase)
-      setTimeout(() => setPromptCopied(null), 2000)
-    } catch {
-      // Error toast would be nice but we'll just silently fail for now
-    }
-    setCopyingPrompt(null)
   }
 
   const seedOutputs = async () => {
@@ -815,64 +790,59 @@ export default function EngagementDetail() {
         </section>
       )}
 
-      {/* Current Phase Prompt */}
-      {isInPhases && (
+      {/* Phase Execution */}
+      {(isInPhases || data.status === 'phases_complete') && (
         <section className="bg-white rounded-lg border border-gray-light p-5 mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-display text-lg font-bold text-teal">Phase {data.phase} Prompt</h3>
-            <div className="flex gap-2">
-              {!promptExpanded && (
-                <button
-                  onClick={() => { setPromptExpanded(true); loadPhasePrompt() }}
-                  className="text-sm text-teal font-semibold hover:underline"
-                >
-                  View Prompt
-                </button>
-              )}
-              {promptExpanded && (
-                <button
-                  onClick={() => setPromptExpanded(false)}
-                  className="text-sm text-gray-warm font-semibold hover:underline"
-                >
-                  Collapse
-                </button>
-              )}
-            </div>
+          <div className="mb-4">
+            <h3 className="font-display text-lg font-bold text-teal">Phase Execution</h3>
+            <p className="text-xs text-gray-warm mt-0.5">Copy commands to run in Cowork</p>
           </div>
-          {!promptExpanded && (
-            <p className="text-sm text-gray-warm">Click "View Prompt" to load the rendered prompt for this engagement.</p>
-          )}
-          {promptExpanded && (
-            <div>
-              {promptLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin w-6 h-6 border-3 border-teal border-t-transparent rounded-full" />
-                </div>
-              ) : phasePrompt ? (
-                <>
-                  <div className="bg-ivory rounded-lg p-4 mb-3 max-h-96 overflow-y-auto">
-                    <pre className="whitespace-pre-wrap text-sm text-charcoal font-mono leading-relaxed">{phasePrompt.rendered_text}</pre>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {PHASE_INFO.map(({ num, name }) => {
+              const status = data.phase > num ? 'complete' : data.phase === num && data.status !== 'phases_complete' ? 'in_progress' : data.status === 'phases_complete' ? 'complete' : 'not_started'
+              return (
+                <div key={num} className={`border rounded-lg p-3 flex items-start gap-3 ${
+                  status === 'in_progress' ? 'border-teal bg-teal/5' :
+                  status === 'complete' ? 'border-green/30' : 'border-gray-light'
+                }`}>
+                  <span className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                    status === 'complete' ? 'bg-teal text-white' :
+                    status === 'in_progress' ? 'bg-crimson text-white' :
+                    'bg-gray-light text-gray-warm'
+                  }`}>
+                    {status === 'complete' ? (
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    ) : num}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-charcoal">{name}</p>
+                    <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full mt-1 ${
+                      status === 'complete' ? 'bg-green/10 text-green' :
+                      status === 'in_progress' ? 'bg-teal/10 text-teal' :
+                      'bg-gray-light text-gray-warm'
+                    }`}>
+                      {status === 'complete' ? 'Complete' : status === 'in_progress' ? 'In Progress' : 'Not Started'}
+                    </span>
                   </div>
                   <button
-                    onClick={copyPrompt}
-                    className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
-                      copied
+                    onClick={() => copyPhaseCommand(num)}
+                    className={`flex-shrink-0 inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded font-semibold transition-colors ${
+                      copiedCommand === num
                         ? 'bg-teal/10 text-teal'
-                        : 'bg-crimson text-white hover:bg-crimson/90'
+                        : 'bg-ivory text-teal hover:bg-teal/10'
                     }`}
+                    title={getPhaseCommand(num)}
                   >
-                    {copied ? '\u2713 Copied!' : `Copy Phase ${data.phase} Prompt`}
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                    </svg>
+                    {copiedCommand === num ? 'Copied!' : 'Copy'}
                   </button>
-                </>
-              ) : (
-                <p className="text-sm text-gray-warm">Failed to load prompt.</p>
-              )}
-            </div>
-          )}
+                </div>
+              )
+            })}
+          </div>
         </section>
-      )}
-      {!isInPhases && data.status === 'documents_received' && (
-        <p className="text-sm text-gray-warm mb-6 px-1">Phase prompts available after beginning Phase 0.</p>
       )}
 
       {/* Phase Outputs Viewer — ALWAYS visible */}
@@ -959,19 +929,18 @@ export default function EngagementDetail() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
-                          {/* Copy prompt button */}
+                          {/* Copy command button */}
                           <button
-                            onClick={e => { e.stopPropagation(); copyPhasePrompt(phase) }}
-                            disabled={copyingPrompt === phase}
+                            onClick={e => { e.stopPropagation(); copyPhaseCommand(phase) }}
                             className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded font-semibold transition-colors ${
-                              promptCopied === phase
+                              copiedCommand === phase
                                 ? 'bg-teal/10 text-teal'
                                 : 'bg-ivory text-teal hover:bg-teal/10'
                             }`}
-                            title={`Copy Phase ${phase} prompt to clipboard`}
+                            title={getPhaseCommand(phase)}
                           >
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
-                            {copyingPrompt === phase ? '...' : promptCopied === phase ? 'Copied!' : 'Copy Prompt'}
+                            {copiedCommand === phase ? 'Copied!' : 'Copy Command'}
                           </button>
                           <svg className={`w-4 h-4 text-gray-warm transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
