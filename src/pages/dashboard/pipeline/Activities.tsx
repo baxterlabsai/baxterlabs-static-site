@@ -40,6 +40,7 @@ interface Activity {
   next_action: string | null
   next_action_date: string | null
   gemini_raw_notes: string | null
+  plugin_source: string | null
   created_at: string
   created_by: string | null
   pipeline_contacts: { id: string; name: string } | null
@@ -72,6 +73,14 @@ const ACTIVITY_TYPES = [
   { key: 'meeting', label: 'Meeting', color: 'bg-green/10 text-green', borderColor: 'border-l-green' },
   { key: 'note', label: 'Note', color: 'bg-gray-light text-charcoal', borderColor: 'border-l-gray-warm' },
   { key: 'referral', label: 'Referral', color: 'bg-gold/20 text-charcoal', borderColor: 'border-l-gold' },
+  { key: 'plugin_research', label: 'Plugin: Research', color: 'bg-purple-100 text-purple-800', borderColor: 'border-l-purple-500' },
+  { key: 'plugin_outreach_draft', label: 'Plugin: Outreach', color: 'bg-purple-100 text-purple-800', borderColor: 'border-l-purple-400' },
+  { key: 'plugin_call_prep', label: 'Plugin: Call Prep', color: 'bg-purple-100 text-purple-800', borderColor: 'border-l-purple-400' },
+  { key: 'plugin_enrichment', label: 'Plugin: Enrichment', color: 'bg-purple-100 text-purple-800', borderColor: 'border-l-purple-400' },
+  { key: 'plugin_content', label: 'Plugin: Content', color: 'bg-purple-100 text-purple-800', borderColor: 'border-l-purple-300' },
+  { key: 'partnership_meeting', label: 'Partnership Meeting', color: 'bg-teal/15 text-teal', borderColor: 'border-l-teal' },
+  { key: 'referral_received', label: 'Referral Received', color: 'bg-gold/20 text-charcoal', borderColor: 'border-l-gold' },
+  { key: 'referral_sent', label: 'Referral Sent', color: 'bg-gold/15 text-charcoal', borderColor: 'border-l-gold' },
 ]
 
 const TYPE_MAP = Object.fromEntries(ACTIVITY_TYPES.map(t => [t.key, t]))
@@ -85,6 +94,14 @@ const ACTIVITY_TYPE_ICONS: Record<string, string> = {
   meeting: 'M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5',
   note: 'M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10',
   referral: 'M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z',
+  plugin_research: 'M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z',
+  plugin_outreach_draft: 'M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z',
+  plugin_call_prep: 'M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z',
+  plugin_enrichment: 'M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z',
+  plugin_content: 'M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z',
+  partnership_meeting: 'M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z',
+  referral_received: 'M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z',
+  referral_sent: 'M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z',
 }
 
 const DATE_FILTERS = [
@@ -137,6 +154,7 @@ export default function PipelineActivities() {
   const [typeFilter, setTypeFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('all')
   const [search, setSearch] = useState('')
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'manual' | 'plugin'>('all')
 
   // Modals
   const [showLogModal, setShowLogModal] = useState(false)
@@ -167,6 +185,8 @@ export default function PipelineActivities() {
   // Client-side filtering
   const filtered = activities.filter(act => {
     if (typeFilter !== 'all' && act.type !== typeFilter) return false
+    if (sourceFilter === 'plugin' && !act.plugin_source) return false
+    if (sourceFilter === 'manual' && act.plugin_source) return false
     if (search) {
       const q = search.toLowerCase()
       if (!act.subject.toLowerCase().includes(q) && !(act.body || '').toLowerCase().includes(q)) return false
@@ -328,6 +348,23 @@ export default function PipelineActivities() {
             className="pl-9 pr-4 py-1.5 rounded-lg border border-gray-light bg-white text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-teal/30 w-48"
           />
         </div>
+
+        {/* Source filter */}
+        <div className="flex gap-1.5">
+          {([
+            { key: 'all', label: 'All Sources' },
+            { key: 'manual', label: 'Manual' },
+            { key: 'plugin', label: 'Plugin-Generated' },
+          ] as const).map(s => (
+            <button
+              key={s.key}
+              onClick={() => setSourceFilter(s.key)}
+              className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${sourceFilter === s.key ? (s.key === 'plugin' ? 'bg-purple-100 text-purple-800 ring-2 ring-offset-1 ring-purple-300' : 'bg-charcoal text-white') : 'bg-gray-light/50 text-charcoal hover:bg-gray-light'}`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Activity Feed */}
@@ -365,6 +402,11 @@ export default function PipelineActivities() {
                         <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${typeMeta.color}`}>
                           {typeMeta.label}
                         </span>
+                        {act.plugin_source && (
+                          <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-800">
+                            Plugin
+                          </span>
+                        )}
                         {act.outcome && (
                           <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-ivory text-charcoal">
                             {act.outcome}

@@ -43,6 +43,7 @@ interface Activity {
   subject: string
   occurred_at: string
   outcome: string | null
+  plugin_source: string | null
 }
 
 interface CompanyDetail extends Company {
@@ -665,6 +666,143 @@ function QuickActions({ detail }: { detail: CompanyDetail }) {
 }
 
 // ---------------------------------------------------------------------------
+// Log Plugin Activity Inline Form
+// ---------------------------------------------------------------------------
+
+const PLUGIN_OPTIONS = [
+  { group: 'Sales Plugin', label: 'Account Research', type: 'plugin_research', source: 'sales_plugin_account_research' },
+  { group: 'Sales Plugin', label: 'Draft Outreach', type: 'plugin_outreach_draft', source: 'sales_plugin_draft_outreach' },
+  { group: 'Sales Plugin', label: 'Call Prep', type: 'plugin_call_prep', source: 'sales_plugin_call_prep' },
+  { group: 'Sales Plugin', label: 'Competitive Intel', type: 'plugin_research', source: 'sales_plugin_competitive_intel' },
+  { group: 'Marketing Plugin', label: 'Content Creation', type: 'plugin_content', source: 'marketing_plugin_content_creation' },
+  { group: 'Marketing Plugin', label: 'Campaign Planning', type: 'note', source: 'marketing_plugin_campaign_planning' },
+  { group: 'Enrichment', label: 'Apollo Enrichment', type: 'plugin_enrichment', source: 'apollo_enrichment' },
+  { group: 'Advisory', label: 'Phase Execution', type: 'note', source: 'advisory_phase_execution' },
+  { group: 'Other', label: 'Other Plugin Activity', type: 'note', source: 'other_plugin_activity' },
+]
+
+const PLUGIN_GROUPS = [...new Set(PLUGIN_OPTIONS.map(o => o.group))]
+
+function LogPluginActivityForm({
+  companyId,
+  companyName,
+  onSaved,
+  onCancel,
+}: {
+  companyId: string
+  companyName: string
+  onSaved: () => void
+  onCancel: () => void
+}) {
+  const [selectedIdx, setSelectedIdx] = useState(0)
+  const [notes, setNotes] = useState('')
+  const [nextStep, setNextStep] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleSave() {
+    const opt = PLUGIN_OPTIONS[selectedIdx]
+    setSaving(true)
+    setError('')
+    try {
+      await apiPost('/api/pipeline/activities', {
+        type: opt.type,
+        plugin_source: opt.source,
+        subject: `${opt.group}: ${opt.label} — ${companyName}`,
+        body: notes || undefined,
+        next_action: nextStep || undefined,
+        company_id: companyId,
+        occurred_at: new Date().toISOString(),
+      })
+      onSaved()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="bg-purple-50 rounded-lg border border-purple-200 p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h5 className="text-sm font-semibold text-charcoal flex items-center gap-1.5">
+          <svg className="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+          </svg>
+          Log Plugin Activity
+        </h5>
+        <button onClick={onCancel} className="text-charcoal/50 hover:text-charcoal">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      {error && <p className="text-xs text-red-soft">{error}</p>}
+
+      <div>
+        <label className="block text-xs font-semibold text-charcoal mb-1">Plugin Type</label>
+        <select
+          value={selectedIdx}
+          onChange={e => setSelectedIdx(Number(e.target.value))}
+          className="w-full px-3 py-2 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400"
+        >
+          {PLUGIN_GROUPS.map(group => (
+            <optgroup key={group} label={group}>
+              {PLUGIN_OPTIONS.map((opt, i) =>
+                opt.group === group ? (
+                  <option key={i} value={i}>{opt.label}</option>
+                ) : null
+              )}
+            </optgroup>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-xs font-semibold text-charcoal mb-1">Key Findings / Notes</label>
+        <textarea
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
+          rows={3}
+          placeholder="What did the plugin produce?"
+          className="w-full px-3 py-2 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400 resize-none"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs font-semibold text-charcoal mb-1">Next Step <span className="text-gray-warm font-normal">(optional)</span></label>
+        <input
+          type="text"
+          value={nextStep}
+          onChange={e => setNextStep(e.target.value)}
+          placeholder="e.g., Send outreach email"
+          className="w-full px-3 py-2 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400"
+        />
+      </div>
+
+      <div className="flex items-center justify-end gap-2 pt-1">
+        <button onClick={onCancel} className="px-3 py-1.5 text-xs font-semibold text-charcoal border border-gray-light rounded-lg hover:bg-ivory transition-colors">
+          Cancel
+        </button>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="px-3 py-1.5 text-xs font-semibold text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+        >
+          {saving ? (
+            <span className="flex items-center gap-1.5">
+              <span className="animate-spin w-3 h-3 border-2 border-white border-t-transparent rounded-full" />
+              Saving...
+            </span>
+          ) : 'Save'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Company Slide-Over Detail
 // ---------------------------------------------------------------------------
 
@@ -684,6 +822,8 @@ function CompanySlideOver({
   const [editing, setEditing] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [showLogPlugin, setShowLogPlugin] = useState(false)
+  const [pluginToast, setPluginToast] = useState('')
 
   // Edit form state
   const [editName, setEditName] = useState('')
@@ -994,6 +1134,36 @@ function CompanySlideOver({
                     )}
                   </div>
 
+                  {/* Log Plugin Activity */}
+                  <div>
+                    {showLogPlugin ? (
+                      <LogPluginActivityForm
+                        companyId={companyId}
+                        companyName={detail.name}
+                        onSaved={() => {
+                          setShowLogPlugin(false)
+                          setPluginToast('Plugin activity saved')
+                          setTimeout(() => setPluginToast(''), 2500)
+                          apiGet<CompanyDetail>(`/api/pipeline/companies/${companyId}`).then(setDetail).catch(() => {})
+                        }}
+                        onCancel={() => setShowLogPlugin(false)}
+                      />
+                    ) : (
+                      <button
+                        onClick={() => setShowLogPlugin(true)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-purple-200 text-xs font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 transition-colors"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                        </svg>
+                        Log Plugin Activity
+                      </button>
+                    )}
+                    {pluginToast && (
+                      <p className="text-xs text-teal font-medium mt-1.5 animate-pulse">{pluginToast}</p>
+                    )}
+                  </div>
+
                   {/* Recent Activities */}
                   <div>
                     <h4 className="text-sm font-semibold text-charcoal mb-2">
@@ -1009,7 +1179,14 @@ function CompanySlideOver({
                               <path strokeLinecap="round" strokeLinejoin="round" d={ACTIVITY_TYPE_ICONS[act.type] || ACTIVITY_TYPE_ICONS.note} />
                             </svg>
                             <div className="flex-1 min-w-0">
-                              <p className="text-charcoal font-medium truncate">{act.subject}</p>
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-charcoal font-medium truncate">{act.subject}</p>
+                                {act.plugin_source && (
+                                  <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-800 flex-shrink-0">
+                                    Plugin
+                                  </span>
+                                )}
+                              </div>
                               {act.outcome && <p className="text-gray-warm truncate">{act.outcome}</p>}
                             </div>
                             <span className="text-gray-warm flex-shrink-0">{timeAgo(act.occurred_at)}</span>

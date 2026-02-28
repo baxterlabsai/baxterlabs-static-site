@@ -144,6 +144,7 @@ class ActivityCreate(BaseModel):
     next_action: Optional[str] = None
     next_action_date: Optional[date] = None
     gemini_raw_notes: Optional[str] = None
+    plugin_source: Optional[str] = None
 
 
 class ActivityUpdate(BaseModel):
@@ -159,6 +160,7 @@ class ActivityUpdate(BaseModel):
     next_action: Optional[str] = None
     next_action_date: Optional[date] = None
     gemini_raw_notes: Optional[str] = None
+    plugin_source: Optional[str] = None
 
 
 class ActivityFromNotesInput(BaseModel):
