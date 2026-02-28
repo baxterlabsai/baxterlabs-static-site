@@ -19,7 +19,7 @@ services:
     name: baxterlabs-api
     repo: https://github.com/baxterlabsai/baxterlabs-static-site
     branch: main
-    buildCommand: cd backend && pip install -r requirements.txt
+    buildCommand: apt-get update && apt-get install -y --no-install-recommends libreoffice-writer libreoffice-impress && cd backend && pip install -r requirements.txt
     startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
     plan: starter
     region: oregon

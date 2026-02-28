@@ -16,6 +16,7 @@ from services.supabase_client import (
     log_activity,
 )
 from services.email_service import get_email_service
+from services.pdf_converter import convert_and_upload_pdf, ConversionError
 
 logger = logging.getLogger("baxterlabs.deliverables")
 
@@ -91,8 +92,12 @@ async def get_deliverables_by_token(token: str):
         if d.get("status") != "released":
             continue
 
-        # Generate signed URL if there is a stored file
-        storage_path = d.get("storage_path")
+        # Prefer PDF for non-workbook deliverables
+        if d.get("type") != "workbook" and d.get("pdf_storage_path"):
+            storage_path = d["pdf_storage_path"]
+        else:
+            storage_path = d.get("storage_path")
+
         if storage_path:
             try:
                 result = sb.storage.from_("engagements").create_signed_url(storage_path, 3600)
@@ -336,6 +341,22 @@ async def release_wave1(
             detail=f"{len(unapproved)} Wave 1 deliverable(s) not yet approved",
         )
 
+    # Convert non-workbook deliverables to PDF before release
+    for d in wave1.data:
+        if d["type"] != "workbook" and d.get("storage_path"):
+            try:
+                await convert_and_upload_pdf(
+                    sb, d["storage_path"], engagement_id, d["id"], d["type"],
+                )
+            except ConversionError as e:
+                log_activity(engagement_id, "system", "pdf_conversion_failed", {
+                    "type": d["type"], "error": str(e),
+                })
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"PDF conversion failed for {d['type']}. Please check the source file and try again.",
+                )
+
     # Release all Wave 1 deliverables
     now_iso = datetime.now(timezone.utc).isoformat()
     for d in wave1.data:
@@ -428,6 +449,22 @@ async def release_deck(
             status_code=400,
             detail=f"{len(unapproved)} Wave 2 deliverable(s) not yet approved",
         )
+
+    # Convert Wave 2 deliverables to PDF before release
+    for d in wave2.data:
+        if d.get("storage_path"):
+            try:
+                await convert_and_upload_pdf(
+                    sb, d["storage_path"], engagement_id, d["id"], d["type"],
+                )
+            except ConversionError as e:
+                log_activity(engagement_id, "system", "pdf_conversion_failed", {
+                    "type": d["type"], "error": str(e),
+                })
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"PDF conversion failed for {d['type']}. Please check the source file and try again.",
+                )
 
     # Release all Wave 2 deliverables
     now_iso = datetime.now(timezone.utc).isoformat()
