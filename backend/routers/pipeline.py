@@ -29,10 +29,15 @@ VALID_STAGES = {
     "identified", "contacted", "discovery_scheduled", "nda_sent",
     "nda_signed", "discovery_complete", "negotiation", "agreement_sent",
     "won", "lost", "dormant",
+    "partner_identified", "partner_researched", "partner_outreach",
+    "relationship_building", "active_referrer", "partner_dormant",
 }
 VALID_ACTIVITY_TYPES = {
     "video_call", "phone_call", "email", "dm",
     "linkedin", "meeting", "note", "referral",
+    "plugin_research", "plugin_outreach_draft", "plugin_call_prep",
+    "plugin_enrichment", "plugin_content", "partnership_meeting",
+    "referral_received", "referral_sent",
 }
 VALID_PRIORITIES = {"high", "normal", "low"}
 VALID_TASK_STATUSES = {"pending", "complete", "skipped"}
