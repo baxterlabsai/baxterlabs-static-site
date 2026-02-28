@@ -245,6 +245,11 @@ class DocuSignService:
         company_name: str,
     ) -> dict:
         """Generate and send NDA envelope via DocuSign."""
+        logger.info(
+            f"send_nda called — engagement/opp={engagement_id} "
+            f"to={contact_email} contact={contact_name} company={company_name} "
+            f"configured={self._is_configured()} dev_mode={self._dev_mode}"
+        )
         self._ensure_auth()
 
         # Build NDA HTML
@@ -327,7 +332,10 @@ class DocuSignService:
                 "status": result.status,
             }
         except ApiException as e:
-            logger.error(f"DocuSign send_nda failed: {e}")
+            logger.error(
+                f"DocuSign send_nda failed — engagement/opp={engagement_id} "
+                f"to={contact_email} status_code={e.status} reason={e.reason} body={e.body}"
+            )
             return {
                 "success": False,
                 "error": str(e),
@@ -445,6 +453,11 @@ class DocuSignService:
         end_date: str,
     ) -> dict:
         """Generate and send Engagement Agreement envelope via DocuSign (two signers)."""
+        logger.info(
+            f"send_agreement called — engagement/opp={engagement_id} "
+            f"to={contact_email} contact={contact_name} company={company_name} "
+            f"fee={fee} configured={self._is_configured()} dev_mode={self._dev_mode}"
+        )
         self._ensure_auth()
 
         agreement_html = self._build_agreement_html(
@@ -541,10 +554,15 @@ class DocuSignService:
             }
 
     def _lookup_doc_type(self, envelope_id: str) -> str:
-        """Look up document type (nda/agreement) from legal_documents table."""
+        """Look up document type from legal_documents or pipeline_opportunities.
+
+        Returns: 'nda', 'agreement', 'pipeline_nda', or 'pipeline_agreement'.
+        """
         try:
             from services.supabase_client import get_supabase
             sb = get_supabase()
+
+            # Check legal_documents first (engagement-level)
             result = (
                 sb.table("legal_documents")
                 .select("type")
@@ -553,6 +571,29 @@ class DocuSignService:
             )
             if result.data:
                 return result.data[0]["type"]
+
+            # Check pipeline_opportunities NDA envelope
+            pipeline_nda = (
+                sb.table("pipeline_opportunities")
+                .select("id")
+                .eq("nda_envelope_id", envelope_id)
+                .eq("is_deleted", False)
+                .execute()
+            )
+            if pipeline_nda.data:
+                return "pipeline_nda"
+
+            # Check pipeline_opportunities agreement envelope
+            pipeline_agreement = (
+                sb.table("pipeline_opportunities")
+                .select("id")
+                .eq("agreement_envelope_id", envelope_id)
+                .eq("is_deleted", False)
+                .execute()
+            )
+            if pipeline_agreement.data:
+                return "pipeline_agreement"
+
         except Exception as e:
             logger.warning(f"Could not look up doc type for {envelope_id}: {e}")
         return "nda"  # default fallback
@@ -584,10 +625,22 @@ class DocuSignService:
         doc_type = self._lookup_doc_type(envelope_id)
 
         if event_type == "envelope-completed":
-            action = "nda_signed" if doc_type == "nda" else "agreement_signed"
+            action_map = {
+                "nda": "nda_signed",
+                "agreement": "agreement_signed",
+                "pipeline_nda": "pipeline_nda_signed",
+                "pipeline_agreement": "pipeline_agreement_signed",
+            }
+            action = action_map.get(doc_type, "nda_signed")
             return {"action": action, "envelope_id": envelope_id}
         elif event_type == "envelope-declined":
-            action = "nda_declined" if doc_type == "nda" else "agreement_declined"
+            action_map = {
+                "nda": "nda_declined",
+                "agreement": "agreement_declined",
+                "pipeline_nda": "pipeline_nda_declined",
+                "pipeline_agreement": "pipeline_agreement_declined",
+            }
+            action = action_map.get(doc_type, "nda_declined")
             return {"action": action, "envelope_id": envelope_id}
         elif event_type == "envelope-voided":
             return {"action": f"{doc_type}_voided", "envelope_id": envelope_id}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api'
+import { formatPhone, stripPhone } from '../../../lib/formatPhone'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -55,9 +56,11 @@ const STAGE_COLORS: Record<string, string> = {
   identified: 'bg-gray-light text-charcoal',
   contacted: 'bg-blue-100 text-blue-800',
   discovery_scheduled: 'bg-teal/10 text-teal',
+  nda_sent: 'bg-gold/10 text-charcoal',
+  nda_signed: 'bg-gold/20 text-charcoal',
   discovery_complete: 'bg-teal/20 text-teal',
-  proposal_sent: 'bg-gold/20 text-charcoal',
   negotiation: 'bg-gold/30 text-charcoal',
+  agreement_sent: 'bg-crimson/10 text-crimson',
   won: 'bg-green/10 text-green',
   lost: 'bg-red-soft/10 text-red-soft',
   dormant: 'bg-gray-light/50 text-charcoal',
@@ -66,10 +69,12 @@ const STAGE_COLORS: Record<string, string> = {
 const STAGE_LABELS: Record<string, string> = {
   identified: 'Identified',
   contacted: 'Contacted',
-  discovery_scheduled: 'Discovery Scheduled',
-  discovery_complete: 'Discovery Complete',
-  proposal_sent: 'Proposal Sent',
+  discovery_scheduled: 'Discovery',
+  nda_sent: 'NDA Sent',
+  nda_signed: 'NDA Signed',
+  discovery_complete: 'Disc. Complete',
   negotiation: 'Negotiation',
+  agreement_sent: 'Agreement Sent',
   won: 'Won',
   lost: 'Lost',
   dormant: 'Dormant',
@@ -380,7 +385,7 @@ function AddContactModal({
     if (selectedCompanyId) data.company_id = selectedCompanyId
     if (title) data.title = title
     if (email) data.email = email
-    if (phone) data.phone = phone
+    if (phone) data.phone = stripPhone(phone)
     if (linkedinUrl) data.linkedin_url = linkedinUrl
     if (isDecisionMaker) data.is_decision_maker = true
     if (source) data.source = source
@@ -417,7 +422,7 @@ function AddContactModal({
 
           {/* Company typeahead */}
           <div className="relative">
-            <label className="block text-sm font-semibold text-charcoal mb-1.5">Company</label>
+            <label className="block text-sm font-semibold text-charcoal mb-1.5">Company *</label>
             <input
               type="text"
               value={selectedCompanyId ? companies.find(c => c.id === selectedCompanyId)?.name || '' : companySearch}
@@ -459,7 +464,7 @@ function AddContactModal({
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-charcoal mb-1.5">Title</label>
+            <label className="block text-sm font-semibold text-charcoal mb-1.5">Title <span className="text-gray-warm font-normal">(Recommended)</span></label>
             <input
               type="text"
               value={title}
@@ -470,7 +475,7 @@ function AddContactModal({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-semibold text-charcoal mb-1.5">Email</label>
+              <label className="block text-sm font-semibold text-charcoal mb-1.5">Email *</label>
               <input
                 type="email"
                 value={email}
@@ -484,7 +489,7 @@ function AddContactModal({
               <input
                 type="tel"
                 value={phone}
-                onChange={e => setPhone(e.target.value)}
+                onChange={e => setPhone(formatPhone(e.target.value))}
                 placeholder="(555) 123-4567"
                 className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
               />
@@ -629,7 +634,7 @@ function ContactSlideOver({
     if (editCompanyId !== (detail.company_id || '')) updates.company_id = editCompanyId || null
     if (editTitle !== (detail.title || '')) updates.title = editTitle || null
     if (editEmail !== (detail.email || '')) updates.email = editEmail || null
-    if (editPhone !== (detail.phone || '')) updates.phone = editPhone || null
+    if (editPhone !== (detail.phone || '')) updates.phone = editPhone ? stripPhone(editPhone) : null
     if (editLinkedinUrl !== (detail.linkedin_url || '')) updates.linkedin_url = editLinkedinUrl || null
     if (editIsDecisionMaker !== detail.is_decision_maker) updates.is_decision_maker = editIsDecisionMaker
     if (editSource !== (detail.source || '')) updates.source = editSource || null
@@ -737,7 +742,7 @@ function ContactSlideOver({
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-charcoal mb-1.5">Phone</label>
-                      <input type="tel" value={editPhone} onChange={e => setEditPhone(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal" />
+                      <input type="tel" value={editPhone} onChange={e => setEditPhone(formatPhone(e.target.value))} className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal" />
                     </div>
                   </div>
                   <div>

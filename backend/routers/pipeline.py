@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 import logging
 from datetime import date, datetime, timedelta
@@ -23,8 +24,9 @@ logger = logging.getLogger("baxterlabs.pipeline")
 router = APIRouter(prefix="/api/pipeline", tags=["pipeline"])
 
 VALID_STAGES = {
-    "identified", "contacted", "discovery_scheduled", "discovery_complete",
-    "proposal_sent", "negotiation", "won", "lost", "dormant",
+    "identified", "contacted", "discovery_scheduled", "nda_sent",
+    "nda_signed", "discovery_complete", "negotiation", "agreement_sent",
+    "won", "lost", "dormant",
 }
 VALID_ACTIVITY_TYPES = {
     "video_call", "phone_call", "email", "dm",
@@ -418,7 +420,7 @@ async def convert_opportunity(
     body: Optional[ConversionRequest] = None,
     user: dict = Depends(verify_partner_auth),
 ):
-    """Convert a won/negotiation/proposal_sent opportunity into a client + engagement."""
+    """Convert a won/negotiation/agreement_sent/discovery_complete opportunity into a client + engagement."""
     sb = get_supabase()
     req = body or ConversionRequest()
 
@@ -429,11 +431,11 @@ async def convert_opportunity(
     contact = data["primary_contact"]
 
     # 2. Validate
-    allowed_stages = {"won", "negotiation", "proposal_sent"}
+    allowed_stages = {"won", "negotiation", "agreement_sent", "discovery_complete"}
     if opp["stage"] not in allowed_stages:
         raise HTTPException(
             status_code=400,
-            detail=f"Opportunity stage must be won, negotiation, or proposal_sent (current: '{opp['stage']}')",
+            detail=f"Opportunity stage must be won, negotiation, agreement_sent, or discovery_complete (current: '{opp['stage']}')",
         )
     if opp.get("converted_engagement_id"):
         raise HTTPException(status_code=400, detail="Opportunity has already been converted")
@@ -535,10 +537,17 @@ async def convert_opportunity(
 
     # 9. Trigger NDA (non-blocking)
     nda_sent = False
+    logger.info(
+        f"NDA trigger check — send_nda={req.send_nda} "
+        f"contact={contact.get('name') if contact else None} "
+        f"email={contact.get('email') if contact else None} "
+        f"engagement={new_engagement_id}"
+    )
     if req.send_nda and contact and contact.get("email"):
         try:
             from services.docusign_service import get_docusign_service
             ds = get_docusign_service()
+            logger.info(f"DocuSign configured={ds._is_configured()} dev_mode={ds._dev_mode}")
             if ds._is_configured():
                 nda_result = ds.send_nda(
                     engagement_id=new_engagement_id,
@@ -546,6 +555,7 @@ async def convert_opportunity(
                     contact_name=contact["name"],
                     company_name=company["name"],
                 )
+                logger.info(f"NDA send result: {nda_result}")
                 if nda_result.get("success"):
                     sb.table("legal_documents").insert({
                         "engagement_id": new_engagement_id,
@@ -560,7 +570,7 @@ async def convert_opportunity(
             else:
                 logger.info("DocuSign not configured — skipping NDA send")
         except Exception as e:
-            logger.warning(f"DocuSign NDA trigger failed (non-blocking): {e}")
+            logger.warning(f"DocuSign NDA trigger failed (non-blocking): {e}", exc_info=True)
 
     # 10. Log activity
     log_activity(
@@ -602,6 +612,275 @@ async def delete_opportunity(opp_id: str, user: dict = Depends(verify_partner_au
     if not result.data:
         raise HTTPException(status_code=404, detail="Opportunity not found")
     return {"success": True}
+
+
+# ==========================================================================
+# Discovery Scheduling & NDA Confirmation
+# ==========================================================================
+
+@router.post("/opportunities/{opp_id}/schedule-discovery")
+async def schedule_discovery(opp_id: str, user: dict = Depends(verify_partner_auth)):
+    """Send Calendly scheduling link to primary contact, move to discovery_scheduled."""
+    sb = get_supabase()
+    opp = sb.table("pipeline_opportunities").select("*").eq("id", opp_id).eq("is_deleted", False).execute()
+    if not opp.data:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+    opp = opp.data[0]
+
+    if opp["stage"] != "contacted":
+        raise HTTPException(status_code=400, detail=f"Stage must be 'contacted' (current: '{opp['stage']}')")
+
+    if not opp.get("primary_contact_id"):
+        raise HTTPException(status_code=400, detail="Opportunity must have a primary contact")
+
+    contact = sb.table("pipeline_contacts").select("*").eq("id", opp["primary_contact_id"]).execute()
+    if not contact.data or not contact.data[0].get("email"):
+        raise HTTPException(status_code=400, detail="Primary contact must have an email address")
+    contact = contact.data[0]
+
+    company = sb.table("pipeline_companies").select("name").eq("id", opp["company_id"]).execute()
+    company_name = company.data[0]["name"] if company.data else "Unknown"
+
+    from services.email_service import get_email_service
+
+    # Get the opportunity's nda_confirmation_token for the schedule page URL
+    token = opp.get("nda_confirmation_token")
+    if not token:
+        raise HTTPException(status_code=500, detail="Opportunity missing confirmation token")
+
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    schedule_url = f"{frontend_url}/schedule/{token}"
+
+    email_svc = get_email_service()
+    email_result = email_svc.send_discovery_scheduling_link(
+        to_email=contact["email"],
+        contact_name=contact["name"],
+        company_name=company_name,
+        scheduling_link=schedule_url,
+        partner_lead=opp.get("assigned_to") or "George DeVries",
+    )
+
+    sb.table("pipeline_opportunities").update({
+        "stage": "discovery_scheduled",
+    }).eq("id", opp_id).execute()
+
+    logger.info(f"Discovery schedule link sent for opp {opp_id} to {contact['email']}")
+    return {"success": True, "email_result": email_result}
+
+
+@router.get("/schedule/{token}")
+async def get_schedule_page(token: str):
+    """Public endpoint — return schedule/NDA page data for the prospect."""
+    sb = get_supabase()
+    opp = (
+        sb.table("pipeline_opportunities")
+        .select("id, title, stage, calendly_booking_time, nda_requested_at, nda_envelope_id, company_id, primary_contact_id, assigned_to")
+        .eq("nda_confirmation_token", token)
+        .eq("is_deleted", False)
+        .execute()
+    )
+    if not opp.data:
+        raise HTTPException(status_code=404, detail="Schedule link not found")
+    opp = opp.data[0]
+
+    company = sb.table("pipeline_companies").select("name").eq("id", opp["company_id"]).execute()
+    company_name = company.data[0]["name"] if company.data else "Unknown"
+
+    contact_name = None
+    contact_email = None
+    if opp.get("primary_contact_id"):
+        contact = sb.table("pipeline_contacts").select("name, email").eq("id", opp["primary_contact_id"]).execute()
+        if contact.data:
+            contact_name = contact.data[0].get("name")
+            contact_email = contact.data[0].get("email")
+
+    # Return Calendly URL for embed
+    calendly_url = os.getenv("CALENDLY_SCHEDULING_URL", "https://calendly.com/george-baxterlabs")
+
+    return {
+        "company_name": company_name,
+        "contact_name": contact_name,
+        "contact_email": contact_email,
+        "assigned_to": opp.get("assigned_to"),
+        "booking_time": opp.get("calendly_booking_time"),
+        "nda_already_requested": opp.get("nda_requested_at") is not None,
+        "nda_already_signed": opp.get("stage") == "nda_signed",
+        "stage": opp.get("stage"),
+        "calendly_url": calendly_url,
+    }
+
+
+@router.post("/schedule/{token}/request-nda")
+async def request_nda_from_schedule(token: str):
+    """Public endpoint — prospect requests NDA via DocuSign from schedule page."""
+    sb = get_supabase()
+    opp = (
+        sb.table("pipeline_opportunities")
+        .select("*")
+        .eq("nda_confirmation_token", token)
+        .eq("is_deleted", False)
+        .execute()
+    )
+    if not opp.data:
+        raise HTTPException(status_code=404, detail="Schedule link not found")
+    opp = opp.data[0]
+
+    if opp.get("nda_requested_at"):
+        raise HTTPException(status_code=400, detail="NDA has already been requested")
+
+    if not opp.get("primary_contact_id"):
+        raise HTTPException(status_code=400, detail="No primary contact on this opportunity")
+
+    contact = sb.table("pipeline_contacts").select("*").eq("id", opp["primary_contact_id"]).execute()
+    if not contact.data or not contact.data[0].get("email"):
+        raise HTTPException(status_code=400, detail="Contact email missing")
+    contact = contact.data[0]
+
+    company = sb.table("pipeline_companies").select("name").eq("id", opp["company_id"]).execute()
+    company_name = company.data[0]["name"] if company.data else "Unknown"
+
+    from services.docusign_service import get_docusign_service
+    ds = get_docusign_service()
+
+    if not ds._is_configured():
+        raise HTTPException(status_code=503, detail="DocuSign not configured")
+
+    nda_result = ds.send_nda(
+        engagement_id=opp["id"],  # Using opp_id — safe, only used for logging
+        contact_email=contact["email"],
+        contact_name=contact["name"],
+        company_name=company_name,
+    )
+
+    if not nda_result.get("success"):
+        raise HTTPException(status_code=502, detail=nda_result.get("error", "DocuSign send failed"))
+
+    sb.table("pipeline_opportunities").update({
+        "nda_envelope_id": nda_result["envelope_id"],
+        "nda_requested_at": datetime.utcnow().isoformat(),
+        "stage": "nda_sent",
+    }).eq("id", opp["id"]).execute()
+
+    logger.info(f"Pipeline NDA sent for opp {opp['id']} — envelope={nda_result['envelope_id']}")
+    return {"success": True, "envelope_id": nda_result["envelope_id"]}
+
+
+@router.post("/cron/check-nda-timeouts")
+async def check_nda_timeouts():
+    """Cron endpoint — cancel Calendly bookings where NDA wasn't requested within 24h."""
+    sb = get_supabase()
+    cutoff = (datetime.utcnow() - timedelta(hours=24)).isoformat()
+
+    # Find opportunities: discovery_scheduled, has booking, no NDA requested, booking > 24h ago
+    stale = (
+        sb.table("pipeline_opportunities")
+        .select("id, calendly_event_uri")
+        .eq("stage", "discovery_scheduled")
+        .not_.is_("calendly_booking_time", "null")
+        .is_("nda_requested_at", "null")
+        .lt("calendly_booking_time", cutoff)
+        .eq("is_deleted", False)
+        .execute()
+    )
+
+    cancelled = 0
+    for opp in stale.data:
+        event_uri = opp.get("calendly_event_uri")
+        if event_uri:
+            from services.calendly_service import get_calendly_service
+            calendly = get_calendly_service()
+            # Extract event UUID from URI
+            event_uuid = event_uri.rstrip("/").split("/")[-1]
+            calendly.cancel_event(event_uuid, "NDA not signed within 24 hours")
+
+        sb.table("pipeline_opportunities").update({
+            "stage": "contacted",
+            "calendly_event_uri": None,
+            "calendly_invitee_uri": None,
+            "calendly_booking_time": None,
+        }).eq("id", opp["id"]).execute()
+        cancelled += 1
+
+    logger.info(f"NDA timeout check: {cancelled} bookings cancelled")
+    return {"cancelled": cancelled}
+
+
+# ==========================================================================
+# Agreement Sending (from Pipeline)
+# ==========================================================================
+
+@router.post("/opportunities/{opp_id}/send-agreement")
+async def send_pipeline_agreement(
+    opp_id: str,
+    body: Optional[dict] = None,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Send engagement agreement from pipeline (before conversion)."""
+    sb = get_supabase()
+    opp = sb.table("pipeline_opportunities").select("*").eq("id", opp_id).eq("is_deleted", False).execute()
+    if not opp.data:
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+    opp = opp.data[0]
+
+    allowed = {"discovery_complete", "negotiation"}
+    if opp["stage"] not in allowed:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Stage must be discovery_complete or negotiation (current: '{opp['stage']}')",
+        )
+
+    if not opp.get("primary_contact_id"):
+        raise HTTPException(status_code=400, detail="Opportunity must have a primary contact")
+
+    contact = sb.table("pipeline_contacts").select("*").eq("id", opp["primary_contact_id"]).execute()
+    if not contact.data or not contact.data[0].get("email"):
+        raise HTTPException(status_code=400, detail="Primary contact must have an email address")
+    contact = contact.data[0]
+
+    company = sb.table("pipeline_companies").select("name").eq("id", opp["company_id"]).execute()
+    company_name = company.data[0]["name"] if company.data else "Unknown"
+
+    req = body or {}
+    fee = req.get("fee") or opp.get("estimated_value") or 12500
+    preferred_start_date = req.get("preferred_start_date", "TBD")
+    partner_lead = req.get("partner_lead") or opp.get("assigned_to") or "George DeVries"
+
+    # Calculate end date (14 business days from start)
+    end_date = "14 business days from start"
+    if preferred_start_date and preferred_start_date != "TBD":
+        try:
+            start_dt = date.fromisoformat(preferred_start_date)
+            end_dt = start_dt + timedelta(days=20)  # ~14 business days
+            end_date = end_dt.isoformat()
+        except (ValueError, TypeError):
+            pass
+
+    from services.docusign_service import get_docusign_service
+    ds = get_docusign_service()
+
+    if not ds._is_configured():
+        raise HTTPException(status_code=503, detail="DocuSign not configured")
+
+    result = ds.send_agreement(
+        engagement_id=opp_id,  # Using opp_id — safe, only used for logging
+        contact_email=contact["email"],
+        contact_name=contact["name"],
+        company_name=company_name,
+        fee=float(fee),
+        start_date=preferred_start_date,
+        end_date=end_date,
+    )
+
+    if not result.get("success"):
+        raise HTTPException(status_code=502, detail=result.get("error", "DocuSign send failed"))
+
+    sb.table("pipeline_opportunities").update({
+        "agreement_envelope_id": result["envelope_id"],
+        "stage": "agreement_sent",
+    }).eq("id", opp_id).execute()
+
+    logger.info(f"Pipeline agreement sent for opp {opp_id} — envelope={result['envelope_id']}")
+    return {"success": True, "envelope_id": result["envelope_id"]}
 
 
 # ==========================================================================
@@ -652,7 +931,28 @@ async def create_activity(body: ActivityCreate, user: dict = Depends(verify_part
         row["next_action_date"] = body.next_action_date.isoformat()
     row["created_by"] = user.get("sub")
     result = sb.table("pipeline_activities").insert(row).execute()
-    return result.data[0]
+    activity = result.data[0]
+
+    # Auto-create task from next_action if provided
+    task_created = None
+    if body.next_action:
+        task_row = {
+            "title": body.next_action,
+            "status": "pending",
+            "created_by": user.get("sub"),
+        }
+        if body.next_action_date:
+            task_row["due_date"] = body.next_action_date.isoformat()
+        if body.contact_id:
+            task_row["contact_id"] = body.contact_id
+        if body.opportunity_id:
+            task_row["opportunity_id"] = body.opportunity_id
+        if body.company_id:
+            task_row["company_id"] = body.company_id
+        task_result = sb.table("pipeline_tasks").insert(task_row).execute()
+        task_created = task_result.data[0] if task_result.data else None
+
+    return {"activity": activity, "task_created": task_created}
 
 
 def _parse_notes(raw_notes: str) -> dict:

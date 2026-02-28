@@ -37,6 +37,13 @@ interface Opportunity {
   converted_engagement_id: string | null
   referred_by_engagement_id: string | null
   referred_by_contact_name: string | null
+  calendly_event_uri: string | null
+  calendly_invitee_uri: string | null
+  calendly_booking_time: string | null
+  nda_envelope_id: string | null
+  nda_confirmation_token: string | null
+  nda_requested_at: string | null
+  agreement_envelope_id: string | null
   created_at: string
   updated_at: string
   pipeline_companies: { id: string; name: string } | null
@@ -80,10 +87,12 @@ interface Task {
 const STAGES = [
   { key: 'identified', label: 'Identified', color: 'bg-gray-light text-charcoal', headerBg: 'bg-gray-light/50' },
   { key: 'contacted', label: 'Contacted', color: 'bg-blue-100 text-blue-800', headerBg: 'bg-blue-50' },
-  { key: 'discovery_scheduled', label: 'Discovery Scheduled', color: 'bg-teal/10 text-teal', headerBg: 'bg-teal/5' },
-  { key: 'discovery_complete', label: 'Discovery Complete', color: 'bg-teal/20 text-teal', headerBg: 'bg-teal/10' },
-  { key: 'proposal_sent', label: 'Proposal Sent', color: 'bg-gold/20 text-charcoal', headerBg: 'bg-gold/10' },
+  { key: 'discovery_scheduled', label: 'Discovery', color: 'bg-teal/10 text-teal', headerBg: 'bg-teal/5' },
+  { key: 'nda_sent', label: 'NDA Sent', color: 'bg-gold/10 text-charcoal', headerBg: 'bg-gold/5' },
+  { key: 'nda_signed', label: 'NDA Signed', color: 'bg-gold/20 text-charcoal', headerBg: 'bg-gold/10' },
+  { key: 'discovery_complete', label: 'Disc. Complete', color: 'bg-teal/20 text-teal', headerBg: 'bg-teal/10' },
   { key: 'negotiation', label: 'Negotiation', color: 'bg-gold/30 text-charcoal', headerBg: 'bg-gold/15' },
+  { key: 'agreement_sent', label: 'Agreement Sent', color: 'bg-crimson/10 text-crimson', headerBg: 'bg-crimson/5' },
   { key: 'won', label: 'Won', color: 'bg-green/10 text-green', headerBg: 'bg-green/5' },
   { key: 'lost', label: 'Lost', color: 'bg-red-soft/10 text-red-soft', headerBg: 'bg-red-soft/5' },
 ]
@@ -148,6 +157,7 @@ export default function PipelineBoard() {
   const [showLossReason, setShowLossReason] = useState<string | null>(null) // opp id
   const [showConvertConfirm, setShowConvertConfirm] = useState<string | null>(null)
   const [detailOppId, setDetailOppId] = useState<string | null>(null)
+  const [showSendAgreement, setShowSendAgreement] = useState<string | null>(null) // opp id
 
   // Stage move dropdown
   const [stageMenuOppId, setStageMenuOppId] = useState<string | null>(null)
@@ -265,6 +275,9 @@ export default function PipelineBoard() {
     title: string
     estimated_value: number
     stage: string
+    estimated_close_date?: string
+    assigned_to?: string
+    notes?: string
     referred_by_engagement_id?: string
     referred_by_contact_name?: string
   }) {
@@ -296,6 +309,9 @@ export default function PipelineBoard() {
         estimated_value: data.estimated_value,
         stage: data.stage,
       }
+      if (data.estimated_close_date) oppPayload.estimated_close_date = data.estimated_close_date
+      if (data.assigned_to) oppPayload.assigned_to = data.assigned_to
+      if (data.notes) oppPayload.notes = data.notes
       if (data.referred_by_engagement_id) oppPayload.referred_by_engagement_id = data.referred_by_engagement_id
       if (data.referred_by_contact_name) oppPayload.referred_by_contact_name = data.referred_by_contact_name
 
@@ -306,6 +322,29 @@ export default function PipelineBoard() {
       setShowQuickAdd(false)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to create opportunity')
+    }
+  }
+
+  // Schedule discovery
+  async function handleScheduleDiscovery(oppId: string) {
+    try {
+      await apiPost(`/api/pipeline/opportunities/${oppId}/schedule-discovery`, {})
+      const refreshed = await apiGet<{ opportunities: Opportunity[] }>('/api/pipeline/opportunities')
+      setOpportunities(refreshed.opportunities)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to schedule discovery')
+    }
+  }
+
+  // Send agreement
+  async function handleSendAgreement(oppId: string, data: { fee: number; preferred_start_date: string; partner_lead: string }) {
+    try {
+      await apiPost(`/api/pipeline/opportunities/${oppId}/send-agreement`, data)
+      const refreshed = await apiGet<{ opportunities: Opportunity[] }>('/api/pipeline/opportunities')
+      setOpportunities(refreshed.opportunities)
+      setShowSendAgreement(null)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to send agreement')
     }
   }
 
@@ -419,6 +458,8 @@ export default function PipelineBoard() {
                         stageMenuRef={stageMenuOppId === opp.id ? stageMenuRef : undefined}
                         onStageChange={(newStage) => handleStageChange(opp.id, newStage)}
                         currentStage={opp.stage}
+                        onScheduleDiscovery={() => handleScheduleDiscovery(opp.id)}
+                        onSendAgreement={() => setShowSendAgreement(opp.id)}
                       />
                     ))
                   )}
@@ -453,6 +494,8 @@ export default function PipelineBoard() {
                   stageMenuRef={stageMenuOppId === opp.id ? stageMenuRef : undefined}
                   onStageChange={(newStage) => handleStageChange(opp.id, newStage)}
                   currentStage={opp.stage}
+                  onScheduleDiscovery={() => handleScheduleDiscovery(opp.id)}
+                  onSendAgreement={() => setShowSendAgreement(opp.id)}
                 />
               ))}
             </div>
@@ -487,6 +530,15 @@ export default function PipelineBoard() {
         />
       )}
 
+      {/* Send Agreement modal */}
+      {showSendAgreement && (
+        <SendAgreementModal
+          opp={opportunities.find(o => o.id === showSendAgreement)!}
+          onSubmit={(data) => handleSendAgreement(showSendAgreement, data)}
+          onClose={() => setShowSendAgreement(null)}
+        />
+      )}
+
       {/* Detail slide-over */}
       {detailOppId && (
         <OpportunitySlideOver
@@ -512,6 +564,8 @@ function OpportunityCard({
   stageMenuRef,
   onStageChange,
   currentStage,
+  onScheduleDiscovery,
+  onSendAgreement,
 }: {
   opp: Opportunity
   onOpenDetail: () => void
@@ -520,6 +574,8 @@ function OpportunityCard({
   stageMenuRef?: React.RefObject<HTMLDivElement | null>
   onStageChange: (stage: string) => void
   currentStage: string
+  onScheduleDiscovery?: () => void
+  onSendAgreement?: () => void
 }) {
   // Find latest next_action_date from the opportunity's activities (if loaded),
   // otherwise we'd need a separate fetch — for board cards just use estimated_close_date as proxy
@@ -566,6 +622,38 @@ function OpportunityCard({
           </p>
         )}
       </div>
+      {/* Stage action buttons */}
+      {currentStage === 'contacted' && onScheduleDiscovery && (
+        <div className="border-t border-gray-light px-3 py-1.5">
+          <button
+            onClick={(e) => { e.stopPropagation(); onScheduleDiscovery() }}
+            className="w-full text-xs text-white bg-teal font-medium rounded py-1 hover:bg-teal/90 transition-colors"
+          >
+            Schedule Discovery
+          </button>
+        </div>
+      )}
+      {(currentStage === 'discovery_complete' || currentStage === 'negotiation') && onSendAgreement && (
+        <div className="border-t border-gray-light px-3 py-1.5">
+          <button
+            onClick={(e) => { e.stopPropagation(); onSendAgreement() }}
+            className="w-full text-xs text-white bg-crimson font-medium rounded py-1 hover:bg-crimson/90 transition-colors"
+          >
+            Send Agreement
+          </button>
+        </div>
+      )}
+      {currentStage === 'won' && opp.converted_engagement_id && (
+        <div className="border-t border-gray-light px-3 py-1.5">
+          <Link
+            to={`/dashboard/engagement/${opp.converted_engagement_id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="block w-full text-center text-xs text-teal font-medium hover:text-teal/80"
+          >
+            View Engagement
+          </Link>
+        </div>
+      )}
       {/* Stage move button */}
       <div className="border-t border-gray-light px-3 py-1.5">
         <StageDropdown
@@ -628,7 +716,7 @@ function StageDropdown({
       {stageMenuOpen && pos && createPortal(
         <div
           ref={stageMenuRef}
-          className="fixed w-48 bg-white rounded-lg shadow-lg border border-gray-light py-1"
+          className="fixed w-48 bg-white rounded-lg shadow-lg border border-gray-light py-1 max-h-80 overflow-y-auto"
           style={{ top: pos.top, left: pos.left, zIndex: 9999 }}
         >
           {ALL_STAGES.filter(s => s !== currentStage).map(stageKey => {
@@ -673,7 +761,7 @@ function QuickAddModal({
 }: {
   companies: Company[]
   contacts: Contact[]
-  onSubmit: (data: { company_name: string; company_id?: string; contact_name?: string; contact_id?: string; title: string; estimated_value: number; stage: string; referred_by_engagement_id?: string; referred_by_contact_name?: string }) => void
+  onSubmit: (data: { company_name: string; company_id?: string; contact_name?: string; contact_id?: string; title: string; estimated_value: number; stage: string; estimated_close_date?: string; assigned_to?: string; notes?: string; referred_by_engagement_id?: string; referred_by_contact_name?: string }) => void
   onClose: () => void
 }) {
   useEscapeKey(onClose)
@@ -684,6 +772,9 @@ function QuickAddModal({
   const [title, setTitle] = useState('')
   const [value, setValue] = useState('12500')
   const [stage, setStage] = useState('identified')
+  const [estimatedCloseDate, setEstimatedCloseDate] = useState('')
+  const [assignedTo, setAssignedTo] = useState('')
+  const [oppNotes, setOppNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [showCompanyDropdown, setShowCompanyDropdown] = useState(false)
   const [showContactDropdown, setShowContactDropdown] = useState(false)
@@ -731,6 +822,9 @@ function QuickAddModal({
       title,
       estimated_value: parseFloat(value) || 12500,
       stage,
+      estimated_close_date: estimatedCloseDate || undefined,
+      assigned_to: assignedTo || undefined,
+      notes: oppNotes || undefined,
       referred_by_engagement_id: source === 'Referral' && referralEngagementId ? referralEngagementId : undefined,
       referred_by_contact_name: source === 'Referral' && referralContactName ? referralContactName : undefined,
     })
@@ -860,6 +954,43 @@ function QuickAddModal({
                 ))}
               </select>
             </div>
+          </div>
+
+          {/* Close Date + Assigned To row */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-semibold text-charcoal mb-1.5">Est. Close Date</label>
+              <input
+                type="date"
+                value={estimatedCloseDate}
+                onChange={e => setEstimatedCloseDate(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-charcoal mb-1.5">Assigned To</label>
+              <select
+                value={assignedTo}
+                onChange={e => setAssignedTo(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+              >
+                <option value="">Select...</option>
+                <option value="George DeVries">George DeVries</option>
+                <option value="Alfonso Cordon">Alfonso Cordon</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className="block text-sm font-semibold text-charcoal mb-1.5">Notes</label>
+            <textarea
+              value={oppNotes}
+              onChange={e => setOppNotes(e.target.value)}
+              rows={3}
+              placeholder="Initial notes about this opportunity..."
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal resize-none"
+            />
           </div>
 
           {/* Source */}
@@ -1293,5 +1424,105 @@ function OpportunitySlideOver({
         </div>
       </div>
     </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Send Agreement Modal
+// ---------------------------------------------------------------------------
+
+function SendAgreementModal({
+  opp,
+  onSubmit,
+  onClose,
+}: {
+  opp: Opportunity
+  onSubmit: (data: { fee: number; preferred_start_date: string; partner_lead: string }) => void
+  onClose: () => void
+}) {
+  useEscapeKey(onClose)
+  const [fee, setFee] = useState(String(opp.estimated_value || 12500))
+  const [startDate, setStartDate] = useState('')
+  const [partnerLead, setPartnerLead] = useState(opp.assigned_to || 'George DeVries')
+  const [submitting, setSubmitting] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setSubmitting(true)
+    await onSubmit({
+      fee: parseFloat(fee) || 12500,
+      preferred_start_date: startDate || 'TBD',
+      partner_lead: partnerLead,
+    })
+    setSubmitting(false)
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white w-full max-w-sm rounded-lg shadow-lg">
+        <div className="flex items-center justify-between px-6 py-4">
+          <h2 className="font-display text-lg font-bold text-charcoal">Send Agreement</h2>
+          <button onClick={onClose} className="text-charcoal/50 hover:text-charcoal">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="border-b border-gray-light" />
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+          <p className="text-sm text-gray-warm">
+            Send the Engagement Agreement to <strong className="text-charcoal">{opp.pipeline_companies?.name || 'the client'}</strong> via DocuSign.
+          </p>
+          <div>
+            <label className="block text-sm font-semibold text-charcoal mb-1.5">Engagement Fee ($)</label>
+            <input
+              type="number"
+              value={fee}
+              onChange={e => setFee(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+              min="0"
+              step="100"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-charcoal mb-1.5">Preferred Start Date</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-charcoal mb-1.5">Partner Lead</label>
+            <select
+              value={partnerLead}
+              onChange={e => setPartnerLead(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+            >
+              <option value="George DeVries">George DeVries</option>
+              <option value="Alfonso Cordon">Alfonso Cordon</option>
+            </select>
+          </div>
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-semibold text-charcoal border border-gray-light rounded-lg hover:bg-ivory transition-colors">
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="px-4 py-2 text-sm font-semibold text-white bg-crimson rounded-lg hover:bg-crimson/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {submitting ? (
+                <span className="flex items-center gap-2">
+                  <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                  Sending...
+                </span>
+              ) : 'Send Agreement'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   )
 }

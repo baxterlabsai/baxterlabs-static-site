@@ -58,9 +58,11 @@ const STAGE_COLORS: Record<string, string> = {
   identified: 'bg-gray-light text-charcoal',
   contacted: 'bg-blue-100 text-blue-800',
   discovery_scheduled: 'bg-teal/10 text-teal',
+  nda_sent: 'bg-gold/10 text-charcoal',
+  nda_signed: 'bg-gold/20 text-charcoal',
   discovery_complete: 'bg-teal/20 text-teal',
-  proposal_sent: 'bg-gold/20 text-charcoal',
   negotiation: 'bg-gold/30 text-charcoal',
+  agreement_sent: 'bg-crimson/10 text-crimson',
   won: 'bg-green/10 text-green',
   lost: 'bg-red-soft/10 text-red-soft',
   dormant: 'bg-gray-light/50 text-charcoal',
@@ -69,10 +71,12 @@ const STAGE_COLORS: Record<string, string> = {
 const STAGE_LABELS: Record<string, string> = {
   identified: 'Identified',
   contacted: 'Contacted',
-  discovery_scheduled: 'Discovery Scheduled',
-  discovery_complete: 'Discovery Complete',
-  proposal_sent: 'Proposal Sent',
+  discovery_scheduled: 'Discovery',
+  nda_sent: 'NDA Sent',
+  nda_signed: 'NDA Signed',
+  discovery_complete: 'Disc. Complete',
   negotiation: 'Negotiation',
+  agreement_sent: 'Agreement Sent',
   won: 'Won',
   lost: 'Lost',
   dormant: 'Dormant',
@@ -376,7 +380,7 @@ function AddCompanyModal({
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-charcoal mb-1.5">Website</label>
+            <label className="block text-sm font-semibold text-charcoal mb-1.5">Website <span className="text-gray-warm font-normal">(Recommended)</span></label>
             <input
               type="url"
               value={website}
@@ -387,14 +391,39 @@ function AddCompanyModal({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-semibold text-charcoal mb-1.5">Industry</label>
-              <input
-                type="text"
+              <label className="block text-sm font-semibold text-charcoal mb-1.5">Industry *</label>
+              <select
                 value={industry}
                 onChange={e => setIndustry(e.target.value)}
-                placeholder="e.g., SaaS"
                 className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
-              />
+              >
+                <option value="">Select industry...</option>
+                <option value="Accounting & Finance">Accounting & Finance</option>
+                <option value="Agriculture">Agriculture</option>
+                <option value="Automotive">Automotive</option>
+                <option value="Construction">Construction</option>
+                <option value="Consulting">Consulting</option>
+                <option value="E-Commerce">E-Commerce</option>
+                <option value="Education">Education</option>
+                <option value="Energy & Utilities">Energy & Utilities</option>
+                <option value="Engineering">Engineering</option>
+                <option value="Food & Beverage">Food & Beverage</option>
+                <option value="Healthcare">Healthcare</option>
+                <option value="Hospitality">Hospitality</option>
+                <option value="Insurance">Insurance</option>
+                <option value="Legal">Legal</option>
+                <option value="Logistics & Transportation">Logistics & Transportation</option>
+                <option value="Manufacturing">Manufacturing</option>
+                <option value="Marketing & Advertising">Marketing & Advertising</option>
+                <option value="Oil & Gas">Oil & Gas</option>
+                <option value="Professional Services">Professional Services</option>
+                <option value="Real Estate">Real Estate</option>
+                <option value="Retail">Retail</option>
+                <option value="SaaS / Technology">SaaS / Technology</option>
+                <option value="Staffing & HR">Staffing & HR</option>
+                <option value="Wholesale & Distribution">Wholesale & Distribution</option>
+                <option value="Other">Other</option>
+              </select>
             </div>
             <div>
               <label className="block text-sm font-semibold text-charcoal mb-1.5">Location</label>
@@ -410,23 +439,37 @@ function AddCompanyModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-semibold text-charcoal mb-1.5">Revenue Range</label>
-              <input
-                type="text"
+              <select
                 value={revenueRange}
                 onChange={e => setRevenueRange(e.target.value)}
-                placeholder="e.g., $1M–$5M"
                 className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
-              />
+              >
+                <option value="">Select range...</option>
+                <option value="Under $1M">Under $1M</option>
+                <option value="$1M-$5M">$1M-$5M</option>
+                <option value="$5M-$10M">$5M-$10M</option>
+                <option value="$10M-$25M">$10M-$25M</option>
+                <option value="$25M-$50M">$25M-$50M</option>
+                <option value="$50M-$100M">$50M-$100M</option>
+                <option value="$100M+">$100M+</option>
+              </select>
             </div>
             <div>
               <label className="block text-sm font-semibold text-charcoal mb-1.5">Employees</label>
-              <input
-                type="text"
+              <select
                 value={employeeCount}
                 onChange={e => setEmployeeCount(e.target.value)}
-                placeholder="e.g., 50–100"
                 className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
-              />
+              >
+                <option value="">Select size...</option>
+                <option value="1-10">1-10</option>
+                <option value="11-25">11-25</option>
+                <option value="26-50">26-50</option>
+                <option value="51-100">51-100</option>
+                <option value="101-250">101-250</option>
+                <option value="251-500">251-500</option>
+                <option value="500+">500+</option>
+              </select>
             </div>
           </div>
           <div>
@@ -588,13 +631,40 @@ function CompanySlideOver({
                     <input type="text" value={editName} onChange={e => setEditName(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal" required />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-charcoal mb-1.5">Website</label>
+                    <label className="block text-sm font-semibold text-charcoal mb-1.5">Website <span className="text-gray-warm font-normal">(Recommended)</span></label>
                     <input type="url" value={editWebsite} onChange={e => setEditWebsite(e.target.value)} placeholder="https://example.com" className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal" />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-semibold text-charcoal mb-1.5">Industry</label>
-                      <input type="text" value={editIndustry} onChange={e => setEditIndustry(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal" />
+                      <label className="block text-sm font-semibold text-charcoal mb-1.5">Industry *</label>
+                      <select value={editIndustry} onChange={e => setEditIndustry(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal">
+                        <option value="">Select industry...</option>
+                        <option value="Accounting & Finance">Accounting & Finance</option>
+                        <option value="Agriculture">Agriculture</option>
+                        <option value="Automotive">Automotive</option>
+                        <option value="Construction">Construction</option>
+                        <option value="Consulting">Consulting</option>
+                        <option value="E-Commerce">E-Commerce</option>
+                        <option value="Education">Education</option>
+                        <option value="Energy & Utilities">Energy & Utilities</option>
+                        <option value="Engineering">Engineering</option>
+                        <option value="Food & Beverage">Food & Beverage</option>
+                        <option value="Healthcare">Healthcare</option>
+                        <option value="Hospitality">Hospitality</option>
+                        <option value="Insurance">Insurance</option>
+                        <option value="Legal">Legal</option>
+                        <option value="Logistics & Transportation">Logistics & Transportation</option>
+                        <option value="Manufacturing">Manufacturing</option>
+                        <option value="Marketing & Advertising">Marketing & Advertising</option>
+                        <option value="Oil & Gas">Oil & Gas</option>
+                        <option value="Professional Services">Professional Services</option>
+                        <option value="Real Estate">Real Estate</option>
+                        <option value="Retail">Retail</option>
+                        <option value="SaaS / Technology">SaaS / Technology</option>
+                        <option value="Staffing & HR">Staffing & HR</option>
+                        <option value="Wholesale & Distribution">Wholesale & Distribution</option>
+                        <option value="Other">Other</option>
+                      </select>
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-charcoal mb-1.5">Location</label>
@@ -604,11 +674,29 @@ function CompanySlideOver({
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm font-semibold text-charcoal mb-1.5">Revenue Range</label>
-                      <input type="text" value={editRevenueRange} onChange={e => setEditRevenueRange(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal" />
+                      <select value={editRevenueRange} onChange={e => setEditRevenueRange(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal">
+                        <option value="">Select range...</option>
+                        <option value="Under $1M">Under $1M</option>
+                        <option value="$1M-$5M">$1M-$5M</option>
+                        <option value="$5M-$10M">$5M-$10M</option>
+                        <option value="$10M-$25M">$10M-$25M</option>
+                        <option value="$25M-$50M">$25M-$50M</option>
+                        <option value="$50M-$100M">$50M-$100M</option>
+                        <option value="$100M+">$100M+</option>
+                      </select>
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-charcoal mb-1.5">Employees</label>
-                      <input type="text" value={editEmployeeCount} onChange={e => setEditEmployeeCount(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal" />
+                      <select value={editEmployeeCount} onChange={e => setEditEmployeeCount(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal">
+                        <option value="">Select size...</option>
+                        <option value="1-10">1-10</option>
+                        <option value="11-25">11-25</option>
+                        <option value="26-50">26-50</option>
+                        <option value="51-100">51-100</option>
+                        <option value="101-250">101-250</option>
+                        <option value="251-500">251-500</option>
+                        <option value="500+">500+</option>
+                      </select>
                     </div>
                   </div>
                   <div>

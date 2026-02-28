@@ -114,3 +114,87 @@ def _handle_checkout_expired(session: dict) -> None:
         })
 
     logger.info(f"Stripe checkout expired for invoice {invoice_number}")
+
+
+# ---------------------------------------------------------------------------
+# Calendly Webhook
+# ---------------------------------------------------------------------------
+
+@router.post("/calendly")
+async def calendly_webhook(request: Request):
+    """Receive Calendly webhook events — primarily invitee.created.
+
+    No auth middleware — Calendly signs the payload.
+    """
+    try:
+        payload = await request.json()
+    except Exception:
+        return Response(status_code=400)
+
+    event_type = payload.get("event", "")
+    logger.info(f"Calendly webhook received: {event_type}")
+
+    if event_type == "invitee.created":
+        _handle_calendly_invitee_created(payload)
+
+    return Response(status_code=200)
+
+
+def _handle_calendly_invitee_created(payload: dict) -> None:
+    """Match a Calendly booking to a pipeline opportunity and store details."""
+    data = payload.get("payload", {})
+    invitee_email = data.get("email", "").lower().strip()
+    invitee_name = data.get("name", "")
+    event_uri = data.get("event", "")
+    invitee_uri = data.get("uri", "")
+
+    # Extract scheduled time from the event
+    scheduled_event = data.get("scheduled_event", {})
+    start_time = scheduled_event.get("start_time", "")
+
+    if not invitee_email:
+        logger.warning("Calendly invitee.created without email — skipping")
+        return
+
+    sb = get_supabase()
+
+    # Find opportunity: contact email matches + stage = discovery_scheduled
+    contacts = (
+        sb.table("pipeline_contacts")
+        .select("id, company_id, name")
+        .ilike("email", invitee_email)
+        .eq("is_deleted", False)
+        .execute()
+    )
+    if not contacts.data:
+        logger.info(f"Calendly booking for {invitee_email} — no matching pipeline contact")
+        return
+
+    contact_ids = [c["id"] for c in contacts.data]
+
+    # Check for opportunities in discovery_scheduled stage with matching contact
+    for contact_id in contact_ids:
+        opps = (
+            sb.table("pipeline_opportunities")
+            .select("id, nda_confirmation_token, assigned_to, company_id")
+            .eq("primary_contact_id", contact_id)
+            .eq("stage", "discovery_scheduled")
+            .eq("is_deleted", False)
+            .execute()
+        )
+        if opps.data:
+            opp = opps.data[0]
+            # Store Calendly details on the opportunity
+            sb.table("pipeline_opportunities").update({
+                "calendly_event_uri": event_uri,
+                "calendly_invitee_uri": invitee_uri,
+                "calendly_booking_time": start_time,
+            }).eq("id", opp["id"]).execute()
+
+            logger.info(f"Calendly booking matched to opportunity {opp['id']} for {invitee_email}")
+
+            # No intermediate email needed — prospect is already on the /schedule page
+            # which transitions to the NDA card after the booking is confirmed.
+            return
+
+    logger.info(f"Calendly booking for {invitee_email} — no matching discovery_scheduled opportunity")

@@ -31,6 +31,7 @@ def _run_async_in_background(coro):
 @router.post("/send-nda", response_model=DocuSignResponse)
 async def send_nda(body: DocuSignSendRequest):
     """Send NDA to client via DocuSign."""
+    logger.info(f"send-nda endpoint called for engagement {body.engagement_id}")
     engagement = get_engagement_by_id(body.engagement_id)
     if not engagement:
         raise HTTPException(status_code=404, detail="Engagement not found")
@@ -39,6 +40,8 @@ async def send_nda(body: DocuSignSendRequest):
     contact_email = client.get("primary_contact_email")
     contact_name = client.get("primary_contact_name")
     company_name = client.get("company_name")
+
+    logger.info(f"send-nda — to={contact_email} name={contact_name} company={company_name}")
 
     if not contact_email or not contact_name:
         raise HTTPException(status_code=400, detail="Client contact info incomplete")
@@ -53,8 +56,10 @@ async def send_nda(body: DocuSignSendRequest):
             company_name=company_name,
         )
     except RuntimeError as e:
-        logger.error(f"DocuSign send_nda error: {e}")
+        logger.error(f"DocuSign send_nda error: {e}", exc_info=True)
         raise HTTPException(status_code=503, detail=str(e))
+
+    logger.info(f"send-nda result: {result}")
 
     if not result.get("success"):
         raise HTTPException(status_code=502, detail=result.get("error", "DocuSign send failed"))
@@ -276,7 +281,160 @@ async def docusign_webhook(request: Request, background_tasks: BackgroundTasks):
 
             logger.info(f"Agreement signed — envelope={envelope_id} engagement={engagement_id}")
 
+    # --- Pipeline NDA signed (no engagement yet) ---
+    elif action == "pipeline_nda_signed":
+        pipeline_result = (
+            sb.table("pipeline_opportunities")
+            .select("id, primary_contact_id, company_id, assigned_to")
+            .eq("nda_envelope_id", envelope_id)
+            .eq("is_deleted", False)
+            .execute()
+        )
+        if pipeline_result.data:
+            opp = pipeline_result.data[0]
+            sb.table("pipeline_opportunities").update({
+                "stage": "nda_signed",
+            }).eq("id", opp["id"]).execute()
+
+            # Send confirmation to prospect
+            if opp.get("primary_contact_id"):
+                contact = sb.table("pipeline_contacts").select("name, email").eq("id", opp["primary_contact_id"]).execute()
+                company = sb.table("pipeline_companies").select("name").eq("id", opp["company_id"]).execute()
+                if contact.data and contact.data[0].get("email"):
+                    email_svc = get_email_service()
+                    email_svc.send_pipeline_nda_signed_notification(
+                        to_email=contact.data[0]["email"],
+                        contact_name=contact.data[0]["name"],
+                        company_name=company.data[0]["name"] if company.data else "Unknown",
+                    )
+
+            logger.info(f"Pipeline NDA signed — envelope={envelope_id} opp={opp['id']}")
+
+    # --- Pipeline Agreement signed → auto-conversion ---
+    elif action == "pipeline_agreement_signed":
+        pipeline_result = (
+            sb.table("pipeline_opportunities")
+            .select("id")
+            .eq("agreement_envelope_id", envelope_id)
+            .eq("is_deleted", False)
+            .execute()
+        )
+        if pipeline_result.data:
+            opp_id = pipeline_result.data[0]["id"]
+            background_tasks.add_task(
+                _run_async_in_background,
+                _auto_convert_pipeline_opportunity(opp_id),
+            )
+            logger.info(f"Pipeline agreement signed — envelope={envelope_id} opp={opp_id} — auto-conversion triggered")
+
     return Response(status_code=200)
+
+
+async def _auto_convert_pipeline_opportunity(opp_id: str) -> None:
+    """Auto-convert a pipeline opportunity after agreement is signed.
+
+    Creates client, engagement, storage folders, sends deposit invoice + upload link.
+    """
+    import uuid as _uuid
+
+    sb = get_supabase()
+
+    # 1. Fetch opportunity, company, contact
+    opp = sb.table("pipeline_opportunities").select("*").eq("id", opp_id).execute()
+    if not opp.data:
+        logger.error(f"Auto-convert: opportunity {opp_id} not found")
+        return
+    opp = opp.data[0]
+
+    company = sb.table("pipeline_companies").select("*").eq("id", opp["company_id"]).execute()
+    if not company.data:
+        logger.error(f"Auto-convert: company {opp['company_id']} not found")
+        return
+    company = company.data[0]
+
+    contact = None
+    if opp.get("primary_contact_id"):
+        contact_result = sb.table("pipeline_contacts").select("*").eq("id", opp["primary_contact_id"]).execute()
+        if contact_result.data:
+            contact = contact_result.data[0]
+
+    # 2. Create client record
+    client_row = {
+        "company_name": company["name"],
+        "primary_contact_name": contact["name"] if contact else company["name"],
+        "primary_contact_email": (contact or {}).get("email", ""),
+        "primary_contact_phone": (contact or {}).get("phone"),
+        "industry": company.get("industry"),
+        "revenue_range": company.get("revenue_range"),
+        "employee_count": company.get("employee_count"),
+        "website_url": company.get("website"),
+        "referral_source": company.get("source"),
+    }
+    client_result = sb.table("clients").insert(client_row).execute()
+    new_client_id = client_result.data[0]["id"]
+
+    # 3. Create engagement (status = agreement_signed, NOT nda_pending)
+    upload_token = str(_uuid.uuid4())
+    engagement_row = {
+        "client_id": new_client_id,
+        "status": "agreement_signed",
+        "phase": 0,
+        "fee": opp.get("estimated_value") or 12500,
+        "partner_lead": opp.get("assigned_to") or "George DeVries",
+        "upload_token": upload_token,
+    }
+    engagement_result = sb.table("engagements").insert(engagement_row).execute()
+    new_engagement = engagement_result.data[0]
+    new_engagement_id = new_engagement["id"]
+
+    # 4. Link opportunity → won
+    sb.table("pipeline_opportunities").update({
+        "converted_client_id": new_client_id,
+        "converted_engagement_id": new_engagement_id,
+        "stage": "won",
+    }).eq("id", opp_id).execute()
+
+    # 5. Create storage folders
+    try:
+        from services.supabase_client import create_engagement_folders
+        create_engagement_folders(new_engagement_id)
+    except Exception as e:
+        logger.warning(f"Auto-convert: failed to create folders: {e}")
+
+    # 6. Send deposit invoice
+    try:
+        from routers.invoices import create_and_send_invoice
+        create_and_send_invoice(
+            engagement_id=new_engagement_id,
+            invoice_type="deposit",
+            send_email=True,
+        )
+        logger.info(f"Auto-convert: deposit invoice sent for engagement {new_engagement_id}")
+    except Exception as e:
+        logger.error(f"Auto-convert: invoice failed: {e}")
+
+    # 7. Send upload link email
+    try:
+        full_engagement = get_engagement_by_id(new_engagement_id)
+        if full_engagement:
+            email_svc = get_email_service()
+            email_svc.send_upload_link(full_engagement)
+            logger.info(f"Auto-convert: upload link sent for engagement {new_engagement_id}")
+    except Exception as e:
+        logger.error(f"Auto-convert: upload link email failed: {e}")
+
+    # 8. Log activities
+    log_activity(new_engagement_id, "system", "engagement_created_from_pipeline", {
+        "opportunity_id": opp_id,
+        "company_name": company["name"],
+        "trigger": "agreement_signed_webhook",
+        "auto_conversion": True,
+    })
+
+    logger.info(
+        f"Auto-convert complete: opp {opp_id} → client {new_client_id}, "
+        f"engagement {new_engagement_id}"
+    )
 
 
 @router.get("/consent-url")

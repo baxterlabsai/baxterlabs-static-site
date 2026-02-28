@@ -390,6 +390,88 @@ class EmailService:
             from_email=EMAIL_INFO, from_name="BaxterLabs",
         )
 
+    # ── Pipeline Email Templates ─────────────────────────────────────
+
+    def send_discovery_scheduling_link(
+        self,
+        to_email: str,
+        contact_name: str,
+        company_name: str,
+        scheduling_link: str,
+        partner_lead: str = "George DeVries",
+    ) -> dict:
+        """Send Calendly scheduling link to prospect."""
+        body = f"""
+        <h2 style="color:{CRIMSON};font-family:Georgia,serif;margin-top:0;">Schedule Your Discovery Call</h2>
+        <p>Hi {contact_name},</p>
+        <p>Thank you for your interest in BaxterLabs Advisory. We'd love to learn more about <strong>{company_name}</strong> and explore how our Profit Leak Diagnostic can help.</p>
+        <p>Please use the link below to schedule a discovery call at a time that works best for you:</p>
+        <p style="margin:24px 0;text-align:center;">
+          <a href="{scheduling_link}"
+             style="display:inline-block;padding:14px 32px;background-color:{CRIMSON};color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;font-size:16px;">
+            Schedule Discovery Call
+          </a>
+        </p>
+        <p style="font-size:14px;color:{CHARCOAL};">This call typically lasts 30 minutes and is an opportunity for us to understand your business and discuss how we can help identify profit leaks.</p>
+        <p style="color:{TEAL};font-weight:600;margin-top:24px;">Looking forward to speaking with you!</p>
+        """
+        p_email = get_partner_email(partner_lead)
+        p_name = f"{partner_lead} — BaxterLabs"
+        return self._send_email(
+            to_email, f"BaxterLabs — Schedule Your Discovery Call", body,
+            from_email=p_email, from_name=p_name,
+        )
+
+    def send_nda_confirmation_link(
+        self,
+        to_email: str,
+        contact_name: str,
+        company_name: str,
+        confirmation_url: str,
+        booking_time: str,
+        partner_lead: str = "George DeVries",
+    ) -> dict:
+        """Send confirmation page link with NDA option after Calendly booking."""
+        body = f"""
+        <h2 style="color:{CRIMSON};font-family:Georgia,serif;margin-top:0;">Discovery Call Confirmed</h2>
+        <p>Hi {contact_name},</p>
+        <p>Your discovery call with BaxterLabs has been scheduled for <strong>{booking_time}</strong>.</p>
+        <p>Before our call, we ask that you review and sign a Non-Disclosure Agreement (NDA). This ensures all information shared during our engagement remains strictly confidential.</p>
+        <p style="margin:24px 0;text-align:center;">
+          <a href="{confirmation_url}"
+             style="display:inline-block;padding:14px 32px;background-color:{CRIMSON};color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;font-size:16px;">
+            Review &amp; Sign NDA
+          </a>
+        </p>
+        <p style="font-size:14px;color:{CHARCOAL};">Signing the NDA is quick and easy via DocuSign. It protects both parties and allows us to have an open, productive conversation.</p>
+        <p style="color:{TEAL};font-weight:600;margin-top:24px;">See you soon!</p>
+        """
+        p_email = get_partner_email(partner_lead)
+        p_name = f"{partner_lead} — BaxterLabs"
+        return self._send_email(
+            to_email, f"BaxterLabs — Your Discovery Call is Confirmed", body,
+            from_email=p_email, from_name=p_name,
+        )
+
+    def send_pipeline_nda_signed_notification(
+        self,
+        to_email: str,
+        contact_name: str,
+        company_name: str,
+    ) -> dict:
+        """Confirm to prospect that their NDA has been signed."""
+        body = f"""
+        <h2 style="color:{TEAL};font-family:Georgia,serif;margin-top:0;">NDA Signed — Thank You!</h2>
+        <p>Hi {contact_name},</p>
+        <p>Thank you for signing the Non-Disclosure Agreement for <strong>{company_name}</strong>.</p>
+        <p>We're looking forward to your upcoming discovery call. In the meantime, if you have any questions, don't hesitate to reach out.</p>
+        <p style="color:{TEAL};font-weight:600;margin-top:24px;">— The BaxterLabs Team</p>
+        """
+        return self._send_email(
+            to_email, f"BaxterLabs — NDA Signed Successfully", body,
+            from_email=EMAIL_INFO, from_name="BaxterLabs",
+        )
+
     def send_reminder_nda(self, engagement: dict) -> dict:
         """Send client a reminder to sign the NDA."""
         client = engagement.get("clients", {})
