@@ -1053,21 +1053,22 @@ async def create_activity(body: ActivityCreate, user: dict = Depends(verify_part
     # Auto-create task from next_action if provided
     task_created = None
     if body.next_action:
-        task_row = {
-            "title": body.next_action,
-            "status": "pending",
-            "created_by": user.get("sub"),
-        }
-        if body.next_action_date:
-            task_row["due_date"] = body.next_action_date.isoformat()
-        if body.contact_id:
-            task_row["contact_id"] = body.contact_id
-        if body.opportunity_id:
-            task_row["opportunity_id"] = body.opportunity_id
-        if body.company_id:
-            task_row["company_id"] = body.company_id
-        task_result = sb.table("pipeline_tasks").insert(task_row).execute()
-        task_created = task_result.data[0] if task_result.data else None
+        try:
+            task_row = {
+                "title": body.next_action,
+                "status": "pending",
+                "created_by": user.get("sub"),
+            }
+            if body.next_action_date:
+                task_row["due_date"] = body.next_action_date.isoformat()
+            if body.contact_id:
+                task_row["contact_id"] = body.contact_id
+            if body.opportunity_id:
+                task_row["opportunity_id"] = body.opportunity_id
+            task_result = sb.table("pipeline_tasks").insert(task_row).execute()
+            task_created = task_result.data[0] if task_result.data else None
+        except Exception as e:
+            logger.warning(f"Auto-create task failed (non-blocking): {e}")
 
     return {"activity": activity, "task_created": task_created}
 
