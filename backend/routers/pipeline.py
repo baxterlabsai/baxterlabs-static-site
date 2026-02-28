@@ -41,6 +41,7 @@ VALID_ACTIVITY_TYPES = {
 }
 VALID_PRIORITIES = {"high", "normal", "low"}
 VALID_TASK_STATUSES = {"pending", "complete", "skipped"}
+VALID_COMPANY_TYPES = {"prospect", "partner", "connector"}
 
 
 # ==========================================================================
@@ -51,6 +52,7 @@ VALID_TASK_STATUSES = {"pending", "complete", "skipped"}
 async def list_companies(
     search: Optional[str] = Query(None),
     industry: Optional[str] = Query(None),
+    company_type: Optional[str] = Query(None),
     user: dict = Depends(verify_partner_auth),
 ):
     sb = get_supabase()
@@ -59,12 +61,16 @@ async def list_companies(
         query = query.ilike("name", f"%{search}%")
     if industry:
         query = query.eq("industry", industry)
+    if company_type:
+        query = query.eq("company_type", company_type)
     result = query.order("created_at", desc=True).execute()
     return {"companies": result.data, "count": len(result.data)}
 
 
 @router.post("/companies")
 async def create_company(body: CompanyCreate, user: dict = Depends(verify_partner_auth)):
+    if body.company_type and body.company_type not in VALID_COMPANY_TYPES:
+        raise HTTPException(status_code=400, detail=f"Invalid company_type: {body.company_type}")
     sb = get_supabase()
     row = body.model_dump(exclude_none=True)
     row["created_by"] = user.get("sub")
@@ -97,6 +103,8 @@ async def update_company(company_id: str, body: CompanyUpdate, user: dict = Depe
     updates = body.model_dump(exclude_none=True)
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
+    if "company_type" in updates and updates["company_type"] not in VALID_COMPANY_TYPES:
+        raise HTTPException(status_code=400, detail=f"Invalid company_type: {updates['company_type']}")
     result = sb.table("pipeline_companies").update(updates).eq("id", company_id).eq("is_deleted", False).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Company not found")
@@ -199,9 +207,24 @@ async def delete_contact(contact_id: str, user: dict = Depends(verify_partner_au
 async def list_opportunities(
     stage: Optional[str] = Query(None),
     assigned_to: Optional[str] = Query(None),
+    company_type: Optional[str] = Query(None),
     user: dict = Depends(verify_partner_auth),
 ):
     sb = get_supabase()
+
+    # If filtering by company_type, get matching company IDs first
+    if company_type:
+        type_companies = (
+            sb.table("pipeline_companies")
+            .select("id")
+            .eq("is_deleted", False)
+            .eq("company_type", company_type)
+            .execute()
+        )
+        type_ids = [c["id"] for c in type_companies.data]
+        if not type_ids:
+            return {"opportunities": [], "count": 0}
+
     query = (
         sb.table("pipeline_opportunities")
         .select("*, pipeline_companies(id, name), pipeline_contacts(id, name)")
@@ -211,6 +234,8 @@ async def list_opportunities(
         query = query.eq("stage", stage)
     if assigned_to:
         query = query.eq("assigned_to", assigned_to)
+    if company_type:
+        query = query.in_("company_id", type_ids)
     result = query.order("created_at", desc=True).execute()
     return {"opportunities": result.data, "count": len(result.data)}
 
@@ -1353,8 +1378,8 @@ async def pipeline_stats(user: dict = Depends(verify_partner_auth)):
     """Pipeline summary: opportunity counts by stage, total value, task counts."""
     sb = get_supabase()
 
-    # Opportunities by stage
-    opps = sb.table("pipeline_opportunities").select("stage, estimated_value").eq("is_deleted", False).execute()
+    # Opportunities by stage (include company_id for type breakdown)
+    opps = sb.table("pipeline_opportunities").select("stage, estimated_value, company_id").eq("is_deleted", False).execute()
     stage_counts = {}
     total_value = 0.0
     for opp in opps.data:
@@ -1362,6 +1387,35 @@ async def pipeline_stats(user: dict = Depends(verify_partner_auth)):
         stage_counts[stage] = stage_counts.get(stage, 0) + 1
         if opp.get("estimated_value") and stage not in ("lost", "dormant"):
             total_value += float(opp["estimated_value"])
+
+    # Build company_type map for by_type breakdown
+    opp_company_ids = list({opp["company_id"] for opp in opps.data if opp.get("company_id")})
+    company_type_map = {}
+    if opp_company_ids:
+        companies_result = (
+            sb.table("pipeline_companies")
+            .select("id, company_type")
+            .eq("is_deleted", False)
+            .in_("id", opp_company_ids)
+            .execute()
+        )
+        for c in companies_result.data:
+            company_type_map[c["id"]] = c.get("company_type") or "prospect"
+
+    # Build by_type breakdown
+    by_type = {}
+    for ctype in VALID_COMPANY_TYPES:
+        by_type[ctype] = {"stage_counts": {}, "total_value": 0.0, "count": 0}
+
+    for opp in opps.data:
+        ctype = company_type_map.get(opp.get("company_id", ""), "prospect")
+        if ctype not in by_type:
+            ctype = "prospect"
+        by_type[ctype]["count"] += 1
+        stage = opp["stage"]
+        by_type[ctype]["stage_counts"][stage] = by_type[ctype]["stage_counts"].get(stage, 0) + 1
+        if opp.get("estimated_value") and stage not in ("lost", "dormant", "partner_dormant"):
+            by_type[ctype]["total_value"] += float(opp["estimated_value"])
 
     # Tasks due today
     today_str = date.today().isoformat()
@@ -1418,4 +1472,5 @@ async def pipeline_stats(user: dict = Depends(verify_partner_auth)):
             "won": referral_won,
             "conversion_rate": round(referral_rate, 1),
         },
+        "by_type": by_type,
     }

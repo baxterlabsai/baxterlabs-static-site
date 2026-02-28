@@ -12,6 +12,7 @@ interface Company {
   name: string
   website: string | null
   industry: string | null
+  company_type: string | null
 }
 
 interface Contact {
@@ -97,7 +98,21 @@ const STAGES = [
   { key: 'lost', label: 'Lost', color: 'bg-red-soft/10 text-red-soft', headerBg: 'bg-red-soft/5' },
 ]
 
+const PARTNER_STAGES = [
+  { key: 'partner_identified', label: 'Identified', color: 'bg-teal/10 text-teal', headerBg: 'bg-teal/5' },
+  { key: 'partner_researched', label: 'Researched', color: 'bg-teal/20 text-teal', headerBg: 'bg-teal/10' },
+  { key: 'partner_outreach', label: 'Outreach', color: 'bg-gold/10 text-charcoal', headerBg: 'bg-gold/5' },
+  { key: 'relationship_building', label: 'Relationship', color: 'bg-gold/20 text-charcoal', headerBg: 'bg-gold/10' },
+  { key: 'active_referrer', label: 'Active Referrer', color: 'bg-green/10 text-green', headerBg: 'bg-green/5' },
+  { key: 'partner_dormant', label: 'Dormant', color: 'bg-gray-light/50 text-charcoal', headerBg: 'bg-gray-light/30' },
+]
+
+const PARTNER_STAGE_KEYS = new Set(PARTNER_STAGES.map(s => s.key))
+
 const ALL_STAGES = [...STAGES.map(s => s.key), 'dormant']
+const ALL_PARTNER_STAGES = [...PARTNER_STAGES.filter(s => s.key !== 'partner_dormant').map(s => s.key), 'partner_dormant']
+
+const ALL_STAGE_META = [...STAGES, ...PARTNER_STAGES, { key: 'dormant', label: 'Dormant', color: 'bg-gray-light/50 text-charcoal', headerBg: 'bg-gray-light/30' }]
 
 const ACTIVITY_TYPE_ICONS: Record<string, string> = {
   video_call: 'M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z',
@@ -151,6 +166,7 @@ export default function PipelineBoard() {
   const [error, setError] = useState('')
   const [filterAssignedTo, setFilterAssignedTo] = useState('')
   const [dormantExpanded, setDormantExpanded] = useState(false)
+  const [typeFilter, setTypeFilter] = useState<'prospect' | 'partner' | 'connector' | 'all'>('prospect')
 
   // Modals
   const [showQuickAdd, setShowQuickAdd] = useState(false)
@@ -192,18 +208,34 @@ export default function PipelineBoard() {
   }, [stageMenuOppId])
 
   // Helpers
+  const companyTypeMap: Record<string, string> = {}
+  for (const c of companies) {
+    companyTypeMap[c.id] = c.company_type || 'prospect'
+  }
+
   const filtered = filterAssignedTo
     ? opportunities.filter(o => o.assigned_to === filterAssignedTo)
     : opportunities
 
-  const boardOpps = filtered.filter(o => o.stage !== 'dormant')
-  const dormantOpps = filtered.filter(o => o.stage === 'dormant')
+  // Type-aware filtering
+  const typeFiltered = typeFilter === 'all'
+    ? filtered
+    : filtered.filter(o => companyTypeMap[o.company_id] === typeFilter)
+
+  const dormantKey = typeFilter === 'partner' ? 'partner_dormant' : 'dormant'
+  const activeStages = typeFilter === 'partner'
+    ? PARTNER_STAGES.filter(s => s.key !== 'partner_dormant')
+    : STAGES
+  const boardOpps = typeFiltered.filter(o => o.stage !== dormantKey && o.stage !== (typeFilter === 'partner' ? 'dormant' : 'partner_dormant'))
+  const dormantOpps = typeFiltered.filter(o => o.stage === dormantKey)
 
   const assignedToValues = [...new Set(opportunities.map(o => o.assigned_to).filter(Boolean))] as string[]
 
   const totalValue = boardOpps
     .filter(o => o.stage !== 'lost')
     .reduce((sum, o) => sum + (o.estimated_value || 0), 0)
+
+  const typeLabel = typeFilter === 'all' ? 'All' : typeFilter === 'prospect' ? 'Prospect' : typeFilter === 'partner' ? 'Partner' : 'Connector'
 
   // Stage change
   async function handleStageChange(oppId: string, newStage: string) {
@@ -280,12 +312,15 @@ export default function PipelineBoard() {
     notes?: string
     referred_by_engagement_id?: string
     referred_by_contact_name?: string
+    company_type?: string
   }) {
     try {
       let companyId = data.company_id
       // Create new company if needed
       if (!companyId && data.company_name) {
-        const newCo = await apiPost<Company>('/api/pipeline/companies', { name: data.company_name })
+        const createPayload: Record<string, unknown> = { name: data.company_name }
+        if (data.company_type) createPayload.company_type = data.company_type
+        const newCo = await apiPost<Company>('/api/pipeline/companies', createPayload)
         companyId = newCo.id
         setCompanies(prev => [...prev, newCo])
       }
@@ -374,9 +409,9 @@ export default function PipelineBoard() {
         <div>
           <h1 className="font-display text-2xl font-bold text-charcoal">Pipeline Board</h1>
           <p className="text-gray-warm text-sm mt-1">
-            {formatCurrency(totalValue)} total pipeline value
+            {typeLabel} pipeline &middot; {formatCurrency(totalValue)} value
             {' '}&middot;{' '}
-            {boardOpps.filter(o => o.stage !== 'lost').length} active opportunities
+            {boardOpps.filter(o => o.stage !== 'lost').length} active
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -415,92 +450,160 @@ export default function PipelineBoard() {
         </div>
       )}
 
-      {/* Stage summary pills */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        {STAGES.filter(s => s.key !== 'lost').map(stage => {
-          const count = boardOpps.filter(o => o.stage === stage.key).length
-          return (
-            <span key={stage.key} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${stage.color}`}>
-              {stage.label}: {count}
-            </span>
-          )
-        })}
+      {/* Type filter toggle */}
+      <div className="bg-ivory p-1 rounded-lg inline-flex gap-1 mb-4">
+        {([
+          { key: 'prospect', label: 'Prospects' },
+          { key: 'partner', label: 'Partners' },
+          { key: 'connector', label: 'Connectors' },
+          { key: 'all', label: 'All' },
+        ] as const).map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setTypeFilter(tab.key)}
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+              typeFilter === tab.key
+                ? 'bg-white shadow-sm text-charcoal'
+                : 'text-gray-warm hover:text-charcoal'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {/* Kanban board */}
-      <div className="overflow-x-auto pb-4 -mx-4 lg:-mx-8 px-4 lg:px-8">
-        <div className="flex gap-3" style={{ minWidth: `${STAGES.length * 240}px` }}>
-          {STAGES.map(stage => {
-            const stageOpps = boardOpps.filter(o => o.stage === stage.key)
+      {/* Stage summary pills */}
+      {typeFilter !== 'connector' && (
+        <div className="flex flex-wrap gap-2 mb-4">
+          {activeStages.filter(s => s.key !== 'lost').map(stage => {
+            const count = boardOpps.filter(o => o.stage === stage.key).length
             return (
-              <div key={stage.key} className="flex-1 min-w-[220px] max-w-[280px]">
-                {/* Column header */}
-                <div className={`${stage.headerBg} rounded-t-lg px-3 py-2 border border-b-0 border-gray-light`}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-charcoal">{stage.label}</span>
-                    <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold ${stage.color}`}>
-                      {stageOpps.length}
-                    </span>
-                  </div>
-                </div>
-                {/* Column body */}
-                <div className="bg-white/50 border border-gray-light rounded-b-lg p-2 space-y-2 min-h-[120px]">
-                  {stageOpps.length === 0 ? (
-                    <p className="text-xs text-gray-warm text-center py-6">No opportunities</p>
-                  ) : (
-                    stageOpps.map(opp => (
-                      <OpportunityCard
-                        key={opp.id}
-                        opp={opp}
-                        onOpenDetail={() => setDetailOppId(opp.id)}
-                        onOpenStageMenu={() => setStageMenuOppId(stageMenuOppId === opp.id ? null : opp.id)}
-                        stageMenuOpen={stageMenuOppId === opp.id}
-                        stageMenuRef={stageMenuOppId === opp.id ? stageMenuRef : undefined}
-                        onStageChange={(newStage) => handleStageChange(opp.id, newStage)}
-                        currentStage={opp.stage}
-                        onScheduleDiscovery={() => handleScheduleDiscovery(opp.id)}
-                        onSendAgreement={() => setShowSendAgreement(opp.id)}
-                      />
-                    ))
-                  )}
-                </div>
-              </div>
+              <span key={stage.key} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${stage.color}`}>
+                {stage.label}: {count}
+              </span>
             )
           })}
         </div>
-      </div>
+      )}
 
-      {/* Dormant section */}
-      {dormantOpps.length > 0 && (
-        <div className="mt-4">
-          <button
-            onClick={() => setDormantExpanded(!dormantExpanded)}
-            className="flex items-center gap-2 text-sm font-semibold text-gray-warm hover:text-charcoal transition-colors"
-          >
-            <svg className={`w-4 h-4 transition-transform ${dormantExpanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-            </svg>
-            Dormant ({dormantOpps.length})
-          </button>
-          {dormantExpanded && (
-            <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {dormantOpps.map(opp => (
-                <OpportunityCard
-                  key={opp.id}
-                  opp={opp}
-                  onOpenDetail={() => setDetailOppId(opp.id)}
-                  onOpenStageMenu={() => setStageMenuOppId(stageMenuOppId === opp.id ? null : opp.id)}
-                  stageMenuOpen={stageMenuOppId === opp.id}
-                  stageMenuRef={stageMenuOppId === opp.id ? stageMenuRef : undefined}
-                  onStageChange={(newStage) => handleStageChange(opp.id, newStage)}
-                  currentStage={opp.stage}
-                  onScheduleDiscovery={() => handleScheduleDiscovery(opp.id)}
-                  onSendAgreement={() => setShowSendAgreement(opp.id)}
-                />
+      {/* Connector list view */}
+      {typeFilter === 'connector' ? (
+        <div className="bg-white rounded-lg border border-gray-light overflow-hidden">
+          {typeFiltered.length === 0 ? (
+            <div className="p-12 text-center">
+              <p className="text-sm text-gray-warm">No connector companies yet</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-light bg-ivory/50">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-warm uppercase tracking-wider">Company</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-warm uppercase tracking-wider hidden sm:table-cell">Contact</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-warm uppercase tracking-wider hidden md:table-cell">Notes</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-warm uppercase tracking-wider">Added</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-light">
+                  {typeFiltered.map(opp => (
+                    <tr
+                      key={opp.id}
+                      onClick={() => setDetailOppId(opp.id)}
+                      className="hover:bg-ivory/50 cursor-pointer transition-colors"
+                    >
+                      <td className="px-4 py-3">
+                        <p className="text-sm font-semibold text-charcoal">{opp.pipeline_companies?.name || 'Unknown'}</p>
+                        <p className="text-xs text-gray-warm">{opp.title}</p>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-charcoal hidden sm:table-cell">{opp.pipeline_contacts?.name || '—'}</td>
+                      <td className="px-4 py-3 text-sm text-charcoal hidden md:table-cell truncate max-w-[200px]">{opp.notes || '—'}</td>
+                      <td className="px-4 py-3 text-xs text-gray-warm">{timeAgo(opp.created_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* Kanban board */}
+          <div className="overflow-x-auto pb-4 -mx-4 lg:-mx-8 px-4 lg:px-8">
+            <div className="flex gap-3" style={{ minWidth: `${activeStages.length * 240}px` }}>
+              {activeStages.map(stage => {
+                const stageOpps = boardOpps.filter(o => o.stage === stage.key)
+                return (
+                  <div key={stage.key} className="flex-1 min-w-[220px] max-w-[280px]">
+                    {/* Column header */}
+                    <div className={`${stage.headerBg} rounded-t-lg px-3 py-2 border border-b-0 border-gray-light`}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-charcoal">{stage.label}</span>
+                        <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold ${stage.color}`}>
+                          {stageOpps.length}
+                        </span>
+                      </div>
+                    </div>
+                    {/* Column body */}
+                    <div className="bg-white/50 border border-gray-light rounded-b-lg p-2 space-y-2 min-h-[120px]">
+                      {stageOpps.length === 0 ? (
+                        <p className="text-xs text-gray-warm text-center py-6">No opportunities</p>
+                      ) : (
+                        stageOpps.map(opp => (
+                          <OpportunityCard
+                            key={opp.id}
+                            opp={opp}
+                            onOpenDetail={() => setDetailOppId(opp.id)}
+                            onOpenStageMenu={() => setStageMenuOppId(stageMenuOppId === opp.id ? null : opp.id)}
+                            stageMenuOpen={stageMenuOppId === opp.id}
+                            stageMenuRef={stageMenuOppId === opp.id ? stageMenuRef : undefined}
+                            onStageChange={(newStage) => handleStageChange(opp.id, newStage)}
+                            currentStage={opp.stage}
+                            onScheduleDiscovery={() => handleScheduleDiscovery(opp.id)}
+                            onSendAgreement={() => setShowSendAgreement(opp.id)}
+                            companyType={typeFilter === 'all' ? companyTypeMap[opp.company_id] : undefined}
+                          />
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Dormant section */}
+          {dormantOpps.length > 0 && (
+            <div className="mt-4">
+              <button
+                onClick={() => setDormantExpanded(!dormantExpanded)}
+                className="flex items-center gap-2 text-sm font-semibold text-gray-warm hover:text-charcoal transition-colors"
+              >
+                <svg className={`w-4 h-4 transition-transform ${dormantExpanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+                Dormant ({dormantOpps.length})
+              </button>
+              {dormantExpanded && (
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {dormantOpps.map(opp => (
+                    <OpportunityCard
+                      key={opp.id}
+                      opp={opp}
+                      onOpenDetail={() => setDetailOppId(opp.id)}
+                      onOpenStageMenu={() => setStageMenuOppId(stageMenuOppId === opp.id ? null : opp.id)}
+                      stageMenuOpen={stageMenuOppId === opp.id}
+                      stageMenuRef={stageMenuOppId === opp.id ? stageMenuRef : undefined}
+                      onStageChange={(newStage) => handleStageChange(opp.id, newStage)}
+                      currentStage={opp.stage}
+                      onScheduleDiscovery={() => handleScheduleDiscovery(opp.id)}
+                      onSendAgreement={() => setShowSendAgreement(opp.id)}
+                    />
               ))}
             </div>
           )}
         </div>
+      )}
+        </>
       )}
 
       {/* Quick-add modal */}
@@ -510,6 +613,7 @@ export default function PipelineBoard() {
           contacts={contacts}
           onSubmit={handleQuickAdd}
           onClose={() => setShowQuickAdd(false)}
+          typeFilter={typeFilter}
         />
       )}
 
@@ -566,6 +670,7 @@ function OpportunityCard({
   currentStage,
   onScheduleDiscovery,
   onSendAgreement,
+  companyType,
 }: {
   opp: Opportunity
   onOpenDetail: () => void
@@ -576,6 +681,7 @@ function OpportunityCard({
   currentStage: string
   onScheduleDiscovery?: () => void
   onSendAgreement?: () => void
+  companyType?: string
 }) {
   // Find latest next_action_date from the opportunity's activities (if loaded),
   // otherwise we'd need a separate fetch — for board cards just use estimated_close_date as proxy
@@ -588,6 +694,20 @@ function OpportunityCard({
           <p className="text-sm font-semibold text-charcoal truncate flex-1">
             {opp.pipeline_companies?.name || 'Unknown Company'}
           </p>
+          {companyType === 'partner' && (
+            <span className="flex-shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full bg-teal/15 text-teal" title="Partner">
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+              </svg>
+            </span>
+          )}
+          {companyType === 'connector' && (
+            <span className="flex-shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full bg-gold/15 text-gold" title="Connector">
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+              </svg>
+            </span>
+          )}
           {opp.referred_by_engagement_id && (
             <span className="flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-gold/20 text-charcoal" title={`Referred by ${opp.referred_by_contact_name || 'referral'}`}>
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -719,9 +839,9 @@ function StageDropdown({
           className="fixed w-48 bg-white rounded-lg shadow-lg border border-gray-light py-1 max-h-80 overflow-y-auto"
           style={{ top: pos.top, left: pos.left, zIndex: 9999 }}
         >
-          {ALL_STAGES.filter(s => s !== currentStage).map(stageKey => {
-            const stageMeta = STAGES.find(s => s.key === stageKey)
-            const label = stageMeta?.label || 'Dormant'
+          {(PARTNER_STAGE_KEYS.has(currentStage) ? ALL_PARTNER_STAGES : ALL_STAGES).filter(s => s !== currentStage).map(stageKey => {
+            const meta = ALL_STAGE_META.find(s => s.key === stageKey)
+            const label = meta?.label || stageKey
             return (
               <button
                 key={stageKey}
@@ -758,11 +878,13 @@ function QuickAddModal({
   contacts,
   onSubmit,
   onClose,
+  typeFilter,
 }: {
   companies: Company[]
   contacts: Contact[]
-  onSubmit: (data: { company_name: string; company_id?: string; contact_name?: string; contact_id?: string; title: string; estimated_value: number; stage: string; estimated_close_date?: string; assigned_to?: string; notes?: string; referred_by_engagement_id?: string; referred_by_contact_name?: string }) => void
+  onSubmit: (data: { company_name: string; company_id?: string; contact_name?: string; contact_id?: string; title: string; estimated_value: number; stage: string; estimated_close_date?: string; assigned_to?: string; notes?: string; referred_by_engagement_id?: string; referred_by_contact_name?: string; company_type?: string }) => void
   onClose: () => void
+  typeFilter: 'prospect' | 'partner' | 'connector' | 'all'
 }) {
   useEscapeKey(onClose)
   const [companySearch, setCompanySearch] = useState('')
@@ -771,7 +893,9 @@ function QuickAddModal({
   const [selectedContactId, setSelectedContactId] = useState('')
   const [title, setTitle] = useState('')
   const [value, setValue] = useState('12500')
-  const [stage, setStage] = useState('identified')
+  const defaultStage = typeFilter === 'partner' ? 'partner_identified' : 'identified'
+  const [stage, setStage] = useState(defaultStage)
+  const modalStages = typeFilter === 'partner' ? PARTNER_STAGES.filter(s => s.key !== 'partner_dormant') : STAGES
   const [estimatedCloseDate, setEstimatedCloseDate] = useState('')
   const [assignedTo, setAssignedTo] = useState('')
   const [oppNotes, setOppNotes] = useState('')
@@ -827,6 +951,7 @@ function QuickAddModal({
       notes: oppNotes || undefined,
       referred_by_engagement_id: source === 'Referral' && referralEngagementId ? referralEngagementId : undefined,
       referred_by_contact_name: source === 'Referral' && referralContactName ? referralContactName : undefined,
+      company_type: typeFilter !== 'all' ? typeFilter : undefined,
     })
     setSubmitting(false)
   }
@@ -949,7 +1074,7 @@ function QuickAddModal({
                 onChange={e => setStage(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
               >
-                {STAGES.map(s => (
+                {modalStages.map(s => (
                   <option key={s.key} value={s.key}>{s.label}</option>
                 ))}
               </select>
@@ -1209,7 +1334,9 @@ function OpportunitySlideOver({
       .finally(() => setLoading(false))
   }, [oppId])
 
-  const stageMeta = STAGES.find(s => s.key === opp?.stage) || { label: opp?.stage || '', color: 'bg-gray-light text-charcoal' }
+  const isPartnerOpp = opp ? PARTNER_STAGE_KEYS.has(opp.stage) : false
+  const slideOverStages = isPartnerOpp ? ALL_PARTNER_STAGES : ALL_STAGES
+  const stageMeta = ALL_STAGE_META.find(s => s.key === opp?.stage) || { label: opp?.stage || '', color: 'bg-gray-light text-charcoal' }
 
   return (
     <>
@@ -1286,15 +1413,15 @@ function OpportunitySlideOver({
               <div>
                 <p className="text-xs font-semibold text-charcoal mb-1.5">Move to Stage</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {ALL_STAGES.filter(s => s !== opp.stage).map(stageKey => {
-                    const meta = STAGES.find(s => s.key === stageKey)
+                  {slideOverStages.filter(s => s !== opp.stage).map(stageKey => {
+                    const meta = ALL_STAGE_META.find(s => s.key === stageKey)
                     return (
                       <button
                         key={stageKey}
                         onClick={() => onStageChange(opp.id, stageKey)}
                         className={`px-2.5 py-1 rounded-full text-xs font-medium border border-gray-light hover:border-teal transition-colors ${meta?.color || 'bg-gray-light/50 text-charcoal'}`}
                       >
-                        {meta?.label || 'Dormant'}
+                        {meta?.label || stageKey}
                       </button>
                     )
                   })}
