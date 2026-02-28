@@ -49,6 +49,8 @@ interface EngagementData {
   discovery_notes: string | null
   upload_token: string
   deliverable_token: string
+  onboarding_token: string | null
+  onboarding_completed_at: string | null
   created_at: string
   clients: {
     company_name: string
@@ -68,6 +70,7 @@ interface EngagementData {
     email: string | null
     phone: string | null
     linkedin_url: string | null
+    context_notes: string | null
   }>
   legal_documents: Array<{
     type: string
@@ -1234,7 +1237,53 @@ export default function EngagementDetail() {
 
         {/* Interview Contacts */}
         <section className="bg-white rounded-lg border border-gray-light p-5">
-          <h3 className="font-display text-lg font-bold text-teal mb-4">Interview Contacts</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-display text-lg font-bold text-teal">Interview Contacts</h3>
+            <div className="flex items-center gap-2">
+              {data.onboarding_completed_at ? (
+                <span className="text-xs text-green font-semibold bg-green/10 px-2 py-1 rounded">
+                  Submitted {formatDate(data.onboarding_completed_at)}
+                </span>
+              ) : data.onboarding_token ? (
+                <span className="text-xs text-amber font-semibold bg-amber/10 px-2 py-1 rounded">
+                  Awaiting — link sent
+                </span>
+              ) : null}
+            </div>
+          </div>
+          {data.onboarding_token && (
+            <div className="flex items-center gap-2 mb-4">
+              <button
+                onClick={() => {
+                  const url = `${window.location.origin}/onboard/${data.onboarding_token}`
+                  navigator.clipboard.writeText(url)
+                  toast('Onboarding link copied to clipboard')
+                }}
+                className="text-xs text-teal font-semibold hover:underline flex items-center gap-1"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Copy Onboarding Link
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    await apiPost(`/api/onboard/${data.onboarding_token}/resend`)
+                    toast('Onboarding email resent', 'success')
+                  } catch {
+                    toast('Failed to resend email', 'error')
+                  }
+                }}
+                className="text-xs text-teal font-semibold hover:underline flex items-center gap-1"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                Resend Email
+              </button>
+            </div>
+          )}
           {data.interview_contacts.length === 0 ? (
             <p className="text-gray-warm text-sm">No interview contacts provided.</p>
           ) : (
@@ -1247,6 +1296,7 @@ export default function EngagementDetail() {
                     {c.phone && <span>{c.phone}</span>}
                     {c.linkedin_url && <a href={c.linkedin_url} target="_blank" rel="noreferrer" className="text-teal hover:underline">LinkedIn</a>}
                   </div>
+                  {c.context_notes && <p className="mt-2 text-xs text-charcoal italic">{c.context_notes}</p>}
                 </div>
               ))}
             </div>

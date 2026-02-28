@@ -21,6 +21,7 @@ import PipelineActivities from './pages/dashboard/pipeline/Activities'
 import PipelineTasks from './pages/dashboard/pipeline/Tasks'
 import ConversionReview from './pages/dashboard/pipeline/ConversionReview'
 import ScheduleDiscovery from './pages/ScheduleDiscovery'
+import Onboard from './pages/Onboard'
 import UploadPortal from './pages/UploadPortal'
 import DeliverablePortal from './pages/DeliverablePortal'
 import PaymentSuccess from './pages/PaymentSuccess'
@@ -52,6 +53,7 @@ export default function App() {
 
         {/* Public portals (token-based, no auth) */}
         <Route path="/schedule/:token" element={<ScheduleDiscovery />} />
+        <Route path="/onboard/:token" element={<Onboard />} />
         <Route path="/upload/:token" element={<UploadPortal />} />
         <Route path="/deliverables/:token" element={<DeliverablePortal />} />
 

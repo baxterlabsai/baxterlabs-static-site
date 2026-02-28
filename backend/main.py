@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import intake, engagements, docusign, upload, deliverables, research, prompts, clients, archive, users, reminders, phase_outputs, pipeline, invoices, webhooks, follow_ups
+from routers import intake, engagements, docusign, upload, deliverables, research, prompts, clients, archive, users, reminders, phase_outputs, pipeline, invoices, webhooks, follow_ups, onboarding
 from services.supabase_client import get_supabase
 from models.schemas import HealthResponse
 
@@ -60,6 +60,7 @@ app.include_router(pipeline.router)
 app.include_router(invoices.router)
 app.include_router(webhooks.router)
 app.include_router(follow_ups.router)
+app.include_router(onboarding.router)
 
 
 @app.get("/api/health", response_model=HealthResponse)

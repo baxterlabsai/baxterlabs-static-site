@@ -737,6 +737,77 @@ class EmailService:
             from_email=EMAIL_ACCOUNTING, from_name="BaxterLabs Accounting",
         )
 
+    def send_engagement_confirmation_email(self, engagement: dict, client: dict, onboarding_token: str) -> dict:
+        """Send welcome/confirmation email with onboarding link after agreement is signed."""
+        company = client.get("company_name", "Unknown")
+        contact_name = client.get("primary_contact_name", "there")
+        contact_email = client.get("primary_contact_email")
+        onboarding_url = f"{self.frontend_url}/onboard/{onboarding_token}"
+
+        body = f"""
+        <h2 style="color:{CRIMSON};font-family:Georgia,serif;margin-top:0;">Welcome to BaxterLabs</h2>
+        <p>Hi {contact_name},</p>
+        <p>Thank you for signing the Engagement Agreement for <strong>{company}</strong>. We're excited to get started on your Profit Leak Diagnostic.</p>
+
+        <h3 style="color:{TEAL};font-family:Georgia,serif;margin-top:24px;">What Happens Next</h3>
+        <ol style="color:{CHARCOAL};font-size:14px;line-height:1.8;">
+          <li><strong>Identify Interview Contacts</strong> — Tell us who we should speak with (below)</li>
+          <li><strong>Document Collection</strong> — Upload financial documents via a separate link</li>
+          <li><strong>Confidential Interviews</strong> — We'll conduct 2-3 interviews with your team</li>
+          <li><strong>14-Day Diagnostic</strong> — We analyze everything and deliver your report</li>
+        </ol>
+
+        <p style="margin-top:24px;">As part of the diagnostic, we'll be conducting confidential interviews with 2-3 members of your team. Please tell us who should participate and any context that would help us prepare effective questions.</p>
+
+        <p style="margin:24px 0;text-align:center;">
+          <a href="{onboarding_url}"
+             style="display:inline-block;padding:14px 32px;background-color:{CRIMSON};color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;font-size:16px;">
+            Identify Interview Contacts
+          </a>
+        </p>
+
+        <p style="font-size:13px;color:#6B7280;margin-top:24px;">You'll also receive a separate email with your document upload portal link.</p>
+
+        <hr style="border:none;border-top:1px solid #E5E7EB;margin:24px 0;" />
+        <p style="font-size:13px;color:{CHARCOAL};">Questions? Reach out anytime at <a href="mailto:george@baxterlabs.ai" style="color:{TEAL};">george@baxterlabs.ai</a></p>
+        """
+        partner_lead = engagement.get("partner_lead", "")
+        p_email = get_partner_email(partner_lead)
+        p_name = f"{partner_lead or 'George DeVries'} — BaxterLabs"
+        return self._send_email(
+            contact_email,
+            f"Welcome to BaxterLabs — Next Step: Identify Your Interview Contacts",
+            body,
+            from_email=p_email,
+            from_name=p_name,
+        )
+
+    def send_onboarding_completed_notification(
+        self,
+        contact_name: str,
+        company_name: str,
+        contact_count: int,
+        engagement_id: str,
+    ) -> dict:
+        """Notify partner that a client has submitted interview contacts."""
+        body = f"""
+        <h2 style="color:{TEAL};font-family:Georgia,serif;margin-top:0;">Interview Contacts Submitted</h2>
+        <p><strong>{contact_name}</strong> has submitted <strong>{contact_count}</strong> interview contact{"s" if contact_count != 1 else ""} for <strong>{company_name}</strong>.</p>
+        <p style="margin-top:24px;">
+          <a href="{self.frontend_url}/dashboard/engagement/{engagement_id}"
+             style="display:inline-block;padding:12px 24px;background-color:{CRIMSON};color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">
+            View Engagement
+          </a>
+        </p>
+        """
+        return self._send_email(
+            DEFAULT_PARTNER_EMAIL,
+            f"Interview Contacts Submitted: {company_name}",
+            body,
+            from_email=EMAIL_INFO,
+            from_name="BaxterLabs",
+        )
+
     def send_engagement_archived(self, engagement: dict) -> dict:
         """Notify partner: engagement has been archived."""
         client = engagement.get("clients", {})

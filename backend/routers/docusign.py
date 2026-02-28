@@ -254,6 +254,24 @@ async def docusign_webhook(request: Request, background_tasks: BackgroundTasks):
                     sb.table("engagements").update({"upload_token": new_token}).eq("id", engagement_id).execute()
                     engagement["upload_token"] = new_token
                     logger.info(f"Generated upload_token for engagement {engagement_id}: {new_token}")
+                # Send onboarding confirmation email (if no onboarding token yet)
+                if not engagement.get("onboarding_token"):
+                    import secrets as _secrets
+                    ob_token = _secrets.token_urlsafe(32)
+                    sb.table("engagements").update({"onboarding_token": ob_token}).eq("id", engagement_id).execute()
+                    engagement["onboarding_token"] = ob_token
+                    logger.info(f"Generated onboarding_token for engagement {engagement_id}")
+                ob_token = engagement.get("onboarding_token")
+                ob_email_result = email_svc.send_engagement_confirmation_email(
+                    engagement=engagement,
+                    client=engagement.get("clients", {}),
+                    onboarding_token=ob_token,
+                )
+                log_activity(engagement_id, "system", "onboarding_email_sent", {
+                    "trigger": "agreement_signed",
+                    "to": engagement.get("clients", {}).get("primary_contact_email"),
+                    "result": ob_email_result,
+                })
                 # Send upload link to client
                 upload_token = engagement.get("upload_token")
                 client_email = engagement.get("clients", {}).get("primary_contact_email")
@@ -374,7 +392,9 @@ async def _auto_convert_pipeline_opportunity(opp_id: str) -> None:
     new_client_id = client_result.data[0]["id"]
 
     # 3. Create engagement (status = agreement_signed, NOT nda_pending)
+    import secrets as _secrets
     upload_token = str(_uuid.uuid4())
+    onboarding_token = _secrets.token_urlsafe(32)
     engagement_row = {
         "client_id": new_client_id,
         "status": "agreement_signed",
@@ -382,6 +402,7 @@ async def _auto_convert_pipeline_opportunity(opp_id: str) -> None:
         "fee": opp.get("estimated_value") or 12500,
         "partner_lead": opp.get("assigned_to") or "George DeVries",
         "upload_token": upload_token,
+        "onboarding_token": onboarding_token,
     }
     engagement_result = sb.table("engagements").insert(engagement_row).execute()
     new_engagement = engagement_result.data[0]
@@ -430,9 +451,28 @@ async def _auto_convert_pipeline_opportunity(opp_id: str) -> None:
     except Exception as e:
         logger.error(f"Auto-convert: invoice failed: {e}")
 
-    # 8. Send upload link email
+    # 8. Send onboarding confirmation email (BEFORE upload link)
     try:
         full_engagement = get_engagement_by_id(new_engagement_id)
+        if full_engagement:
+            email_svc = get_email_service()
+            email_svc.send_engagement_confirmation_email(
+                engagement=full_engagement,
+                client=full_engagement.get("clients", {}),
+                onboarding_token=onboarding_token,
+            )
+            log_activity(new_engagement_id, "system", "onboarding_email_sent", {
+                "trigger": "auto_conversion",
+                "to": (contact or {}).get("email"),
+            })
+            logger.info(f"Auto-convert: onboarding email sent for engagement {new_engagement_id}")
+    except Exception as e:
+        logger.error(f"Auto-convert: onboarding email failed: {e}")
+
+    # 9. Send upload link email
+    try:
+        if not full_engagement:
+            full_engagement = get_engagement_by_id(new_engagement_id)
         if full_engagement:
             email_svc = get_email_service()
             email_svc.send_upload_link(full_engagement)
@@ -440,7 +480,7 @@ async def _auto_convert_pipeline_opportunity(opp_id: str) -> None:
     except Exception as e:
         logger.error(f"Auto-convert: upload link email failed: {e}")
 
-    # 9. Log activities
+    # 10. Log activities
     log_activity(new_engagement_id, "system", "engagement_created_from_pipeline", {
         "opportunity_id": opp_id,
         "company_name": company["name"],

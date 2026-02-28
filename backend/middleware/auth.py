@@ -5,7 +5,7 @@ import logging
 from fastapi import Request, HTTPException
 import jwt
 
-from services.supabase_client import get_supabase, get_engagement_by_upload_token, get_engagement_by_deliverable_token
+from services.supabase_client import get_supabase, get_engagement_by_upload_token, get_engagement_by_deliverable_token, get_engagement_by_onboarding_token
 
 logger = logging.getLogger("baxterlabs.auth")
 
@@ -65,4 +65,12 @@ async def verify_deliverable_token(token: str) -> dict:
     engagement = get_engagement_by_deliverable_token(token)
     if not engagement:
         raise HTTPException(status_code=404, detail="Invalid or expired deliverable token")
+    return engagement
+
+
+async def verify_onboarding_token(token: str) -> dict:
+    """Validate an onboarding token against the engagements table."""
+    engagement = get_engagement_by_onboarding_token(token)
+    if not engagement:
+        raise HTTPException(status_code=404, detail="Invalid or expired onboarding token")
     return engagement

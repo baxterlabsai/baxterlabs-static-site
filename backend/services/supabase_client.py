@@ -36,6 +36,12 @@ def get_engagement_by_deliverable_token(token: str) -> Optional[dict]:
     return result.data[0] if result.data else None
 
 
+def get_engagement_by_onboarding_token(token: str) -> Optional[dict]:
+    sb = get_supabase()
+    result = sb.table("engagements").select("*, clients(*)").eq("onboarding_token", token).execute()
+    return result.data[0] if result.data else None
+
+
 def update_engagement_status(engagement_id: str, new_status: str) -> dict:
     sb = get_supabase()
     result = sb.table("engagements").update({"status": new_status}).eq("id", engagement_id).execute()
