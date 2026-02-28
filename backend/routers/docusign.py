@@ -272,18 +272,8 @@ async def docusign_webhook(request: Request, background_tasks: BackgroundTasks):
                     "to": engagement.get("clients", {}).get("primary_contact_email"),
                     "result": ob_email_result,
                 })
-                # Send upload link to client
-                upload_token = engagement.get("upload_token")
-                client_email = engagement.get("clients", {}).get("primary_contact_email")
-                logger.info(f"Sending upload link: token={upload_token}, to={client_email}")
-                upload_email_result = email_svc.send_upload_link(engagement)
-                logger.info(f"Upload link email result: {upload_email_result}")
-                log_activity(engagement_id, "system", "upload_link_sent", {
-                    "trigger": "agreement_signed",
-                    "to": client_email,
-                    "upload_token": upload_token,
-                    "result": upload_email_result,
-                })
+                # Upload portal email deferred — sent when onboarding is completed
+                # (document contact identified via onboarding form)
 
             # Trigger deposit invoice generation
             try:
@@ -469,16 +459,8 @@ async def _auto_convert_pipeline_opportunity(opp_id: str) -> None:
     except Exception as e:
         logger.error(f"Auto-convert: onboarding email failed: {e}")
 
-    # 9. Send upload link email
-    try:
-        if not full_engagement:
-            full_engagement = get_engagement_by_id(new_engagement_id)
-        if full_engagement:
-            email_svc = get_email_service()
-            email_svc.send_upload_link(full_engagement)
-            logger.info(f"Auto-convert: upload link sent for engagement {new_engagement_id}")
-    except Exception as e:
-        logger.error(f"Auto-convert: upload link email failed: {e}")
+    # 9. Upload portal email deferred — sent when onboarding is completed
+    #    (document contact identified via onboarding form)
 
     # 10. Log activities
     log_activity(new_engagement_id, "system", "engagement_created_from_pipeline", {

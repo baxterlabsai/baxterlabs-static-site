@@ -51,6 +51,10 @@ interface EngagementData {
   deliverable_token: string
   onboarding_token: string | null
   onboarding_completed_at: string | null
+  document_contact_name: string | null
+  document_contact_title: string | null
+  document_contact_email: string | null
+  document_contact_phone: string | null
   created_at: string
   clients: {
     company_name: string
@@ -1300,6 +1304,33 @@ export default function EngagementDetail() {
                 </div>
               ))}
             </div>
+          )}
+        </section>
+
+        {/* Document Upload Contact */}
+        <section className="bg-white rounded-lg border border-gray-light p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-display text-lg font-bold text-teal">Document Upload Contact</h3>
+            {data.onboarding_completed_at && data.document_contact_name ? (
+              <span className="text-xs text-green font-semibold bg-green/10 px-2 py-1 rounded">
+                Upload portal sent to {data.document_contact_name}
+              </span>
+            ) : (
+              <span className="text-xs text-amber font-semibold bg-amber/10 px-2 py-1 rounded">
+                Pending — awaiting onboarding
+              </span>
+            )}
+          </div>
+          {data.document_contact_name ? (
+            <div className="p-3 bg-ivory rounded-lg text-sm">
+              <p className="font-semibold text-charcoal">{data.document_contact_name} {data.document_contact_title && <span className="text-gray-warm font-normal">· {data.document_contact_title}</span>}</p>
+              <div className="flex flex-wrap gap-3 mt-1 text-gray-warm text-xs">
+                {data.document_contact_email && <span>{data.document_contact_email}</span>}
+                {data.document_contact_phone && <span>{data.document_contact_phone}</span>}
+              </div>
+            </div>
+          ) : (
+            <p className="text-gray-warm text-sm">No document contact designated yet.</p>
           )}
         </section>
       </div>

@@ -80,6 +80,7 @@ class EmailService:
         html_body: str,
         from_email: Optional[str] = None,
         from_name: Optional[str] = None,
+        cc_email: Optional[str] = None,
     ) -> dict:
         """Core send method using SMTP."""
         full_html = self._wrap_html(html_body)
@@ -87,12 +88,13 @@ class EmailService:
         sender_name = from_name or self.from_name
 
         if self.development_mode:
-            logger.info(f"[DEV MODE] Email from={sender_name} <{sender_email}> to={to_email} subject='{subject}'")
+            logger.info(f"[DEV MODE] Email from={sender_name} <{sender_email}> to={to_email} cc={cc_email} subject='{subject}'")
             logger.debug(f"[DEV MODE] Body preview: {html_body[:200]}...")
             return {
                 "success": True,
                 "mode": "development",
                 "to": to_email,
+                "cc": cc_email,
                 "from": f"{sender_name} <{sender_email}>",
                 "subject": subject,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -103,6 +105,8 @@ class EmailService:
             msg["Subject"] = subject
             msg["From"] = f"{sender_name} <{sender_email}>"
             msg["To"] = to_email
+            if cc_email:
+                msg["Cc"] = cc_email
             msg["Reply-To"] = sender_email
 
             text_part = MIMEText(f"This email requires an HTML-capable email client. Subject: {subject}", "plain")
@@ -116,11 +120,12 @@ class EmailService:
                 smtp_response = server.send_message(msg)
                 logger.info(f"SMTP response for to={to_email}: {smtp_response}")
 
-            logger.info(f"Email sent from={sender_email} to={to_email} subject='{subject}'")
+            logger.info(f"Email sent from={sender_email} to={to_email} cc={cc_email} subject='{subject}'")
             return {
                 "success": True,
                 "mode": "production",
                 "to": to_email,
+                "cc": cc_email,
                 "from": f"{sender_name} <{sender_email}>",
                 "subject": subject,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -216,25 +221,48 @@ class EmailService:
             from_email=EMAIL_INFO, from_name="BaxterLabs",
         )
 
-    def send_upload_link(self, engagement: dict) -> dict:
-        """Send client their secure upload portal link with required items list."""
+    def send_upload_link(
+        self,
+        engagement: dict,
+        document_contact_name: Optional[str] = None,
+        document_contact_email: Optional[str] = None,
+    ) -> dict:
+        """Send document upload portal link.
+
+        If document_contact_email is provided, send to them and CC the primary
+        contact (the decision maker). Otherwise fall back to sending directly
+        to the primary contact.
+        """
         from config.upload_checklist import REQUIRED_ITEMS
 
         client = engagement.get("clients", {})
         company = client.get("company_name", "Unknown")
-        contact_name = client.get("primary_contact_name", "there")
-        contact_email = client.get("primary_contact_email")
+        primary_name = client.get("primary_contact_name", "there")
+        primary_email = client.get("primary_contact_email")
         upload_token = engagement.get("upload_token")
+
+        # Determine recipient
+        to_email = document_contact_email or primary_email
+        to_name = document_contact_name or primary_name
+        cc_email = primary_email if document_contact_email and document_contact_email != primary_email else None
 
         required_list = "".join(
             f'<li style="padding:4px 0;color:{CHARCOAL};">{item["name"]}</li>'
             for item in REQUIRED_ITEMS
         )
 
+        # Context line differs based on whether a document contact was designated
+        if document_contact_email and document_contact_email != primary_email:
+            context = f"""<p><strong>{primary_name}</strong> at <strong>{company}</strong> has engaged BaxterLabs Advisory
+            for a profit-leak diagnostic and has designated you as the point of contact for document uploads.</p>"""
+        else:
+            context = f"""<p>Your BaxterLabs engagement for <strong>{company}</strong> is underway.
+            Please use the secure link below to upload the requested documents.</p>"""
+
         body = f"""
         <h2 style="color:{CRIMSON};font-family:Georgia,serif;margin-top:0;">Your Document Upload Portal</h2>
-        <p>Hi {contact_name},</p>
-        <p>Your BaxterLabs engagement is underway. Please use the secure link below to upload the requested documents.</p>
+        <p>Hi {to_name},</p>
+        {context}
         <p style="margin:24px 0;text-align:center;">
           <a href="{self.frontend_url}/upload/{upload_token}"
              style="display:inline-block;padding:14px 32px;background-color:{CRIMSON};color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;font-size:16px;">
@@ -245,14 +273,17 @@ class EmailService:
         <ul style="margin:8px 0 24px;padding-left:20px;font-size:14px;">
           {required_list}
         </ul>
-        <p style="color:{CHARCOAL};font-size:14px;">This link is unique to your engagement. Do not share it with anyone outside your organization.</p>
+        <p style="font-size:13px;color:{CHARCOAL};">We'd appreciate having documents uploaded within the first 3 business days to keep the engagement on schedule.</p>
+        <p style="color:{CHARCOAL};font-size:13px;">This link is unique to your engagement. Do not share it with anyone outside your organization.</p>
+        <hr style="border:none;border-top:1px solid #E5E7EB;margin:24px 0;" />
+        <p style="font-size:13px;color:{CHARCOAL};">Questions about what's needed? Contact <a href="mailto:george@baxterlabs.ai" style="color:{TEAL};">george@baxterlabs.ai</a></p>
         """
         partner_lead = engagement.get("partner_lead", "")
         p_email = get_partner_email(partner_lead)
         p_name = f"{partner_lead or 'George DeVries'} — BaxterLabs"
         return self._send_email(
-            contact_email, f"BaxterLabs — Document Upload Portal for {company}", body,
-            from_email=p_email, from_name=p_name,
+            to_email, f"BaxterLabs — Document Upload Portal for {company}", body,
+            from_email=p_email, from_name=p_name, cc_email=cc_email,
         )
 
     def send_document_uploaded_notification(self, engagement: dict, filename: str, item_display_name: str, category: str) -> dict:
@@ -788,11 +819,16 @@ class EmailService:
         company_name: str,
         contact_count: int,
         engagement_id: str,
+        document_contact_name: Optional[str] = None,
     ) -> dict:
-        """Notify partner that a client has submitted interview contacts."""
+        """Notify partner that a client has submitted interview + document contacts."""
+        doc_line = ""
+        if document_contact_name:
+            doc_line = f'<p>Document upload contact: <strong>{document_contact_name}</strong> (upload portal email sent).</p>'
         body = f"""
-        <h2 style="color:{TEAL};font-family:Georgia,serif;margin-top:0;">Interview Contacts Submitted</h2>
+        <h2 style="color:{TEAL};font-family:Georgia,serif;margin-top:0;">Onboarding Complete</h2>
         <p><strong>{contact_name}</strong> has submitted <strong>{contact_count}</strong> interview contact{"s" if contact_count != 1 else ""} for <strong>{company_name}</strong>.</p>
+        {doc_line}
         <p style="margin-top:24px;">
           <a href="{self.frontend_url}/dashboard/engagement/{engagement_id}"
              style="display:inline-block;padding:12px 24px;background-color:{CRIMSON};color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">
@@ -802,7 +838,7 @@ class EmailService:
         """
         return self._send_email(
             DEFAULT_PARTNER_EMAIL,
-            f"Interview Contacts Submitted: {company_name}",
+            f"Onboarding Complete: {company_name}",
             body,
             from_email=EMAIL_INFO,
             from_name="BaxterLabs",
