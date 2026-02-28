@@ -10,6 +10,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query
 from middleware.auth import verify_partner_auth
 from services.supabase_client import get_supabase, log_activity, create_engagement_folders
+import json
 from models.pipeline import (
     CompanyCreate, CompanyUpdate,
     ContactCreate, ContactUpdate,
@@ -17,6 +18,7 @@ from models.pipeline import (
     ActivityCreate, ActivityUpdate, ActivityFromNotesInput,
     TaskCreate, TaskUpdate,
     ConversionRequest,
+    WebsiteIntakeRequest, WebsiteIntakeResponse,
 )
 
 logger = logging.getLogger("baxterlabs.pipeline")
@@ -507,8 +509,25 @@ async def convert_opportunity(
                 selected.append(c)
         # Then remaining contacts
         for c in all_contacts:
-            if c["id"] not in [s["id"] for s in selected]:
+            if c["id"] not in [s["id"] for s in selected if s.get("id")]:
                 selected.append(c)
+
+        # Also inject contacts from interview_contacts_json (website intake)
+        icj = opp.get("interview_contacts_json")
+        if icj:
+            parsed = json.loads(icj) if isinstance(icj, str) else icj
+            for raw_c in parsed:
+                # Synthetic contacts have id=None — add if not already in selected by email
+                existing_emails = {s.get("email") for s in selected if s.get("email")}
+                if raw_c.get("email") not in existing_emails:
+                    selected.append({
+                        "id": None,
+                        "name": raw_c["name"],
+                        "title": raw_c.get("title"),
+                        "email": raw_c.get("email"),
+                        "phone": raw_c.get("phone"),
+                        "linkedin_url": raw_c.get("linkedin_url"),
+                    })
 
         for i, c in enumerate(selected[:3], start=1):
             sb.table("interview_contacts").insert({
@@ -612,6 +631,104 @@ async def delete_opportunity(opp_id: str, user: dict = Depends(verify_partner_au
     if not result.data:
         raise HTTPException(status_code=404, detail="Opportunity not found")
     return {"success": True}
+
+
+# ==========================================================================
+# Website Intake (public — no auth)
+# ==========================================================================
+
+@router.post("/website-intake", response_model=WebsiteIntakeResponse)
+async def website_intake(req: WebsiteIntakeRequest):
+    """Public endpoint — website Get Started form creates pipeline records."""
+    sb = get_supabase()
+
+    # 1. Insert pipeline_companies
+    company_result = sb.table("pipeline_companies").insert({
+        "name": req.company_name,
+        "website": req.website_url,
+        "industry": req.industry,
+        "revenue_range": req.revenue_range,
+        "employee_count": req.employee_count,
+        "source": "Website — Inbound",
+    }).execute()
+    company_id = company_result.data[0]["id"]
+
+    # 2. Insert pipeline_contacts (primary contact)
+    contact_result = sb.table("pipeline_contacts").insert({
+        "company_id": company_id,
+        "name": req.primary_contact_name,
+        "email": req.primary_contact_email,
+        "phone": req.primary_contact_phone,
+        "title": "Decision Maker",
+        "is_decision_maker": True,
+        "source": "Website — Inbound",
+    }).execute()
+    contact_id = contact_result.data[0]["id"]
+
+    # 3. Build interview_contacts_json
+    contacts_json = None
+    if req.interview_contacts:
+        contacts_json = [
+            {
+                "name": c.name,
+                "title": c.title,
+                "email": c.email,
+                "phone": c.phone,
+                "linkedin_url": c.linkedin_url,
+            }
+            for c in req.interview_contacts
+        ]
+
+    # 4. Insert pipeline_opportunities
+    opp_result = sb.table("pipeline_opportunities").insert({
+        "company_id": company_id,
+        "primary_contact_id": contact_id,
+        "title": f"{req.company_name} — Diagnostic",
+        "stage": "discovery_scheduled",
+        "source": "Website — Inbound",
+        "notes": req.pain_points,
+        "interview_contacts_json": json.dumps(contacts_json) if contacts_json else None,
+        "assigned_to": "George DeVries",
+    }).execute()
+    opp = opp_result.data[0]
+    opp_id = opp["id"]
+    nda_token = opp["nda_confirmation_token"]
+
+    # 5. Log pipeline activity
+    sb.table("pipeline_activities").insert({
+        "opportunity_id": opp_id,
+        "company_id": company_id,
+        "contact_id": contact_id,
+        "type": "note",
+        "subject": "Website intake form submitted",
+        "body": f"Source: Website — Inbound. Industry: {req.industry or '—'}. Revenue: {req.revenue_range or '—'}.",
+    }).execute()
+
+    # 6. Send partner notification (non-blocking)
+    try:
+        from services.email_service import get_email_service
+        email_svc = get_email_service()
+        email_svc.send_website_intake_notification(
+            company_name=req.company_name,
+            contact_name=req.primary_contact_name,
+            contact_email=req.primary_contact_email,
+            industry=req.industry,
+            revenue_range=req.revenue_range,
+            pain_points=req.pain_points,
+            source="Website — Inbound",
+        )
+    except Exception as e:
+        logger.error(f"Website intake notification failed (non-blocking): {e}")
+
+    logger.info(f"Website intake: company={company_id} contact={contact_id} opp={opp_id}")
+
+    return WebsiteIntakeResponse(
+        success=True,
+        nda_confirmation_token=nda_token,
+        company_id=company_id,
+        contact_id=contact_id,
+        opportunity_id=opp_id,
+    )
 
 
 # ==========================================================================

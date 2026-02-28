@@ -187,3 +187,38 @@ class TaskUpdate(BaseModel):
     priority: Optional[str] = None
     status: Optional[str] = None
     assigned_to: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# Website Intake (public form → pipeline)
+# ---------------------------------------------------------------------------
+
+class WebsiteInterviewContact(BaseModel):
+    name: str
+    title: str
+    email: str
+    phone: Optional[str] = None
+    linkedin_url: Optional[str] = None
+
+
+class WebsiteIntakeRequest(BaseModel):
+    company_name: str
+    primary_contact_name: str
+    primary_contact_email: str
+    primary_contact_phone: Optional[str] = None
+    industry: Optional[str] = None
+    revenue_range: Optional[str] = None
+    employee_count: Optional[str] = None
+    website_url: Optional[str] = None
+    pain_points: Optional[str] = None
+    referral_source: Optional[str] = None
+    preferred_start_date: Optional[str] = None
+    interview_contacts: Optional[List[WebsiteInterviewContact]] = None
+
+
+class WebsiteIntakeResponse(BaseModel):
+    success: bool
+    nda_confirmation_token: str
+    company_id: str
+    contact_id: str
+    opportunity_id: str

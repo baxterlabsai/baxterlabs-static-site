@@ -472,6 +472,41 @@ class EmailService:
             from_email=EMAIL_INFO, from_name="BaxterLabs",
         )
 
+    def send_website_intake_notification(
+        self,
+        company_name: str,
+        contact_name: str,
+        contact_email: str,
+        industry: Optional[str] = None,
+        revenue_range: Optional[str] = None,
+        pain_points: Optional[str] = None,
+        source: str = "Website — Inbound",
+    ) -> dict:
+        """Notify partner of new inbound website lead."""
+        body = f"""
+        <h2 style="color:{CRIMSON};font-family:Georgia,serif;margin-top:0;">New Website Lead</h2>
+        <p>A new prospect has submitted the Get Started form on the website.</p>
+        <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+          <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;width:140px;">Company</td>
+              <td style="padding:8px;border-bottom:1px solid #E5E7EB;">{company_name}</td></tr>
+          <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;">Contact</td>
+              <td style="padding:8px;border-bottom:1px solid #E5E7EB;">{contact_name} ({contact_email})</td></tr>
+          <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;">Industry</td>
+              <td style="padding:8px;border-bottom:1px solid #E5E7EB;">{industry or '—'}</td></tr>
+          <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;">Revenue</td>
+              <td style="padding:8px;border-bottom:1px solid #E5E7EB;">{revenue_range or '—'}</td></tr>
+          <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;">Source</td>
+              <td style="padding:8px;border-bottom:1px solid #E5E7EB;">{source}</td></tr>
+          <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;">Pain Points</td>
+              <td style="padding:8px;border-bottom:1px solid #E5E7EB;">{pain_points or '—'}</td></tr>
+        </table>
+        <p style="color:{TEAL};font-weight:600;">Pipeline opportunity created at discovery_scheduled stage.</p>
+        """
+        return self._send_email(
+            DEFAULT_PARTNER_EMAIL, f"New Website Lead: {company_name}", body,
+            from_email=EMAIL_INFO, from_name="BaxterLabs",
+        )
+
     def send_reminder_nda(self, engagement: dict) -> dict:
         """Send client a reminder to sign the NDA."""
         client = engagement.get("clients", {})

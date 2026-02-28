@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import SEO from '../components/SEO'
+import NDAGate from '../components/NDAGate'
 
 interface InterviewContact {
   name: string
@@ -94,6 +95,20 @@ export default function GetStarted() {
   const [submitted, setSubmitted] = useState(false)
   const [submitError, setSubmitError] = useState('')
   const [currentStep, setCurrentStep] = useState(1)
+  const [ndaToken, setNdaToken] = useState<string | null>(null)
+  const [booked, setBooked] = useState(false)
+
+  // Listen for Calendly postMessage events after form submission
+  useEffect(() => {
+    if (!submitted) return
+    function handleMessage(e: MessageEvent) {
+      if (e.data?.event === 'calendly.event_scheduled') {
+        setBooked(true)
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [submitted])
 
   const formatPhone = (raw: string): string => {
     const digits = raw.replace(/\D/g, '').slice(0, 10)
@@ -240,7 +255,7 @@ export default function GetStarted() {
     }
 
     try {
-      const res = await fetch(`${API_URL}/api/intake`, {
+      const res = await fetch(`${API_URL}/api/pipeline/website-intake`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -251,6 +266,8 @@ export default function GetStarted() {
         throw new Error(data.detail || `Server error (${res.status})`)
       }
 
+      const result = await res.json()
+      setNdaToken(result.nda_confirmation_token)
       setSubmitted(true)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (err) {
@@ -266,7 +283,7 @@ export default function GetStarted() {
       <>
         <SEO
           title="Thank You | BaxterLabs Advisory"
-          description="Your intake form has been submitted. We'll be in touch shortly."
+          description="Your intake form has been submitted. Schedule your discovery call below."
         />
 
         <section className="bg-white py-16 md:py-20">
@@ -277,49 +294,48 @@ export default function GetStarted() {
               </svg>
             </div>
             <h1 className="font-display text-3xl md:text-4xl font-bold text-crimson mb-4">
-              Thank You — We're on It.
+              {booked ? 'Call Booked — One Last Step' : "Thank You — We're on It."}
             </h1>
             <p className="text-charcoal text-lg mb-3">
-              Your intake form has been received. Here's what happens next:
+              {booked
+                ? 'Your discovery call is confirmed. Please sign the NDA below so we can have an open, productive conversation.'
+                : 'Your intake form has been received. Book your discovery call below to get started.'}
             </p>
-            <div className="text-left max-w-lg mx-auto mt-8 space-y-4">
-              <div className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-7 h-7 rounded-full bg-crimson text-white text-sm font-bold flex items-center justify-center mt-0.5">1</span>
-                <p className="text-charcoal"><strong>NDA</strong> — Check your inbox for a DocuSign NDA. Sign it so we can begin reviewing your information under confidentiality.</p>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-7 h-7 rounded-full bg-crimson text-white text-sm font-bold flex items-center justify-center mt-0.5">2</span>
-                <p className="text-charcoal"><strong>Discovery Call</strong> — Book a free 30-minute call using the calendar below. We'll ask the right questions and confirm fit.</p>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-7 h-7 rounded-full bg-crimson text-white text-sm font-bold flex items-center justify-center mt-0.5">3</span>
-                <p className="text-charcoal"><strong>Kickoff</strong> — If we're a fit, we'll send the engagement agreement and get started within days.</p>
-              </div>
-            </div>
           </div>
         </section>
 
-        {/* Calendly Embed */}
-        <section className="bg-ivory py-16 md:py-20">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="font-display text-2xl md:text-3xl font-bold text-teal text-center mb-2">
-              Schedule Your Discovery Call
-            </h2>
-            <p className="text-gray-warm text-center mb-8">
-              Pick a time that works for you. This is a free, no-obligation conversation.
-            </p>
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden" style={{ minHeight: '700px' }}>
-              <iframe
-                src={`https://calendly.com/george-baxterlabs?name=${encodeURIComponent(form.primary_contact_name)}&email=${encodeURIComponent(form.primary_contact_email)}`}
-                width="100%"
-                height="700"
-                frameBorder="0"
-                title="Schedule a Discovery Call with BaxterLabs Advisory"
-                className="border-0"
-              />
+        {/* Phase A: Calendly embed (submitted but not yet booked) */}
+        {!booked && (
+          <section className="bg-ivory py-16 md:py-20">
+            <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+              <h2 className="font-display text-2xl md:text-3xl font-bold text-teal text-center mb-2">
+                Schedule Your Discovery Call
+              </h2>
+              <p className="text-gray-warm text-center mb-8">
+                Pick a time that works for you. This is a free, no-obligation conversation.
+              </p>
+              <div className="bg-white rounded-lg shadow-sm overflow-hidden" style={{ minHeight: '700px' }}>
+                <iframe
+                  src={`https://calendly.com/george-baxterlabs?name=${encodeURIComponent(form.primary_contact_name)}&email=${encodeURIComponent(form.primary_contact_email)}`}
+                  width="100%"
+                  height="700"
+                  frameBorder="0"
+                  title="Schedule a Discovery Call with BaxterLabs Advisory"
+                  className="border-0"
+                />
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
+
+        {/* Phase B: NDA gate (submitted and booked) */}
+        {booked && ndaToken && (
+          <section className="bg-ivory py-16 md:py-20">
+            <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+              <NDAGate token={ndaToken} />
+            </div>
+          </section>
+        )}
 
       </>
     )
@@ -340,7 +356,7 @@ export default function GetStarted() {
             Let's Get Your Margins Back on Track.
           </h1>
           <p className="text-charcoal text-base md:text-lg max-w-2xl mx-auto">
-            Complete the form below to get started. We'll send you an NDA, then schedule a free discovery call to see if a BaxterLabs engagement is the right fit.
+            Complete the form below to get started. We'll schedule a free discovery call, then send you an NDA so we can have an open conversation.
           </p>
         </div>
       </section>
@@ -709,7 +725,7 @@ export default function GetStarted() {
 
           {/* Privacy Note */}
           <p className="mt-6 text-center text-gray-warm text-xs">
-            Your information is kept strictly confidential. An NDA will be sent immediately upon submission.
+            Your information is kept strictly confidential. You'll be asked to sign an NDA after booking your discovery call.
           </p>
         </div>
       </section>

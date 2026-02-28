@@ -387,21 +387,38 @@ async def _auto_convert_pipeline_opportunity(opp_id: str) -> None:
     new_engagement = engagement_result.data[0]
     new_engagement_id = new_engagement["id"]
 
-    # 4. Link opportunity → won
+    # 4. Create interview_contacts from interview_contacts_json (website intake)
+    icj = opp.get("interview_contacts_json")
+    if icj:
+        import json
+        parsed = json.loads(icj) if isinstance(icj, str) else icj
+        for i, raw_c in enumerate(parsed[:3], start=1):
+            sb.table("interview_contacts").insert({
+                "engagement_id": new_engagement_id,
+                "contact_number": i,
+                "name": raw_c["name"],
+                "title": raw_c.get("title"),
+                "email": raw_c.get("email"),
+                "phone": raw_c.get("phone"),
+                "linkedin_url": raw_c.get("linkedin_url"),
+            }).execute()
+        logger.info(f"Auto-convert: created {min(len(parsed), 3)} interview contacts from JSON")
+
+    # 5. Link opportunity → won
     sb.table("pipeline_opportunities").update({
         "converted_client_id": new_client_id,
         "converted_engagement_id": new_engagement_id,
         "stage": "won",
     }).eq("id", opp_id).execute()
 
-    # 5. Create storage folders
+    # 6. Create storage folders
     try:
         from services.supabase_client import create_engagement_folders
         create_engagement_folders(new_engagement_id)
     except Exception as e:
         logger.warning(f"Auto-convert: failed to create folders: {e}")
 
-    # 6. Send deposit invoice
+    # 7. Send deposit invoice
     try:
         from routers.invoices import create_and_send_invoice
         create_and_send_invoice(
@@ -413,7 +430,7 @@ async def _auto_convert_pipeline_opportunity(opp_id: str) -> None:
     except Exception as e:
         logger.error(f"Auto-convert: invoice failed: {e}")
 
-    # 7. Send upload link email
+    # 8. Send upload link email
     try:
         full_engagement = get_engagement_by_id(new_engagement_id)
         if full_engagement:
@@ -423,7 +440,7 @@ async def _auto_convert_pipeline_opportunity(opp_id: str) -> None:
     except Exception as e:
         logger.error(f"Auto-convert: upload link email failed: {e}")
 
-    # 8. Log activities
+    # 9. Log activities
     log_activity(new_engagement_id, "system", "engagement_created_from_pipeline", {
         "opportunity_id": opp_id,
         "company_name": company["name"],
