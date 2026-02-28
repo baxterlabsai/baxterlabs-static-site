@@ -137,19 +137,70 @@ async def delete_engagement(
         summary["follow_ups_deleted"] = "error"
 
     # ------------------------------------------------------------------
-    # 3. NULL out pipeline_opportunities (bare FK would block delete)
+    # 3. Capture pipeline refs BEFORE nulling FK, then null the FK
     # ------------------------------------------------------------------
+    pipeline_opps = []
     try:
-        result = (
+        pipeline_result = (
             sb.table("pipeline_opportunities")
-            .update({"converted_engagement_id": None, "converted_client_id": None, "stage": "negotiation"})
+            .select("id, company_id")
             .eq("converted_engagement_id", engagement_id)
             .execute()
         )
-        summary["pipeline_unlinked"] = len(result.data) if result.data else 0
+        pipeline_opps = pipeline_result.data or []
+        logger.info(
+            "Pipeline refs for engagement %s: %d opportunities found — %s",
+            engagement_id,
+            len(pipeline_opps),
+            [o["id"] for o in pipeline_opps],
+        )
+
+        if pipeline_opps:
+            sb.table("pipeline_opportunities").update({
+                "converted_engagement_id": None,
+                "converted_client_id": None,
+            }).eq("converted_engagement_id", engagement_id).execute()
+            logger.info("Nulled pipeline FK refs for engagement %s", engagement_id)
+
+        summary["pipeline_opps_found"] = len(pipeline_opps)
     except Exception as exc:
-        logger.warning("Failed to unlink pipeline_opportunities for %s: %s", engagement_id, exc)
-        summary["pipeline_unlinked"] = "error"
+        logger.warning("Failed to capture/unlink pipeline_opportunities for %s: %s", engagement_id, exc)
+        summary["pipeline_opps_found"] = "error"
+
+    # Also look for pipeline opportunities matching by company name (fallback
+    # for records where the FK was already nulled or never formally converted)
+    try:
+        if company_name and company_name != "unknown":
+            fallback_companies = (
+                sb.table("pipeline_companies")
+                .select("id")
+                .eq("name", company_name)
+                .execute()
+            )
+            known_company_ids = {o["company_id"] for o in pipeline_opps}
+            for fc in (fallback_companies.data or []):
+                if fc["id"] not in known_company_ids:
+                    extra_opps = (
+                        sb.table("pipeline_opportunities")
+                        .select("id, company_id")
+                        .eq("company_id", fc["id"])
+                        .execute()
+                    )
+                    for eo in (extra_opps.data or []):
+                        # Null any remaining FK refs
+                        if eo.get("converted_engagement_id"):
+                            sb.table("pipeline_opportunities").update({
+                                "converted_engagement_id": None,
+                                "converted_client_id": None,
+                            }).eq("id", eo["id"]).execute()
+                        pipeline_opps.append(eo)
+                    logger.info(
+                        "Fallback: found %d extra pipeline opps via company name '%s'",
+                        len(extra_opps.data or []),
+                        company_name,
+                    )
+    except Exception as exc:
+        logger.warning("Pipeline company-name fallback failed for %s: %s", company_name, exc)
 
     # ------------------------------------------------------------------
     # 4. Delete storage files
@@ -195,6 +246,55 @@ async def delete_engagement(
     except Exception as exc:
         logger.warning("Failed to clean up client %s: %s", client_id, exc)
         summary["client_deleted"] = "error"
+
+    # ------------------------------------------------------------------
+    # 7. Full pipeline cascade delete
+    # ------------------------------------------------------------------
+    pipeline_deleted = {"activities": 0, "tasks": 0, "opportunities": 0, "contacts": 0, "companies": 0}
+    try:
+        for opp in pipeline_opps:
+            opp_id = opp["id"]
+            opp_company_id = opp["company_id"]
+
+            # Delete activities for this opportunity
+            act_result = sb.table("pipeline_activities").delete().eq("opportunity_id", opp_id).execute()
+            pipeline_deleted["activities"] += len(act_result.data) if act_result.data else 0
+
+            # Delete tasks for this opportunity
+            task_result = sb.table("pipeline_tasks").delete().eq("opportunity_id", opp_id).execute()
+            pipeline_deleted["tasks"] += len(task_result.data) if task_result.data else 0
+
+            # Delete the opportunity itself
+            sb.table("pipeline_opportunities").delete().eq("id", opp_id).execute()
+            pipeline_deleted["opportunities"] += 1
+
+            # Delete contacts for this company
+            cont_result = sb.table("pipeline_contacts").delete().eq("company_id", opp_company_id).execute()
+            pipeline_deleted["contacts"] += len(cont_result.data) if cont_result.data else 0
+
+            # Delete company only if no other opportunities reference it
+            other_opps = (
+                sb.table("pipeline_opportunities")
+                .select("id")
+                .eq("company_id", opp_company_id)
+                .execute()
+            )
+            if not other_opps.data:
+                sb.table("pipeline_companies").delete().eq("id", opp_company_id).execute()
+                pipeline_deleted["companies"] += 1
+
+        logger.info(
+            "Pipeline cascade delete for engagement %s: %s",
+            engagement_id,
+            pipeline_deleted,
+        )
+    except Exception as exc:
+        logger.warning(
+            "Pipeline cascade delete failed for engagement %s (non-blocking): %s",
+            engagement_id,
+            exc,
+        )
+    summary["pipeline_deleted"] = pipeline_deleted
 
     return {
         "success": True,
