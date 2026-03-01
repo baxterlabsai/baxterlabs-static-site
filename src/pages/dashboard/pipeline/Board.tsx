@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api'
+import MarkdownContent from '../../../components/MarkdownContent'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1404,7 +1405,7 @@ function OpportunitySlideOver({
                 {opp.notes && (
                   <div className="col-span-2">
                     <p className="text-gray-warm text-xs mb-0.5">Notes</p>
-                    <p className="text-charcoal whitespace-pre-wrap">{opp.notes}</p>
+                    <div className="max-h-80 overflow-y-auto"><MarkdownContent content={opp.notes} /></div>
                   </div>
                 )}
               </div>

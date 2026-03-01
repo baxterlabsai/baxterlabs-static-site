@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api'
+import MarkdownContent from '../../../components/MarkdownContent'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -850,7 +851,7 @@ function ResearchIntelSection({ enrichmentData }: { enrichmentData: Record<strin
                 </div>
               </div>
               <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-60 overflow-y-auto">
-                <p className="text-xs text-charcoal whitespace-pre-wrap">{research.content || JSON.stringify(research, null, 2)}</p>
+                <MarkdownContent content={research.content || JSON.stringify(research, null, 2)} />
               </div>
             </div>
           )}
@@ -1311,7 +1312,7 @@ function CompanySlideOver({
                                   {isOutreach && act.body && (
                                     <div className="mt-1.5 bg-ivory/50 border border-gray-light rounded p-2">
                                       {contactEmail && <p className="font-medium text-charcoal mb-1">To: {contactEmail}</p>}
-                                      <p className="text-charcoal whitespace-pre-wrap line-clamp-4">{act.body}</p>
+                                      <div className="max-h-40 overflow-y-auto"><MarkdownContent content={act.body} /></div>
                                       <div className="flex items-center gap-2 mt-1.5">
                                         <button onClick={() => navigator.clipboard.writeText(act.body || '')} className="text-teal hover:underline font-medium">Copy Draft</button>
                                         {contactEmail && (

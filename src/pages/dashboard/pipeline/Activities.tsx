@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { apiGet, apiPost, apiPut } from '../../../lib/api'
+import MarkdownContent from '../../../components/MarkdownContent'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -443,35 +444,46 @@ export default function PipelineActivities() {
                       })()}
 
                       {/* Body */}
-                      {act.body && (
-                        <div className="mt-2">
-                          <p className="text-sm text-charcoal whitespace-pre-wrap">
-                            {bodyExpanded || !bodyTruncated ? act.body : act.body.slice(0, 200) + '...'}
-                          </p>
-                          {bodyTruncated && (
-                            <button onClick={() => toggleBody(act.id)} className="text-xs text-teal font-medium mt-1 hover:underline">
-                              {bodyExpanded ? 'Show less' : 'Show more'}
-                            </button>
-                          )}
-                          {/* Outreach action buttons */}
-                          {(act.type === 'outreach_draft' || act.type === 'plugin_outreach_draft') && (() => {
-                            const recipientEmail = act.pipeline_contacts?.email || (act.outcome?.match(/email:\s*(\S+@\S+)/i)?.[1]) || null
-                            return (
-                              <div className="flex items-center gap-2 mt-1.5 text-xs">
-                                <button onClick={() => navigator.clipboard.writeText(act.body || '')} className="text-teal hover:underline font-medium">Copy Draft</button>
-                                {recipientEmail && (
-                                  <>
-                                    <span className="text-gray-light">|</span>
-                                    <button onClick={() => navigator.clipboard.writeText(recipientEmail)} className="text-teal hover:underline font-medium">Copy Email</button>
-                                    <span className="text-gray-light">|</span>
-                                    <a href={`mailto:${recipientEmail}?subject=${encodeURIComponent(act.subject)}&body=${encodeURIComponent(act.body || '')}`} className="text-teal hover:underline font-medium">Open in Gmail</a>
-                                  </>
-                                )}
-                              </div>
-                            )
-                          })()}
-                        </div>
-                      )}
+                      {act.body && (() => {
+                        const isPluginBody = !!act.plugin_source
+                        return (
+                          <div className="mt-2">
+                            {isPluginBody ? (
+                              bodyExpanded || !bodyTruncated ? (
+                                <MarkdownContent content={act.body} />
+                              ) : (
+                                <p className="text-sm text-charcoal whitespace-pre-wrap">{act.body.slice(0, 200)}...</p>
+                              )
+                            ) : (
+                              <p className="text-sm text-charcoal whitespace-pre-wrap">
+                                {bodyExpanded || !bodyTruncated ? act.body : act.body.slice(0, 200) + '...'}
+                              </p>
+                            )}
+                            {bodyTruncated && (
+                              <button onClick={() => toggleBody(act.id)} className="text-xs text-teal font-medium mt-1 hover:underline">
+                                {bodyExpanded ? 'Show less' : 'Show more'}
+                              </button>
+                            )}
+                            {/* Outreach action buttons */}
+                            {(act.type === 'outreach_draft' || act.type === 'plugin_outreach_draft') && (() => {
+                              const recipientEmail = act.pipeline_contacts?.email || (act.outcome?.match(/email:\s*(\S+@\S+)/i)?.[1]) || null
+                              return (
+                                <div className="flex items-center gap-2 mt-1.5 text-xs">
+                                  <button onClick={() => navigator.clipboard.writeText(act.body || '')} className="text-teal hover:underline font-medium">Copy Draft</button>
+                                  {recipientEmail && (
+                                    <>
+                                      <span className="text-gray-light">|</span>
+                                      <button onClick={() => navigator.clipboard.writeText(recipientEmail)} className="text-teal hover:underline font-medium">Copy Email</button>
+                                      <span className="text-gray-light">|</span>
+                                      <a href={`mailto:${recipientEmail}?subject=${encodeURIComponent(act.subject)}&body=${encodeURIComponent(act.body || '')}`} className="text-teal hover:underline font-medium">Open in Gmail</a>
+                                    </>
+                                  )}
+                                </div>
+                              )
+                            })()}
+                          </div>
+                        )
+                      })()}
 
                       {/* Opportunity link */}
                       {act.pipeline_opportunities && (
