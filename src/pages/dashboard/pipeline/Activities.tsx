@@ -43,7 +43,7 @@ interface Activity {
   plugin_source: string | null
   created_at: string
   created_by: string | null
-  pipeline_contacts: { id: string; name: string } | null
+  pipeline_contacts: { id: string; name: string; email?: string } | null
   pipeline_companies: { id: string; name: string } | null
   pipeline_opportunities: { id: string; title: string } | null
 }
@@ -422,6 +422,9 @@ export default function PipelineActivities() {
                               {act.pipeline_contacts.name}
                             </Link>
                           )}
+                          {act.pipeline_contacts?.email && (
+                            <span className="text-gray-warm"> ({act.pipeline_contacts.email})</span>
+                          )}
                           {act.pipeline_contacts && act.pipeline_companies && ' at '}
                           {act.pipeline_companies && (
                             <Link to="/dashboard/pipeline/companies" className="text-teal hover:underline">
@@ -430,6 +433,14 @@ export default function PipelineActivities() {
                           )}
                         </p>
                       )}
+
+                      {/* Outreach recipient (when type is outreach_draft) */}
+                      {(act.type === 'outreach_draft' || act.type === 'plugin_outreach_draft') && (() => {
+                        const recipientEmail = act.pipeline_contacts?.email || (act.outcome?.match(/email:\s*(\S+@\S+)/i)?.[1]) || null
+                        return recipientEmail ? (
+                          <p className="text-xs font-medium text-charcoal mt-1">To: {recipientEmail}</p>
+                        ) : null
+                      })()}
 
                       {/* Body */}
                       {act.body && (
@@ -442,6 +453,23 @@ export default function PipelineActivities() {
                               {bodyExpanded ? 'Show less' : 'Show more'}
                             </button>
                           )}
+                          {/* Outreach action buttons */}
+                          {(act.type === 'outreach_draft' || act.type === 'plugin_outreach_draft') && (() => {
+                            const recipientEmail = act.pipeline_contacts?.email || (act.outcome?.match(/email:\s*(\S+@\S+)/i)?.[1]) || null
+                            return (
+                              <div className="flex items-center gap-2 mt-1.5 text-xs">
+                                <button onClick={() => navigator.clipboard.writeText(act.body || '')} className="text-teal hover:underline font-medium">Copy Draft</button>
+                                {recipientEmail && (
+                                  <>
+                                    <span className="text-gray-light">|</span>
+                                    <button onClick={() => navigator.clipboard.writeText(recipientEmail)} className="text-teal hover:underline font-medium">Copy Email</button>
+                                    <span className="text-gray-light">|</span>
+                                    <a href={`mailto:${recipientEmail}?subject=${encodeURIComponent(act.subject)}&body=${encodeURIComponent(act.body || '')}`} className="text-teal hover:underline font-medium">Open in Gmail</a>
+                                  </>
+                                )}
+                              </div>
+                            )
+                          })()}
                         </div>
                       )}
 

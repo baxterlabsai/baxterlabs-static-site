@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import NDAGate from '../components/NDAGate'
 
@@ -22,6 +22,8 @@ export default function ScheduleDiscovery() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [booked, setBooked] = useState(false)
+  const [iframeLoaded, setIframeLoaded] = useState(false)
+  const pollRef = useRef(0)
 
   // Fetch schedule page data
   useEffect(() => {
@@ -40,25 +42,41 @@ export default function ScheduleDiscovery() {
       .finally(() => setLoading(false))
   }, [token])
 
+  // Poll backend after booking to sync webhook data
+  const pollForBooking = useCallback(() => {
+    if (!token) return
+    const POLL_DELAYS = [2000, 4000, 8000] // 2s, 4s, 8s
+    function poll() {
+      if (pollRef.current >= POLL_DELAYS.length) return
+      setTimeout(() => {
+        fetch(`${API_URL}/api/pipeline/schedule/${token}`)
+          .then(res => res.json())
+          .then((d: ScheduleData) => {
+            setData(d)
+            if (!d.booking_time && pollRef.current < POLL_DELAYS.length - 1) {
+              pollRef.current += 1
+              poll()
+            }
+          })
+          .catch(() => {})
+      }, POLL_DELAYS[pollRef.current])
+      pollRef.current += 1
+    }
+    poll()
+  }, [token])
+
   // Listen for Calendly widget postMessage events
   useEffect(() => {
     function handleMessage(e: MessageEvent) {
       if (e.data?.event === 'calendly.event_scheduled') {
         setBooked(true)
-        // Poll backend briefly to confirm webhook recorded the booking
-        if (token) {
-          setTimeout(() => {
-            fetch(`${API_URL}/api/pipeline/schedule/${token}`)
-              .then(res => res.json())
-              .then((d: ScheduleData) => setData(d))
-              .catch(() => {})
-          }, 2000)
-        }
+        pollRef.current = 0
+        pollForBooking()
       }
     }
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [token])
+  }, [pollForBooking])
 
   // Build Calendly embed URL with pre-filled params
   function getCalendlyUrl(): string {
@@ -68,6 +86,13 @@ export default function ScheduleDiscovery() {
     if (data?.contact_email) params.set('email', data.contact_email)
     const qs = params.toString()
     return qs ? `${base}?${qs}` : base
+  }
+
+  // Manual fallback — user clicks "I've booked my call"
+  function handleManualBookConfirm() {
+    setBooked(true)
+    pollRef.current = 0
+    pollForBooking()
   }
 
   if (loading) {
@@ -123,27 +148,43 @@ export default function ScheduleDiscovery() {
 
         {/* Phase 1: Calendly Embed (not yet booked) */}
         {!booked && (
-          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-light">
-              <p className="text-sm text-charcoal">
-                Pick a time that works for you. This is a free, no-obligation 30-minute conversation.
-              </p>
+          <>
+            <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-light">
+                <p className="text-sm text-charcoal">
+                  Pick a time that works for you. This is a free, no-obligation 30-minute conversation.
+                </p>
+              </div>
+              <div style={{ minHeight: '700px' }}>
+                <iframe
+                  src={getCalendlyUrl()}
+                  width="100%"
+                  height="700"
+                  frameBorder="0"
+                  title="Schedule a Discovery Call with BaxterLabs Advisory"
+                  className="border-0"
+                  onLoad={() => setIframeLoaded(true)}
+                />
+              </div>
             </div>
-            <div style={{ minHeight: '700px' }}>
-              <iframe
-                src={getCalendlyUrl()}
-                width="100%"
-                height="700"
-                frameBorder="0"
-                title="Schedule a Discovery Call with BaxterLabs Advisory"
-                className="border-0"
-              />
-            </div>
-          </div>
+
+            {/* Manual fallback button — shown after iframe loads */}
+            {iframeLoaded && (
+              <div className="text-center mt-6">
+                <p className="text-xs text-gray-warm mb-2">Already completed your booking above?</p>
+                <button
+                  onClick={handleManualBookConfirm}
+                  className="text-sm text-teal font-semibold hover:text-teal/80 underline underline-offset-2 transition-colors"
+                >
+                  I've booked my call — continue to NDA
+                </button>
+              </div>
+            )}
+          </>
         )}
 
         {/* Phase 2: Booked — show NDAGate */}
-        {booked && token && <NDAGate token={token} />}
+        {booked && token && <NDAGate token={token} initialData={data} />}
       </div>
     </div>
   )

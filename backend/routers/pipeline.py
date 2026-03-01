@@ -38,6 +38,7 @@ VALID_ACTIVITY_TYPES = {
     "plugin_research", "plugin_outreach_draft", "plugin_call_prep",
     "plugin_enrichment", "plugin_content", "partnership_meeting",
     "referral_received", "referral_sent",
+    "research", "outreach_draft", "call_prep", "enrichment",
 }
 VALID_PRIORITIES = {"high", "normal", "low"}
 VALID_TASK_STATUSES = {"pending", "complete", "skipped"}
@@ -87,7 +88,7 @@ async def get_company(company_id: str, user: dict = Depends(verify_partner_auth)
 
     contacts = sb.table("pipeline_contacts").select("*").eq("company_id", company_id).eq("is_deleted", False).order("created_at", desc=True).execute()
     opportunities = sb.table("pipeline_opportunities").select("*").eq("company_id", company_id).eq("is_deleted", False).order("created_at", desc=True).execute()
-    activities = sb.table("pipeline_activities").select("*").eq("company_id", company_id).eq("is_deleted", False).order("occurred_at", desc=True).limit(50).execute()
+    activities = sb.table("pipeline_activities").select("*, pipeline_contacts(id, name, email), pipeline_companies(id, name), pipeline_opportunities(id, title)").eq("company_id", company_id).eq("is_deleted", False).order("occurred_at", desc=True).limit(50).execute()
 
     return {
         **company.data[0],
@@ -1047,7 +1048,7 @@ async def list_activities(
     sb = get_supabase()
     query = (
         sb.table("pipeline_activities")
-        .select("*, pipeline_contacts(id, name), pipeline_companies(id, name), pipeline_opportunities(id, title)")
+        .select("*, pipeline_contacts(id, name, email), pipeline_companies(id, name), pipeline_opportunities(id, title)")
         .eq("is_deleted", False)
     )
     if contact_id:
@@ -1272,7 +1273,7 @@ async def get_activity(activity_id: str, user: dict = Depends(verify_partner_aut
     sb = get_supabase()
     result = (
         sb.table("pipeline_activities")
-        .select("*, pipeline_contacts(id, name), pipeline_companies(id, name), pipeline_opportunities(id, title)")
+        .select("*, pipeline_contacts(id, name, email), pipeline_companies(id, name), pipeline_opportunities(id, title)")
         .eq("id", activity_id)
         .eq("is_deleted", False)
         .execute()

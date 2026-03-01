@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -16,27 +16,47 @@ interface ScheduleData {
 
 interface NDAGateProps {
   token: string
+  initialData?: ScheduleData | null
   onNdaSent?: () => void
 }
 
-export default function NDAGate({ token, onNdaSent }: NDAGateProps) {
-  const [data, setData] = useState<ScheduleData | null>(null)
+export default function NDAGate({ token, initialData, onNdaSent }: NDAGateProps) {
+  const [data, setData] = useState<ScheduleData | null>(initialData || null)
   const [sending, setSending] = useState(false)
   const [ndaSent, setNdaSent] = useState(false)
   const [error, setError] = useState('')
+  const retryRef = useRef(0)
 
+  // Fetch schedule data — with retry polling when booking_time is missing
   useEffect(() => {
-    fetch(`${API_URL}/api/pipeline/schedule/${token}`)
-      .then(res => {
-        if (!res.ok) throw new Error('Schedule link not found')
-        return res.json()
-      })
-      .then((d: ScheduleData) => {
-        setData(d)
-        if (d.nda_already_requested || d.nda_already_signed) setNdaSent(true)
-      })
-      .catch(err => setError(err.message))
-  }, [token])
+    if (initialData?.booking_time) {
+      // Already have confirmed booking data, no fetch needed
+      if (initialData.nda_already_requested || initialData.nda_already_signed) setNdaSent(true)
+      return
+    }
+
+    const RETRY_DELAYS = [0, 3000, 6000, 12000, 20000] // immediate, 3s, 6s, 12s, 20s
+
+    function fetchData() {
+      fetch(`${API_URL}/api/pipeline/schedule/${token}`)
+        .then(res => {
+          if (!res.ok) throw new Error('Schedule link not found')
+          return res.json()
+        })
+        .then((d: ScheduleData) => {
+          setData(d)
+          if (d.nda_already_requested || d.nda_already_signed) setNdaSent(true)
+          // If booking_time is still null, retry up to max attempts
+          if (!d.booking_time && retryRef.current < RETRY_DELAYS.length - 1) {
+            retryRef.current += 1
+            setTimeout(fetchData, RETRY_DELAYS[retryRef.current])
+          }
+        })
+        .catch(err => setError(err.message))
+    }
+
+    fetchData()
+  }, [token, initialData])
 
   const handleRequestNda = useCallback(async () => {
     setSending(true)

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import os
+import re
 import smtplib
 import logging
 from typing import Optional
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.utils import formatdate, make_msgid
 from datetime import datetime, timezone
 
 logger = logging.getLogger("baxterlabs.email")
@@ -73,6 +75,22 @@ class EmailService:
 </body>
 </html>"""
 
+    @staticmethod
+    def _html_to_plain(html: str) -> str:
+        """Convert HTML email body to readable plain text."""
+        text = re.sub(r'<br\s*/?>', '\n', html)
+        text = re.sub(r'</(?:p|div|tr|li|h[1-6])>', '\n', text)
+        text = re.sub(r'<a[^>]+href="([^"]*)"[^>]*>[^<]*</a>', r'\1', text)
+        text = re.sub(r'<[^>]+>', '', text)
+        text = re.sub(r'&nbsp;', ' ', text)
+        text = re.sub(r'&amp;', '&', text)
+        text = re.sub(r'&lt;', '<', text)
+        text = re.sub(r'&gt;', '>', text)
+        text = re.sub(r'&#\d+;', '', text)
+        text = re.sub(r'&[a-zA-Z]+;', '', text)
+        text = re.sub(r'\n{3,}', '\n\n', text)
+        return text.strip()
+
     def _send_email(
         self,
         to_email: str,
@@ -108,8 +126,14 @@ class EmailService:
             if cc_email:
                 msg["Cc"] = cc_email
             msg["Reply-To"] = sender_email
+            msg["Message-ID"] = make_msgid(domain="baxterlabs.ai")
+            msg["Date"] = formatdate(localtime=True)
+            msg["X-Mailer"] = "BaxterLabs Advisory Platform"
+            msg["List-Unsubscribe"] = "<mailto:info@baxterlabs.ai?subject=unsubscribe>"
+            msg["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
 
-            text_part = MIMEText(f"This email requires an HTML-capable email client. Subject: {subject}", "plain")
+            plain_text = self._html_to_plain(html_body)
+            text_part = MIMEText(plain_text, "plain")
             html_part = MIMEText(full_html, "html")
             msg.attach(text_part)
             msg.attach(html_part)
