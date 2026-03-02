@@ -405,6 +405,65 @@ async def send_upload_link(engagement_id: str, user: dict = Depends(verify_partn
     return {"success": True, "email_result": result}
 
 
+class InterviewContactUpdate(BaseModel):
+    enrichment_data: Optional[dict] = None
+    call_notes_doc_url: Optional[str] = None
+
+
+@router.get("/engagements/{engagement_id}/contacts/{contact_id}")
+async def get_interview_contact(
+    engagement_id: str,
+    contact_id: str,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Get a single interview contact with all fields."""
+    sb = get_supabase()
+    result = (
+        sb.table("interview_contacts")
+        .select("*")
+        .eq("id", contact_id)
+        .eq("engagement_id", engagement_id)
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Contact not found")
+    return result.data[0]
+
+
+@router.patch("/engagements/{engagement_id}/contacts/{contact_id}")
+async def update_interview_contact(
+    engagement_id: str,
+    contact_id: str,
+    body: InterviewContactUpdate,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Update enrichment_data or call_notes_doc_url on an interview contact."""
+    sb = get_supabase()
+
+    # Verify contact belongs to engagement
+    existing = (
+        sb.table("interview_contacts")
+        .select("id")
+        .eq("id", contact_id)
+        .eq("engagement_id", engagement_id)
+        .execute()
+    )
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Contact not found")
+
+    updates = body.model_dump(exclude_none=True)
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    result = (
+        sb.table("interview_contacts")
+        .update(updates)
+        .eq("id", contact_id)
+        .execute()
+    )
+    return result.data[0]
+
+
 @router.get("/engagements/{engagement_id}/documents/{doc_id}/download")
 async def download_document(engagement_id: str, doc_id: str, user: dict = Depends(verify_partner_auth)):
     """Generate a signed download URL for a document. Requires partner auth."""

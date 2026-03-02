@@ -84,6 +84,7 @@ class OpportunityCreate(BaseModel):
     nda_confirmation_token: Optional[str] = None
     nda_requested_at: Optional[datetime] = None
     agreement_envelope_id: Optional[str] = None
+    call_notes_doc_url: Optional[str] = None
 
 
 class OpportunityUpdate(BaseModel):
@@ -105,6 +106,7 @@ class OpportunityUpdate(BaseModel):
     nda_confirmation_token: Optional[str] = None
     nda_requested_at: Optional[datetime] = None
     agreement_envelope_id: Optional[str] = None
+    call_notes_doc_url: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------

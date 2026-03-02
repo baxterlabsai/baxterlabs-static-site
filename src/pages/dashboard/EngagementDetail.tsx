@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { apiGet, apiPost, apiPut, apiPatch, apiUpload, apiDelete } from '../../lib/api'
 import { useToast } from '../../components/Toast'
+import EngagementContactSlideOver from './EngagementContactSlideOver'
 
 interface PhaseOutput {
   id: string
@@ -68,6 +69,7 @@ interface EngagementData {
     referral_source: string | null
   }
   interview_contacts: Array<{
+    id: string
     contact_number: number
     name: string
     title: string | null
@@ -75,6 +77,9 @@ interface EngagementData {
     phone: string | null
     linkedin_url: string | null
     context_notes: string | null
+    role: string
+    enrichment_data: Record<string, any> | null
+    call_notes_doc_url: string | null
   }>
   legal_documents: Array<{
     type: string
@@ -242,6 +247,7 @@ export default function EngagementDetail() {
   const [acceptingOutputId, setAcceptingOutputId] = useState<string | null>(null)
   const [acceptingPhase, setAcceptingPhase] = useState<number | null>(null)
   const outputFileRefs = useRef<Record<string, HTMLInputElement | null>>({})
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null)
   const navigate = useNavigate()
   const { toast } = useToast()
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
@@ -1293,17 +1299,66 @@ export default function EngagementDetail() {
           ) : (
             <div className="space-y-3">
               {data.interview_contacts.map(c => (
-                <div key={c.contact_number} className="p-3 bg-ivory rounded-lg text-sm">
-                  <p className="font-semibold text-charcoal">{c.name} {c.title && <span className="text-gray-warm font-normal">· {c.title}</span>}</p>
+                <div
+                  key={c.id || c.contact_number}
+                  className="p-3 bg-ivory rounded-lg text-sm cursor-pointer hover:bg-ivory/80 transition-colors"
+                  onClick={() => c.id && setSelectedContactId(c.id)}
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold text-charcoal">{c.name} {c.title && <span className="text-gray-warm font-normal">· {c.title}</span>}</p>
+                    <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                      {c.enrichment_data?.research && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green/10 text-green">
+                          <span className="w-1.5 h-1.5 rounded-full bg-green" />
+                          Research
+                        </span>
+                      )}
+                      {c.enrichment_data?.call_prep && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber/10 text-amber">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber" />
+                          Prep
+                        </span>
+                      )}
+                      {c.call_notes_doc_url && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                          Notes
+                        </span>
+                      )}
+                    </div>
+                  </div>
                   <div className="flex flex-wrap gap-3 mt-1 text-gray-warm text-xs">
                     {c.email && <span>{c.email}</span>}
                     {c.phone && <span>{c.phone}</span>}
-                    {c.linkedin_url && <a href={c.linkedin_url} target="_blank" rel="noreferrer" className="text-teal hover:underline">LinkedIn</a>}
+                    {c.linkedin_url && (
+                      <a
+                        href={c.linkedin_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-teal hover:underline"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        LinkedIn
+                      </a>
+                    )}
                   </div>
                   {c.context_notes && <p className="mt-2 text-xs text-charcoal italic">{c.context_notes}</p>}
                 </div>
               ))}
             </div>
+          )}
+
+          {selectedContactId && data && (
+            <EngagementContactSlideOver
+              contactId={selectedContactId}
+              engagementId={data.id}
+              companyName={data.clients.company_name}
+              onClose={() => {
+                setSelectedContactId(null)
+                // Refresh engagement data to pick up any changes
+                if (id) apiGet<EngagementData>(`/api/engagements/${id}`).then(setData).catch(() => {})
+              }}
+            />
           )}
         </section>
 
