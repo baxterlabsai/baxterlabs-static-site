@@ -34,6 +34,15 @@ h1, h2, h3, h4, h5, h6 {
   line-height: 1.2;
 }
 
+@keyframes pulse-subtle {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(201, 168, 76, 0.5); }
+  50% { box-shadow: 0 0 0 6px rgba(201, 168, 76, 0); }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
+}
+
 @keyframes slide-in {
   from {
     opacity: 0;

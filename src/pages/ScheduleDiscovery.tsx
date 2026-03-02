@@ -23,6 +23,8 @@ export default function ScheduleDiscovery() {
   const [error, setError] = useState('')
   const [booked, setBooked] = useState(false)
   const [iframeLoaded, setIframeLoaded] = useState(false)
+  const [showFallback, setShowFallback] = useState(false)
+  const fallbackRef = useRef<HTMLDivElement>(null)
   const pollRef = useRef(0)
 
   // Fetch schedule page data
@@ -64,6 +66,21 @@ export default function ScheduleDiscovery() {
     }
     poll()
   }, [token])
+
+  // Show fallback button after 30 seconds, then auto-scroll it into view
+  useEffect(() => {
+    if (booked) return
+    const timer = setTimeout(() => {
+      setShowFallback(true)
+    }, 30000)
+    return () => clearTimeout(timer)
+  }, [booked])
+
+  useEffect(() => {
+    if (showFallback && fallbackRef.current) {
+      fallbackRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [showFallback])
 
   // Listen for Calendly widget postMessage events
   useEffect(() => {
@@ -168,13 +185,13 @@ export default function ScheduleDiscovery() {
               </div>
             </div>
 
-            {/* Manual fallback button — shown after iframe loads */}
-            {iframeLoaded && (
-              <div className="text-center mt-6">
-                <p className="text-xs text-gray-warm mb-2">Already completed your booking above?</p>
+            {/* Manual fallback button — shown after 30s or when iframe loads */}
+            {(showFallback || iframeLoaded) && (
+              <div ref={fallbackRef} className="text-center mt-6">
+                <p className="text-xs text-gray-warm mb-3">Already completed your booking above?</p>
                 <button
                   onClick={handleManualBookConfirm}
-                  className="text-sm text-teal font-semibold hover:text-teal/80 underline underline-offset-2 transition-colors"
+                  className="w-full py-3 bg-crimson text-white font-semibold rounded-lg hover:bg-crimson/90 transition-colors animate-pulse-subtle ring-2 ring-gold/60 ring-offset-2 ring-offset-ivory"
                 >
                   I've booked my call — continue to NDA
                 </button>
