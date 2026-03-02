@@ -817,6 +817,7 @@ function ResearchIntelSection({ enrichmentData }: { enrichmentData: Record<strin
   const [open, setOpen] = useState(false)
   const research = enrichmentData?.research
   const enrichment = enrichmentData?.enrichment
+  const callPrep = enrichmentData?.call_prep
 
   return (
     <div className="border border-purple-200 rounded-lg overflow-hidden">
@@ -830,7 +831,7 @@ function ResearchIntelSection({ enrichmentData }: { enrichmentData: Record<strin
           </svg>
           <span className="text-sm font-semibold text-purple-800">Research & Intelligence</span>
           <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-200 text-purple-800">
-            {[research && 'Research', enrichment && 'Enrichment'].filter(Boolean).join(' + ')}
+            {[research && 'Research', enrichment && 'Enrichment', callPrep && 'Call Prep'].filter(Boolean).join(' + ')}
           </span>
         </div>
         <svg className={`w-4 h-4 text-purple-600 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -852,6 +853,25 @@ function ResearchIntelSection({ enrichmentData }: { enrichmentData: Record<strin
               </div>
               <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-60 overflow-y-auto">
                 <MarkdownContent content={research.content || JSON.stringify(research, null, 2)} />
+              </div>
+            </div>
+          )}
+
+          {/* Call Prep Briefing */}
+          {callPrep && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2">
+                  <h5 className="text-xs font-semibold text-charcoal uppercase tracking-wider">Call Prep Briefing</h5>
+                  <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber/15 text-amber">Prep</span>
+                </div>
+                <div className="flex items-center gap-2 text-[10px] text-gray-warm">
+                  {callPrep.source && <span>Source: {callPrep.source}</span>}
+                  {callPrep.timestamp && <span>{new Date(callPrep.timestamp).toLocaleDateString()}</span>}
+                </div>
+              </div>
+              <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-60 overflow-y-auto">
+                <MarkdownContent content={callPrep.content || JSON.stringify(callPrep, null, 2)} />
               </div>
             </div>
           )}
