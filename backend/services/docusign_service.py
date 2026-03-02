@@ -48,6 +48,7 @@ class DocuSignService:
             raw_key = raw_key.replace("\\n", "\n")
         self.private_key_bytes = raw_key.encode("utf-8") if raw_key else b""
 
+        self._dev_mode = os.getenv("DEVELOPMENT_MODE", "false").lower() == "true"
         self._access_token: Optional[str] = None
         self._token_expires: float = 0
         self._api_client: Optional[ApiClient] = None
