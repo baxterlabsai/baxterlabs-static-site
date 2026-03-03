@@ -46,6 +46,8 @@ VALID_PRIORITIES = {"high", "normal", "low"}
 VALID_TASK_STATUSES = {"pending", "complete", "skipped"}
 VALID_COMPANY_TYPES = {"prospect", "partner", "connector"}
 VALID_LEAD_TIERS = {"tier_1", "tier_2", "tier_3"}
+VALID_ACTIVITY_STATUSES = {"draft", "sent", "discarded", "logged"}
+VALID_OUTREACH_CHANNELS = {"email", "linkedin", "phone", "other"}
 
 
 # ==========================================================================
@@ -1078,6 +1080,8 @@ async def list_activities(
     opportunity_id: Optional[str] = Query(None),
     company_id: Optional[str] = Query(None),
     type: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    outreach_channel: Optional[str] = Query(None),
     date_from: Optional[date] = Query(None),
     date_to: Optional[date] = Query(None),
     user: dict = Depends(verify_partner_auth),
@@ -1096,6 +1100,10 @@ async def list_activities(
         query = query.eq("company_id", company_id)
     if type:
         query = query.eq("type", type)
+    if status:
+        query = query.eq("status", status)
+    if outreach_channel:
+        query = query.eq("outreach_channel", outreach_channel)
     if date_from:
         query = query.gte("occurred_at", date_from.isoformat())
     if date_to:
@@ -1108,6 +1116,10 @@ async def list_activities(
 async def create_activity(body: ActivityCreate, user: dict = Depends(verify_partner_auth)):
     if body.type not in VALID_ACTIVITY_TYPES:
         raise HTTPException(status_code=400, detail=f"Invalid activity type: {body.type}")
+    if body.status and body.status not in VALID_ACTIVITY_STATUSES:
+        raise HTTPException(status_code=400, detail=f"Invalid activity status: {body.status}")
+    if body.outreach_channel and body.outreach_channel not in VALID_OUTREACH_CHANNELS:
+        raise HTTPException(status_code=400, detail=f"Invalid outreach channel: {body.outreach_channel}")
     sb = get_supabase()
     row = body.model_dump(exclude_none=True)
     if body.occurred_at:
@@ -1305,6 +1317,23 @@ async def create_activity_from_notes(body: ActivityFromNotesInput, user: dict = 
     }
 
 
+@router.get("/activities/drafts")
+async def list_draft_activities(
+    user: dict = Depends(verify_partner_auth),
+):
+    """Return activities with status='draft' for the Draft Queue widget."""
+    sb = get_supabase()
+    result = (
+        sb.table("pipeline_activities")
+        .select("*, pipeline_contacts(id, name, email), pipeline_companies(id, name), pipeline_opportunities(id, title)")
+        .eq("is_deleted", False)
+        .eq("status", "draft")
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return {"drafts": result.data, "count": len(result.data)}
+
+
 @router.get("/activities/{activity_id}")
 async def get_activity(activity_id: str, user: dict = Depends(verify_partner_auth)):
     sb = get_supabase()
@@ -1328,6 +1357,10 @@ async def update_activity(activity_id: str, body: ActivityUpdate, user: dict = D
         raise HTTPException(status_code=400, detail="No fields to update")
     if "type" in updates and updates["type"] not in VALID_ACTIVITY_TYPES:
         raise HTTPException(status_code=400, detail=f"Invalid activity type: {updates['type']}")
+    if "status" in updates and updates["status"] not in VALID_ACTIVITY_STATUSES:
+        raise HTTPException(status_code=400, detail=f"Invalid activity status: {updates['status']}")
+    if "outreach_channel" in updates and updates["outreach_channel"] not in VALID_OUTREACH_CHANNELS:
+        raise HTTPException(status_code=400, detail=f"Invalid outreach channel: {updates['outreach_channel']}")
     if "occurred_at" in updates and isinstance(updates["occurred_at"], datetime):
         updates["occurred_at"] = updates["occurred_at"].isoformat()
     if "next_action_date" in updates and isinstance(updates["next_action_date"], date):

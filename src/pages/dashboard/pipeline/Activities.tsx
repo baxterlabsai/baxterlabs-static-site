@@ -42,6 +42,8 @@ interface Activity {
   next_action_date: string | null
   gemini_raw_notes: string | null
   plugin_source: string | null
+  status: string | null
+  outreach_channel: string | null
   created_at: string
   created_by: string | null
   pipeline_contacts: { id: string; name: string; email?: string } | null
@@ -408,6 +410,20 @@ export default function PipelineActivities() {
                             Plugin
                           </span>
                         )}
+                        {act.outreach_channel && (
+                          <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-teal/10 text-teal uppercase">
+                            {act.outreach_channel}
+                          </span>
+                        )}
+                        {act.status && act.status !== 'logged' && (
+                          <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                            act.status === 'draft' ? 'bg-gold/10 text-gold' :
+                            act.status === 'sent' ? 'bg-green/10 text-green' :
+                            'bg-red-soft/10 text-red-soft'
+                          }`}>
+                            {act.status}
+                          </span>
+                        )}
                         {act.outcome && (
                           <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-ivory text-charcoal">
                             {act.outcome}
@@ -603,6 +619,7 @@ function LogActivityModal({
   const [occurredAt, setOccurredAt] = useState('')
   const [nextAction, setNextAction] = useState('')
   const [nextActionDate, setNextActionDate] = useState('')
+  const [outreachChannel, setOutreachChannel] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const filteredContacts = contactSearch.length > 0
@@ -633,6 +650,7 @@ function LogActivityModal({
     if (occurredAt) data.occurred_at = new Date(occurredAt).toISOString()
     if (nextAction) data.next_action = nextAction
     if (nextActionDate) data.next_action_date = nextActionDate
+    if (outreachChannel) data.outreach_channel = outreachChannel
     await onSubmit(data)
     setSubmitting(false)
   }
@@ -650,11 +668,21 @@ function LogActivityModal({
         </div>
         <div className="border-b border-gray-light" />
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-sm font-semibold text-charcoal mb-1.5">Type *</label>
               <select value={type} onChange={e => setType(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal">
                 {ACTIVITY_TYPES.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-charcoal mb-1.5">Channel</label>
+              <select value={outreachChannel} onChange={e => setOutreachChannel(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal">
+                <option value="">—</option>
+                <option value="email">Email</option>
+                <option value="linkedin">LinkedIn</option>
+                <option value="phone">Phone</option>
+                <option value="other">Other</option>
               </select>
             </div>
             <div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { apiGet, apiPatch } from '../../lib/api'
+import { apiGet, apiPatch, apiPut } from '../../lib/api'
 
 interface Engagement {
   id: string
@@ -65,6 +65,18 @@ interface PipelineStats {
     pipeline_contacts: { id: string; name: string } | null
     pipeline_companies: { id: string; name: string } | null
   }>
+}
+
+interface DraftActivity {
+  id: string
+  type: string
+  subject: string
+  body: string | null
+  outreach_channel: string | null
+  created_at: string
+  pipeline_contacts: { id: string; name: string; email?: string } | null
+  pipeline_companies: { id: string; name: string } | null
+  pipeline_opportunities: { id: string; title: string } | null
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -153,6 +165,8 @@ export default function Overview() {
   const [editedSubjects, setEditedSubjects] = useState<Record<string, string>>({})
   const [editedBodies, setEditedBodies] = useState<Record<string, string>>({})
   const [followUpActionLoading, setFollowUpActionLoading] = useState<string | null>(null)
+  const [drafts, setDrafts] = useState<DraftActivity[]>([])
+  const [draftActionLoading, setDraftActionLoading] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [sortField, setSortField] = useState<SortField>('created')
@@ -165,12 +179,14 @@ export default function Overview() {
       apiGet<PipelineStats>('/api/pipeline/stats').catch(() => null),
       apiGet<RevenueSummary>('/api/invoices/revenue-summary').catch(() => null),
       apiGet<{ follow_ups: FollowUp[] }>('/api/follow-ups?upcoming_only=true').catch(() => null),
+      apiGet<{ drafts: DraftActivity[] }>('/api/pipeline/activities/drafts').catch(() => null),
     ])
-      .then(([engData, statsData, revenueData, followUpData]) => {
+      .then(([engData, statsData, revenueData, followUpData, draftsData]) => {
         setEngagements(engData.engagements)
         if (statsData) setPipelineStats(statsData)
         if (revenueData) setRevenueSummary(revenueData)
         if (followUpData) setFollowUps(followUpData.follow_ups)
+        if (draftsData) setDrafts(draftsData.drafts)
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
@@ -289,6 +305,88 @@ export default function Overview() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Draft Queue */}
+      {drafts.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-xl font-bold text-charcoal flex items-center gap-2">
+              Outreach Draft Queue
+              <span className="bg-gold text-charcoal text-xs font-bold px-2 py-0.5 rounded-full">{drafts.length}</span>
+            </h2>
+            <Link to="/dashboard/pipeline/activities" className="text-teal text-sm font-semibold hover:underline flex items-center gap-1">
+              All Activities
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+              </svg>
+            </Link>
+          </div>
+          <div className="space-y-3">
+            {drafts.map(draft => (
+              <div key={draft.id} className="bg-white rounded-lg border border-gray-light p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-semibold text-charcoal text-sm">{draft.subject}</span>
+                      {draft.outreach_channel && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal/10 text-teal uppercase">
+                          {draft.outreach_channel}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-gray-warm mb-2">
+                      {draft.pipeline_contacts?.name && (
+                        <span>{draft.pipeline_contacts.name}</span>
+                      )}
+                      {draft.pipeline_contacts?.name && draft.pipeline_companies?.name && (
+                        <span>&middot;</span>
+                      )}
+                      {draft.pipeline_companies?.name && (
+                        <span>{draft.pipeline_companies.name}</span>
+                      )}
+                      <span>&middot;</span>
+                      <span>{timeAgo(draft.created_at)}</span>
+                    </div>
+                    {draft.body && (
+                      <p className="text-xs text-charcoal/70 line-clamp-2">{draft.body}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={async () => {
+                        setDraftActionLoading(draft.id + '_send')
+                        try {
+                          await apiPut(`/api/pipeline/activities/${draft.id}`, { status: 'sent' })
+                          setDrafts(prev => prev.filter(d => d.id !== draft.id))
+                        } catch { /* ignore */ }
+                        setDraftActionLoading(null)
+                      }}
+                      disabled={draftActionLoading === draft.id + '_send'}
+                      className="px-3 py-1.5 text-xs font-semibold text-white bg-teal rounded-lg hover:bg-teal/90 transition-colors disabled:opacity-50"
+                    >
+                      {draftActionLoading === draft.id + '_send' ? '...' : 'Approve'}
+                    </button>
+                    <button
+                      onClick={async () => {
+                        setDraftActionLoading(draft.id + '_discard')
+                        try {
+                          await apiPut(`/api/pipeline/activities/${draft.id}`, { status: 'discarded' })
+                          setDrafts(prev => prev.filter(d => d.id !== draft.id))
+                        } catch { /* ignore */ }
+                        setDraftActionLoading(null)
+                      }}
+                      disabled={draftActionLoading === draft.id + '_discard'}
+                      className="px-3 py-1.5 text-xs font-semibold text-charcoal border border-gray-light rounded-lg hover:bg-ivory transition-colors disabled:opacity-50"
+                    >
+                      Discard
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
