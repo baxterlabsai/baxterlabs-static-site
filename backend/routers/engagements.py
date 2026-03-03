@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Optional
+import os
+import re as _re
+from datetime import datetime, timezone
+from typing import Optional, Dict, Any
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, UploadFile, File
 from fastapi.responses import JSONResponse
 from middleware.auth import verify_partner_auth
 from services.supabase_client import get_supabase, get_engagement_by_id, update_engagement_status, log_activity
@@ -408,6 +411,193 @@ async def send_upload_link(engagement_id: str, user: dict = Depends(verify_partn
 class InterviewContactUpdate(BaseModel):
     enrichment_data: Optional[dict] = None
     call_notes_doc_url: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# Interview Transcript Upload / Download
+# ---------------------------------------------------------------------------
+
+TRANSCRIPT_EXTENSIONS = {".docx", ".doc", ".pdf", ".txt", ".md", ".rtf"}
+TRANSCRIPT_MAX_SIZE = 50 * 1024 * 1024  # 50 MB
+
+
+@router.post("/engagements/{engagement_id}/contacts/{contact_id}/transcript")
+async def upload_interview_transcript(
+    engagement_id: str,
+    contact_id: str,
+    file: UploadFile = File(...),
+    user: dict = Depends(verify_partner_auth),
+):
+    """Upload an interview transcript for an engagement contact."""
+    sb = get_supabase()
+
+    # Verify engagement exists
+    engagement = get_engagement_by_id(engagement_id)
+    if not engagement:
+        raise HTTPException(status_code=404, detail="Engagement not found")
+
+    # Verify contact belongs to engagement
+    contact_result = (
+        sb.table("interview_contacts")
+        .select("id, name, title, engagement_id, transcript_document_id")
+        .eq("id", contact_id)
+        .eq("engagement_id", engagement_id)
+        .execute()
+    )
+    if not contact_result.data:
+        raise HTTPException(status_code=404, detail="Contact not found")
+
+    contact = contact_result.data[0]
+
+    # Validate file
+    filename = file.filename or "transcript"
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in TRANSCRIPT_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File type '{ext}' not allowed. Accepted: {', '.join(sorted(TRANSCRIPT_EXTENSIONS))}",
+        )
+
+    content = await file.read()
+    if len(content) > TRANSCRIPT_MAX_SIZE:
+        raise HTTPException(status_code=400, detail="File exceeds 50 MB limit.")
+
+    # Build storage path
+    name_slug = _re.sub(r'[^a-z0-9]+', '_', contact["name"].lower()).strip('_')
+    timestamp = int(datetime.now(timezone.utc).timestamp())
+    storage_path = f"{engagement_id}/interviews/{name_slug}_{timestamp}{ext}"
+
+    # Delete old transcript if replacing
+    old_doc_id = contact.get("transcript_document_id")
+    if old_doc_id:
+        old_doc = sb.table("documents").select("storage_path").eq("id", old_doc_id).execute()
+        if old_doc.data:
+            try:
+                sb.storage.from_("engagements").remove([old_doc.data[0]["storage_path"]])
+            except Exception as e:
+                logger.warning(f"Failed to delete old transcript file: {e}")
+            sb.table("documents").delete().eq("id", old_doc_id).execute()
+
+    # Upload to storage
+    sb.storage.from_("engagements").upload(
+        storage_path, content, {"content-type": file.content_type or "application/octet-stream"}
+    )
+
+    # Create documents record
+    doc_result = sb.table("documents").insert({
+        "engagement_id": engagement_id,
+        "category": "transcript",
+        "filename": filename,
+        "storage_path": storage_path,
+        "file_size": len(content),
+        "document_type": "interview_transcript",
+        "uploaded_by": "analyst",
+        "storage_bucket": "engagements",
+        "status": "uploaded",
+    }).execute()
+
+    doc_id = doc_result.data[0]["id"]
+
+    # Update interview_contacts.transcript_document_id
+    sb.table("interview_contacts").update({
+        "transcript_document_id": doc_id,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }).eq("id", contact_id).execute()
+
+    # Fold intelligence back into pipeline_companies via converted_engagement_id
+    try:
+        opp_result = (
+            sb.table("pipeline_opportunities")
+            .select("company_id")
+            .eq("converted_engagement_id", engagement_id)
+            .eq("is_deleted", False)
+            .execute()
+        )
+        if opp_result.data:
+            co_id = opp_result.data[0]["company_id"]
+            co_result = (
+                sb.table("pipeline_companies")
+                .select("id, enrichment_data")
+                .eq("id", co_id)
+                .execute()
+            )
+            if co_result.data:
+                co = co_result.data[0]
+                co_ed = co.get("enrichment_data") or {}
+                intel_list = co_ed.get("interview_intelligence", [])
+                intel_list.append({
+                    "contact_name": contact["name"],
+                    "contact_title": contact.get("title"),
+                    "engagement_id": engagement_id,
+                    "document_id": doc_id,
+                    "storage_path": storage_path,
+                    "uploaded_at": datetime.now(timezone.utc).isoformat(),
+                    "summary": None,
+                })
+                co_ed["interview_intelligence"] = intel_list
+                sb.table("pipeline_companies").update({
+                    "enrichment_data": co_ed,
+                }).eq("id", co_id).execute()
+    except Exception as e:
+        logger.warning(f"Intelligence fold-back failed (non-blocking): {e}")
+
+    # Log activity
+    log_activity(engagement_id, "analyst", "interview_transcript_uploaded", {
+        "contact_id": contact_id,
+        "contact_name": contact["name"],
+        "filename": filename,
+        "document_id": doc_id,
+    })
+
+    # Return updated contact
+    updated = (
+        sb.table("interview_contacts")
+        .select("*")
+        .eq("id", contact_id)
+        .execute()
+    )
+    return updated.data[0]
+
+
+@router.get("/engagements/{engagement_id}/contacts/{contact_id}/transcript/download")
+async def download_interview_transcript(
+    engagement_id: str,
+    contact_id: str,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Generate a signed download URL for a contact's interview transcript."""
+    sb = get_supabase()
+
+    contact = (
+        sb.table("interview_contacts")
+        .select("transcript_document_id")
+        .eq("id", contact_id)
+        .eq("engagement_id", engagement_id)
+        .execute()
+    )
+    if not contact.data:
+        raise HTTPException(status_code=404, detail="Contact not found")
+
+    doc_id = contact.data[0].get("transcript_document_id")
+    if not doc_id:
+        raise HTTPException(status_code=404, detail="No transcript uploaded for this contact")
+
+    doc = sb.table("documents").select("storage_path, filename").eq("id", doc_id).execute()
+    if not doc.data:
+        raise HTTPException(status_code=404, detail="Transcript document not found")
+
+    storage_path = doc.data[0]["storage_path"]
+
+    try:
+        signed = sb.storage.from_("engagements").create_signed_url(storage_path, 3600)
+        return {
+            "success": True,
+            "url": signed.get("signedURL") or signed.get("signedUrl", ""),
+            "filename": doc.data[0]["filename"],
+        }
+    except Exception as e:
+        logger.error(f"Failed to create signed URL for transcript: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate download link")
 
 
 @router.get("/engagements/{engagement_id}/contacts/{contact_id}")

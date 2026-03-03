@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api'
+import { apiGet, apiPost, apiPut, apiDelete, apiUpload } from '../../../lib/api'
 import MarkdownContent from '../../../components/MarkdownContent'
+import TranscriptUpload from '../../../components/TranscriptUpload'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -840,7 +841,7 @@ function ResearchIntelSection({ enrichmentData }: { enrichmentData: Record<strin
           </svg>
           <span className="text-sm font-semibold text-purple-800">Research & Intelligence</span>
           <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-200 text-purple-800">
-            {[research && 'Research', enrichment && 'Enrichment', callPrep && 'Call Prep'].filter(Boolean).join(' + ')}
+            {[research && 'Research', enrichment && 'Enrichment', callPrep && 'Call Prep', enrichmentData?.discovery_transcript && 'Transcript'].filter(Boolean).join(' + ')}
           </span>
         </div>
         <svg className={`w-4 h-4 text-purple-600 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -964,6 +965,7 @@ function CompanySlideOver({
   const [pluginToast, setPluginToast] = useState('')
   const [editingCallNotesOppId, setEditingCallNotesOppId] = useState<string | null>(null)
   const [callNotesUrl, setCallNotesUrl] = useState('')
+  const [transcriptUploading, setTranscriptUploading] = useState(false)
 
   // Edit form state
   const [editName, setEditName] = useState('')
@@ -1220,6 +1222,34 @@ function CompanySlideOver({
                   {(detail.enrichment_data?.research || detail.enrichment_data?.enrichment) && (
                     <ResearchIntelSection enrichmentData={detail.enrichment_data} />
                   )}
+
+                  {/* Discovery Transcript */}
+                  <div>
+                    <h4 className="text-sm font-semibold text-charcoal mb-2">Discovery Transcript</h4>
+                    <TranscriptUpload
+                      existing={detail.enrichment_data?.discovery_transcript ? {
+                        filename: detail.enrichment_data.discovery_transcript.original_filename,
+                        uploaded_at: detail.enrichment_data.discovery_transcript.uploaded_at,
+                        file_size: detail.enrichment_data.discovery_transcript.file_size,
+                      } : null}
+                      uploading={transcriptUploading}
+                      onUpload={async (file) => {
+                        setTranscriptUploading(true)
+                        try {
+                          const formData = new FormData()
+                          formData.append('file', file)
+                          const updated = await apiUpload<CompanyDetail>(`/api/pipeline/companies/${companyId}/transcript`, formData)
+                          setDetail(prev => prev ? { ...prev, enrichment_data: updated.enrichment_data } : prev)
+                        } finally {
+                          setTranscriptUploading(false)
+                        }
+                      }}
+                      onDownload={async () => {
+                        const res = await apiGet<{ url: string }>(`/api/pipeline/companies/${companyId}/transcript/download`)
+                        window.open(res.url, '_blank')
+                      }}
+                    />
+                  </div>
 
                   {/* Contacts */}
                   <div>

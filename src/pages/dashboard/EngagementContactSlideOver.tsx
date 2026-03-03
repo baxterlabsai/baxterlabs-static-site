@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { apiGet, apiPatch } from '../../lib/api'
+import { apiGet, apiPatch, apiUpload } from '../../lib/api'
 import MarkdownContent from '../../components/MarkdownContent'
+import TranscriptUpload from '../../components/TranscriptUpload'
 
 interface ContactDetail {
   id: string
@@ -15,6 +16,7 @@ interface ContactDetail {
   role: string
   enrichment_data: Record<string, any> | null
   call_notes_doc_url: string | null
+  transcript_document_id: string | null
   created_at: string
   updated_at: string
 }
@@ -34,6 +36,7 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
   const [editingCallNotes, setEditingCallNotes] = useState(false)
   const [callNotesUrl, setCallNotesUrl] = useState('')
   const [toast, setToast] = useState('')
+  const [transcriptUploading, setTranscriptUploading] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -222,6 +225,38 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
                     Add Call Notes URL
                   </button>
                 )}
+              </div>
+
+              {/* Interview Transcript */}
+              <div>
+                <h4 className="text-sm font-semibold text-charcoal mb-2">Interview Transcript</h4>
+                <TranscriptUpload
+                  existing={contact.transcript_document_id ? {
+                    filename: 'Interview Transcript',
+                    uploaded_at: contact.updated_at,
+                  } : null}
+                  uploading={transcriptUploading}
+                  onUpload={async (file) => {
+                    setTranscriptUploading(true)
+                    try {
+                      const formData = new FormData()
+                      formData.append('file', file)
+                      const updated = await apiUpload<ContactDetail>(
+                        `/api/engagements/${engagementId}/contacts/${contactId}/transcript`,
+                        formData
+                      )
+                      setContact(updated)
+                    } finally {
+                      setTranscriptUploading(false)
+                    }
+                  }}
+                  onDownload={async () => {
+                    const res = await apiGet<{ url: string }>(
+                      `/api/engagements/${engagementId}/contacts/${contactId}/transcript/download`
+                    )
+                    window.open(res.url, '_blank')
+                  }}
+                />
               </div>
 
               {/* Quick Actions */}

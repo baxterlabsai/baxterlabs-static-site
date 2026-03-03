@@ -9,7 +9,7 @@ from datetime import date, datetime, timedelta
 from typing import Optional, List, Dict, Any
 
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from middleware.auth import verify_partner_auth
 from services.supabase_client import get_supabase, log_activity, create_engagement_folders
 import json
@@ -1992,3 +1992,135 @@ async def bulk_import(
         "skipped_duplicates": skipped_duplicates,
         "errors": errors,
     }
+
+
+# ---------------------------------------------------------------------------
+# Discovery Transcript Upload / Download
+# ---------------------------------------------------------------------------
+
+TRANSCRIPT_EXTENSIONS = {".docx", ".doc", ".pdf", ".txt", ".md", ".rtf"}
+TRANSCRIPT_MAX_SIZE = 50 * 1024 * 1024  # 50 MB
+
+
+@router.post("/companies/{company_id}/transcript")
+async def upload_discovery_transcript(
+    company_id: str,
+    file: UploadFile = File(...),
+    google_doc_url: Optional[str] = Form(None),
+    user: dict = Depends(verify_partner_auth),
+):
+    """Upload a discovery call transcript for a pipeline company."""
+    sb = get_supabase()
+
+    # Verify company exists
+    company = (
+        sb.table("pipeline_companies")
+        .select("id, name, enrichment_data")
+        .eq("id", company_id)
+        .eq("is_deleted", False)
+        .execute()
+    )
+    if not company.data:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    comp = company.data[0]
+
+    # Validate file
+    filename = file.filename or "transcript"
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in TRANSCRIPT_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File type '{ext}' not allowed. Accepted: {', '.join(sorted(TRANSCRIPT_EXTENSIONS))}",
+        )
+
+    content = await file.read()
+    if len(content) > TRANSCRIPT_MAX_SIZE:
+        raise HTTPException(status_code=400, detail="File exceeds 50 MB limit.")
+
+    # Build storage path
+    timestamp = int(datetime.utcnow().timestamp())
+    storage_path = f"pipeline/{company_id}/transcripts/discovery_{timestamp}{ext}"
+
+    # Delete old transcript file if replacing
+    existing_ed = comp.get("enrichment_data") or {}
+    old_transcript = existing_ed.get("discovery_transcript")
+    if old_transcript and old_transcript.get("storage_path"):
+        try:
+            sb.storage.from_("engagements").remove([old_transcript["storage_path"]])
+        except Exception as e:
+            logger.warning(f"Failed to delete old transcript: {e}")
+
+    # Upload to storage
+    sb.storage.from_("engagements").upload(
+        storage_path, content, {"content-type": file.content_type or "application/octet-stream"}
+    )
+
+    # Build discovery_transcript metadata
+    transcript_meta: Dict[str, Any] = {
+        "storage_path": storage_path,
+        "original_filename": filename,
+        "uploaded_at": datetime.utcnow().isoformat(),
+        "file_size": len(content),
+        "summary": None,
+    }
+    if google_doc_url:
+        transcript_meta["google_doc_url"] = google_doc_url
+
+    # Merge into enrichment_data
+    updated_ed = {**existing_ed, "discovery_transcript": transcript_meta}
+
+    result = (
+        sb.table("pipeline_companies")
+        .update({"enrichment_data": updated_ed})
+        .eq("id", company_id)
+        .execute()
+    )
+
+    # Log pipeline activity
+    sb.table("pipeline_activities").insert({
+        "company_id": company_id,
+        "type": "note",
+        "subject": "Discovery transcript uploaded",
+        "body": f"File: {filename} ({len(content)} bytes)",
+        "created_by": user.get("sub"),
+    }).execute()
+
+    return result.data[0]
+
+
+@router.get("/companies/{company_id}/transcript/download")
+async def download_discovery_transcript(
+    company_id: str,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Generate a signed download URL for a company's discovery transcript."""
+    sb = get_supabase()
+
+    company = (
+        sb.table("pipeline_companies")
+        .select("enrichment_data")
+        .eq("id", company_id)
+        .eq("is_deleted", False)
+        .execute()
+    )
+    if not company.data:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    ed = company.data[0].get("enrichment_data") or {}
+    transcript = ed.get("discovery_transcript")
+    if not transcript or not transcript.get("storage_path"):
+        raise HTTPException(status_code=404, detail="No discovery transcript found")
+
+    try:
+        signed = sb.storage.from_("engagements").create_signed_url(
+            transcript["storage_path"], 3600
+        )
+        return {
+            "success": True,
+            "url": signed.get("signedURL") or signed.get("signedUrl", ""),
+            "filename": transcript.get("original_filename", "transcript"),
+        }
+    except Exception as e:
+        logger.error(f"Failed to create signed URL for transcript: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate download link")

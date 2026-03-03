@@ -80,6 +80,7 @@ interface EngagementData {
     role: string
     enrichment_data: Record<string, any> | null
     call_notes_doc_url: string | null
+    transcript_document_id: string | null
   }>
   legal_documents: Array<{
     type: string
@@ -1323,6 +1324,12 @@ export default function EngagementDetail() {
                         <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700">
                           <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                           Notes
+                        </span>
+                      )}
+                      {c.transcript_document_id && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-teal/10 text-teal">
+                          <span className="w-1.5 h-1.5 rounded-full bg-teal" />
+                          Transcript
                         </span>
                       )}
                     </div>
