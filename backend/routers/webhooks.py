@@ -32,14 +32,17 @@ async def stripe_webhook(request: Request):
     event_type = event.get("type", "")
     logger.info(f"Stripe webhook received: {event_type}")
 
-    if event_type == "checkout.session.completed":
-        session = event.get("data", {}).get("object", {})
-        _handle_checkout_completed(session)
-    elif event_type == "checkout.session.expired":
-        session = event.get("data", {}).get("object", {})
-        _handle_checkout_expired(session)
-    else:
-        logger.info(f"Unhandled Stripe event type: {event_type}")
+    try:
+        if event_type == "checkout.session.completed":
+            session = event.get("data", {}).get("object", {})
+            _handle_checkout_completed(session)
+        elif event_type == "checkout.session.expired":
+            session = event.get("data", {}).get("object", {})
+            _handle_checkout_expired(session)
+        else:
+            logger.info(f"Unhandled Stripe event type: {event_type}")
+    except Exception as e:
+        logger.error(f"Stripe webhook handler error for {event_type}: {e}")
 
     return Response(status_code=200)
 
@@ -68,8 +71,13 @@ def _handle_checkout_completed(session: dict) -> None:
 
     logger.info(f"Invoice {invoice_number} marked as paid via Stripe — payment_intent={payment_intent}")
 
-    # Log activity
+    # Log activity + send emails (only if engagement exists — test events may not have one)
     if engagement_id:
+        engagement = get_engagement_by_id(engagement_id)
+        if not engagement:
+            logger.warning(f"checkout.session.completed — engagement {engagement_id} not found (test event?)")
+            return
+
         log_activity(engagement_id, "system", "payment_received", {
             "invoice_number": invoice_number,
             "invoice_id": invoice_id,
@@ -78,28 +86,26 @@ def _handle_checkout_completed(session: dict) -> None:
         })
 
         # Send email notifications
-        engagement = get_engagement_by_id(engagement_id)
-        if engagement:
-            email_svc = get_email_service()
+        email_svc = get_email_service()
 
-            # Fetch invoice for amount
-            inv_result = sb.table("invoices").select("amount").eq("id", invoice_id).execute()
-            amount = float(inv_result.data[0]["amount"]) if inv_result.data else 0
+        # Fetch invoice for amount
+        inv_result = sb.table("invoices").select("amount").eq("id", invoice_id).execute()
+        amount = float(inv_result.data[0]["amount"]) if inv_result.data else 0
 
-            # Notify partner
-            email_svc.send_payment_notification(
-                engagement=engagement,
-                invoice_number=invoice_number or "Unknown",
-                amount=amount,
-                method="stripe",
-            )
+        # Notify partner
+        email_svc.send_payment_notification(
+            engagement=engagement,
+            invoice_number=invoice_number or "Unknown",
+            amount=amount,
+            method="stripe",
+        )
 
-            # Send receipt to client
-            email_svc.send_payment_received(
-                engagement=engagement,
-                invoice_number=invoice_number or "Unknown",
-                amount=amount,
-            )
+        # Send receipt to client
+        email_svc.send_payment_received(
+            engagement=engagement,
+            invoice_number=invoice_number or "Unknown",
+            amount=amount,
+        )
 
 
 def _handle_checkout_expired(session: dict) -> None:
@@ -109,9 +115,14 @@ def _handle_checkout_expired(session: dict) -> None:
     engagement_id = metadata.get("engagement_id")
 
     if engagement_id:
-        log_activity(engagement_id, "system", "stripe_checkout_expired", {
-            "invoice_number": invoice_number,
-        })
+        # Verify engagement exists before logging (test events may reference non-existent IDs)
+        engagement = get_engagement_by_id(engagement_id)
+        if engagement:
+            log_activity(engagement_id, "system", "stripe_checkout_expired", {
+                "invoice_number": invoice_number,
+            })
+        else:
+            logger.warning(f"Stripe checkout expired — engagement {engagement_id} not found (test event?)")
 
     logger.info(f"Stripe checkout expired for invoice {invoice_number}")
 
