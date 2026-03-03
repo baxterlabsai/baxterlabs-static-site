@@ -45,6 +45,8 @@ interface Opportunity {
   converted_engagement_id: string | null
   referred_by_engagement_id: string | null
   referred_by_contact_name: string | null
+  referred_by_company_id: string | null
+  referred_by_contact_id: string | null
   calendly_event_uri: string | null
   calendly_invitee_uri: string | null
   calendly_booking_time: string | null
@@ -1509,7 +1511,7 @@ function OpportunitySlideOver({
               </div>
 
               {/* Referral attribution */}
-              {opp.referred_by_engagement_id && (
+              {(opp.referred_by_engagement_id || opp.referred_by_contact_name || opp.referred_by_company_id || opp.referred_by_contact_id) && (
                 <div className="bg-gold/10 border border-gold/30 rounded-lg px-4 py-3">
                   <p className="text-sm text-charcoal font-medium flex items-center gap-1.5">
                     <svg className="w-4 h-4 text-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1520,12 +1522,14 @@ function OpportunitySlideOver({
                   {opp.referred_by_contact_name && (
                     <p className="text-xs text-gray-warm mt-1">Referred by: {opp.referred_by_contact_name}</p>
                   )}
-                  <Link
-                    to={`/dashboard/engagement/${opp.referred_by_engagement_id}`}
-                    className="text-xs text-teal underline hover:text-teal/80"
-                  >
-                    View referring engagement
-                  </Link>
+                  {opp.referred_by_engagement_id && (
+                    <Link
+                      to={`/dashboard/engagement/${opp.referred_by_engagement_id}`}
+                      className="text-xs text-teal underline hover:text-teal/80"
+                    >
+                      View referring engagement
+                    </Link>
+                  )}
                 </div>
               )}
 

@@ -83,6 +83,8 @@ class OpportunityCreate(BaseModel):
     assigned_to: Optional[str] = None
     referred_by_engagement_id: Optional[str] = None
     referred_by_contact_name: Optional[str] = None
+    referred_by_company_id: Optional[str] = None
+    referred_by_contact_id: Optional[str] = None
     calendly_event_uri: Optional[str] = None
     calendly_invitee_uri: Optional[str] = None
     calendly_booking_time: Optional[datetime] = None
@@ -105,6 +107,8 @@ class OpportunityUpdate(BaseModel):
     assigned_to: Optional[str] = None
     referred_by_engagement_id: Optional[str] = None
     referred_by_contact_name: Optional[str] = None
+    referred_by_company_id: Optional[str] = None
+    referred_by_contact_id: Optional[str] = None
     calendly_event_uri: Optional[str] = None
     calendly_invitee_uri: Optional[str] = None
     calendly_booking_time: Optional[datetime] = None
