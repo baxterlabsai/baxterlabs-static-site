@@ -43,6 +43,7 @@ VALID_ACTIVITY_TYPES = {
 VALID_PRIORITIES = {"high", "normal", "low"}
 VALID_TASK_STATUSES = {"pending", "complete", "skipped"}
 VALID_COMPANY_TYPES = {"prospect", "partner", "connector"}
+VALID_LEAD_TIERS = {"tier_1", "tier_2", "tier_3"}
 
 
 # ==========================================================================
@@ -54,6 +55,7 @@ async def list_companies(
     search: Optional[str] = Query(None),
     industry: Optional[str] = Query(None),
     company_type: Optional[str] = Query(None),
+    has_lead_score: Optional[bool] = Query(None),
     user: dict = Depends(verify_partner_auth),
 ):
     sb = get_supabase()
@@ -64,6 +66,8 @@ async def list_companies(
         query = query.eq("industry", industry)
     if company_type:
         query = query.eq("company_type", company_type)
+    if has_lead_score is True:
+        query = query.not_.is_("lead_score", "null")
     result = query.order("created_at", desc=True).execute()
     return {"companies": result.data, "count": len(result.data)}
 
@@ -135,6 +139,7 @@ async def delete_company(company_id: str, user: dict = Depends(verify_partner_au
 async def list_contacts(
     search: Optional[str] = Query(None),
     company_id: Optional[str] = Query(None),
+    lead_tier: Optional[str] = Query(None),
     user: dict = Depends(verify_partner_auth),
 ):
     sb = get_supabase()
@@ -143,12 +148,16 @@ async def list_contacts(
         query = query.ilike("name", f"%{search}%")
     if company_id:
         query = query.eq("company_id", company_id)
+    if lead_tier:
+        query = query.eq("lead_tier", lead_tier)
     result = query.order("created_at", desc=True).execute()
     return {"contacts": result.data, "count": len(result.data)}
 
 
 @router.post("/contacts")
 async def create_contact(body: ContactCreate, user: dict = Depends(verify_partner_auth)):
+    if body.lead_tier and body.lead_tier not in VALID_LEAD_TIERS:
+        raise HTTPException(status_code=400, detail=f"Invalid lead_tier: {body.lead_tier}")
     sb = get_supabase()
     row = body.model_dump(exclude_none=True)
     row["created_by"] = user.get("sub")
@@ -179,6 +188,8 @@ async def update_contact(contact_id: str, body: ContactUpdate, user: dict = Depe
     updates = body.model_dump(exclude_none=True)
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
+    if "lead_tier" in updates and updates["lead_tier"] not in VALID_LEAD_TIERS:
+        raise HTTPException(status_code=400, detail=f"Invalid lead_tier: {updates['lead_tier']}")
     result = sb.table("pipeline_contacts").update(updates).eq("id", contact_id).eq("is_deleted", False).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Contact not found")
@@ -302,9 +313,33 @@ async def update_opportunity(opp_id: str, body: OpportunityUpdate, user: dict = 
         raise HTTPException(status_code=400, detail=f"Invalid stage: {updates['stage']}")
     if "estimated_close_date" in updates and isinstance(updates["estimated_close_date"], date):
         updates["estimated_close_date"] = updates["estimated_close_date"].isoformat()
+
+    # Fetch current stage before update for transition logging
+    from_stage = None
+    if "stage" in updates:
+        try:
+            current = sb.table("pipeline_opportunities").select("stage").eq("id", opp_id).eq("is_deleted", False).execute()
+            if current.data:
+                from_stage = current.data[0]["stage"]
+        except Exception:
+            pass
+
     result = sb.table("pipeline_opportunities").update(updates).eq("id", opp_id).eq("is_deleted", False).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Opportunity not found")
+
+    # Log stage transition (non-blocking)
+    if "stage" in updates and from_stage and from_stage != updates["stage"]:
+        try:
+            sb.table("pipeline_stage_transitions").insert({
+                "opportunity_id": opp_id,
+                "from_stage": from_stage,
+                "to_stage": updates["stage"],
+                "transitioned_by": user.get("sub"),
+            }).execute()
+        except Exception as e:
+            logger.warning(f"Stage transition log failed (non-blocking): {e}")
+
     return result.data[0]
 
 
@@ -1460,6 +1495,20 @@ async def pipeline_stats(user: dict = Depends(verify_partner_auth)):
     referral_won = sum(1 for r in referral_opps.data if r["stage"] == "won")
     referral_rate = (referral_won / referral_total * 100) if referral_total > 0 else 0
 
+    # Tier distribution (contacts)
+    tier_contacts = (
+        sb.table("pipeline_contacts")
+        .select("lead_tier")
+        .eq("is_deleted", False)
+        .not_.is_("lead_tier", "null")
+        .execute()
+    )
+    tier_distribution = {"tier_1": 0, "tier_2": 0, "tier_3": 0}
+    for c in tier_contacts.data:
+        tier = c.get("lead_tier")
+        if tier in tier_distribution:
+            tier_distribution[tier] += 1
+
     return {
         "stage_counts": stage_counts,
         "total_pipeline_value": total_value,
@@ -1474,4 +1523,5 @@ async def pipeline_stats(user: dict = Depends(verify_partner_auth)):
             "conversion_rate": round(referral_rate, 1),
         },
         "by_type": by_type,
+        "tier_distribution": tier_distribution,
     }

@@ -23,6 +23,7 @@ interface Contact {
   is_decision_maker: boolean
   notes: string | null
   source: string | null
+  lead_tier: string | null
   created_at: string
   updated_at: string
   pipeline_companies: { id: string; name: string } | null
@@ -89,6 +90,12 @@ const SOURCE_COLORS: Record<string, string> = {
   inbound: 'bg-crimson/10 text-crimson',
 }
 
+const TIER_BADGE: Record<string, { label: string; color: string }> = {
+  tier_1: { label: 'T1', color: 'bg-gold/20 text-gold' },
+  tier_2: { label: 'T2', color: 'bg-gray-light text-charcoal' },
+  tier_3: { label: 'T3', color: 'bg-gray-light/60 text-gray-warm' },
+}
+
 const ACTIVITY_TYPE_ICONS: Record<string, string> = {
   video_call: 'M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z',
   phone_call: 'M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z',
@@ -128,6 +135,7 @@ export default function PipelineContacts() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
+  const [tierFilter, setTierFilter] = useState<string>('all')
   const [showAddModal, setShowAddModal] = useState(false)
   const [detailId, setDetailId] = useState<string | null>(null)
 
@@ -144,14 +152,15 @@ export default function PipelineContacts() {
       .finally(() => setLoading(false))
   }, [])
 
-  const filtered = search
-    ? contacts.filter(c =>
-        c.name.toLowerCase().includes(search.toLowerCase()) ||
-        (c.email || '').toLowerCase().includes(search.toLowerCase()) ||
-        (c.pipeline_companies?.name || '').toLowerCase().includes(search.toLowerCase()) ||
-        (c.title || '').toLowerCase().includes(search.toLowerCase())
-      )
-    : contacts
+  const filtered = contacts
+    .filter(c => tierFilter === 'all' || c.lead_tier === tierFilter || (tierFilter === 'unscored' && !c.lead_tier))
+    .filter(c =>
+      !search ||
+      c.name.toLowerCase().includes(search.toLowerCase()) ||
+      (c.email || '').toLowerCase().includes(search.toLowerCase()) ||
+      (c.pipeline_companies?.name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (c.title || '').toLowerCase().includes(search.toLowerCase())
+    )
 
   async function handleAdd(data: Record<string, unknown>) {
     try {
@@ -216,6 +225,17 @@ export default function PipelineContacts() {
               className="pl-9 pr-4 py-2 rounded-lg border border-gray-light bg-white text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-teal/30 w-56"
             />
           </div>
+          <select
+            value={tierFilter}
+            onChange={e => setTierFilter(e.target.value)}
+            className="px-3 py-2 rounded-lg border border-gray-light bg-white text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-teal/30"
+          >
+            <option value="all">All Tiers</option>
+            <option value="tier_1">Tier 1</option>
+            <option value="tier_2">Tier 2</option>
+            <option value="tier_3">Tier 3</option>
+            <option value="unscored">Unscored</option>
+          </select>
           <button
             onClick={() => setShowAddModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-crimson text-white text-sm font-semibold rounded-lg hover:bg-crimson/90 transition-colors"
@@ -292,6 +312,11 @@ export default function PipelineContacts() {
                             {contact.name}
                             {contact.is_decision_maker && (
                               <span className="ml-1.5 inline-block px-1.5 py-0.5 bg-gold/20 text-gold text-xs font-semibold rounded">DM</span>
+                            )}
+                            {contact.lead_tier && TIER_BADGE[contact.lead_tier] && (
+                              <span className={`ml-1.5 inline-block px-1.5 py-0.5 text-xs font-semibold rounded ${TIER_BADGE[contact.lead_tier].color}`}>
+                                {TIER_BADGE[contact.lead_tier].label}
+                              </span>
                             )}
                           </p>
                         </div>
@@ -371,6 +396,7 @@ function AddContactModal({
   const [linkedinUrl, setLinkedinUrl] = useState('')
   const [isDecisionMaker, setIsDecisionMaker] = useState(false)
   const [source, setSource] = useState('')
+  const [leadTier, setLeadTier] = useState('')
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -389,6 +415,7 @@ function AddContactModal({
     if (linkedinUrl) data.linkedin_url = linkedinUrl
     if (isDecisionMaker) data.is_decision_maker = true
     if (source) data.source = source
+    if (leadTier) data.lead_tier = leadTier
     if (notes) data.notes = notes
     await onSubmit(data)
     setSubmitting(false)
@@ -522,17 +549,30 @@ function AddContactModal({
                 <option value="inbound">Inbound</option>
               </select>
             </div>
-            <div className="flex items-end pb-1">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isDecisionMaker}
-                  onChange={e => setIsDecisionMaker(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-light text-teal focus:ring-teal/30"
-                />
-                <span className="text-sm font-medium text-charcoal">Decision Maker</span>
-              </label>
+            <div>
+              <label className="block text-sm font-semibold text-charcoal mb-1.5">Lead Tier</label>
+              <select
+                value={leadTier}
+                onChange={e => setLeadTier(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+              >
+                <option value="">No tier</option>
+                <option value="tier_1">Tier 1 — Would take your call</option>
+                <option value="tier_2">Tier 2 — Knows your name</option>
+                <option value="tier_3">Tier 3 — Weaker ties</option>
+              </select>
             </div>
+          </div>
+          <div className="flex items-center">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isDecisionMaker}
+                onChange={e => setIsDecisionMaker(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-light text-teal focus:ring-teal/30"
+              />
+              <span className="text-sm font-medium text-charcoal">Decision Maker</span>
+            </label>
           </div>
           <div>
             <label className="block text-sm font-semibold text-charcoal mb-1.5">Notes</label>
@@ -601,6 +641,7 @@ function ContactSlideOver({
   const [editLinkedinUrl, setEditLinkedinUrl] = useState('')
   const [editIsDecisionMaker, setEditIsDecisionMaker] = useState(false)
   const [editSource, setEditSource] = useState('')
+  const [editLeadTier, setEditLeadTier] = useState('')
   const [editNotes, setEditNotes] = useState('')
 
   const filteredCompanies = editCompanySearch.length > 0
@@ -620,6 +661,7 @@ function ContactSlideOver({
         setEditLinkedinUrl(data.linkedin_url || '')
         setEditIsDecisionMaker(data.is_decision_maker)
         setEditSource(data.source || '')
+        setEditLeadTier(data.lead_tier || '')
         setEditNotes(data.notes || '')
       })
       .catch(() => {})
@@ -638,6 +680,7 @@ function ContactSlideOver({
     if (editLinkedinUrl !== (detail.linkedin_url || '')) updates.linkedin_url = editLinkedinUrl || null
     if (editIsDecisionMaker !== detail.is_decision_maker) updates.is_decision_maker = editIsDecisionMaker
     if (editSource !== (detail.source || '')) updates.source = editSource || null
+    if (editLeadTier !== (detail.lead_tier || '')) updates.lead_tier = editLeadTier || null
     if (editNotes !== (detail.notes || '')) updates.notes = editNotes || null
 
     if (Object.keys(updates).length > 0) {
@@ -762,17 +805,26 @@ function ContactSlideOver({
                         <option value="inbound">Inbound</option>
                       </select>
                     </div>
-                    <div className="flex items-end pb-1">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={editIsDecisionMaker}
-                          onChange={e => setEditIsDecisionMaker(e.target.checked)}
-                          className="w-4 h-4 rounded border-gray-light text-teal focus:ring-teal/30"
-                        />
-                        <span className="text-sm font-medium text-charcoal">Decision Maker</span>
-                      </label>
+                    <div>
+                      <label className="block text-sm font-semibold text-charcoal mb-1.5">Lead Tier</label>
+                      <select value={editLeadTier} onChange={e => setEditLeadTier(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal">
+                        <option value="">No tier</option>
+                        <option value="tier_1">Tier 1 — Would take your call</option>
+                        <option value="tier_2">Tier 2 — Knows your name</option>
+                        <option value="tier_3">Tier 3 — Weaker ties</option>
+                      </select>
                     </div>
+                  </div>
+                  <div className="flex items-center">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editIsDecisionMaker}
+                        onChange={e => setEditIsDecisionMaker(e.target.checked)}
+                        className="w-4 h-4 rounded border-gray-light text-teal focus:ring-teal/30"
+                      />
+                      <span className="text-sm font-medium text-charcoal">Decision Maker</span>
+                    </label>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-charcoal mb-1.5">Notes</label>
@@ -809,6 +861,11 @@ function ContactSlideOver({
                         {detail.name}
                         {detail.is_decision_maker && (
                           <span className="ml-2 inline-block px-2 py-0.5 bg-gold/20 text-gold text-xs font-semibold rounded">Decision Maker</span>
+                        )}
+                        {detail.lead_tier && TIER_BADGE[detail.lead_tier] && (
+                          <span className={`ml-2 inline-block px-2 py-0.5 text-xs font-semibold rounded ${TIER_BADGE[detail.lead_tier].color}`}>
+                            {TIER_BADGE[detail.lead_tier].label}
+                          </span>
                         )}
                       </h3>
                       {detail.title && <p className="text-sm text-gray-warm">{detail.title}</p>}

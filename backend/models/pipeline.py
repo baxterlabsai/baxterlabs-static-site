@@ -19,6 +19,7 @@ class CompanyCreate(BaseModel):
     notes: Optional[str] = None
     source: Optional[str] = None
     company_type: Optional[str] = "prospect"
+    lead_score: Optional[int] = None
 
 
 class CompanyUpdate(BaseModel):
@@ -31,6 +32,7 @@ class CompanyUpdate(BaseModel):
     notes: Optional[str] = None
     source: Optional[str] = None
     company_type: Optional[str] = None
+    lead_score: Optional[int] = None
 
 
 # ---------------------------------------------------------------------------
@@ -47,6 +49,7 @@ class ContactCreate(BaseModel):
     is_decision_maker: bool = False
     notes: Optional[str] = None
     source: Optional[str] = None
+    lead_tier: Optional[str] = None
 
 
 class ContactUpdate(BaseModel):
@@ -59,6 +62,7 @@ class ContactUpdate(BaseModel):
     is_decision_maker: Optional[bool] = None
     notes: Optional[str] = None
     source: Optional[str] = None
+    lead_tier: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
