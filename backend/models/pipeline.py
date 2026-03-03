@@ -47,6 +47,7 @@ class ContactCreate(BaseModel):
     phone: Optional[str] = None
     linkedin_url: Optional[str] = None
     is_decision_maker: bool = False
+    is_connector: bool = False
     notes: Optional[str] = None
     source: Optional[str] = None
     lead_tier: Optional[str] = None
@@ -60,6 +61,7 @@ class ContactUpdate(BaseModel):
     phone: Optional[str] = None
     linkedin_url: Optional[str] = None
     is_decision_maker: Optional[bool] = None
+    is_connector: Optional[bool] = None
     notes: Optional[str] = None
     source: Optional[str] = None
     lead_tier: Optional[str] = None

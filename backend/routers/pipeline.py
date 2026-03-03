@@ -144,6 +144,7 @@ async def list_contacts(
     search: Optional[str] = Query(None),
     company_id: Optional[str] = Query(None),
     lead_tier: Optional[str] = Query(None),
+    is_connector: Optional[bool] = Query(None),
     user: dict = Depends(verify_partner_auth),
 ):
     sb = get_supabase()
@@ -154,6 +155,8 @@ async def list_contacts(
         query = query.eq("company_id", company_id)
     if lead_tier:
         query = query.eq("lead_tier", lead_tier)
+    if is_connector is not None:
+        query = query.eq("is_connector", is_connector)
     result = query.order("created_at", desc=True).execute()
     return {"contacts": result.data, "count": len(result.data)}
 

@@ -21,7 +21,13 @@ interface Contact {
   name: string
   title: string | null
   email: string | null
+  phone: string | null
+  linkedin_url: string | null
   company_id: string | null
+  is_connector: boolean
+  notes: string | null
+  pipeline_companies: { id: string; name: string } | null
+  created_at: string
 }
 
 interface Opportunity {
@@ -169,8 +175,12 @@ export default function PipelineBoard() {
   const [dormantExpanded, setDormantExpanded] = useState(false)
   const [typeFilter, setTypeFilter] = useState<'prospect' | 'partner' | 'connector' | 'all'>('prospect')
 
+  const [connectorContacts, setConnectorContacts] = useState<Contact[]>([])
+  const [connectorLoading, setConnectorLoading] = useState(false)
+
   // Modals
   const [showQuickAdd, setShowQuickAdd] = useState(false)
+  const [showAddConnector, setShowAddConnector] = useState(false)
   const [showLossReason, setShowLossReason] = useState<string | null>(null) // opp id
   const [showConvertConfirm, setShowConvertConfirm] = useState<string | null>(null)
   const [detailOppId, setDetailOppId] = useState<string | null>(null)
@@ -195,6 +205,16 @@ export default function PipelineBoard() {
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
   }, [])
+
+  // Fetch connector contacts when tab activates
+  useEffect(() => {
+    if (typeFilter !== 'connector') return
+    setConnectorLoading(true)
+    apiGet<{ contacts: Contact[] }>('/api/pipeline/contacts?is_connector=true')
+      .then(data => setConnectorContacts(data.contacts))
+      .catch(() => {})
+      .finally(() => setConnectorLoading(false))
+  }, [typeFilter])
 
   // Close stage menu on outside click
   useEffect(() => {
@@ -496,44 +516,75 @@ export default function PipelineBoard() {
         </div>
       )}
 
-      {/* Connector list view */}
+      {/* Connector list view — contacts with is_connector flag */}
       {typeFilter === 'connector' ? (
-        <div className="bg-white rounded-lg border border-gray-light overflow-hidden">
-          {typeFiltered.length === 0 ? (
-            <div className="p-12 text-center">
-              <p className="text-sm text-gray-warm">No connector companies yet</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-light bg-ivory/50">
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-warm uppercase tracking-wider">Company</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-warm uppercase tracking-wider hidden sm:table-cell">Contact</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-warm uppercase tracking-wider hidden md:table-cell">Notes</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-warm uppercase tracking-wider">Added</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-light">
-                  {typeFiltered.map(opp => (
-                    <tr
-                      key={opp.id}
-                      onClick={() => setDetailOppId(opp.id)}
-                      className="hover:bg-ivory/50 cursor-pointer transition-colors"
-                    >
-                      <td className="px-4 py-3">
-                        <p className="text-sm font-semibold text-charcoal">{opp.pipeline_companies?.name || 'Unknown'}</p>
-                        <p className="text-xs text-gray-warm">{opp.title}</p>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-charcoal hidden sm:table-cell">{opp.pipeline_contacts?.name || '—'}</td>
-                      <td className="px-4 py-3 text-sm text-charcoal hidden md:table-cell truncate max-w-[200px]">{opp.notes || '—'}</td>
-                      <td className="px-4 py-3 text-xs text-gray-warm">{timeAgo(opp.created_at)}</td>
+        <div>
+          <div className="flex items-center justify-end mb-3">
+            <button
+              onClick={() => setShowAddConnector(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-crimson text-white text-sm font-semibold rounded-lg hover:bg-crimson/90 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              Add Connector
+            </button>
+          </div>
+          <div className="bg-white rounded-lg border border-gray-light overflow-hidden">
+            {connectorLoading ? (
+              <div className="p-12 flex justify-center">
+                <div className="animate-spin w-6 h-6 border-2 border-crimson border-t-transparent rounded-full" />
+              </div>
+            ) : connectorContacts.length === 0 ? (
+              <div className="p-12 text-center">
+                <p className="text-sm text-gray-warm">No connectors yet. Add individuals who can make introductions.</p>
+                <button
+                  onClick={() => setShowAddConnector(true)}
+                  className="text-teal text-sm font-semibold hover:underline mt-2"
+                >
+                  Add Connector
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-light bg-ivory/50">
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-warm uppercase tracking-wider">Name</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-warm uppercase tracking-wider hidden sm:table-cell">Company</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-warm uppercase tracking-wider hidden md:table-cell">Contact Info</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-warm uppercase tracking-wider hidden lg:table-cell">Notes</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-warm uppercase tracking-wider">Added</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody className="divide-y divide-gray-light">
+                    {connectorContacts.map(c => (
+                      <tr key={c.id} className="hover:bg-ivory/50 transition-colors">
+                        <td className="px-4 py-3">
+                          <p className="text-sm font-semibold text-charcoal">{c.name}</p>
+                          {c.title && <p className="text-xs text-gray-warm">{c.title}</p>}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-charcoal hidden sm:table-cell">
+                          {c.pipeline_companies?.name || '—'}
+                        </td>
+                        <td className="px-4 py-3 hidden md:table-cell">
+                          <div className="text-xs text-charcoal space-y-0.5">
+                            {c.email && <p>{c.email}</p>}
+                            {c.phone && <p>{c.phone}</p>}
+                            {c.linkedin_url && <p className="text-teal truncate max-w-[180px]">{c.linkedin_url}</p>}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-charcoal/70 hidden lg:table-cell truncate max-w-[200px]">
+                          {c.notes || '—'}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-warm">{timeAgo(c.created_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       ) : (
         <>
@@ -624,6 +675,25 @@ export default function PipelineBoard() {
           onSubmit={handleQuickAdd}
           onClose={() => setShowQuickAdd(false)}
           typeFilter={typeFilter}
+        />
+      )}
+
+      {/* Add connector modal */}
+      {showAddConnector && (
+        <AddConnectorModal
+          companies={companies}
+          onSubmit={async (data) => {
+            try {
+              await apiPost('/api/pipeline/contacts', data)
+              setShowAddConnector(false)
+              // Refresh connector list
+              const res = await apiGet<{ contacts: Contact[] }>('/api/pipeline/contacts?is_connector=true')
+              setConnectorContacts(res.contacts)
+            } catch (err: any) {
+              setError(err.message)
+            }
+          }}
+          onClose={() => setShowAddConnector(false)}
         />
       )}
 
@@ -1661,5 +1731,185 @@ function SendAgreementModal({
         </form>
       </div>
     </div>
+  )
+}
+
+
+// ---------------------------------------------------------------------------
+// Add Connector Modal
+// ---------------------------------------------------------------------------
+
+function AddConnectorModal({
+  companies,
+  onSubmit,
+  onClose,
+}: {
+  companies: Company[]
+  onSubmit: (data: Record<string, unknown>) => void
+  onClose: () => void
+}) {
+  useEscapeKey(onClose)
+  const [name, setName] = useState('')
+  const [title, setTitle] = useState('')
+  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [linkedinUrl, setLinkedinUrl] = useState('')
+  const [companySearch, setCompanySearch] = useState('')
+  const [selectedCompanyId, setSelectedCompanyId] = useState('')
+  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false)
+  const [notes, setNotes] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  const filteredCompanies = companySearch.length > 0
+    ? companies.filter(c => c.name.toLowerCase().includes(companySearch.toLowerCase()))
+    : companies.slice(0, 10)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setSubmitting(true)
+    const data: Record<string, unknown> = {
+      name,
+      is_connector: true,
+    }
+    if (title) data.title = title
+    if (email) data.email = email
+    if (phone) data.phone = phone
+    if (linkedinUrl) data.linkedin_url = linkedinUrl
+    if (selectedCompanyId) data.company_id = selectedCompanyId
+    if (notes) data.notes = notes
+    await onSubmit(data)
+    setSubmitting(false)
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white w-full max-w-md rounded-lg shadow-lg max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 flex-shrink-0">
+          <h2 className="font-display text-xl font-bold text-charcoal">Add Connector</h2>
+          <button onClick={onClose} className="text-charcoal/50 hover:text-charcoal">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="border-b border-gray-light" />
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
+          <p className="text-xs text-gray-warm">
+            Connectors are individuals who can make introductions — they're tracked as contacts, not companies.
+          </p>
+          <div>
+            <label className="block text-sm font-semibold text-charcoal mb-1.5">Name *</label>
+            <input
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Full name"
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+              required
+              autoFocus
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-semibold text-charcoal mb-1.5">Title</label>
+              <input
+                type="text"
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                placeholder="e.g., VP Sales"
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-charcoal mb-1.5">Phone</label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                placeholder="555-0100"
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-charcoal mb-1.5">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="email@example.com"
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-charcoal mb-1.5">LinkedIn</label>
+            <input
+              type="url"
+              value={linkedinUrl}
+              onChange={e => setLinkedinUrl(e.target.value)}
+              placeholder="https://linkedin.com/in/..."
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+            />
+          </div>
+
+          {/* Company (optional) */}
+          <div className="relative">
+            <label className="block text-sm font-semibold text-charcoal mb-1.5">Company (optional)</label>
+            <input
+              type="text"
+              value={selectedCompanyId ? companies.find(c => c.id === selectedCompanyId)?.name || companySearch : companySearch}
+              onChange={e => { setCompanySearch(e.target.value); setSelectedCompanyId(''); setShowCompanyDropdown(true) }}
+              onFocus={() => setShowCompanyDropdown(true)}
+              placeholder="Type to search..."
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+            />
+            {showCompanyDropdown && filteredCompanies.length > 0 && (
+              <div className="absolute z-10 mt-1 w-full bg-white border border-gray-light rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                {filteredCompanies.map(c => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => { setSelectedCompanyId(c.id); setCompanySearch(c.name); setShowCompanyDropdown(false) }}
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-ivory transition-colors"
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-charcoal mb-1.5">Notes</label>
+            <textarea
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              rows={2}
+              placeholder="How do you know them? What intros can they make?"
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal resize-none"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-semibold text-charcoal border border-gray-light rounded-lg hover:bg-ivory transition-colors">
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting || !name.trim()}
+              className="px-4 py-2 text-sm font-semibold text-white bg-crimson rounded-lg hover:bg-crimson/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {submitting ? (
+                <span className="flex items-center gap-2">
+                  <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                  Creating...
+                </span>
+              ) : 'Add Connector'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body
   )
 }
