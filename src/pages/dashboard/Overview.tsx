@@ -79,6 +79,18 @@ interface DraftActivity {
   pipeline_opportunities: { id: string; title: string } | null
 }
 
+interface PipelineFollowUp {
+  id: string
+  source: 'task' | 'activity'
+  title: string
+  due_date: string | null
+  is_overdue: boolean
+  priority: string
+  contact: { id: string; name: string } | null
+  company: { id: string; name: string } | null
+  opportunity: { id: string; title: string; stage: string } | null
+}
+
 const STATUS_COLORS: Record<string, string> = {
   intake: 'bg-gray-light text-charcoal',
   nda_pending: 'bg-gray-light text-charcoal',
@@ -167,6 +179,8 @@ export default function Overview() {
   const [followUpActionLoading, setFollowUpActionLoading] = useState<string | null>(null)
   const [drafts, setDrafts] = useState<DraftActivity[]>([])
   const [draftActionLoading, setDraftActionLoading] = useState<string | null>(null)
+  const [pipelineFollowUps, setPipelineFollowUps] = useState<PipelineFollowUp[]>([])
+  const [pipelineFollowUpOverdue, setPipelineFollowUpOverdue] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [sortField, setSortField] = useState<SortField>('created')
@@ -180,13 +194,18 @@ export default function Overview() {
       apiGet<RevenueSummary>('/api/invoices/revenue-summary').catch(() => null),
       apiGet<{ follow_ups: FollowUp[] }>('/api/follow-ups?upcoming_only=true').catch(() => null),
       apiGet<{ drafts: DraftActivity[] }>('/api/pipeline/activities/drafts').catch(() => null),
+      apiGet<{ items: PipelineFollowUp[]; overdue_count: number }>('/api/pipeline/follow-up-queue').catch(() => null),
     ])
-      .then(([engData, statsData, revenueData, followUpData, draftsData]) => {
+      .then(([engData, statsData, revenueData, followUpData, draftsData, pipelineFuData]) => {
         setEngagements(engData.engagements)
         if (statsData) setPipelineStats(statsData)
         if (revenueData) setRevenueSummary(revenueData)
         if (followUpData) setFollowUps(followUpData.follow_ups)
         if (draftsData) setDrafts(draftsData.drafts)
+        if (pipelineFuData) {
+          setPipelineFollowUps(pipelineFuData.items)
+          setPipelineFollowUpOverdue(pipelineFuData.overdue_count)
+        }
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
@@ -426,6 +445,77 @@ export default function Overview() {
                 <p className="text-xs text-gray-warm">Invoices</p>
                 <p className="text-lg font-bold text-charcoal">{revenueSummary.invoice_count}</p>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pre-Engagement Follow-Up Queue */}
+      {pipelineFollowUps.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-xl font-bold text-charcoal flex items-center gap-2">
+              Pipeline Follow-Ups
+              <span className="bg-gold text-charcoal text-xs font-bold px-2 py-0.5 rounded-full">{pipelineFollowUps.length}</span>
+              {pipelineFollowUpOverdue > 0 && (
+                <span className="bg-red-soft text-white text-xs font-bold px-2 py-0.5 rounded-full">{pipelineFollowUpOverdue} overdue</span>
+              )}
+            </h2>
+            <Link to="/dashboard/pipeline/tasks" className="text-teal text-sm font-semibold hover:underline flex items-center gap-1">
+              All Tasks
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+              </svg>
+            </Link>
+          </div>
+          <div className="bg-white rounded-lg border border-gray-light overflow-hidden">
+            <div className="divide-y divide-gray-light">
+              {pipelineFollowUps.slice(0, 10).map(item => {
+                const today = new Date()
+                today.setHours(0, 0, 0, 0)
+                const due = item.due_date ? new Date(item.due_date + 'T00:00:00') : null
+                const diffDays = due ? Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) : null
+
+                return (
+                  <div key={`${item.source}-${item.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-ivory/50 transition-colors">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                        item.is_overdue ? 'bg-red-soft' :
+                        item.priority === 'high' ? 'bg-gold' :
+                        'bg-teal'
+                      }`} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-charcoal truncate">{item.title}</p>
+                        <div className="flex items-center gap-2 text-xs text-gray-warm">
+                          {item.contact?.name && <span>{item.contact.name}</span>}
+                          {item.contact?.name && item.company?.name && <span>&middot;</span>}
+                          {item.company?.name && <span>{item.company.name}</span>}
+                          {item.opportunity && (
+                            <>
+                              <span>&middot;</span>
+                              <span className="text-teal">{item.opportunity.stage.replace(/_/g, ' ')}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                      <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                        item.source === 'task' ? 'bg-teal/10 text-teal' : 'bg-gold/10 text-charcoal'
+                      }`}>
+                        {item.source === 'task' ? 'Task' : 'Follow-up'}
+                      </span>
+                      {diffDays !== null && (
+                        <span className={`text-xs font-medium whitespace-nowrap ${
+                          item.is_overdue ? 'text-red-soft' : diffDays <= 2 ? 'text-gold' : 'text-gray-warm'
+                        }`}>
+                          {item.is_overdue ? `${Math.abs(diffDays)}d overdue` : diffDays === 0 ? 'Today' : `${diffDays}d`}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>

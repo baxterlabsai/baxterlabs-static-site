@@ -1563,6 +1563,93 @@ async def pipeline_stats(user: dict = Depends(verify_partner_auth)):
 
 
 # ==========================================================================
+# Pre-Engagement Follow-Up Queue
+# ==========================================================================
+
+PRE_ENGAGEMENT_STAGES = {
+    "identified", "contacted", "discovery_scheduled", "nda_sent",
+    "nda_signed", "discovery_complete", "negotiation", "agreement_sent",
+    "partner_identified", "partner_researched", "partner_outreach",
+    "relationship_building",
+}
+
+
+@router.get("/follow-up-queue")
+async def pipeline_follow_up_queue(
+    user: dict = Depends(verify_partner_auth),
+):
+    """Return pipeline follow-ups: pending tasks and activities with next_action_date."""
+    sb = get_supabase()
+    today = date.today().isoformat()
+    horizon = (date.today() + timedelta(days=14)).isoformat()
+
+    # Pending tasks due within 14 days or overdue
+    tasks_result = (
+        sb.table("pipeline_tasks")
+        .select("*, pipeline_contacts(id, name), pipeline_opportunities(id, title, stage, pipeline_companies(id, name))")
+        .eq("status", "pending")
+        .lte("due_date", horizon)
+        .order("due_date")
+        .execute()
+    )
+
+    # Activities with next_action_date due within 14 days or overdue
+    acts_result = (
+        sb.table("pipeline_activities")
+        .select("id, subject, next_action, next_action_date, type, pipeline_contacts(id, name), pipeline_companies(id, name), pipeline_opportunities(id, title, stage)")
+        .eq("is_deleted", False)
+        .not_.is_("next_action_date", "null")
+        .not_.is_("next_action", "null")
+        .lte("next_action_date", horizon)
+        .order("next_action_date")
+        .execute()
+    )
+
+    items: List[Dict[str, Any]] = []
+
+    for t in tasks_result.data:
+        due = t.get("due_date")
+        is_overdue = due and due < today
+        opp = t.get("pipeline_opportunities")
+        items.append({
+            "id": t["id"],
+            "source": "task",
+            "title": t["title"],
+            "due_date": due,
+            "is_overdue": is_overdue,
+            "priority": t.get("priority", "normal"),
+            "contact": t.get("pipeline_contacts"),
+            "company": opp.get("pipeline_companies") if opp else None,
+            "opportunity": {"id": opp["id"], "title": opp["title"], "stage": opp["stage"]} if opp else None,
+        })
+
+    for a in acts_result.data:
+        due = a.get("next_action_date")
+        is_overdue = due and due < today
+        items.append({
+            "id": a["id"],
+            "source": "activity",
+            "title": a.get("next_action") or a["subject"],
+            "due_date": due,
+            "is_overdue": is_overdue,
+            "priority": "normal",
+            "contact": a.get("pipeline_contacts"),
+            "company": a.get("pipeline_companies"),
+            "opportunity": a.get("pipeline_opportunities"),
+        })
+
+    # Sort by due_date, overdue first
+    items.sort(key=lambda x: (not x["is_overdue"], x["due_date"] or "9999-12-31"))
+
+    overdue_count = sum(1 for i in items if i["is_overdue"])
+    return {
+        "items": items,
+        "count": len(items),
+        "overdue_count": overdue_count,
+    }
+
+
+# ==========================================================================
 # Bulk Prospect Import
 # ==========================================================================
 
