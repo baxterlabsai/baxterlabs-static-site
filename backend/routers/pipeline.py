@@ -246,7 +246,7 @@ async def list_opportunities(
 
     query = (
         sb.table("pipeline_opportunities")
-        .select("*, pipeline_companies(id, name), pipeline_contacts(id, name)")
+        .select("*, pipeline_companies!pipeline_opportunities_company_id_fkey(id, name), pipeline_contacts!pipeline_opportunities_primary_contact_id_fkey(id, name)")
         .eq("is_deleted", False)
     )
     if stage:
@@ -278,7 +278,7 @@ async def get_opportunity(opp_id: str, user: dict = Depends(verify_partner_auth)
     sb = get_supabase()
     opp = (
         sb.table("pipeline_opportunities")
-        .select("*, pipeline_companies(id, name), pipeline_contacts(id, name)")
+        .select("*, pipeline_companies!pipeline_opportunities_company_id_fkey(id, name), pipeline_contacts!pipeline_opportunities_primary_contact_id_fkey(id, name)")
         .eq("id", opp_id)
         .eq("is_deleted", False)
         .execute()
@@ -1689,7 +1689,7 @@ async def pipeline_follow_up_queue(
     # Pending tasks due within 14 days or overdue
     tasks_result = (
         sb.table("pipeline_tasks")
-        .select("*, pipeline_contacts(id, name), pipeline_opportunities(id, title, stage, pipeline_companies(id, name))")
+        .select("*, pipeline_contacts(id, name), pipeline_opportunities(id, title, stage, pipeline_companies!pipeline_opportunities_company_id_fkey(id, name))")
         .eq("status", "pending")
         .lte("due_date", horizon)
         .order("due_date")
