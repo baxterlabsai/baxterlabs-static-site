@@ -23,16 +23,62 @@ IVORY = "#FAF8F2"
 EMAIL_ACCOUNTING = "accounting@baxterlabs.ai"
 EMAIL_INFO = "info@baxterlabs.ai"
 
-PARTNER_EMAILS = {
-    "George DeVries": "george@baxterlabs.ai",
-    "Alfonso Cordon": "alfonso@baxterlabs.ai",
-}
 DEFAULT_PARTNER_EMAIL = "george@baxterlabs.ai"
 
 
 def get_partner_email(partner_lead: str) -> str:
-    """Resolve partner_lead name to email. Defaults to George."""
-    return PARTNER_EMAILS.get(partner_lead, DEFAULT_PARTNER_EMAIL)
+    """Look up partner email from pipeline_partners table.
+
+    Falls back to george@baxterlabs.ai if not found or on error.
+    """
+    try:
+        from services.supabase_client import get_supabase
+        sb = get_supabase()
+        result = (
+            sb.table("pipeline_partners")
+            .select("email")
+            .eq("name", partner_lead)
+            .eq("is_active", True)
+            .limit(1)
+            .execute()
+        )
+        if result.data:
+            return result.data[0]["email"]
+    except Exception as e:
+        logger.warning(f"Failed to look up partner email for '{partner_lead}': {e}")
+    return DEFAULT_PARTNER_EMAIL
+
+
+def get_partner_info(partner_name: str) -> dict:
+    """Look up full partner record from pipeline_partners table.
+
+    Returns dict with name, email, phone, title, calendly_url, linkedin_url.
+    Falls back to minimal George DeVries record if not found.
+    """
+    try:
+        from services.supabase_client import get_supabase
+        sb = get_supabase()
+        result = (
+            sb.table("pipeline_partners")
+            .select("name, email, phone, title, calendly_url, linkedin_url, signature_block")
+            .eq("name", partner_name)
+            .eq("is_active", True)
+            .limit(1)
+            .execute()
+        )
+        if result.data:
+            return result.data[0]
+    except Exception as e:
+        logger.warning(f"Failed to look up partner info for '{partner_name}': {e}")
+    return {
+        "name": "George DeVries",
+        "email": DEFAULT_PARTNER_EMAIL,
+        "phone": None,
+        "title": "Managing Partner",
+        "calendly_url": None,
+        "linkedin_url": None,
+        "signature_block": None,
+    }
 
 
 class EmailService:

@@ -2124,3 +2124,43 @@ async def download_discovery_transcript(
     except Exception as e:
         logger.error(f"Failed to create signed URL for transcript: {e}")
         raise HTTPException(status_code=500, detail="Failed to generate download link")
+
+
+# ---------------------------------------------------------------------------
+# Partners
+# ---------------------------------------------------------------------------
+
+@router.get("/partners")
+async def list_partners(
+    active_only: bool = True,
+    user: dict = Depends(verify_partner_auth),
+):
+    """List all partners. Used by outreach plugin for sender info."""
+    sb = get_supabase()
+    query = sb.table("pipeline_partners").select(
+        "id, name, email, phone, title, calendly_url, linkedin_url, signature_block, is_active"
+    )
+    if active_only:
+        query = query.eq("is_active", True)
+    result = query.order("name").execute()
+    return result.data
+
+
+@router.get("/partners/by-name/{name}")
+async def get_partner_by_name(
+    name: str,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Look up a single partner by name. Used for outreach signature assembly."""
+    sb = get_supabase()
+    result = (
+        sb.table("pipeline_partners")
+        .select("id, name, email, phone, title, calendly_url, linkedin_url, signature_block")
+        .eq("name", name)
+        .eq("is_active", True)
+        .limit(1)
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail=f"Partner '{name}' not found")
+    return result.data[0]
