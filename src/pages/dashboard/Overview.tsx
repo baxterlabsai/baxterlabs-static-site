@@ -79,6 +79,20 @@ interface DraftActivity {
   pipeline_opportunities: { id: string; title: string } | null
 }
 
+interface PipelineAnalytics {
+  weekly_scorecard: {
+    total_activities: number
+    by_type: Record<string, number>
+    by_channel: Record<string, number>
+    new_companies: number
+    new_contacts: number
+    stage_transitions: number
+  }
+  stage_funnel: Record<string, { count: number; value: number }>
+  transition_summary: Record<string, number>
+  activity_trends: Record<string, number>
+}
+
 interface PipelineFollowUp {
   id: string
   source: 'task' | 'activity'
@@ -181,6 +195,7 @@ export default function Overview() {
   const [draftActionLoading, setDraftActionLoading] = useState<string | null>(null)
   const [pipelineFollowUps, setPipelineFollowUps] = useState<PipelineFollowUp[]>([])
   const [pipelineFollowUpOverdue, setPipelineFollowUpOverdue] = useState(0)
+  const [analytics, setAnalytics] = useState<PipelineAnalytics | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [sortField, setSortField] = useState<SortField>('created')
@@ -195,8 +210,9 @@ export default function Overview() {
       apiGet<{ follow_ups: FollowUp[] }>('/api/follow-ups?upcoming_only=true').catch(() => null),
       apiGet<{ drafts: DraftActivity[] }>('/api/pipeline/activities/drafts').catch(() => null),
       apiGet<{ items: PipelineFollowUp[]; overdue_count: number }>('/api/pipeline/follow-up-queue').catch(() => null),
+      apiGet<PipelineAnalytics>('/api/pipeline/analytics').catch(() => null),
     ])
-      .then(([engData, statsData, revenueData, followUpData, draftsData, pipelineFuData]) => {
+      .then(([engData, statsData, revenueData, followUpData, draftsData, pipelineFuData, analyticsData]) => {
         setEngagements(engData.engagements)
         if (statsData) setPipelineStats(statsData)
         if (revenueData) setRevenueSummary(revenueData)
@@ -206,6 +222,7 @@ export default function Overview() {
           setPipelineFollowUps(pipelineFuData.items)
           setPipelineFollowUpOverdue(pipelineFuData.overdue_count)
         }
+        if (analyticsData) setAnalytics(analyticsData)
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
@@ -325,6 +342,103 @@ export default function Overview() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Pipeline Analytics — Weekly Scorecard */}
+      {analytics && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-xl font-bold text-charcoal">Weekly Scorecard</h2>
+            <span className="text-xs text-gray-warm">Last 7 days</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="bg-white rounded-lg border border-gray-light p-4 text-center">
+              <div className="text-2xl font-bold text-teal">{analytics.weekly_scorecard.total_activities}</div>
+              <div className="text-xs text-gray-warm mt-1">Activities</div>
+            </div>
+            <div className="bg-white rounded-lg border border-gray-light p-4 text-center">
+              <div className="text-2xl font-bold text-charcoal">{analytics.weekly_scorecard.new_companies}</div>
+              <div className="text-xs text-gray-warm mt-1">New Companies</div>
+            </div>
+            <div className="bg-white rounded-lg border border-gray-light p-4 text-center">
+              <div className="text-2xl font-bold text-charcoal">{analytics.weekly_scorecard.new_contacts}</div>
+              <div className="text-xs text-gray-warm mt-1">New Contacts</div>
+            </div>
+            <div className="bg-white rounded-lg border border-gray-light p-4 text-center">
+              <div className="text-2xl font-bold text-gold">{analytics.weekly_scorecard.stage_transitions}</div>
+              <div className="text-xs text-gray-warm mt-1">Stage Moves</div>
+            </div>
+            {Object.keys(analytics.weekly_scorecard.by_channel).length > 0 && (
+              <div className="bg-white rounded-lg border border-gray-light p-4 col-span-2">
+                <div className="text-xs text-gray-warm mb-2">By Channel</div>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(analytics.weekly_scorecard.by_channel).map(([ch, count]) => (
+                    <span key={ch} className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-teal/10 text-teal">
+                      {ch}: {count}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Stage Funnel */}
+          {Object.keys(analytics.stage_funnel).length > 0 && (
+            <div className="mt-4 bg-white rounded-lg border border-gray-light p-4">
+              <p className="text-sm font-semibold text-charcoal mb-3">Stage Funnel</p>
+              <div className="space-y-2">
+                {['identified', 'contacted', 'discovery_scheduled', 'nda_sent', 'nda_signed', 'discovery_complete', 'negotiation', 'agreement_sent', 'won']
+                  .filter(s => analytics.stage_funnel[s])
+                  .map(stage => {
+                    const data = analytics.stage_funnel[stage]
+                    const maxCount = Math.max(...Object.values(analytics.stage_funnel).map(d => d.count), 1)
+                    const pct = (data.count / maxCount) * 100
+                    return (
+                      <div key={stage} className="flex items-center gap-3">
+                        <span className="text-xs text-charcoal w-28 text-right truncate">{stage.replace(/_/g, ' ')}</span>
+                        <div className="flex-1 bg-ivory rounded-full h-5 overflow-hidden">
+                          <div
+                            className="h-full bg-teal/30 rounded-full flex items-center justify-end pr-2 transition-all"
+                            style={{ width: `${Math.max(pct, 8)}%` }}
+                          >
+                            <span className="text-[10px] font-bold text-teal">{data.count}</span>
+                          </div>
+                        </div>
+                        <span className="text-xs text-gray-warm w-20 text-right">
+                          ${Math.round(data.value).toLocaleString()}
+                        </span>
+                      </div>
+                    )
+                  })}
+              </div>
+            </div>
+          )}
+
+          {/* Activity Trends (sparkline-style) */}
+          {Object.keys(analytics.activity_trends).length > 0 && (
+            <div className="mt-4 bg-white rounded-lg border border-gray-light p-4">
+              <p className="text-sm font-semibold text-charcoal mb-3">Activity Trend (30 days)</p>
+              <div className="flex items-end gap-px h-16">
+                {(() => {
+                  const entries = Object.entries(analytics.activity_trends).sort(([a], [b]) => a.localeCompare(b))
+                  const max = Math.max(...entries.map(([, v]) => v), 1)
+                  return entries.map(([day, count]) => (
+                    <div
+                      key={day}
+                      className="flex-1 bg-teal/40 rounded-t hover:bg-teal/60 transition-colors cursor-default"
+                      style={{ height: `${(count / max) * 100}%`, minHeight: '2px' }}
+                      title={`${day}: ${count} activities`}
+                    />
+                  ))
+                })()}
+              </div>
+              <div className="flex justify-between mt-1">
+                <span className="text-[10px] text-gray-warm">{Object.keys(analytics.activity_trends).sort()[0]}</span>
+                <span className="text-[10px] text-gray-warm">{Object.keys(analytics.activity_trends).sort().slice(-1)[0]}</span>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

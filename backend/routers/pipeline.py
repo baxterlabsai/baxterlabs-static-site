@@ -1565,6 +1565,106 @@ async def pipeline_stats(user: dict = Depends(verify_partner_auth)):
     }
 
 
+@router.get("/analytics")
+async def pipeline_analytics(
+    user: dict = Depends(verify_partner_auth),
+):
+    """Return pipeline analytics: weekly scorecard, stage funnel, activity trends."""
+    sb = get_supabase()
+    today = date.today()
+    week_ago = today - timedelta(days=7)
+    month_ago = today - timedelta(days=30)
+
+    # Weekly scorecard — activities this week
+    week_acts = (
+        sb.table("pipeline_activities")
+        .select("type, outreach_channel")
+        .eq("is_deleted", False)
+        .gte("occurred_at", week_ago.isoformat())
+        .execute()
+    )
+    weekly_activity_count = len(week_acts.data)
+    weekly_by_type: Dict[str, int] = {}
+    weekly_by_channel: Dict[str, int] = {}
+    for a in week_acts.data:
+        t = a.get("type", "other")
+        weekly_by_type[t] = weekly_by_type.get(t, 0) + 1
+        ch = a.get("outreach_channel")
+        if ch:
+            weekly_by_channel[ch] = weekly_by_channel.get(ch, 0) + 1
+
+    # New companies & contacts this week
+    week_companies = (
+        sb.table("pipeline_companies")
+        .select("id", count="exact")
+        .eq("is_deleted", False)
+        .gte("created_at", week_ago.isoformat())
+        .execute()
+    )
+    week_contacts = (
+        sb.table("pipeline_contacts")
+        .select("id", count="exact")
+        .eq("is_deleted", False)
+        .gte("created_at", week_ago.isoformat())
+        .execute()
+    )
+
+    # Stage funnel — current opportunity counts by stage
+    all_opps = (
+        sb.table("pipeline_opportunities")
+        .select("stage, estimated_value")
+        .eq("is_deleted", False)
+        .execute()
+    )
+    funnel: Dict[str, dict] = {}
+    for opp in all_opps.data:
+        stage = opp["stage"]
+        if stage not in funnel:
+            funnel[stage] = {"count": 0, "value": 0.0}
+        funnel[stage]["count"] += 1
+        funnel[stage]["value"] += float(opp.get("estimated_value") or 0)
+
+    # Stage transitions this week (from pipeline_stage_transitions)
+    transitions_this_week = (
+        sb.table("pipeline_stage_transitions")
+        .select("from_stage, to_stage")
+        .gte("transitioned_at", week_ago.isoformat())
+        .execute()
+    )
+    transition_summary: Dict[str, int] = {}
+    for t in transitions_this_week.data:
+        key = f"{t.get('from_stage', '?')} -> {t['to_stage']}"
+        transition_summary[key] = transition_summary.get(key, 0) + 1
+
+    # Activity trends — daily counts for last 30 days
+    month_acts = (
+        sb.table("pipeline_activities")
+        .select("occurred_at, type")
+        .eq("is_deleted", False)
+        .gte("occurred_at", month_ago.isoformat())
+        .order("occurred_at")
+        .execute()
+    )
+    daily_counts: Dict[str, int] = {}
+    for a in month_acts.data:
+        day = a["occurred_at"][:10]  # YYYY-MM-DD
+        daily_counts[day] = daily_counts.get(day, 0) + 1
+
+    return {
+        "weekly_scorecard": {
+            "total_activities": weekly_activity_count,
+            "by_type": weekly_by_type,
+            "by_channel": weekly_by_channel,
+            "new_companies": week_companies.count or 0,
+            "new_contacts": week_contacts.count or 0,
+            "stage_transitions": len(transitions_this_week.data),
+        },
+        "stage_funnel": funnel,
+        "transition_summary": transition_summary,
+        "activity_trends": daily_counts,
+    }
+
+
 # ==========================================================================
 # Pre-Engagement Follow-Up Queue
 # ==========================================================================
