@@ -20,6 +20,7 @@ import PipelineContacts from './pages/dashboard/pipeline/Contacts'
 import PipelineActivities from './pages/dashboard/pipeline/Activities'
 import PipelineTasks from './pages/dashboard/pipeline/Tasks'
 import ConversionReview from './pages/dashboard/pipeline/ConversionReview'
+import BulkImport from './pages/dashboard/pipeline/BulkImport'
 import ScheduleDiscovery from './pages/ScheduleDiscovery'
 import Onboard from './pages/Onboard'
 import UploadPortal from './pages/UploadPortal'
@@ -82,6 +83,7 @@ export default function App() {
             <Route path="/dashboard/pipeline/contacts" element={<PipelineContacts />} />
             <Route path="/dashboard/pipeline/activities" element={<PipelineActivities />} />
             <Route path="/dashboard/pipeline/tasks" element={<PipelineTasks />} />
+            <Route path="/dashboard/pipeline/import" element={<BulkImport />} />
             <Route path="/dashboard/pipeline/convert/:opportunityId" element={<ConversionReview />} />
           </Route>
         </Route>

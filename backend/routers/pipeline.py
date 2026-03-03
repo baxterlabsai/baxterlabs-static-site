@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import os
 import re
+import io
+import csv
 import logging
 from datetime import date, datetime, timedelta
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from middleware.auth import verify_partner_auth
 from services.supabase_client import get_supabase, log_activity, create_engagement_folders
 import json
@@ -1524,4 +1526,246 @@ async def pipeline_stats(user: dict = Depends(verify_partner_auth)):
         },
         "by_type": by_type,
         "tier_distribution": tier_distribution,
+    }
+
+
+# ==========================================================================
+# Bulk Prospect Import
+# ==========================================================================
+
+_COMPANY_SUFFIX_RE = re.compile(
+    r",?\s*\b(inc\.?|llc\.?|corp\.?|ltd\.?|co\.?|l\.?p\.?|plc\.?|gmbh)\s*$",
+    re.IGNORECASE,
+)
+
+
+def _normalize_company(name: str) -> str:
+    """Lower-case, strip whitespace, remove common legal suffixes."""
+    return _COMPANY_SUFFIX_RE.sub("", name.strip()).strip().lower()
+
+
+def _extract_domain(url: Optional[str]) -> Optional[str]:
+    if not url:
+        return None
+    url = url.strip().lower()
+    # Strip protocol
+    for prefix in ("https://", "http://", "www."):
+        if url.startswith(prefix):
+            url = url[len(prefix):]
+    return url.split("/")[0] or None
+
+
+CSV_COLUMNS = [
+    "company_name", "website", "industry", "revenue_range",
+    "employee_count", "location",
+    "contact_name", "contact_title", "contact_email",
+    "contact_phone", "contact_linkedin_url",
+    "lead_tier", "is_decision_maker",
+]
+
+
+@router.post("/bulk-import/parse-csv")
+async def parse_csv_for_import(
+    file: UploadFile = File(...),
+    user: dict = Depends(verify_partner_auth),
+) -> Dict[str, Any]:
+    """Parse a CSV file and return grouped preview data for confirmation."""
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(400, "File must be a .csv")
+
+    raw = await file.read()
+    try:
+        text = raw.decode("utf-8-sig")  # handles BOM
+    except UnicodeDecodeError:
+        text = raw.decode("latin-1")
+
+    reader = csv.DictReader(io.StringIO(text))
+    if not reader.fieldnames:
+        raise HTTPException(400, "CSV has no header row")
+
+    # Normalise header names (lowercase, strip spaces)
+    clean_fields = [f.strip().lower().replace(" ", "_") for f in reader.fieldnames]
+
+    if "company_name" not in clean_fields:
+        raise HTTPException(400, "CSV must have a 'company_name' column")
+
+    # Fetch existing companies for dedup
+    sb = get_supabase()
+    existing_companies = (
+        sb.table("pipeline_companies")
+        .select("id, name, website")
+        .eq("is_deleted", False)
+        .execute()
+    )
+    # Build lookup: normalised_name -> company, domain -> company
+    name_lookup: Dict[str, dict] = {}
+    domain_lookup: Dict[str, dict] = {}
+    for c in existing_companies.data:
+        name_lookup[_normalize_company(c["name"])] = c
+        d = _extract_domain(c.get("website"))
+        if d:
+            domain_lookup[d] = c
+
+    # Group rows by company
+    groups: Dict[str, dict] = {}  # group_key -> { company_data, contacts[], existing_id? }
+    warnings: List[str] = []
+    row_count = 0
+
+    for raw_row in reader:
+        row_count += 1
+        # Remap to clean field names
+        row: Dict[str, str] = {}
+        for orig_key, clean_key in zip(reader.fieldnames, clean_fields):
+            row[clean_key] = (raw_row.get(orig_key) or "").strip()
+
+        company_name = row.get("company_name", "").strip()
+        if not company_name:
+            warnings.append(f"Row {row_count}: missing company_name, skipped")
+            continue
+
+        norm_name = _normalize_company(company_name)
+        domain = _extract_domain(row.get("website"))
+
+        # Dedup: check existing DB first, then within-file grouping
+        existing = name_lookup.get(norm_name)
+        if not existing and domain:
+            existing = domain_lookup.get(domain)
+
+        group_key = norm_name
+        if existing:
+            group_key = _normalize_company(existing["name"])
+
+        if group_key not in groups:
+            groups[group_key] = {
+                "company": {
+                    "name": company_name,
+                    "website": row.get("website") or None,
+                    "industry": row.get("industry") or None,
+                    "revenue_range": row.get("revenue_range") or None,
+                    "employee_count": row.get("employee_count") or None,
+                    "location": row.get("location") or None,
+                },
+                "contacts": [],
+                "existing_company_id": existing["id"] if existing else None,
+                "is_duplicate": bool(existing),
+            }
+
+        # Contact (optional — company-only rows have no contact_name)
+        contact_name = row.get("contact_name", "").strip()
+        if contact_name:
+            tier = row.get("lead_tier", "").strip().lower()
+            if tier and tier not in VALID_LEAD_TIERS:
+                warnings.append(f"Row {row_count}: invalid lead_tier '{tier}', cleared")
+                tier = ""
+            dm_raw = row.get("is_decision_maker", "").strip().lower()
+            is_dm = dm_raw in ("true", "yes", "1", "y")
+            groups[group_key]["contacts"].append({
+                "name": contact_name,
+                "title": row.get("contact_title") or None,
+                "email": row.get("contact_email") or None,
+                "phone": row.get("contact_phone") or None,
+                "linkedin_url": row.get("contact_linkedin_url") or None,
+                "lead_tier": tier or None,
+                "is_decision_maker": is_dm,
+            })
+
+    preview = list(groups.values())
+    new_count = sum(1 for g in preview if not g["is_duplicate"])
+    dup_count = sum(1 for g in preview if g["is_duplicate"])
+    contact_count = sum(len(g["contacts"]) for g in preview)
+
+    return {
+        "rows_parsed": row_count,
+        "companies": len(preview),
+        "new_companies": new_count,
+        "duplicate_companies": dup_count,
+        "contacts": contact_count,
+        "warnings": warnings,
+        "preview": preview,
+    }
+
+
+@router.post("/bulk-import")
+async def bulk_import(
+    payload: Dict[str, Any],
+    user: dict = Depends(verify_partner_auth),
+) -> Dict[str, Any]:
+    """Create companies, contacts, and opportunities from validated preview data."""
+    groups: List[dict] = payload.get("groups", [])
+    if not groups:
+        raise HTTPException(400, "No groups to import")
+
+    sb = get_supabase()
+    created_companies = 0
+    created_contacts = 0
+    created_opportunities = 0
+    skipped_duplicates = 0
+    errors: List[str] = []
+
+    for idx, group in enumerate(groups):
+        try:
+            company_data = group.get("company", {})
+            contacts = group.get("contacts", [])
+            existing_id = group.get("existing_company_id")
+
+            # Company
+            if existing_id:
+                company_id = existing_id
+                skipped_duplicates += 1
+            else:
+                company_row = {
+                    "name": company_data["name"],
+                    "website": company_data.get("website"),
+                    "industry": company_data.get("industry"),
+                    "revenue_range": company_data.get("revenue_range"),
+                    "employee_count": company_data.get("employee_count"),
+                    "location": company_data.get("location"),
+                    "company_type": "prospect",
+                    "source": "csv_import",
+                }
+                result = sb.table("pipeline_companies").insert(company_row).execute()
+                company_id = result.data[0]["id"]
+                created_companies += 1
+
+            # Contacts
+            first_contact_id = None
+            for contact in contacts:
+                contact_row = {
+                    "company_id": company_id,
+                    "name": contact["name"],
+                    "title": contact.get("title"),
+                    "email": contact.get("email"),
+                    "phone": contact.get("phone"),
+                    "linkedin_url": contact.get("linkedin_url"),
+                    "lead_tier": contact.get("lead_tier"),
+                    "is_decision_maker": contact.get("is_decision_maker", False),
+                    "source": "csv_import",
+                }
+                c_result = sb.table("pipeline_contacts").insert(contact_row).execute()
+                if first_contact_id is None:
+                    first_contact_id = c_result.data[0]["id"]
+                created_contacts += 1
+
+            # Opportunity (one per company group, only for new companies)
+            if not existing_id:
+                opp_row = {
+                    "company_id": company_id,
+                    "primary_contact_id": first_contact_id,
+                    "title": f"{company_data['name']} — Prospect",
+                    "stage": "identified",
+                }
+                sb.table("pipeline_opportunities").insert(opp_row).execute()
+                created_opportunities += 1
+
+        except Exception as e:
+            company_label = group.get("company", {}).get("name", f"Group {idx + 1}")
+            errors.append(f"{company_label}: {str(e)}")
+            logger.warning(f"Bulk import error for {company_label}: {e}")
+
+    return {
+        "created_companies": created_companies,
+        "created_contacts": created_contacts,
+        "created_opportunities": created_opportunities,
+        "skipped_duplicates": skipped_duplicates,
+        "errors": errors,
     }
