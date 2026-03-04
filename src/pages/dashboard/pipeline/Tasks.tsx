@@ -17,13 +17,6 @@ interface Contact {
   company_id: string | null
 }
 
-interface Opportunity {
-  id: string
-  title: string
-  stage: string
-  pipeline_companies: { id: string; name: string } | null
-}
-
 interface Task {
   id: string
   task_type: string
@@ -187,7 +180,6 @@ export default function PipelineTasks() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
   const [contacts, setContacts] = useState<Contact[]>([])
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -210,16 +202,14 @@ export default function PipelineTasks() {
 
   async function loadData() {
     try {
-      const [taskData, compData, contactData, oppData] = await Promise.all([
+      const [taskData, compData, contactData] = await Promise.all([
         apiGet<{ tasks: Task[] }>('/api/pipeline/tasks'),
         apiGet<{ companies: Company[] }>('/api/pipeline/companies'),
         apiGet<{ contacts: Contact[] }>('/api/pipeline/contacts'),
-        apiGet<{ opportunities: Opportunity[] }>('/api/pipeline/opportunities'),
       ])
       setTasks(taskData.tasks)
       setCompanies(compData.companies)
       setContacts(contactData.contacts)
-      setOpportunities(oppData.opportunities)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load tasks')
     } finally {
@@ -429,7 +419,7 @@ export default function PipelineTasks() {
           title="Add Task"
           companies={companies}
           contacts={contacts}
-          opportunities={opportunities}
+
           onSave={handleAddTask}
           onClose={() => setShowAddModal(false)}
         />
@@ -442,7 +432,7 @@ export default function PipelineTasks() {
           task={editTask}
           companies={companies}
           contacts={contacts}
-          opportunities={opportunities}
+
           showStatus
           onSave={data => handleUpdateTask(editTask.id, data)}
           onClose={() => setEditTask(null)}
@@ -566,12 +556,11 @@ function TaskRow({ task, onToggle, onSnooze, onEdit, onDelete }: {
 // TaskFormModal Component — exported for reuse from Overview cockpit
 // ---------------------------------------------------------------------------
 
-export function TaskFormModal({ title, task, companies, contacts, opportunities, showStatus, onSave, onClose }: {
+export function TaskFormModal({ title, task, companies, contacts, showStatus, onSave, onClose }: {
   title: string
   task?: Task
   companies: Company[]
   contacts: Contact[]
-  opportunities: Opportunity[]
   showStatus?: boolean
   onSave: (data: Record<string, unknown>) => Promise<unknown>
   onClose: () => void

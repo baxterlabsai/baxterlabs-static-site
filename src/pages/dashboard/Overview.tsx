@@ -148,13 +148,6 @@ interface CockpitContact {
   company_id: string | null
 }
 
-interface CockpitOpportunity {
-  id: string
-  title: string
-  stage: string
-  pipeline_companies: { id: string; name: string } | null
-}
-
 const COCKPIT_TYPE_LABELS: Record<string, string> = {
   email: 'Email',
   linkedin_dm: 'LinkedIn DM',
@@ -287,7 +280,6 @@ export default function Overview() {
   const [cockpit, setCockpit] = useState<CockpitData | null>(null)
   const [cockpitCompanies, setCockpitCompanies] = useState<CockpitCompany[]>([])
   const [cockpitContacts, setCockpitContacts] = useState<CockpitContact[]>([])
-  const [cockpitOpportunities, setCockpitOpportunities] = useState<CockpitOpportunity[]>([])
   const [showCockpitAddTask, setShowCockpitAddTask] = useState(false)
   const [cockpitTomorrowOpen, setCockpitTomorrowOpen] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -361,9 +353,8 @@ export default function Overview() {
       apiGet<CockpitData>('/api/pipeline/tasks/cockpit').catch(() => null),
       apiGet<{ companies: CockpitCompany[] }>('/api/pipeline/companies').catch(() => null),
       apiGet<{ contacts: CockpitContact[] }>('/api/pipeline/contacts').catch(() => null),
-      apiGet<{ opportunities: CockpitOpportunity[] }>('/api/pipeline/opportunities').catch(() => null),
     ])
-      .then(([engData, statsData, revenueData, followUpData, draftsData, pipelineFuData, analyticsData, cockpitData, companiesData, contactsData, oppsData]) => {
+      .then(([engData, statsData, revenueData, followUpData, draftsData, pipelineFuData, analyticsData, cockpitData, companiesData, contactsData]) => {
         setEngagements(engData.engagements)
         if (statsData) setPipelineStats(statsData)
         if (revenueData) setRevenueSummary(revenueData)
@@ -377,7 +368,6 @@ export default function Overview() {
         if (cockpitData) setCockpit(cockpitData)
         if (companiesData) setCockpitCompanies(companiesData.companies)
         if (contactsData) setCockpitContacts(contactsData.contacts)
-        if (oppsData) setCockpitOpportunities(oppsData.opportunities)
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
@@ -525,7 +515,6 @@ export default function Overview() {
           title="Add Task"
           companies={cockpitCompanies}
           contacts={cockpitContacts}
-          opportunities={cockpitOpportunities}
           onSave={cockpitAddTask}
           onClose={() => setShowCockpitAddTask(false)}
         />
