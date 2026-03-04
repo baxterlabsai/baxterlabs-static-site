@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { apiGet, apiPatch, apiPut } from '../../lib/api'
+import { apiGet, apiPatch, apiPost, apiPut } from '../../lib/api'
+import { TaskFormModal } from './pipeline/Tasks'
 
 interface Engagement {
   id: string
@@ -105,6 +106,93 @@ interface PipelineFollowUp {
   opportunity: { id: string; title: string; stage: string } | null
 }
 
+interface CockpitTask {
+  id: string
+  task_type: string
+  title: string
+  description: string | null
+  company_id: string | null
+  contact_id: string | null
+  due_date: string | null
+  priority: string
+  status: string
+  pipeline_companies: { id: string; name: string } | null
+  pipeline_contacts: { id: string; name: string; email?: string } | null
+  pipeline_opportunities: { id: string; title: string; stage?: string } | null
+}
+
+interface CockpitData {
+  overdue: CockpitTask[]
+  due_today: CockpitTask[]
+  due_tomorrow: CockpitTask[]
+  due_this_week: CockpitTask[]
+  no_date: CockpitTask[]
+  summary: {
+    overdue_count: number
+    today_count: number
+    tomorrow_count: number
+    week_count: number
+    by_type: Record<string, number>
+  }
+}
+
+interface CockpitCompany {
+  id: string
+  name: string
+}
+
+interface CockpitContact {
+  id: string
+  name: string
+  title: string | null
+  company_id: string | null
+}
+
+interface CockpitOpportunity {
+  id: string
+  title: string
+  stage: string
+  pipeline_companies: { id: string; name: string } | null
+}
+
+const COCKPIT_TYPE_LABELS: Record<string, string> = {
+  email: 'Email',
+  linkedin_dm: 'LinkedIn DM',
+  linkedin_audio: 'LinkedIn Audio',
+  linkedin_comment: 'LinkedIn Comment',
+  linkedin_inmail: 'LinkedIn InMail',
+  phone_warm: 'Warm Call',
+  phone_cold: 'Cold Call',
+  referral_intro: 'Referral Intro',
+  in_person: 'In-Person',
+  conference: 'Conference',
+  video_call: 'Video Call',
+  review_draft: 'Review Draft',
+  prep: 'Prep',
+  follow_up: 'Follow-Up',
+  admin: 'Admin',
+  other: 'Other',
+}
+
+const COCKPIT_TYPE_BADGE: Record<string, string> = {
+  email: 'bg-blue-100 text-blue-700',
+  linkedin_dm: 'bg-blue-100 text-blue-700',
+  linkedin_audio: 'bg-blue-100 text-blue-700',
+  linkedin_comment: 'bg-blue-100 text-blue-700',
+  linkedin_inmail: 'bg-blue-100 text-blue-700',
+  phone_warm: 'bg-sky-100 text-sky-700',
+  phone_cold: 'bg-sky-100 text-sky-700',
+  referral_intro: 'bg-indigo-100 text-indigo-700',
+  in_person: 'bg-violet-100 text-violet-700',
+  conference: 'bg-violet-100 text-violet-700',
+  video_call: 'bg-gray-100 text-gray-700',
+  review_draft: 'bg-gray-100 text-gray-700',
+  prep: 'bg-amber-100 text-amber-700',
+  follow_up: 'bg-gray-100 text-gray-700',
+  admin: 'bg-gray-100 text-gray-700',
+  other: 'bg-gray-100 text-gray-700',
+}
+
 const STATUS_COLORS: Record<string, string> = {
   intake: 'bg-gray-light text-charcoal',
   nda_pending: 'bg-gray-light text-charcoal',
@@ -196,11 +284,70 @@ export default function Overview() {
   const [pipelineFollowUps, setPipelineFollowUps] = useState<PipelineFollowUp[]>([])
   const [pipelineFollowUpOverdue, setPipelineFollowUpOverdue] = useState(0)
   const [analytics, setAnalytics] = useState<PipelineAnalytics | null>(null)
+  const [cockpit, setCockpit] = useState<CockpitData | null>(null)
+  const [cockpitCompanies, setCockpitCompanies] = useState<CockpitCompany[]>([])
+  const [cockpitContacts, setCockpitContacts] = useState<CockpitContact[]>([])
+  const [cockpitOpportunities, setCockpitOpportunities] = useState<CockpitOpportunity[]>([])
+  const [showCockpitAddTask, setShowCockpitAddTask] = useState(false)
+  const [cockpitTomorrowOpen, setCockpitTomorrowOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [sortField, setSortField] = useState<SortField>('created')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const navigate = useNavigate()
+
+  async function loadCockpit() {
+    const data = await apiGet<CockpitData>('/api/pipeline/tasks/cockpit').catch(() => null)
+    if (data) setCockpit(data)
+  }
+
+  async function cockpitDone(taskId: string) {
+    if (!cockpit) return
+    // Optimistic: remove from all buckets
+    setCockpit(prev => {
+      if (!prev) return prev
+      const remove = (arr: CockpitTask[]) => arr.filter(t => t.id !== taskId)
+      return { ...prev, overdue: remove(prev.overdue), due_today: remove(prev.due_today), due_tomorrow: remove(prev.due_tomorrow), due_this_week: remove(prev.due_this_week), no_date: remove(prev.no_date) }
+    })
+    try {
+      await apiPut(`/api/pipeline/tasks/${taskId}`, { status: 'complete' })
+    } catch {
+      loadCockpit()
+    }
+  }
+
+  async function cockpitSnooze(taskId: string) {
+    if (!cockpit) return
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const tomorrowStr = tomorrow.toISOString().split('T')[0]
+    // Optimistic: move task to tomorrow bucket
+    setCockpit(prev => {
+      if (!prev) return prev
+      let task: CockpitTask | undefined
+      const remove = (arr: CockpitTask[]) => {
+        const idx = arr.findIndex(t => t.id === taskId)
+        if (idx >= 0) { task = { ...arr[idx], due_date: tomorrowStr }; return [...arr.slice(0, idx), ...arr.slice(idx + 1)] }
+        return arr
+      }
+      const newOverdue = remove(prev.overdue)
+      const newToday = remove(prev.due_today)
+      const newTomorrow = [...prev.due_tomorrow]
+      if (task) newTomorrow.push(task)
+      return { ...prev, overdue: newOverdue, due_today: newToday, due_tomorrow: newTomorrow }
+    })
+    try {
+      await apiPut(`/api/pipeline/tasks/${taskId}`, { due_date: tomorrowStr })
+    } catch {
+      loadCockpit()
+    }
+  }
+
+  async function cockpitAddTask(data: Record<string, unknown>) {
+    await apiPost('/api/pipeline/tasks', data)
+    setShowCockpitAddTask(false)
+    loadCockpit()
+  }
 
   useEffect(() => {
     Promise.all([
@@ -211,8 +358,12 @@ export default function Overview() {
       apiGet<{ drafts: DraftActivity[] }>('/api/pipeline/activities/drafts').catch(() => null),
       apiGet<{ items: PipelineFollowUp[]; overdue_count: number }>('/api/pipeline/follow-up-queue').catch(() => null),
       apiGet<PipelineAnalytics>('/api/pipeline/analytics').catch(() => null),
+      apiGet<CockpitData>('/api/pipeline/tasks/cockpit').catch(() => null),
+      apiGet<{ companies: CockpitCompany[] }>('/api/pipeline/companies').catch(() => null),
+      apiGet<{ contacts: CockpitContact[] }>('/api/pipeline/contacts').catch(() => null),
+      apiGet<{ opportunities: CockpitOpportunity[] }>('/api/pipeline/opportunities').catch(() => null),
     ])
-      .then(([engData, statsData, revenueData, followUpData, draftsData, pipelineFuData, analyticsData]) => {
+      .then(([engData, statsData, revenueData, followUpData, draftsData, pipelineFuData, analyticsData, cockpitData, companiesData, contactsData, oppsData]) => {
         setEngagements(engData.engagements)
         if (statsData) setPipelineStats(statsData)
         if (revenueData) setRevenueSummary(revenueData)
@@ -223,6 +374,10 @@ export default function Overview() {
           setPipelineFollowUpOverdue(pipelineFuData.overdue_count)
         }
         if (analyticsData) setAnalytics(analyticsData)
+        if (cockpitData) setCockpit(cockpitData)
+        if (companiesData) setCockpitCompanies(companiesData.companies)
+        if (contactsData) setCockpitContacts(contactsData.contacts)
+        if (oppsData) setCockpitOpportunities(oppsData.opportunities)
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
@@ -261,8 +416,121 @@ export default function Overview() {
     )
   }
 
+  const formatCockpitDate = (dateStr: string | null) => {
+    if (!dateStr) return ''
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  }
+
   return (
     <div>
+      {/* Today's Work Cockpit */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-display text-xl font-bold text-charcoal">Today's Work</h2>
+          <button onClick={() => setShowCockpitAddTask(true)} className="flex items-center gap-1.5 text-teal text-sm font-semibold hover:underline">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Add Task
+          </button>
+        </div>
+
+        {cockpit && (cockpit.summary.overdue_count > 0 || cockpit.summary.today_count > 0) ? (
+          <div className="bg-white rounded-lg border border-gray-light overflow-hidden">
+            {/* Summary bar */}
+            <div className="px-4 py-3 bg-ivory/50 border-b border-gray-light">
+              <div className="flex flex-wrap items-center gap-3 text-sm">
+                {cockpit.summary.overdue_count > 0 && (
+                  <span className="flex items-center gap-1.5 font-semibold text-crimson">
+                    <span className="w-2 h-2 rounded-full bg-crimson" />
+                    {cockpit.summary.overdue_count} overdue
+                  </span>
+                )}
+                {cockpit.summary.today_count > 0 && (
+                  <span className="flex items-center gap-1.5 font-semibold text-gold">
+                    <span className="w-2 h-2 rounded-full bg-gold" />
+                    {cockpit.summary.today_count} due today
+                  </span>
+                )}
+                {Object.keys(cockpit.summary.by_type).length > 0 && (
+                  <span className="text-gray-warm text-xs ml-2">
+                    {Object.entries(cockpit.summary.by_type).map(([type, count], i) => (
+                      <span key={type}>
+                        {i > 0 && ' · '}
+                        {count} {COCKPIT_TYPE_LABELS[type] || type}
+                      </span>
+                    ))}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Overdue section */}
+            {cockpit.overdue.length > 0 && (
+              <div>
+                <div className="px-4 py-1.5 bg-crimson/5 border-b border-gray-light">
+                  <span className="text-xs font-semibold text-crimson uppercase tracking-wider">Overdue</span>
+                </div>
+                <div className="divide-y divide-gray-light">
+                  {cockpit.overdue.map(task => (
+                    <CockpitTaskRow key={task.id} task={task} onDone={() => cockpitDone(task.id)} onSnooze={() => cockpitSnooze(task.id)} formatDate={formatCockpitDate} navigate={navigate} variant="overdue" />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Due Today section */}
+            {cockpit.due_today.length > 0 && (
+              <div>
+                <div className="px-4 py-1.5 bg-gold/5 border-b border-gray-light">
+                  <span className="text-xs font-semibold text-gold uppercase tracking-wider">Due Today</span>
+                </div>
+                <div className="divide-y divide-gray-light">
+                  {cockpit.due_today.map(task => (
+                    <CockpitTaskRow key={task.id} task={task} onDone={() => cockpitDone(task.id)} onSnooze={() => cockpitSnooze(task.id)} formatDate={formatCockpitDate} navigate={navigate} variant="today" />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Tomorrow preview (collapsed) */}
+            {cockpit.due_tomorrow.length > 0 && (
+              <div>
+                <button onClick={() => setCockpitTomorrowOpen(!cockpitTomorrowOpen)} className="w-full px-4 py-2 flex items-center gap-2 text-xs text-gray-warm hover:bg-gray-50 transition-colors border-t border-gray-light">
+                  <svg className={`w-3 h-3 transition-transform ${cockpitTomorrowOpen ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                  <span className="font-semibold">{cockpit.due_tomorrow.length} task{cockpit.due_tomorrow.length !== 1 ? 's' : ''} due tomorrow</span>
+                </button>
+                {cockpitTomorrowOpen && (
+                  <div className="divide-y divide-gray-light">
+                    {cockpit.due_tomorrow.map(task => (
+                      <CockpitTaskRow key={task.id} task={task} onDone={() => cockpitDone(task.id)} onSnooze={() => cockpitSnooze(task.id)} formatDate={formatCockpitDate} navigate={navigate} variant="future" />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg border border-gray-light p-6 text-center">
+            <p className="text-gray-warm text-sm">No tasks due today. Check the <Link to="/dashboard/pipeline/tasks" className="text-teal font-semibold hover:underline">Tasks page</Link> to plan ahead.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Add Task Modal from cockpit */}
+      {showCockpitAddTask && (
+        <TaskFormModal
+          title="Add Task"
+          companies={cockpitCompanies}
+          contacts={cockpitContacts}
+          opportunities={cockpitOpportunities}
+          onSave={cockpitAddTask}
+          onClose={() => setShowCockpitAddTask(false)}
+        />
+      )}
+
       {/* Pipeline Snapshot */}
       {pipelineStats && (
         <div className="mb-8">
@@ -848,6 +1116,79 @@ export default function Overview() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+
+// ---------------------------------------------------------------------------
+// Cockpit Task Row
+// ---------------------------------------------------------------------------
+
+function CockpitTaskRow({ task, onDone, onSnooze, formatDate, navigate, variant }: {
+  task: CockpitTask
+  onDone: () => void
+  onSnooze: () => void
+  formatDate: (d: string | null) => string
+  navigate: (path: string) => void
+  variant: 'overdue' | 'today' | 'future'
+}) {
+  const typeLabel = COCKPIT_TYPE_LABELS[task.task_type] || task.task_type
+  const typeBadge = COCKPIT_TYPE_BADGE[task.task_type] || 'bg-gray-100 text-gray-700'
+
+  return (
+    <div className={`flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors group ${variant === 'overdue' ? 'border-l-3 border-l-crimson' : ''}`}>
+      {/* Type badge */}
+      <span className={`flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${typeBadge}`}>
+        {typeLabel}
+      </span>
+
+      {/* High priority indicator */}
+      {task.priority === 'high' && (
+        <span className="flex-shrink-0 w-2 h-2 rounded-full bg-crimson" title="High priority" />
+      )}
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <span className="text-sm font-medium text-charcoal truncate block">{task.title}</span>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          {task.pipeline_companies && (
+            <button
+              onClick={() => navigate('/dashboard/pipeline/companies')}
+              className="text-xs text-gray-warm hover:text-teal truncate transition-colors"
+            >
+              {task.pipeline_companies.name}
+            </button>
+          )}
+          {task.pipeline_contacts && (
+            <>
+              {task.pipeline_companies && <span className="text-xs text-gray-warm">&middot;</span>}
+              <span className="text-xs text-gray-warm truncate">{task.pipeline_contacts.name}</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Due date */}
+      {variant === 'overdue' && task.due_date && (
+        <span className="flex-shrink-0 text-xs font-medium text-crimson">
+          {formatDate(task.due_date)}
+        </span>
+      )}
+
+      {/* Actions */}
+      <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button onClick={onDone} className="p-1 text-gray-warm hover:text-teal transition-colors" title="Done">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+        </button>
+        <button onClick={onSnooze} className="p-1 text-gray-warm hover:text-gold transition-colors" title="Snooze to tomorrow">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
+      </div>
     </div>
   )
 }

@@ -44,6 +44,14 @@ VALID_ACTIVITY_TYPES = {
 }
 VALID_PRIORITIES = {"high", "normal", "low"}
 VALID_TASK_STATUSES = {"pending", "complete", "skipped"}
+VALID_TASK_TYPES = {
+    # Outreach channels
+    "email", "linkedin_dm", "linkedin_audio", "linkedin_comment",
+    "linkedin_inmail", "phone_warm", "phone_cold", "referral_intro",
+    "in_person", "conference",
+    # Operational types
+    "video_call", "review_draft", "prep", "follow_up", "admin", "other",
+}
 VALID_COMPANY_TYPES = {"prospect", "partner", "connector"}
 VALID_LEAD_TIERS = {"tier_1", "tier_2", "tier_3"}
 VALID_ACTIVITY_STATUSES = {"draft", "sent", "discarded", "logged"}
@@ -1388,7 +1396,7 @@ async def list_tasks(
     sb = get_supabase()
     query = (
         sb.table("pipeline_tasks")
-        .select("*, pipeline_contacts(id, name), pipeline_opportunities(id, title)")
+        .select("*, pipeline_companies(id, name), pipeline_contacts(id, name, email), pipeline_opportunities(id, title, stage)")
     )
     if status:
         query = query.eq("status", status)
@@ -1404,6 +1412,8 @@ async def list_tasks(
 async def create_task(body: TaskCreate, user: dict = Depends(verify_partner_auth)):
     if body.priority not in VALID_PRIORITIES:
         raise HTTPException(status_code=400, detail=f"Invalid priority: {body.priority}")
+    if body.task_type not in VALID_TASK_TYPES:
+        raise HTTPException(status_code=400, detail=f"Invalid task_type: {body.task_type}")
     sb = get_supabase()
     row = body.model_dump(exclude_none=True)
     if body.due_date:
@@ -1423,6 +1433,8 @@ async def update_task(task_id: str, body: TaskUpdate, user: dict = Depends(verif
         raise HTTPException(status_code=400, detail=f"Invalid priority: {updates['priority']}")
     if "status" in updates and updates["status"] not in VALID_TASK_STATUSES:
         raise HTTPException(status_code=400, detail=f"Invalid status: {updates['status']}")
+    if "task_type" in updates and updates["task_type"] not in VALID_TASK_TYPES:
+        raise HTTPException(status_code=400, detail=f"Invalid task_type: {updates['task_type']}")
     if "due_date" in updates and isinstance(updates["due_date"], date):
         updates["due_date"] = updates["due_date"].isoformat()
     # Set completed_at when marking complete
@@ -1441,6 +1453,69 @@ async def delete_task(task_id: str, user: dict = Depends(verify_partner_auth)):
     if not result.data:
         raise HTTPException(status_code=404, detail="Task not found")
     return {"success": True}
+
+
+@router.get("/tasks/cockpit")
+async def get_task_cockpit(user: dict = Depends(verify_partner_auth)):
+    """Tasks organized for the Overview page morning cockpit."""
+    sb = get_supabase()
+    today = date.today()
+    tomorrow = today + timedelta(days=1)
+    week_end = today + timedelta(days=7)
+
+    result = (
+        sb.table("pipeline_tasks")
+        .select("*, pipeline_companies(id, name), pipeline_contacts(id, name, email), pipeline_opportunities(id, title, stage)")
+        .eq("status", "pending")
+        .order("due_date")
+        .execute()
+    )
+    tasks = result.data or []
+
+    cockpit: Dict[str, Any] = {
+        "overdue": [],
+        "due_today": [],
+        "due_tomorrow": [],
+        "due_this_week": [],
+        "no_date": [],
+        "summary": {
+            "overdue_count": 0,
+            "today_count": 0,
+            "tomorrow_count": 0,
+            "week_count": 0,
+            "by_type": {},
+        },
+    }
+
+    for task in tasks:
+        due_str = task.get("due_date")
+        if not due_str:
+            cockpit["no_date"].append(task)
+        else:
+            due = date.fromisoformat(due_str)
+            if due < today:
+                cockpit["overdue"].append(task)
+            elif due == today:
+                cockpit["due_today"].append(task)
+            elif due == tomorrow:
+                cockpit["due_tomorrow"].append(task)
+            elif due <= week_end:
+                cockpit["due_this_week"].append(task)
+
+    cockpit["summary"]["overdue_count"] = len(cockpit["overdue"])
+    cockpit["summary"]["today_count"] = len(cockpit["due_today"])
+    cockpit["summary"]["tomorrow_count"] = len(cockpit["due_tomorrow"])
+    cockpit["summary"]["week_count"] = len(cockpit["due_this_week"])
+
+    # Count by type for actionable items (overdue + today)
+    actionable = cockpit["overdue"] + cockpit["due_today"]
+    by_type: Dict[str, int] = {}
+    for task in actionable:
+        t = task.get("task_type", "other")
+        by_type[t] = by_type.get(t, 0) + 1
+    cockpit["summary"]["by_type"] = by_type
+
+    return cockpit
 
 
 # ==========================================================================

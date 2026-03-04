@@ -191,22 +191,30 @@ class ActivityFromNotesInput(BaseModel):
 # ---------------------------------------------------------------------------
 
 class TaskCreate(BaseModel):
+    title: str
+    task_type: str = "follow_up"
+    description: Optional[str] = None
+    company_id: Optional[str] = None
     contact_id: Optional[str] = None
     opportunity_id: Optional[str] = None
-    title: str
     due_date: Optional[date] = None
     priority: str = "normal"
     assigned_to: Optional[str] = None
+    source_plugin: Optional[str] = None
 
 
 class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    task_type: Optional[str] = None
+    description: Optional[str] = None
+    company_id: Optional[str] = None
     contact_id: Optional[str] = None
     opportunity_id: Optional[str] = None
-    title: Optional[str] = None
     due_date: Optional[date] = None
     priority: Optional[str] = None
     status: Optional[str] = None
     assigned_to: Optional[str] = None
+    outcome_notes: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------

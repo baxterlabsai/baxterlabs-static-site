@@ -5,6 +5,11 @@ import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api'
 // Types
 // ---------------------------------------------------------------------------
 
+interface Company {
+  id: string
+  name: string
+}
+
 interface Contact {
   id: string
   name: string
@@ -21,18 +26,24 @@ interface Opportunity {
 
 interface Task {
   id: string
+  task_type: string
+  title: string
+  description: string | null
+  company_id: string | null
   contact_id: string | null
   opportunity_id: string | null
-  title: string
   due_date: string | null
   priority: string
   status: string
   completed_at: string | null
   assigned_to: string | null
+  outcome_notes: string | null
+  source_plugin: string | null
   created_at: string
   created_by: string | null
-  pipeline_contacts: { id: string; name: string } | null
-  pipeline_opportunities: { id: string; title: string } | null
+  pipeline_companies: { id: string; name: string } | null
+  pipeline_contacts: { id: string; name: string; email?: string } | null
+  pipeline_opportunities: { id: string; title: string; stage?: string } | null
 }
 
 // ---------------------------------------------------------------------------
@@ -53,8 +64,48 @@ const STATUSES = [
   { key: 'skipped', label: 'Skipped' },
 ]
 
+// Task type definitions grouped by category
+const TASK_TYPE_GROUPS = [
+  {
+    label: 'Outreach',
+    types: [
+      { key: 'email', label: 'Email', badge: 'bg-blue-100 text-blue-700' },
+      { key: 'linkedin_dm', label: 'LinkedIn DM', badge: 'bg-blue-100 text-blue-700' },
+      { key: 'linkedin_audio', label: 'LinkedIn Audio', badge: 'bg-blue-100 text-blue-700' },
+      { key: 'linkedin_comment', label: 'LinkedIn Comment', badge: 'bg-blue-100 text-blue-700' },
+      { key: 'linkedin_inmail', label: 'LinkedIn InMail', badge: 'bg-blue-100 text-blue-700' },
+      { key: 'phone_warm', label: 'Warm Call', badge: 'bg-sky-100 text-sky-700' },
+      { key: 'phone_cold', label: 'Cold Call', badge: 'bg-sky-100 text-sky-700' },
+      { key: 'referral_intro', label: 'Referral Intro', badge: 'bg-indigo-100 text-indigo-700' },
+      { key: 'in_person', label: 'In-Person', badge: 'bg-violet-100 text-violet-700' },
+      { key: 'conference', label: 'Conference', badge: 'bg-violet-100 text-violet-700' },
+    ],
+  },
+  {
+    label: 'Operational',
+    types: [
+      { key: 'video_call', label: 'Video Call', badge: 'bg-gray-100 text-gray-700' },
+      { key: 'review_draft', label: 'Review Draft', badge: 'bg-gray-100 text-gray-700' },
+      { key: 'prep', label: 'Call/Meeting Prep', badge: 'bg-amber-100 text-amber-700' },
+      { key: 'follow_up', label: 'Follow-Up', badge: 'bg-gray-100 text-gray-700' },
+      { key: 'admin', label: 'Admin', badge: 'bg-gray-100 text-gray-700' },
+      { key: 'other', label: 'Other', badge: 'bg-gray-100 text-gray-700' },
+    ],
+  },
+]
+
+const TASK_TYPE_MAP = Object.fromEntries(
+  TASK_TYPE_GROUPS.flatMap(g => g.types.map(t => [t.key, t]))
+)
+
 function todayStr(): string {
   return new Date().toISOString().split('T')[0]
+}
+
+function tomorrowStr(): string {
+  const d = new Date()
+  d.setDate(d.getDate() + 1)
+  return d.toISOString().split('T')[0]
 }
 
 function endOfWeek(): string {
@@ -71,7 +122,7 @@ function formatDate(dateStr: string | null): string {
 
 
 // ---------------------------------------------------------------------------
-// Grouping helper
+// Grouping helper — groups by time bucket, sub-groups by task_type
 // ---------------------------------------------------------------------------
 
 interface TaskGroup {
@@ -110,6 +161,13 @@ function groupTasks(tasks: Task[]): TaskGroup[] {
     }
   }
 
+  // Sub-sort within each group by task_type for batching
+  const sortByType = (a: Task, b: Task) => (a.task_type || '').localeCompare(b.task_type || '')
+  overdue.sort(sortByType)
+  dueToday.sort(sortByType)
+  thisWeek.sort(sortByType)
+  later.sort(sortByType)
+
   const groups: TaskGroup[] = []
   if (overdue.length)   groups.push({ key: 'overdue', label: 'Overdue', headerClass: 'text-crimson', dotClass: 'bg-crimson', tasks: overdue, defaultCollapsed: false })
   if (dueToday.length)  groups.push({ key: 'today', label: 'Due Today', headerClass: 'text-gold', dotClass: 'bg-gold', tasks: dueToday, defaultCollapsed: false })
@@ -127,6 +185,7 @@ function groupTasks(tasks: Task[]): TaskGroup[] {
 
 export default function PipelineTasks() {
   const [tasks, setTasks] = useState<Task[]>([])
+  const [companies, setCompanies] = useState<Company[]>([])
   const [contacts, setContacts] = useState<Contact[]>([])
   const [opportunities, setOpportunities] = useState<Opportunity[]>([])
   const [loading, setLoading] = useState(true)
@@ -151,12 +210,14 @@ export default function PipelineTasks() {
 
   async function loadData() {
     try {
-      const [taskData, contactData, oppData] = await Promise.all([
+      const [taskData, compData, contactData, oppData] = await Promise.all([
         apiGet<{ tasks: Task[] }>('/api/pipeline/tasks'),
+        apiGet<{ companies: Company[] }>('/api/pipeline/companies'),
         apiGet<{ contacts: Contact[] }>('/api/pipeline/contacts'),
         apiGet<{ opportunities: Opportunity[] }>('/api/pipeline/opportunities'),
       ])
       setTasks(taskData.tasks)
+      setCompanies(compData.companies)
       setContacts(contactData.contacts)
       setOpportunities(oppData.opportunities)
     } catch (err: unknown) {
@@ -173,7 +234,12 @@ export default function PipelineTasks() {
     if (priorityFilter !== 'all' && t.priority !== priorityFilter) return false
     if (search) {
       const q = search.toLowerCase()
-      if (!t.title.toLowerCase().includes(q) && !(t.pipeline_contacts?.name || '').toLowerCase().includes(q) && !(t.pipeline_opportunities?.title || '').toLowerCase().includes(q)) return false
+      if (
+        !t.title.toLowerCase().includes(q) &&
+        !(t.pipeline_contacts?.name || '').toLowerCase().includes(q) &&
+        !(t.pipeline_companies?.name || '').toLowerCase().includes(q) &&
+        !(t.pipeline_opportunities?.title || '').toLowerCase().includes(q)
+      ) return false
     }
     return true
   })
@@ -191,24 +257,31 @@ export default function PipelineTasks() {
   // Quick-complete: optimistic toggle
   async function toggleComplete(task: Task) {
     const newStatus = task.status === 'pending' ? 'complete' : 'pending'
-    // Optimistic update
     setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus, completed_at: newStatus === 'complete' ? new Date().toISOString() : null } : t))
     try {
       await apiPut(`/api/pipeline/tasks/${task.id}`, { status: newStatus })
     } catch {
-      // Revert on failure
+      setTasks(prev => prev.map(t => t.id === task.id ? task : t))
+    }
+  }
+
+  // Snooze: push due_date to tomorrow
+  async function snoozeTask(task: Task) {
+    const tomorrow = tomorrowStr()
+    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, due_date: tomorrow } : t))
+    try {
+      await apiPut(`/api/pipeline/tasks/${task.id}`, { due_date: tomorrow })
+    } catch {
       setTasks(prev => prev.map(t => t.id === task.id ? task : t))
     }
   }
 
   async function handleAddTask(data: Record<string, unknown>) {
     try {
-      const created = await apiPost<Task>('/api/pipeline/tasks', data)
-      // Re-fetch to get joined relations
+      await apiPost<Task>('/api/pipeline/tasks', data)
       const refreshed = await apiGet<{ tasks: Task[] }>('/api/pipeline/tasks')
       setTasks(refreshed.tasks)
       setShowAddModal(false)
-      return created
     } catch (err: unknown) {
       throw err
     }
@@ -338,6 +411,7 @@ export default function PipelineTasks() {
                       key={task.id}
                       task={task}
                       onToggle={() => toggleComplete(task)}
+                      onSnooze={() => snoozeTask(task)}
                       onEdit={() => setEditTask(task)}
                       onDelete={() => setDeleteTask(task)}
                     />
@@ -353,6 +427,7 @@ export default function PipelineTasks() {
       {showAddModal && (
         <TaskFormModal
           title="Add Task"
+          companies={companies}
           contacts={contacts}
           opportunities={opportunities}
           onSave={handleAddTask}
@@ -365,6 +440,7 @@ export default function PipelineTasks() {
         <TaskFormModal
           title="Edit Task"
           task={editTask}
+          companies={companies}
           contacts={contacts}
           opportunities={opportunities}
           showStatus
@@ -394,15 +470,23 @@ export default function PipelineTasks() {
 // TaskRow Component
 // ---------------------------------------------------------------------------
 
-function TaskRow({ task, onToggle, onEdit, onDelete }: { task: Task; onToggle: () => void; onEdit: () => void; onDelete: () => void }) {
+function TaskRow({ task, onToggle, onSnooze, onEdit, onDelete }: {
+  task: Task
+  onToggle: () => void
+  onSnooze: () => void
+  onEdit: () => void
+  onDelete: () => void
+}) {
   const isComplete = task.status === 'complete' || task.status === 'skipped'
   const priority = PRIORITY_MAP[task.priority] || PRIORITY_MAP['normal']
   const isOverdue = !isComplete && task.due_date && task.due_date < todayStr()
+  const isDueToday = !isComplete && task.due_date === todayStr()
+  const typeInfo = TASK_TYPE_MAP[task.task_type] || TASK_TYPE_MAP['other']
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors group">
-      {/* Checkbox */}
-      <button onClick={onToggle} className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${isComplete ? 'bg-teal border-teal' : 'border-gray-warm hover:border-teal'}`}>
+    <div className={`flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors group ${isOverdue ? 'border-l-3 border-l-crimson' : ''}`}>
+      {/* Checkbox / Done button */}
+      <button onClick={onToggle} className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${isComplete ? 'bg-teal border-teal' : 'border-gray-warm hover:border-teal'}`} title={isComplete ? 'Mark pending' : 'Mark done'}>
         {isComplete && (
           <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
@@ -410,8 +494,15 @@ function TaskRow({ task, onToggle, onEdit, onDelete }: { task: Task; onToggle: (
         )}
       </button>
 
-      {/* Priority dot */}
-      <span className={`flex-shrink-0 w-2 h-2 rounded-full ${priority.dot}`} title={priority.label} />
+      {/* Task type badge */}
+      <span className={`flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${typeInfo.badge}`}>
+        {typeInfo.label}
+      </span>
+
+      {/* Priority dot (only if high) */}
+      {task.priority === 'high' && (
+        <span className={`flex-shrink-0 w-2 h-2 rounded-full ${priority.dot}`} title="High priority" />
+      )}
 
       {/* Content */}
       <div className="flex-1 min-w-0">
@@ -422,10 +513,16 @@ function TaskRow({ task, onToggle, onEdit, onDelete }: { task: Task; onToggle: (
           )}
         </div>
         <div className="flex items-center gap-2 mt-0.5">
+          {task.pipeline_companies && (
+            <span className="text-xs text-gray-warm truncate">{task.pipeline_companies.name}</span>
+          )}
+          {task.pipeline_companies && task.pipeline_contacts && (
+            <span className="text-xs text-gray-warm">&middot;</span>
+          )}
           {task.pipeline_contacts && (
             <span className="text-xs text-gray-warm truncate">{task.pipeline_contacts.name}</span>
           )}
-          {task.pipeline_contacts && task.pipeline_opportunities && (
+          {(task.pipeline_companies || task.pipeline_contacts) && task.pipeline_opportunities && (
             <span className="text-xs text-gray-warm">&middot;</span>
           )}
           {task.pipeline_opportunities && (
@@ -436,13 +533,20 @@ function TaskRow({ task, onToggle, onEdit, onDelete }: { task: Task; onToggle: (
 
       {/* Due date */}
       {task.due_date && (
-        <span className={`flex-shrink-0 text-xs font-medium ${isOverdue ? 'text-crimson' : isComplete ? 'text-gray-warm' : 'text-charcoal'}`}>
+        <span className={`flex-shrink-0 text-xs font-medium ${isOverdue ? 'text-crimson' : isDueToday ? 'text-gold' : isComplete ? 'text-gray-warm' : 'text-charcoal'}`}>
           {formatDate(task.due_date)}
         </span>
       )}
 
       {/* Actions */}
       <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {!isComplete && (
+          <button onClick={onSnooze} className="p-1 text-gray-warm hover:text-gold transition-colors" title="Snooze to tomorrow">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
+        )}
         <button onClick={onEdit} className="p-1 text-gray-warm hover:text-teal transition-colors" title="Edit">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
@@ -459,12 +563,13 @@ function TaskRow({ task, onToggle, onEdit, onDelete }: { task: Task; onToggle: (
 }
 
 // ---------------------------------------------------------------------------
-// TaskFormModal Component
+// TaskFormModal Component — exported for reuse from Overview cockpit
 // ---------------------------------------------------------------------------
 
-function TaskFormModal({ title, task, contacts, opportunities, showStatus, onSave, onClose }: {
+export function TaskFormModal({ title, task, companies, contacts, opportunities, showStatus, onSave, onClose }: {
   title: string
   task?: Task
+  companies: Company[]
   contacts: Contact[]
   opportunities: Opportunity[]
   showStatus?: boolean
@@ -472,18 +577,31 @@ function TaskFormModal({ title, task, contacts, opportunities, showStatus, onSav
   onClose: () => void
 }) {
   const [formTitle, setFormTitle] = useState(task?.title || '')
-  const [dueDate, setDueDate] = useState(task?.due_date || '')
+  const [taskType, setTaskType] = useState(task?.task_type || 'follow_up')
+  const [description, setDescription] = useState(task?.description || '')
+  const [dueDate, setDueDate] = useState(task?.due_date || todayStr())
   const [priority, setPriority] = useState(task?.priority || 'normal')
   const [status, setStatus] = useState(task?.status || 'pending')
+  const [companyId, setCompanyId] = useState(task?.company_id || '')
   const [contactId, setContactId] = useState(task?.contact_id || '')
-  const [opportunityId, setOpportunityId] = useState(task?.opportunity_id || '')
-  const [assignedTo, setAssignedTo] = useState(task?.assigned_to || '')
+  const [companySearch, setCompanySearch] = useState(task?.pipeline_companies?.name || '')
   const [contactSearch, setContactSearch] = useState(task?.pipeline_contacts?.name || '')
+  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false)
   const [showContactDropdown, setShowContactDropdown] = useState(false)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
 
-  const filteredContacts = contacts.filter(c => c.name.toLowerCase().includes(contactSearch.toLowerCase())).slice(0, 8)
+  // Filter contacts by selected company
+  const filteredContacts = contacts
+    .filter(c => {
+      if (companyId && c.company_id && c.company_id !== companyId) return false
+      return c.name.toLowerCase().includes(contactSearch.toLowerCase())
+    })
+    .slice(0, 8)
+
+  const filteredCompanies = companies
+    .filter(c => c.name.toLowerCase().includes(companySearch.toLowerCase()))
+    .slice(0, 8)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -491,19 +609,22 @@ function TaskFormModal({ title, task, contacts, opportunities, showStatus, onSav
     setSaving(true)
     setFormError('')
     try {
-      const data: Record<string, unknown> = { title: formTitle.trim() }
+      const data: Record<string, unknown> = {
+        title: formTitle.trim(),
+        task_type: taskType,
+        priority,
+      }
       if (dueDate) data.due_date = dueDate
-      data.priority = priority
+      if (description.trim()) data.description = description.trim()
+      if (companyId) data.company_id = companyId
       if (contactId) data.contact_id = contactId
-      if (opportunityId) data.opportunity_id = opportunityId
-      if (assignedTo.trim()) data.assigned_to = assignedTo.trim()
       if (showStatus) data.status = status
       // For edit: clear nullable fields explicitly
       if (task) {
+        if (!companyId && task.company_id) data.company_id = null
         if (!contactId && task.contact_id) data.contact_id = null
-        if (!opportunityId && task.opportunity_id) data.opportunity_id = null
         if (!dueDate && task.due_date) data.due_date = null
-        if (!assignedTo.trim() && task.assigned_to) data.assigned_to = null
+        if (!description.trim() && task.description) data.description = null
       }
       await onSave(data)
     } catch (err: unknown) {
@@ -515,7 +636,7 @@ function TaskFormModal({ title, task, contacts, opportunities, showStatus, onSav
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-light">
           <h2 className="font-display text-lg font-bold text-charcoal">{title}</h2>
@@ -537,6 +658,20 @@ function TaskFormModal({ title, task, contacts, opportunities, showStatus, onSav
             <input type="text" value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="Follow up with..." className="w-full px-3 py-2 border border-gray-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal" autoFocus />
           </div>
 
+          {/* Task Type */}
+          <div>
+            <label className="block text-sm font-semibold text-charcoal mb-1">Task Type *</label>
+            <select value={taskType} onChange={e => setTaskType(e.target.value)} className="w-full px-3 py-2 border border-gray-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal">
+              {TASK_TYPE_GROUPS.map(group => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.types.map(t => (
+                    <option key={t.key} value={t.key}>{t.label}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+
           {/* Due date + Priority row */}
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -556,17 +691,35 @@ function TaskFormModal({ title, task, contacts, opportunities, showStatus, onSav
             </div>
           </div>
 
-          {/* Status (edit only) */}
-          {showStatus && (
-            <div>
-              <label className="block text-sm font-semibold text-charcoal mb-1">Status</label>
-              <select value={status} onChange={e => setStatus(e.target.value)} className="w-full px-3 py-2 border border-gray-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal">
-                {STATUSES.map(s => (
-                  <option key={s.key} value={s.key}>{s.label}</option>
+          {/* Company typeahead */}
+          <div className="relative">
+            <label className="block text-sm font-semibold text-charcoal mb-1">Company</label>
+            <input
+              type="text"
+              value={companySearch}
+              onChange={e => { setCompanySearch(e.target.value); setCompanyId(''); setShowCompanyDropdown(true) }}
+              onFocus={() => setShowCompanyDropdown(true)}
+              onBlur={() => setTimeout(() => setShowCompanyDropdown(false), 200)}
+              placeholder="Search companies..."
+              className="w-full px-3 py-2 border border-gray-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+            />
+            {companyId && (
+              <button type="button" onClick={() => { setCompanyId(''); setCompanySearch(''); setContactId(''); setContactSearch('') }} className="absolute right-2 top-8 text-gray-warm hover:text-charcoal">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+            {showCompanyDropdown && companySearch && !companyId && filteredCompanies.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-light rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                {filteredCompanies.map(c => (
+                  <button key={c.id} type="button" onMouseDown={() => { setCompanyId(c.id); setCompanySearch(c.name); setShowCompanyDropdown(false) }} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors">
+                    <span className="font-medium text-charcoal">{c.name}</span>
+                  </button>
                 ))}
-              </select>
-            </div>
-          )}
+              </div>
+            )}
+          </div>
 
           {/* Contact typeahead */}
           <div className="relative">
@@ -577,7 +730,7 @@ function TaskFormModal({ title, task, contacts, opportunities, showStatus, onSav
               onChange={e => { setContactSearch(e.target.value); setContactId(''); setShowContactDropdown(true) }}
               onFocus={() => setShowContactDropdown(true)}
               onBlur={() => setTimeout(() => setShowContactDropdown(false), 200)}
-              placeholder="Search contacts..."
+              placeholder={companyId ? 'Search contacts at this company...' : 'Search contacts...'}
               className="w-full px-3 py-2 border border-gray-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
             />
             {contactId && (
@@ -599,22 +752,29 @@ function TaskFormModal({ title, task, contacts, opportunities, showStatus, onSav
             )}
           </div>
 
-          {/* Opportunity */}
+          {/* Description */}
           <div>
-            <label className="block text-sm font-semibold text-charcoal mb-1">Opportunity</label>
-            <select value={opportunityId} onChange={e => setOpportunityId(e.target.value)} className="w-full px-3 py-2 border border-gray-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal">
-              <option value="">None</option>
-              {opportunities.map(o => (
-                <option key={o.id} value={o.id}>{o.title}{o.pipeline_companies ? ` (${o.pipeline_companies.name})` : ''}</option>
-              ))}
-            </select>
+            <label className="block text-sm font-semibold text-charcoal mb-1">Description</label>
+            <textarea
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Additional details..."
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal resize-none"
+            />
           </div>
 
-          {/* Assigned to */}
-          <div>
-            <label className="block text-sm font-semibold text-charcoal mb-1">Assigned To</label>
-            <input type="text" value={assignedTo} onChange={e => setAssignedTo(e.target.value)} placeholder="Name or email" className="w-full px-3 py-2 border border-gray-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal" />
-          </div>
+          {/* Status (edit only) */}
+          {showStatus && (
+            <div>
+              <label className="block text-sm font-semibold text-charcoal mb-1">Status</label>
+              <select value={status} onChange={e => setStatus(e.target.value)} className="w-full px-3 py-2 border border-gray-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal">
+                {STATUSES.map(s => (
+                  <option key={s.key} value={s.key}>{s.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-2">
