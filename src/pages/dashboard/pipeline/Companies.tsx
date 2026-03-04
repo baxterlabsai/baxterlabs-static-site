@@ -820,6 +820,25 @@ function LogPluginActivityForm({
 }
 
 // ---------------------------------------------------------------------------
+// Enrichment value normalizer — plugins should write plain markdown strings,
+// but some older writes used JSON objects with a 'briefing'/'content' key.
+// ---------------------------------------------------------------------------
+
+function normalizeEnrichmentValue(value: unknown): string | null {
+  if (!value) return null
+  if (typeof value === 'string') return value
+  if (typeof value === 'object' && value !== null) {
+    const obj = value as Record<string, unknown>
+    if (typeof obj.briefing === 'string') return obj.briefing
+    if (typeof obj.content === 'string') return obj.content
+    if (typeof obj.summary === 'string') return obj.summary
+    const stringValues = Object.values(obj).filter(v => typeof v === 'string' && (v as string).length > 100)
+    if (stringValues.length === 1) return stringValues[0] as string
+  }
+  return null
+}
+
+// ---------------------------------------------------------------------------
 // Research & Intelligence Collapsible Section
 // ---------------------------------------------------------------------------
 
@@ -862,7 +881,7 @@ function ResearchIntelSection({ enrichmentData }: { enrichmentData: Record<strin
                 </div>
               </div>
               <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-60 overflow-y-auto">
-                <MarkdownContent content={research.content || JSON.stringify(research, null, 2)} />
+                <MarkdownContent content={normalizeEnrichmentValue(research) || JSON.stringify(research, null, 2)} />
               </div>
             </div>
           )}
@@ -881,7 +900,7 @@ function ResearchIntelSection({ enrichmentData }: { enrichmentData: Record<strin
                 </div>
               </div>
               <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-60 overflow-y-auto">
-                <MarkdownContent content={callPrep.content || JSON.stringify(callPrep, null, 2)} />
+                <MarkdownContent content={normalizeEnrichmentValue(callPrep) || JSON.stringify(callPrep, null, 2)} />
               </div>
             </div>
           )}
@@ -1219,7 +1238,7 @@ function CompanySlideOver({
                   </div>
 
                   {/* Research & Intelligence */}
-                  {(detail.enrichment_data?.research || detail.enrichment_data?.enrichment) && (
+                  {(detail.enrichment_data?.research || detail.enrichment_data?.enrichment || detail.enrichment_data?.call_prep) && (
                     <ResearchIntelSection enrichmentData={detail.enrichment_data} />
                   )}
 
