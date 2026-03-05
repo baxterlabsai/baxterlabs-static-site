@@ -6,7 +6,7 @@ export default function NotFound() {
       <header className="bg-crimson">
         <div className="flex items-center justify-center py-5">
           <Link to="/">
-            <img src="/images/baxterlabs-logo-white-text.png" alt="BaxterLabs Advisory" className="h-15" />
+            <img src="/images/baxterlabs-logo.png" alt="BaxterLabs Advisory" className="h-15" />
           </Link>
         </div>
       </header>
