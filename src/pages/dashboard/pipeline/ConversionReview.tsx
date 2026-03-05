@@ -46,7 +46,6 @@ interface ConversionPreview {
 interface ConversionResult {
   client_id: string
   engagement_id: string
-  nda_sent: boolean
   interview_contacts_created: number
   status: string
   message: string
@@ -175,7 +174,7 @@ export default function ConversionReview() {
     })
   }
 
-  async function handleConvert(sendNda: boolean) {
+  async function handleConvert() {
     if (!opportunityId) return
     setConverting(true)
     setConvertError('')
@@ -187,7 +186,6 @@ export default function ConversionReview() {
         discovery_notes_override: discoveryNotes || null,
         pain_points_override: painPoints || null,
         interview_contacts: selectedContacts.length > 0 ? selectedContacts : null,
-        send_nda: sendNda,
         referral_source: referralSource || null,
       })
       navigate(`/dashboard/engagement/${result.engagement_id}`, {
@@ -373,7 +371,7 @@ export default function ConversionReview() {
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-gray-warm">Starting Status:</span>
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-gold/20 text-charcoal">
-                NDA Pending
+                Agreement Pending
               </span>
             </div>
             <p className="text-xs text-gray-warm mt-1">Skips intake — data is already captured from the pipeline.</p>
@@ -463,34 +461,25 @@ export default function ConversionReview() {
         <Link to="/dashboard/pipeline" className="text-sm text-gray-warm hover:text-charcoal transition-colors">
           Cancel
         </Link>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => handleConvert(false)}
-            disabled={converting}
-            className="px-5 py-2.5 text-sm font-semibold text-charcoal border border-gray-light rounded-lg hover:bg-ivory transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Convert Without NDA
-          </button>
-          <button
-            onClick={() => handleConvert(true)}
-            disabled={converting || !contactEmail}
-            className="px-5 py-2.5 text-sm font-semibold text-white bg-teal rounded-lg hover:bg-teal/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            {converting ? (
-              <>
-                <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                Converting...
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                </svg>
-                Convert & Send NDA
-              </>
-            )}
-          </button>
-        </div>
+        <button
+          onClick={() => handleConvert()}
+          disabled={converting}
+          className="px-5 py-2.5 text-sm font-semibold text-white bg-teal rounded-lg hover:bg-teal/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+        >
+          {converting ? (
+            <>
+              <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+              Converting...
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+              </svg>
+              Convert to Engagement
+            </>
+          )}
+        </button>
       </div>
     </div>
   )

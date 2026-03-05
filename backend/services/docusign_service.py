@@ -1,4 +1,4 @@
-"""DocuSign integration — JWT Grant auth, NDA envelope sending, webhook handling."""
+"""DocuSign integration — JWT Grant auth, envelope sending, webhook handling."""
 
 from __future__ import annotations
 
@@ -128,89 +128,6 @@ class DocuSignService:
             f"redirect_uri={redirect_uri}"
         )
 
-    def _build_nda_html(self, company_name: str, contact_name: str) -> str:
-        """Generate the NDA document as HTML."""
-        today = datetime.now(timezone.utc).strftime("%B %d, %Y")
-        return f"""<!DOCTYPE html>
-<html>
-<head>
-<style>
-  body {{ font-family: 'Georgia', serif; color: #2D3436; line-height: 1.6; margin: 40px; }}
-  h1 {{ color: #66151C; text-align: center; border-bottom: 2px solid #C9A84C; padding-bottom: 16px; }}
-  h2 {{ color: #005454; margin-top: 24px; }}
-  .header {{ text-align: center; margin-bottom: 32px; }}
-  .header .logo {{ font-size: 24px; font-weight: bold; color: #66151C; }}
-  .parties {{ background: #FAF8F2; padding: 16px; border-radius: 8px; margin: 16px 0; }}
-  .signature-block {{ margin-top: 40px; page-break-inside: avoid; }}
-  .sig-line {{ border-bottom: 1px solid #2D3436; width: 300px; margin-top: 40px; }}
-</style>
-</head>
-<body>
-
-<div class="header">
-  <div class="logo">BaxterLabs Advisory</div>
-  <p style="color: #C9A84C; margin-top: 4px;">Confidential</p>
-</div>
-
-<h1>Non-Disclosure Agreement</h1>
-
-<p>This Non-Disclosure Agreement ("Agreement") is entered into as of <strong>{today}</strong> ("Effective Date") by and between:</p>
-
-<div class="parties">
-  <p><strong>Disclosing Party:</strong> {company_name}, represented by {contact_name} ("Client")</p>
-  <p><strong>Receiving Party:</strong> BaxterLabs Advisory LLC, a Texas limited liability company ("BaxterLabs")</p>
-</div>
-
-<h2>1. Purpose</h2>
-<p>The Client intends to disclose certain confidential information to BaxterLabs for the purpose of evaluating and conducting a profit leak diagnostic audit and related advisory services (the "Purpose").</p>
-
-<h2>2. Definition of Confidential Information</h2>
-<p>"Confidential Information" means all non-public information disclosed by Client to BaxterLabs, whether orally, in writing, or electronically, including but not limited to: financial statements, payroll records, vendor contracts, revenue data, operational processes, customer lists, pricing strategies, and any other business information marked or reasonably understood to be confidential.</p>
-
-<h2>3. Obligations of Receiving Party</h2>
-<p>BaxterLabs agrees to: (a) hold all Confidential Information in strict confidence; (b) not disclose Confidential Information to any third party without prior written consent; (c) use Confidential Information solely for the Purpose; (d) protect Confidential Information with at least the same degree of care used to protect its own confidential information, but no less than reasonable care.</p>
-
-<h2>4. Exclusions</h2>
-<p>Confidential Information does not include information that: (a) is or becomes publicly available through no fault of BaxterLabs; (b) was known to BaxterLabs prior to disclosure; (c) is independently developed by BaxterLabs without use of Confidential Information; or (d) is required to be disclosed by law or court order, provided BaxterLabs gives prompt written notice.</p>
-
-<h2>5. Return of Materials</h2>
-<p>Upon completion of the engagement or upon Client's written request, BaxterLabs shall promptly return or destroy all Confidential Information and any copies thereof, and certify such destruction in writing.</p>
-
-<h2>6. Term</h2>
-<p>This Agreement shall remain in effect for a period of three (3) years from the Effective Date. The obligations of confidentiality shall survive termination.</p>
-
-<h2>7. Governing Law</h2>
-<p>This Agreement shall be governed by the laws of the State of Texas, without regard to conflict of law principles.</p>
-
-<h2>8. Entire Agreement</h2>
-<p>This Agreement constitutes the entire agreement between the parties concerning the subject matter hereof and supersedes all prior discussions and agreements.</p>
-
-<div class="signature-block">
-  <p><strong>IN WITNESS WHEREOF</strong>, the parties have executed this Agreement as of the Effective Date.</p>
-
-  <table width="100%" style="margin-top: 32px;">
-    <tr>
-      <td width="50%">
-        <p><strong>Client — {company_name}</strong></p>
-        <p style="margin-top: 24px;">Signature:</p>
-        <p><span style="color: white; font-size: 1px;">/sn1/</span></p>
-        <p style="margin-top: 8px;">Name: <span style="color: white; font-size: 1px;">/fn1/</span></p>
-        <p>Date: <span style="color: white; font-size: 1px;">/ds1/</span></p>
-      </td>
-      <td width="50%">
-        <p><strong>BaxterLabs Advisory LLC</strong></p>
-        <p style="margin-top: 24px;">Signature: <em>George DeVries</em></p>
-        <p style="margin-top: 8px;">Name: George DeVries</p>
-        <p>Title: Managing Partner</p>
-        <p>Date: {today}</p>
-      </td>
-    </tr>
-  </table>
-</div>
-
-</body>
-</html>"""
-
     def _make_event_notification(self) -> Optional[EventNotification]:
         """Create webhook event notification if webhook URL is configured."""
         if not self.webhook_url:
@@ -238,109 +155,53 @@ class DocuSignService:
             ],
         )
 
-    def send_nda(
-        self,
-        engagement_id: str,
-        contact_email: str,
-        contact_name: str,
-        company_name: str,
-    ) -> dict:
-        """Generate and send NDA envelope via DocuSign."""
-        logger.info(
-            f"send_nda called — engagement/opp={engagement_id} "
-            f"to={contact_email} contact={contact_name} company={company_name} "
-            f"configured={self._is_configured()} dev_mode={self._dev_mode}"
-        )
-        self._ensure_auth()
-
-        # Build NDA HTML
-        nda_html = self._build_nda_html(company_name, contact_name)
-        doc_b64 = base64.b64encode(nda_html.encode("utf-8")).decode("ascii")
-
-        document = Document(
-            document_base64=doc_b64,
-            name=f"NDA — {company_name} & BaxterLabs Advisory",
-            file_extension="html",
-            document_id="1",
-        )
-
-        # Signer with anchor tabs
-        signer = Signer(
-            email=contact_email,
-            name=contact_name,
-            recipient_id="1",
-            routing_order="1",
-        )
-
-        sign_here = SignHere(
-            anchor_string="/sn1/",
-            anchor_units="pixels",
-            anchor_y_offset="-5",
-            anchor_x_offset="0",
-        )
-        full_name = FullName(
-            anchor_string="/fn1/",
-            anchor_units="pixels",
-            anchor_y_offset="-5",
-            anchor_x_offset="0",
-        )
-        date_signed = DateSigned(
-            anchor_string="/ds1/",
-            anchor_units="pixels",
-            anchor_y_offset="-5",
-            anchor_x_offset="0",
-        )
-
-        signer.tabs = Tabs(
-            sign_here_tabs=[sign_here],
-            full_name_tabs=[full_name],
-            date_signed_tabs=[date_signed],
-        )
-
-        envelope_definition = EnvelopeDefinition(
-            email_subject=f"BaxterLabs Advisory — NDA for {company_name}",
-            email_blurb=(
-                f"Dear {contact_name},\n\n"
-                f"Please review and sign the Non-Disclosure Agreement for your engagement "
-                f"with BaxterLabs Advisory.\n\nThank you."
-            ),
-            documents=[document],
-            recipients=Recipients(signers=[signer]),
-            status="sent",
-            custom_fields=None,
-        )
-
-        # Attach webhook if configured
-        event_notification = self._make_event_notification()
-        if event_notification:
-            envelope_definition.event_notification = event_notification
-
-        try:
-            envelopes_api = EnvelopesApi(self._api_client)
-            result = envelopes_api.create_envelope(
-                account_id=self._ds_account_id,
-                envelope_definition=envelope_definition,
-            )
-
-            logger.info(
-                f"NDA sent — envelope_id={result.envelope_id} to={contact_email} "
-                f"engagement={engagement_id}"
-            )
-
-            return {
-                "success": True,
-                "envelope_id": result.envelope_id,
-                "status": result.status,
-            }
-        except ApiException as e:
-            logger.error(
-                f"DocuSign send_nda failed — engagement/opp={engagement_id} "
-                f"to={contact_email} status_code={e.status} reason={e.reason} body={e.body}"
-            )
-            return {
-                "success": False,
-                "error": str(e),
-            }
+    def _build_nda_html(self, company_name: str, contact_name: str) -> str:
+        """Generate the NDA document as HTML (used as doc 1 in combined envelope)."""
+        today = datetime.now(timezone.utc).strftime("%B %d, %Y")
+        return f"""<!DOCTYPE html>
+<html><head><style>
+  body {{ font-family: 'Georgia', serif; color: #2D3436; line-height: 1.6; margin: 40px; }}
+  h1 {{ color: #66151C; text-align: center; border-bottom: 2px solid #C9A84C; padding-bottom: 16px; }}
+  h2 {{ color: #005454; margin-top: 24px; }}
+  .header {{ text-align: center; margin-bottom: 32px; }}
+  .header .logo {{ font-size: 24px; font-weight: bold; color: #66151C; }}
+  .parties {{ background: #FAF8F2; padding: 16px; border-radius: 8px; margin: 16px 0; }}
+</style></head><body>
+<div class="header"><div class="logo">BaxterLabs Advisory</div><p style="color:#C9A84C;margin-top:4px;">Confidential</p></div>
+<h1>Non-Disclosure Agreement</h1>
+<p>This Non-Disclosure Agreement is entered into as of <strong>{today}</strong> by and between:</p>
+<div class="parties">
+  <p><strong>Disclosing Party:</strong> {company_name}, represented by {contact_name} ("Client")</p>
+  <p><strong>Receiving Party:</strong> BaxterLabs Advisory LLC, a Texas limited liability company ("BaxterLabs")</p>
+</div>
+<h2>1. Purpose</h2><p>The Client intends to disclose certain confidential information to BaxterLabs for the purpose of evaluating and conducting a profit leak diagnostic audit and related advisory services.</p>
+<h2>2. Definition of Confidential Information</h2><p>"Confidential Information" means all non-public information disclosed by Client to BaxterLabs, whether orally, in writing, or electronically, including but not limited to: financial statements, payroll records, vendor contracts, revenue data, operational processes, customer lists, pricing strategies, and any other business information marked or reasonably understood to be confidential.</p>
+<h2>3. Obligations of Receiving Party</h2><p>BaxterLabs agrees to: (a) hold all Confidential Information in strict confidence; (b) not disclose Confidential Information to any third party without prior written consent; (c) use Confidential Information solely for the Purpose; (d) protect Confidential Information with at least the same degree of care used to protect its own confidential information, but no less than reasonable care.</p>
+<h2>4. Exclusions</h2><p>Confidential Information does not include information that: (a) is or becomes publicly available through no fault of BaxterLabs; (b) was known to BaxterLabs prior to disclosure; (c) is independently developed by BaxterLabs without use of Confidential Information; or (d) is required to be disclosed by law or court order, provided BaxterLabs gives prompt written notice.</p>
+<h2>5. Return of Materials</h2><p>Upon completion of the engagement or upon Client's written request, BaxterLabs shall promptly return or destroy all Confidential Information and any copies thereof.</p>
+<h2>6. Term</h2><p>This Agreement shall remain in effect for three (3) years from the Effective Date. The obligations of confidentiality shall survive termination.</p>
+<h2>7. Governing Law</h2><p>This Agreement shall be governed by the laws of the State of Texas.</p>
+<h2>8. Entire Agreement</h2><p>This Agreement constitutes the entire agreement between the parties concerning the subject matter hereof.</p>
+<div style="margin-top:40px;page-break-inside:avoid;">
+  <p><strong>IN WITNESS WHEREOF</strong>, the parties have executed this Agreement as of the Effective Date.</p>
+  <table width="100%" style="margin-top:32px;">
+    <tr>
+      <td width="50%">
+        <p><strong>Client — {company_name}</strong></p>
+        <p style="margin-top:24px;">Signature:</p><p><span style="color:white;font-size:1px;">/nda_sn1/</span></p>
+        <p style="margin-top:8px;">Name: <span style="color:white;font-size:1px;">/nda_fn1/</span></p>
+        <p>Date: <span style="color:white;font-size:1px;">/nda_ds1/</span></p>
+      </td>
+      <td width="50%">
+        <p><strong>BaxterLabs Advisory LLC</strong></p>
+        <p style="margin-top:24px;">Signature:</p><p><span style="color:white;font-size:1px;">/nda_sn2/</span></p>
+        <p style="margin-top:8px;">Name: George DeVries</p><p>Title: Managing Partner</p>
+        <p>Date: <span style="color:white;font-size:1px;">/nda_ds2/</span></p>
+      </td>
+    </tr>
+  </table>
+</div>
+</body></html>"""
 
     def _build_agreement_html(
         self, company_name: str, contact_name: str, fee: float, start_date: str, end_date: str,
@@ -554,10 +415,144 @@ class DocuSignService:
                 "error": str(e),
             }
 
+    def send_combined_agreements(
+        self,
+        opportunity_id: str,
+        contact_email: str,
+        contact_name: str,
+        company_name: str,
+        fee: float,
+        start_date: str,
+        end_date: str,
+    ) -> dict:
+        """Send a single DocuSign envelope containing NDA + Engagement Agreement.
+
+        Two documents, two signers (client routing_order=1, BaxterLabs routing_order=2).
+        Tagged as pipeline_agreement so the existing webhook handler fires on completion.
+        """
+        logger.info(
+            f"send_combined_agreements called — opp={opportunity_id} "
+            f"to={contact_email} contact={contact_name} company={company_name} "
+            f"fee={fee} configured={self._is_configured()} dev_mode={self._dev_mode}"
+        )
+        self._ensure_auth()
+
+        # Document 1: NDA
+        nda_html = self._build_nda_html(company_name, contact_name)
+        nda_doc = Document(
+            document_base64=base64.b64encode(nda_html.encode("utf-8")).decode("ascii"),
+            name=f"NDA — {company_name} & BaxterLabs Advisory",
+            file_extension="html",
+            document_id="1",
+        )
+
+        # Document 2: Engagement Agreement
+        agreement_html = self._build_agreement_html(
+            company_name, contact_name, fee, start_date, end_date,
+        )
+        agreement_doc = Document(
+            document_base64=base64.b64encode(agreement_html.encode("utf-8")).decode("ascii"),
+            name=f"Engagement Agreement — {company_name} & BaxterLabs Advisory",
+            file_extension="html",
+            document_id="2",
+        )
+
+        # Signer 1: Client — signs both documents
+        client_signer = Signer(
+            email=contact_email,
+            name=contact_name,
+            recipient_id="1",
+            routing_order="1",
+        )
+        client_signer.tabs = Tabs(
+            sign_here_tabs=[
+                SignHere(anchor_string="/nda_sn1/", anchor_units="pixels",
+                         anchor_y_offset="-5", anchor_x_offset="0"),
+                SignHere(anchor_string="/sn1/", anchor_units="pixels",
+                         anchor_y_offset="-5", anchor_x_offset="0"),
+            ],
+            full_name_tabs=[
+                FullName(anchor_string="/nda_fn1/", anchor_units="pixels",
+                         anchor_y_offset="-5", anchor_x_offset="0"),
+                FullName(anchor_string="/fn1/", anchor_units="pixels",
+                         anchor_y_offset="-5", anchor_x_offset="0"),
+            ],
+            date_signed_tabs=[
+                DateSigned(anchor_string="/nda_ds1/", anchor_units="pixels",
+                           anchor_y_offset="-5", anchor_x_offset="0"),
+                DateSigned(anchor_string="/ds1/", anchor_units="pixels",
+                           anchor_y_offset="-5", anchor_x_offset="0"),
+            ],
+        )
+
+        # Signer 2: BaxterLabs (George) — signs both documents
+        partner_email = os.getenv("PARTNER_EMAIL", "george@baxterlabs.ai")
+        partner_signer = Signer(
+            email=partner_email,
+            name="George DeVries",
+            recipient_id="2",
+            routing_order="2",
+        )
+        partner_signer.tabs = Tabs(
+            sign_here_tabs=[
+                SignHere(anchor_string="/nda_sn2/", anchor_units="pixels",
+                         anchor_y_offset="-5", anchor_x_offset="0"),
+                SignHere(anchor_string="/sn2/", anchor_units="pixels",
+                         anchor_y_offset="-5", anchor_x_offset="0"),
+            ],
+            date_signed_tabs=[
+                DateSigned(anchor_string="/nda_ds2/", anchor_units="pixels",
+                           anchor_y_offset="-5", anchor_x_offset="0"),
+                DateSigned(anchor_string="/ds2/", anchor_units="pixels",
+                           anchor_y_offset="-5", anchor_x_offset="0"),
+            ],
+        )
+
+        envelope_definition = EnvelopeDefinition(
+            email_subject=f"BaxterLabs Advisory — NDA & Engagement Agreement for {company_name}",
+            email_blurb=(
+                f"Dear {contact_name},\n\n"
+                f"Please review and sign the enclosed Non-Disclosure Agreement and "
+                f"Engagement Agreement for your 14-Day Profit Leak Diagnostic "
+                f"with BaxterLabs Advisory.\n\nThank you."
+            ),
+            documents=[nda_doc, agreement_doc],
+            recipients=Recipients(signers=[client_signer, partner_signer]),
+            status="sent",
+        )
+
+        event_notification = self._make_event_notification()
+        if event_notification:
+            envelope_definition.event_notification = event_notification
+
+        try:
+            envelopes_api = EnvelopesApi(self._api_client)
+            result = envelopes_api.create_envelope(
+                account_id=self._ds_account_id,
+                envelope_definition=envelope_definition,
+            )
+
+            logger.info(
+                f"Combined agreements sent — envelope_id={result.envelope_id} "
+                f"to={contact_email} opp={opportunity_id}"
+            )
+
+            return {
+                "success": True,
+                "envelope_id": result.envelope_id,
+                "status": result.status,
+            }
+        except ApiException as e:
+            logger.error(f"DocuSign send_combined_agreements failed: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+            }
+
     def _lookup_doc_type(self, envelope_id: str) -> str:
         """Look up document type from legal_documents or pipeline_opportunities.
 
-        Returns: 'nda', 'agreement', 'pipeline_nda', or 'pipeline_agreement'.
+        Returns: 'agreement' or 'pipeline_agreement'.
         """
         try:
             from services.supabase_client import get_supabase
@@ -573,17 +568,6 @@ class DocuSignService:
             if result.data:
                 return result.data[0]["type"]
 
-            # Check pipeline_opportunities NDA envelope
-            pipeline_nda = (
-                sb.table("pipeline_opportunities")
-                .select("id")
-                .eq("nda_envelope_id", envelope_id)
-                .eq("is_deleted", False)
-                .execute()
-            )
-            if pipeline_nda.data:
-                return "pipeline_nda"
-
             # Check pipeline_opportunities agreement envelope
             pipeline_agreement = (
                 sb.table("pipeline_opportunities")
@@ -597,7 +581,7 @@ class DocuSignService:
 
         except Exception as e:
             logger.warning(f"Could not look up doc type for {envelope_id}: {e}")
-        return "nda"  # default fallback
+        return "agreement"  # default fallback
 
     def handle_webhook(self, payload: dict) -> dict:
         """Process DocuSign webhook callback. Returns action based on doc type."""
@@ -622,26 +606,21 @@ class DocuSignService:
 
         logger.info(f"DocuSign webhook — event={event_type} envelope_id={envelope_id}")
 
-        # Look up document type to differentiate NDA vs Agreement
         doc_type = self._lookup_doc_type(envelope_id)
 
         if event_type == "envelope-completed":
             action_map = {
-                "nda": "nda_signed",
                 "agreement": "agreement_signed",
-                "pipeline_nda": "pipeline_nda_signed",
                 "pipeline_agreement": "pipeline_agreement_signed",
             }
-            action = action_map.get(doc_type, "nda_signed")
+            action = action_map.get(doc_type, "agreement_signed")
             return {"action": action, "envelope_id": envelope_id}
         elif event_type == "envelope-declined":
             action_map = {
-                "nda": "nda_declined",
                 "agreement": "agreement_declined",
-                "pipeline_nda": "pipeline_nda_declined",
                 "pipeline_agreement": "pipeline_agreement_declined",
             }
-            action = action_map.get(doc_type, "nda_declined")
+            action = action_map.get(doc_type, "agreement_declined")
             return {"action": action, "envelope_id": envelope_id}
         elif event_type == "envelope-voided":
             return {"action": f"{doc_type}_voided", "envelope_id": envelope_id}

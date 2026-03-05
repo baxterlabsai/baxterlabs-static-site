@@ -76,36 +76,6 @@ def _get_last_reminder(engagement_id: str, reminder_type: str) -> str:
     return ""
 
 
-@router.post("/engagements/{engagement_id}/remind/nda")
-async def remind_nda(
-    engagement_id: str,
-    user: dict = Depends(verify_partner_auth),
-):
-    """Send a reminder to the client that their NDA is pending signature."""
-    engagement = get_engagement_by_id(engagement_id)
-    if not engagement:
-        raise HTTPException(status_code=404, detail="Engagement not found")
-
-    if engagement["status"] not in ("nda_pending",):
-        raise HTTPException(status_code=400, detail="NDA is not pending for this engagement")
-
-    _check_rate_limit(engagement_id, "nda")
-
-    email_svc = get_email_service()
-    result = email_svc.send_reminder_nda(engagement)
-
-    log_activity(engagement_id, "partner", "reminder_sent", {
-        "reminder_type": "nda",
-        "to": engagement.get("clients", {}).get("primary_contact_email"),
-        "result": result,
-    })
-
-    return {
-        "success": True,
-        "message": f"NDA reminder sent to {engagement.get('clients', {}).get('primary_contact_email')}",
-    }
-
-
 @router.post("/engagements/{engagement_id}/remind/agreement")
 async def remind_agreement(
     engagement_id: str,
@@ -192,7 +162,6 @@ async def get_last_reminders(
 ):
     """Get the last reminder timestamps for each type."""
     return {
-        "nda": _get_last_reminder(engagement_id, "nda"),
         "agreement": _get_last_reminder(engagement_id, "agreement"),
         "documents": _get_last_reminder(engagement_id, "documents"),
     }

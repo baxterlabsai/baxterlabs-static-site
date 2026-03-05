@@ -33,7 +33,7 @@ function statusBadgeClass(status: string): string {
   if (['phase_1', 'phase_2', 'phase_3', 'phase_4', 'phase_5', 'phase_6', 'discovery_done', 'documents_received'].includes(s)) {
     return 'bg-teal/10 text-teal'
   }
-  if (['intake', 'nda_pending', 'agreement_pending', 'documents_pending'].includes(s)) {
+  if (['intake', 'agreement_pending', 'documents_pending'].includes(s)) {
     return 'bg-gold/15 text-gold'
   }
   if (['closed'].includes(s)) {

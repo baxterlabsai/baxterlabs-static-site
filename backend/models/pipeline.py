@@ -88,9 +88,6 @@ class OpportunityCreate(BaseModel):
     calendly_event_uri: Optional[str] = None
     calendly_invitee_uri: Optional[str] = None
     calendly_booking_time: Optional[datetime] = None
-    nda_envelope_id: Optional[str] = None
-    nda_confirmation_token: Optional[str] = None
-    nda_requested_at: Optional[datetime] = None
     agreement_envelope_id: Optional[str] = None
     call_notes_doc_url: Optional[str] = None
 
@@ -112,9 +109,6 @@ class OpportunityUpdate(BaseModel):
     calendly_event_uri: Optional[str] = None
     calendly_invitee_uri: Optional[str] = None
     calendly_booking_time: Optional[datetime] = None
-    nda_envelope_id: Optional[str] = None
-    nda_confirmation_token: Optional[str] = None
-    nda_requested_at: Optional[datetime] = None
     agreement_envelope_id: Optional[str] = None
     call_notes_doc_url: Optional[str] = None
 
@@ -135,7 +129,6 @@ class ConversionRequest(BaseModel):
     discovery_notes_override: Optional[str] = None
     pain_points_override: Optional[str] = None
     interview_contacts: Optional[List[InterviewContactMapping]] = None
-    send_nda: bool = True
     referral_source: Optional[str] = None
 
 
@@ -246,7 +239,6 @@ class WebsiteIntakeRequest(BaseModel):
 
 class WebsiteIntakeResponse(BaseModel):
     success: bool
-    nda_confirmation_token: str
     company_id: str
     contact_id: str
     opportunity_id: str

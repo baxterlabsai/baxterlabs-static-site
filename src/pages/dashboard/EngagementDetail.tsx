@@ -117,7 +117,7 @@ interface EngagementData {
 }
 
 const ALL_STATUSES = [
-  'nda_pending', 'nda_signed', 'discovery_done', 'agreement_pending', 'agreement_signed',
+  'intake', 'discovery_done', 'agreement_pending', 'agreement_signed',
   'documents_pending', 'documents_received',
   'phase_0', 'phase_1', 'phase_2', 'phase_3', 'phase_4', 'phase_5', 'phase_6', 'phase_7', 'phases_complete',
   'debrief', 'wave_1_released', 'wave_2_released', 'closed',
@@ -241,7 +241,7 @@ export default function EngagementDetail() {
   const [deleteDialog, setDeleteDialog] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [reminderLoading, setReminderLoading] = useState<string | null>(null)
-  const [lastReminders, setLastReminders] = useState<{ nda: string; agreement: string; documents: string }>({ nda: '', agreement: '', documents: '' })
+  const [lastReminders, setLastReminders] = useState<{ agreement: string; documents: string }>({ agreement: '', documents: '' })
   const [expandedPhases, setExpandedPhases] = useState<Set<number>>(new Set())
   const [seedingOutputs, setSeedingOutputs] = useState(false)
   const [uploadingOutputId, setUploadingOutputId] = useState<string | null>(null)
@@ -313,7 +313,7 @@ export default function EngagementDetail() {
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
     // Fetch last reminder timestamps
-    apiGet<{ nda: string; agreement: string; documents: string }>(`/api/engagements/${id}/reminders/last`)
+    apiGet<{ agreement: string; documents: string }>(`/api/engagements/${id}/reminders/last`)
       .then(setLastReminders)
       .catch(() => {})
   }, [id])
@@ -494,19 +494,19 @@ export default function EngagementDetail() {
     setDeleting(false)
   }
 
-  const sendReminder = async (type: 'nda' | 'agreement' | 'documents') => {
+  const sendReminder = async (type: 'agreement' | 'documents') => {
     if (!id) return
     setReminderLoading(type)
     try {
       await apiPost(`/api/engagements/${id}/remind/${type}`)
       // Refresh last reminder timestamps
-      const reminders = await apiGet<{ nda: string; agreement: string; documents: string }>(`/api/engagements/${id}/reminders/last`)
+      const reminders = await apiGet<{ agreement: string; documents: string }>(`/api/engagements/${id}/reminders/last`)
       setLastReminders(reminders)
     } catch {}
     setReminderLoading(null)
   }
 
-  const isReminderDisabled = (type: 'nda' | 'agreement' | 'documents') => {
+  const isReminderDisabled = (type: 'agreement' | 'documents') => {
     const last = lastReminders[type]
     if (!last) return false
     const diff = Date.now() - new Date(last).getTime()
@@ -586,7 +586,6 @@ export default function EngagementDetail() {
   }
 
   const client = data.clients
-  const nda = data.legal_documents.find(d => d.type === 'nda')
   const agreement = data.legal_documents.find(d => d.type === 'agreement')
   const dossier = data.research_documents.find(d => d.type === 'company_dossier')
   const briefs = data.research_documents.filter(d => d.type === 'interview_brief')
@@ -631,7 +630,7 @@ export default function EngagementDetail() {
           <p className="text-gray-warm text-sm">{client.primary_contact_name} · {statusLabel(data.status)}</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {!isClosed && ['nda_signed', 'discovery_done'].includes(data.status) && (
+          {!isClosed && data.status === 'discovery_done' && (
             <Link to={`/dashboard/engagement/${id}/start`} className="px-5 py-2.5 bg-crimson text-white font-semibold rounded-lg hover:bg-crimson/90 text-sm">
               Start Engagement &rarr;
             </Link>
@@ -659,16 +658,11 @@ export default function EngagementDetail() {
       {/* Smart Reminder Button — one contextual button based on what the client needs to do next */}
       {!isClosed && (() => {
         // Determine what the client's next required action is
-        const ndaDoc = data.legal_documents.find(d => d.type === 'nda')
         const agreementDoc = data.legal_documents.find(d => d.type === 'agreement')
 
-        let reminderConfig: { type: 'nda' | 'agreement' | 'documents'; label: string; icon: string } | null = null
+        let reminderConfig: { type: 'agreement' | 'documents'; label: string; icon: string } | null = null
 
-        if (ndaDoc && ndaDoc.status === 'sent') {
-          reminderConfig = { type: 'nda', label: 'Remind Client: Sign NDA', icon: 'M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z' }
-        } else if (data.status === 'nda_pending') {
-          reminderConfig = { type: 'nda', label: 'Remind Client: Sign NDA', icon: 'M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z' }
-        } else if (agreementDoc && agreementDoc.status === 'sent') {
+        if (agreementDoc && agreementDoc.status === 'sent') {
           reminderConfig = { type: 'agreement', label: 'Remind Client: Sign Agreement', icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' }
         } else if (data.status === 'agreement_pending') {
           reminderConfig = { type: 'agreement', label: 'Remind Client: Sign Agreement', icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' }
@@ -1414,7 +1408,7 @@ export default function EngagementDetail() {
             {dossier.content}
           </div>
         ) : (
-          <p className="text-gray-warm text-sm">Research pending — will be generated when NDA is signed.</p>
+          <p className="text-gray-warm text-sm">Research pending — will be generated when agreements are signed.</p>
         )}
       </section>
 
@@ -1460,7 +1454,6 @@ export default function EngagementDetail() {
       <section className="bg-white rounded-lg border border-gray-light p-5 mt-6">
         <h3 className="font-display text-lg font-bold text-teal mb-4">Legal Documents</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <LegalDoc label="NDA" doc={nda} />
           <LegalDoc label="Engagement Agreement" doc={agreement} />
         </div>
       </section>

@@ -53,8 +53,6 @@ function statusLabel(status: string): string {
 function barColor(status: string): { bg: string; text: string } {
   const pending = [
     'intake',
-    'nda_pending',
-    'nda_signed',
     'discovery_done',
     'agreement_pending',
     'agreement_signed',

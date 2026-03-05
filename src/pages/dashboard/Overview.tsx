@@ -188,8 +188,6 @@ const COCKPIT_TYPE_BADGE: Record<string, string> = {
 
 const STATUS_COLORS: Record<string, string> = {
   intake: 'bg-gray-light text-charcoal',
-  nda_pending: 'bg-gray-light text-charcoal',
-  nda_signed: 'bg-blue-100 text-blue-800',
   discovery_done: 'bg-blue-100 text-blue-800',
   agreement_pending: 'bg-amber/20 text-amber',
   agreement_signed: 'bg-amber/20 text-amber',
@@ -645,7 +643,7 @@ export default function Overview() {
             <div className="mt-4 bg-white rounded-lg border border-gray-light p-4">
               <p className="text-sm font-semibold text-charcoal mb-3">Stage Funnel</p>
               <div className="space-y-2">
-                {['identified', 'contacted', 'discovery_scheduled', 'nda_sent', 'nda_signed', 'discovery_complete', 'negotiation', 'agreement_sent', 'won']
+                {['identified', 'contacted', 'discovery_scheduled', 'discovery_complete', 'negotiation', 'agreement_sent', 'won']
                   .filter(s => analytics.stage_funnel[s])
                   .map(stage => {
                     const data = analytics.stage_funnel[stage]

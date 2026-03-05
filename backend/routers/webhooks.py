@@ -187,7 +187,7 @@ def _handle_calendly_invitee_created(payload: dict) -> None:
     for contact_id in contact_ids:
         opps = (
             sb.table("pipeline_opportunities")
-            .select("id, nda_confirmation_token, assigned_to, company_id")
+            .select("id, schedule_token, assigned_to, company_id")
             .eq("primary_contact_id", contact_id)
             .eq("stage", "discovery_scheduled")
             .eq("is_deleted", False)

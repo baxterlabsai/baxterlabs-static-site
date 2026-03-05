@@ -23,8 +23,6 @@ router = APIRouter(prefix="/api", tags=["archive"])
 # Ordered list of engagement statuses from earliest to latest.
 STATUS_ORDER: List[str] = [
     "intake",
-    "nda_pending",
-    "nda_signed",
     "discovery_done",
     "agreement_pending",
     "agreement_signed",

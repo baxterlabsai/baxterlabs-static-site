@@ -50,9 +50,6 @@ interface Opportunity {
   calendly_event_uri: string | null
   calendly_invitee_uri: string | null
   calendly_booking_time: string | null
-  nda_envelope_id: string | null
-  nda_confirmation_token: string | null
-  nda_requested_at: string | null
   agreement_envelope_id: string | null
   created_at: string
   updated_at: string
@@ -98,8 +95,6 @@ const STAGES = [
   { key: 'identified', label: 'Identified', color: 'bg-gray-light text-charcoal', headerBg: 'bg-gray-light/50' },
   { key: 'contacted', label: 'Contacted', color: 'bg-blue-100 text-blue-800', headerBg: 'bg-blue-50' },
   { key: 'discovery_scheduled', label: 'Discovery', color: 'bg-teal/10 text-teal', headerBg: 'bg-teal/5' },
-  { key: 'nda_sent', label: 'NDA Sent', color: 'bg-gold/10 text-charcoal', headerBg: 'bg-gold/5' },
-  { key: 'nda_signed', label: 'NDA Signed', color: 'bg-gold/20 text-charcoal', headerBg: 'bg-gold/10' },
   { key: 'discovery_complete', label: 'Disc. Complete', color: 'bg-teal/20 text-teal', headerBg: 'bg-teal/10' },
   { key: 'negotiation', label: 'Negotiation', color: 'bg-gold/30 text-charcoal', headerBg: 'bg-gold/15' },
   { key: 'agreement_sent', label: 'Agreement Sent', color: 'bg-crimson/10 text-crimson', headerBg: 'bg-crimson/5' },
@@ -841,7 +836,7 @@ function OpportunityCard({
             onClick={(e) => { e.stopPropagation(); onSendAgreement() }}
             className="w-full text-xs text-white bg-crimson font-medium rounded py-1 hover:bg-crimson/90 transition-colors"
           >
-            Send Agreement
+            Send Agreements
           </button>
         </div>
       )}

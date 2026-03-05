@@ -224,30 +224,10 @@ class EmailService:
           <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;">Revenue Range</td>
               <td style="padding:8px;border-bottom:1px solid #E5E7EB;">{client.get("revenue_range", "—")}</td></tr>
         </table>
-        <p style="color:{TEAL};font-weight:600;">NDA will be sent automatically.</p>
+        <p style="color:{TEAL};font-weight:600;">Engagement created.</p>
         """
         return self._send_email(
             DEFAULT_PARTNER_EMAIL, f"New Intake: {company}", body,
-            from_email=EMAIL_INFO, from_name="BaxterLabs",
-        )
-
-    def send_nda_signed_notification(self, engagement: dict) -> dict:
-        """Notify partner: client signed the NDA."""
-        client = engagement.get("clients", {})
-        company = client.get("company_name", "Unknown")
-        body = f"""
-        <h2 style="color:{CRIMSON};font-family:Georgia,serif;margin-top:0;">NDA Signed</h2>
-        <p><strong>{company}</strong> has signed the NDA.</p>
-        <p>Company research has been triggered automatically. You will receive another notification when the dossier is ready.</p>
-        <p style="margin-top:24px;">
-          <a href="{self.frontend_url}/dashboard/engagement/{engagement.get('id')}"
-             style="display:inline-block;padding:12px 24px;background-color:{CRIMSON};color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">
-            View Engagement
-          </a>
-        </p>
-        """
-        return self._send_email(
-            DEFAULT_PARTNER_EMAIL, f"NDA Signed: {company}", body,
             from_email=EMAIL_INFO, from_name="BaxterLabs",
         )
 
@@ -523,56 +503,6 @@ class EmailService:
             from_email=p_email, from_name=p_name,
         )
 
-    def send_nda_confirmation_link(
-        self,
-        to_email: str,
-        contact_name: str,
-        company_name: str,
-        confirmation_url: str,
-        booking_time: str,
-        partner_lead: str = "George DeVries",
-    ) -> dict:
-        """Send confirmation page link with NDA option after Calendly booking."""
-        body = f"""
-        <h2 style="color:{CRIMSON};font-family:Georgia,serif;margin-top:0;">Discovery Call Confirmed</h2>
-        <p>Hi {contact_name},</p>
-        <p>Your discovery call with BaxterLabs has been scheduled for <strong>{booking_time}</strong>.</p>
-        <p>Before our call, we ask that you review and sign a Non-Disclosure Agreement (NDA). This ensures all information shared during our engagement remains strictly confidential.</p>
-        <p style="margin:24px 0;text-align:center;">
-          <a href="{confirmation_url}"
-             style="display:inline-block;padding:14px 32px;background-color:{CRIMSON};color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;font-size:16px;">
-            Review &amp; Sign NDA
-          </a>
-        </p>
-        <p style="font-size:14px;color:{CHARCOAL};">Signing the NDA is quick and easy via DocuSign. It protects both parties and allows us to have an open, productive conversation.</p>
-        <p style="color:{TEAL};font-weight:600;margin-top:24px;">See you soon!</p>
-        """
-        p_email = get_partner_email(partner_lead)
-        p_name = f"{partner_lead} — BaxterLabs"
-        return self._send_email(
-            to_email, f"BaxterLabs — Your Discovery Call is Confirmed", body,
-            from_email=p_email, from_name=p_name,
-        )
-
-    def send_pipeline_nda_signed_notification(
-        self,
-        to_email: str,
-        contact_name: str,
-        company_name: str,
-    ) -> dict:
-        """Confirm to prospect that their NDA has been signed."""
-        body = f"""
-        <h2 style="color:{TEAL};font-family:Georgia,serif;margin-top:0;">NDA Signed — Thank You!</h2>
-        <p>Hi {contact_name},</p>
-        <p>Thank you for signing the Non-Disclosure Agreement for <strong>{company_name}</strong>.</p>
-        <p>We're looking forward to your upcoming discovery call. In the meantime, if you have any questions, don't hesitate to reach out.</p>
-        <p style="color:{TEAL};font-weight:600;margin-top:24px;">— The BaxterLabs Team</p>
-        """
-        return self._send_email(
-            to_email, f"BaxterLabs — NDA Signed Successfully", body,
-            from_email=EMAIL_INFO, from_name="BaxterLabs",
-        )
-
     def send_website_intake_notification(
         self,
         company_name: str,
@@ -606,27 +536,6 @@ class EmailService:
         return self._send_email(
             DEFAULT_PARTNER_EMAIL, f"New Website Lead: {company_name}", body,
             from_email=EMAIL_INFO, from_name="BaxterLabs",
-        )
-
-    def send_reminder_nda(self, engagement: dict) -> dict:
-        """Send client a reminder to sign the NDA."""
-        client = engagement.get("clients", {})
-        company = client.get("company_name", "Unknown")
-        contact_name = client.get("primary_contact_name", "there")
-        contact_email = client.get("primary_contact_email")
-        body = f"""
-        <h2 style="color:{CRIMSON};font-family:Georgia,serif;margin-top:0;">Friendly Reminder: Sign Your NDA</h2>
-        <p>Hi {contact_name},</p>
-        <p>We noticed you haven't yet signed the Non-Disclosure Agreement for your engagement with BaxterLabs Advisory.</p>
-        <p>Please check your email for the DocuSign envelope and complete the signature so we can get started. If you can't find it, please let us know and we'll resend it.</p>
-        <p style="color:{TEAL};font-weight:600;margin-top:24px;">— The BaxterLabs Team</p>
-        """
-        partner_lead = engagement.get("partner_lead", "")
-        p_email = get_partner_email(partner_lead)
-        p_name = f"{partner_lead or 'George DeVries'} — BaxterLabs"
-        return self._send_email(
-            contact_email, f"Reminder: Sign Your NDA — {company}", body,
-            from_email=p_email, from_name=p_name,
         )
 
     def send_reminder_agreement(self, engagement: dict) -> dict:

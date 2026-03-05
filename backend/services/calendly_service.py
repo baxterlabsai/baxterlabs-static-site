@@ -23,28 +23,6 @@ class CalendlyService:
         """Return the configured Calendly scheduling URL."""
         return self.scheduling_url
 
-    def cancel_event(self, event_uuid: str, reason: str = "Automated cancellation") -> dict:
-        """Cancel a Calendly event via API."""
-        if not self.api_key:
-            logger.warning("Calendly API key not configured — cannot cancel event")
-            return {"success": False, "error": "Calendly not configured"}
-
-        try:
-            url = f"https://api.calendly.com/scheduled_events/{event_uuid}/cancellation"
-            headers = {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            }
-            resp = requests.post(url, json={"reason": reason}, headers=headers, timeout=15)
-            if resp.status_code in (200, 201):
-                logger.info(f"Calendly event {event_uuid} cancelled: {reason}")
-                return {"success": True}
-            else:
-                logger.warning(f"Calendly cancel failed: {resp.status_code} {resp.text}")
-                return {"success": False, "error": resp.text}
-        except Exception as e:
-            logger.error(f"Calendly cancel error: {e}")
-            return {"success": False, "error": str(e)}
 
 
 # Singleton

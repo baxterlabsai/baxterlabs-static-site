@@ -116,7 +116,7 @@ async def start_engagement(
     if not engagement:
         raise HTTPException(status_code=404, detail="Engagement not found")
 
-    if engagement["status"] not in ("nda_signed", "discovery_done"):
+    if engagement["status"] not in ("discovery_done",):
         raise HTTPException(status_code=400, detail=f"Cannot start engagement in status '{engagement['status']}'")
 
     # 1. Update engagement fields

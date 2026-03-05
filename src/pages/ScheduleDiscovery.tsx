@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
-import NDAGate from '../components/NDAGate'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -10,8 +9,6 @@ interface ScheduleData {
   contact_email: string | null
   assigned_to: string | null
   booking_time: string | null
-  nda_already_requested: boolean
-  nda_already_signed: boolean
   stage: string
   calendly_url: string | null
 }
@@ -37,7 +34,7 @@ export default function ScheduleDiscovery() {
       })
       .then((d: ScheduleData) => {
         setData(d)
-        // If they already have a booking, jump to NDA phase
+        // If they already have a booking, show confirmation
         if (d.booking_time) setBooked(true)
       })
       .catch(err => setError(err.message))
@@ -193,15 +190,27 @@ export default function ScheduleDiscovery() {
                   onClick={handleManualBookConfirm}
                   className="w-full py-3 bg-crimson text-white font-semibold rounded-lg hover:bg-crimson/90 transition-colors animate-pulse-subtle ring-2 ring-gold/60 ring-offset-2 ring-offset-ivory"
                 >
-                  I've booked my call — continue to NDA
+                  I've booked my call
                 </button>
               </div>
             )}
           </>
         )}
 
-        {/* Phase 2: Booked — show NDAGate */}
-        {booked && token && <NDAGate token={token} initialData={data} />}
+        {/* Phase 2: Booked — show confirmation */}
+        {booked && (
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div className="px-6 py-8 text-center">
+              <svg className="mx-auto w-12 h-12 text-teal mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <h3 className="text-lg font-bold text-charcoal mb-2">You're All Set</h3>
+              <p className="text-sm text-gray-warm">
+                We'll see you at your scheduled call. A confirmation email has been sent to your inbox.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

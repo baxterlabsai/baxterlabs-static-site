@@ -28,63 +28,6 @@ def _run_async_in_background(coro):
         loop.close()
 
 
-@router.post("/send-nda", response_model=DocuSignResponse)
-async def send_nda(body: DocuSignSendRequest):
-    """Send NDA to client via DocuSign."""
-    logger.info(f"send-nda endpoint called for engagement {body.engagement_id}")
-    engagement = get_engagement_by_id(body.engagement_id)
-    if not engagement:
-        raise HTTPException(status_code=404, detail="Engagement not found")
-
-    client = engagement.get("clients", {})
-    contact_email = client.get("primary_contact_email")
-    contact_name = client.get("primary_contact_name")
-    company_name = client.get("company_name")
-
-    logger.info(f"send-nda — to={contact_email} name={contact_name} company={company_name}")
-
-    if not contact_email or not contact_name:
-        raise HTTPException(status_code=400, detail="Client contact info incomplete")
-
-    ds = get_docusign_service()
-
-    try:
-        result = ds.send_nda(
-            engagement_id=body.engagement_id,
-            contact_email=contact_email,
-            contact_name=contact_name,
-            company_name=company_name,
-        )
-    except RuntimeError as e:
-        logger.error(f"DocuSign send_nda error: {e}", exc_info=True)
-        raise HTTPException(status_code=503, detail=str(e))
-
-    logger.info(f"send-nda result: {result}")
-
-    if not result.get("success"):
-        raise HTTPException(status_code=502, detail=result.get("error", "DocuSign send failed"))
-
-    sb = get_supabase()
-    sb.table("legal_documents").insert({
-        "engagement_id": body.engagement_id,
-        "type": "nda",
-        "docusign_envelope_id": result["envelope_id"],
-        "status": "sent",
-        "sent_at": "now()",
-    }).execute()
-
-    log_activity(body.engagement_id, "system", "nda_sent", {
-        "envelope_id": result["envelope_id"],
-        "to": contact_email,
-    })
-
-    return DocuSignResponse(
-        success=True,
-        envelope_id=result["envelope_id"],
-        message="NDA sent successfully via DocuSign.",
-    )
-
-
 @router.post("/send-agreement", response_model=DocuSignResponse)
 async def send_agreement(body: DocuSignSendRequest):
     """Send Engagement Agreement via DocuSign."""
@@ -158,65 +101,7 @@ async def docusign_webhook(request: Request, background_tasks: BackgroundTasks):
 
     sb = get_supabase()
 
-    if action == "nda_signed":
-        legal_result = (
-            sb.table("legal_documents")
-            .select("engagement_id")
-            .eq("docusign_envelope_id", envelope_id)
-            .eq("type", "nda")
-            .execute()
-        )
-
-        if legal_result.data:
-            engagement_id = legal_result.data[0]["engagement_id"]
-
-            sb.table("legal_documents").update({
-                "status": "signed",
-                "signed_at": "now()",
-            }).eq("docusign_envelope_id", envelope_id).execute()
-
-            update_engagement_status(engagement_id, "nda_signed")
-
-            log_activity(engagement_id, "system", "nda_signed", {
-                "envelope_id": envelope_id,
-            })
-
-            engagement = get_engagement_by_id(engagement_id)
-            if engagement:
-                email_svc = get_email_service()
-                nda_email_result = email_svc.send_nda_signed_notification(engagement)
-                log_activity(engagement_id, "system", "email_sent", {
-                    "type": "nda_signed_notification",
-                    "to": "partner",
-                    "result": nda_email_result,
-                })
-
-            # Trigger company research in background
-            background_tasks.add_task(
-                _run_async_in_background, research_company(engagement_id)
-            )
-
-            logger.info(f"NDA signed — envelope={envelope_id} engagement={engagement_id} — research triggered")
-
-    elif action == "nda_declined":
-        legal_result = (
-            sb.table("legal_documents")
-            .select("engagement_id")
-            .eq("docusign_envelope_id", envelope_id)
-            .eq("type", "nda")
-            .execute()
-        )
-        if legal_result.data:
-            engagement_id = legal_result.data[0]["engagement_id"]
-            sb.table("legal_documents").update({
-                "status": "declined",
-            }).eq("docusign_envelope_id", envelope_id).execute()
-            log_activity(engagement_id, "system", "nda_declined", {
-                "envelope_id": envelope_id,
-            })
-            logger.info(f"NDA declined — envelope={envelope_id} engagement={engagement_id}")
-
-    elif action == "agreement_signed":
+    if action == "agreement_signed":
         legal_result = (
             sb.table("legal_documents")
             .select("engagement_id")
@@ -289,35 +174,6 @@ async def docusign_webhook(request: Request, background_tasks: BackgroundTasks):
 
             logger.info(f"Agreement signed — envelope={envelope_id} engagement={engagement_id}")
 
-    # --- Pipeline NDA signed (no engagement yet) ---
-    elif action == "pipeline_nda_signed":
-        pipeline_result = (
-            sb.table("pipeline_opportunities")
-            .select("id, primary_contact_id, company_id, assigned_to")
-            .eq("nda_envelope_id", envelope_id)
-            .eq("is_deleted", False)
-            .execute()
-        )
-        if pipeline_result.data:
-            opp = pipeline_result.data[0]
-            sb.table("pipeline_opportunities").update({
-                "stage": "nda_signed",
-            }).eq("id", opp["id"]).execute()
-
-            # Send confirmation to prospect
-            if opp.get("primary_contact_id"):
-                contact = sb.table("pipeline_contacts").select("name, email").eq("id", opp["primary_contact_id"]).execute()
-                company = sb.table("pipeline_companies").select("name").eq("id", opp["company_id"]).execute()
-                if contact.data and contact.data[0].get("email"):
-                    email_svc = get_email_service()
-                    email_svc.send_pipeline_nda_signed_notification(
-                        to_email=contact.data[0]["email"],
-                        contact_name=contact.data[0]["name"],
-                        company_name=company.data[0]["name"] if company.data else "Unknown",
-                    )
-
-            logger.info(f"Pipeline NDA signed — envelope={envelope_id} opp={opp['id']}")
-
     # --- Pipeline Agreement signed → auto-conversion ---
     elif action == "pipeline_agreement_signed":
         pipeline_result = (
@@ -381,7 +237,7 @@ async def _auto_convert_pipeline_opportunity(opp_id: str) -> None:
     client_result = sb.table("clients").insert(client_row).execute()
     new_client_id = client_result.data[0]["id"]
 
-    # 3. Create engagement (status = agreement_signed, NOT nda_pending)
+    # 3. Create engagement (status = agreement_signed)
     import secrets as _secrets
     upload_token = str(_uuid.uuid4())
     onboarding_token = _secrets.token_urlsafe(32)
