@@ -654,3 +654,40 @@ def get_docusign_service() -> DocuSignService:
     if _docusign_service is None:
         _docusign_service = DocuSignService()
     return _docusign_service
+
+
+def list_envelope_documents(envelope_id: str) -> list:
+    """Returns list of documents in the envelope (documentId, name, order)."""
+    import requests
+
+    ds = get_docusign_service()
+    ds._ensure_auth()
+
+    url = (
+        f"{ds._api_client.host}"
+        f"/v2.1/accounts/{ds._ds_account_id}/envelopes/{envelope_id}/documents"
+    )
+    headers = {"Authorization": f"Bearer {ds._access_token}"}
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
+    return response.json().get("envelopeDocuments", [])
+
+
+def fetch_envelope_document(envelope_id: str, document_id: str) -> bytes:
+    """Fetch a single document from a DocuSign envelope as PDF bytes."""
+    import requests
+
+    ds = get_docusign_service()
+    ds._ensure_auth()
+
+    url = (
+        f"{ds._api_client.host}"
+        f"/v2.1/accounts/{ds._ds_account_id}/envelopes/{envelope_id}/documents/{document_id}"
+    )
+    headers = {
+        "Authorization": f"Bearer {ds._access_token}",
+        "Accept": "application/pdf",
+    }
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
+    return response.content
