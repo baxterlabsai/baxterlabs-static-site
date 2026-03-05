@@ -100,7 +100,7 @@ export default function About() {
             <div className="flex flex-col items-center text-center md:items-start md:text-left">
               <div className="mb-6">
                 <img
-                  src="/images/Alfonso.png"
+                  src="/images/Alfonso.jpg"
                   alt="Alfonso Cordón"
                   className="w-40 h-40 rounded-full object-cover object-top border-4 border-white shadow-lg"
                 />
