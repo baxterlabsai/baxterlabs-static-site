@@ -247,6 +247,8 @@ export default function EngagementDetail() {
   const [uploadingOutputId, setUploadingOutputId] = useState<string | null>(null)
   const [acceptingOutputId, setAcceptingOutputId] = useState<string | null>(null)
   const [acceptingPhase, setAcceptingPhase] = useState<number | null>(null)
+  const [transcriptIntel, setTranscriptIntel] = useState<Array<{ contact_name: string; contact_title: string | null; analysis: { summary: string; key_findings: string[]; financial_indicators: string[]; notable_quotes: Array<{ quote: string; context: string }> } | null; citation: string; analyzed: boolean }>>([])
+
   const outputFileRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null)
   const navigate = useNavigate()
@@ -315,6 +317,10 @@ export default function EngagementDetail() {
     // Fetch last reminder timestamps
     apiGet<{ agreement: string; documents: string }>(`/api/engagements/${id}/reminders/last`)
       .then(setLastReminders)
+      .catch(() => {})
+    // Fetch transcript intelligence
+    apiGet<{ contacts: typeof transcriptIntel }>(`/api/engagements/${id}/transcript-intelligence`)
+      .then(res => setTranscriptIntel(res.contacts || []))
       .catch(() => {})
   }, [id])
 
@@ -1440,6 +1446,37 @@ export default function EngagementDetail() {
                 {expandedBrief === brief.contact_name && (
                   <div className="px-4 pb-4 text-sm text-charcoal whitespace-pre-wrap leading-relaxed border-t border-gray-light pt-3">
                     {brief.content}
+                    {(() => {
+                      const intel = transcriptIntel.find(t => t.contact_name === brief.contact_name && t.analyzed && t.analysis)
+                      if (!intel?.analysis) return null
+                      return (
+                        <div className="mt-4 pt-3 border-t border-emerald-200">
+                          <p className="text-xs font-semibold text-emerald-700 mb-2">Transcript Analysis</p>
+                          <p className="text-[11px] text-gray-warm font-mono mb-2">{intel.citation}</p>
+                          {intel.analysis.key_findings?.length > 0 && (
+                            <div className="mb-2">
+                              <p className="text-xs font-semibold text-charcoal mb-1">Key Findings</p>
+                              <ul className="space-y-0.5">
+                                {intel.analysis.key_findings.map((f, fi) => (
+                                  <li key={fi} className="text-xs text-charcoal">&#8226; {f}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {intel.analysis.notable_quotes?.length > 0 && (
+                            <div>
+                              <p className="text-xs font-semibold text-charcoal mb-1">Notable Quotes</p>
+                              {intel.analysis.notable_quotes.map((q, qi) => (
+                                <div key={qi} className="pl-3 border-l-2 border-emerald-300 mb-1.5">
+                                  <p className="text-xs text-charcoal italic">&ldquo;{q.quote}&rdquo;</p>
+                                  {q.context && <p className="text-[11px] text-gray-warm">{q.context}</p>}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
                   </div>
                 )}
               </div>

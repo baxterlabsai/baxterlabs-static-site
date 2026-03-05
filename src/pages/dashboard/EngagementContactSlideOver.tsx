@@ -21,6 +21,25 @@ interface ContactDetail {
   updated_at: string
 }
 
+interface TranscriptAnalysis {
+  summary: string
+  key_findings: string[]
+  financial_indicators: string[]
+  process_gaps: string[]
+  notable_quotes: Array<{ quote: string; context: string }>
+}
+
+interface TranscriptIntelContact {
+  contact_id: string
+  contact_name: string
+  contact_title: string | null
+  document_id: string
+  has_extracted_text: boolean
+  analysis: TranscriptAnalysis | null
+  citation: string
+  analyzed: boolean
+}
+
 interface Props {
   contactId: string
   engagementId: string
@@ -37,6 +56,19 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
   const [callNotesUrl, setCallNotesUrl] = useState('')
   const [toast, setToast] = useState('')
   const [transcriptUploading, setTranscriptUploading] = useState(false)
+  const [transcriptIntel, setTranscriptIntel] = useState<TranscriptIntelContact | null>(null)
+  const [analysisOpen, setAnalysisOpen] = useState(false)
+  const [analyzing, setAnalyzing] = useState(false)
+
+  const fetchIntel = () => {
+    apiGet<{ contacts: TranscriptIntelContact[] }>(`/api/engagements/${engagementId}/transcript-intelligence`)
+      .then(res => {
+        const match = res.contacts.find(c => c.contact_id === contactId)
+        setTranscriptIntel(match || null)
+        if (match?.analyzed) setAnalyzing(false)
+      })
+      .catch(() => {})
+  }
 
   useEffect(() => {
     setLoading(true)
@@ -47,6 +79,7 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
       })
       .catch(() => {})
       .finally(() => setLoading(false))
+    fetchIntel()
   }, [contactId, engagementId])
 
   function copyToClipboard(text: string) {
@@ -246,6 +279,23 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
                         formData
                       )
                       setContact(updated)
+                      setAnalyzing(true)
+                      // Poll for analysis completion
+                      const poll = setInterval(() => {
+                        apiGet<{ contacts: TranscriptIntelContact[] }>(`/api/engagements/${engagementId}/transcript-intelligence`)
+                          .then(res => {
+                            const match = res.contacts.find(c => c.contact_id === contactId)
+                            if (match?.analyzed) {
+                              setTranscriptIntel(match)
+                              setAnalyzing(false)
+                              setAnalysisOpen(true)
+                              clearInterval(poll)
+                            }
+                          })
+                          .catch(() => {})
+                      }, 4000)
+                      // Stop polling after 2 minutes
+                      setTimeout(() => { clearInterval(poll); setAnalyzing(false) }, 120000)
                     } finally {
                       setTranscriptUploading(false)
                     }
@@ -258,6 +308,89 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
                   }}
                 />
               </div>
+
+              {/* Transcript Analysis */}
+              {(analyzing || transcriptIntel?.analyzed) && (
+                <div className="border border-emerald-200 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setAnalysisOpen(!analysisOpen)}
+                    className="w-full flex items-center justify-between px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-emerald-800">Transcript Analysis</span>
+                      {analyzing && (
+                        <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-700">
+                          <span className="w-2 h-2 border border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                          Analyzing...
+                        </span>
+                      )}
+                      {transcriptIntel?.analyzed && !analyzing && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-700">Complete</span>
+                      )}
+                    </div>
+                    <svg className={`w-4 h-4 text-emerald-600 transition-transform ${analysisOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </button>
+                  {analysisOpen && transcriptIntel?.analysis && (
+                    <div className="px-4 py-3 bg-white space-y-3">
+                      {/* Citation */}
+                      <p className="text-[11px] text-gray-warm font-mono">{transcriptIntel.citation}</p>
+
+                      {/* Summary */}
+                      <div>
+                        <p className="text-xs font-semibold text-charcoal mb-1">Summary</p>
+                        <p className="text-xs text-charcoal leading-relaxed">{transcriptIntel.analysis.summary}</p>
+                      </div>
+
+                      {/* Key Findings */}
+                      {transcriptIntel.analysis.key_findings?.length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-charcoal mb-1">Key Findings</p>
+                          <ul className="space-y-1">
+                            {transcriptIntel.analysis.key_findings.map((f, i) => (
+                              <li key={i} className="text-xs text-charcoal flex gap-1.5">
+                                <span className="text-emerald-600 mt-0.5 flex-shrink-0">&#8226;</span>
+                                <span>{f}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Financial Indicators */}
+                      {transcriptIntel.analysis.financial_indicators?.length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-charcoal mb-1">Financial Indicators</p>
+                          <ul className="space-y-1">
+                            {transcriptIntel.analysis.financial_indicators.map((fi, i) => (
+                              <li key={i} className="text-xs text-charcoal flex gap-1.5">
+                                <span className="text-gold mt-0.5 flex-shrink-0">$</span>
+                                <span>{fi}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Notable Quotes */}
+                      {transcriptIntel.analysis.notable_quotes?.length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-charcoal mb-1">Notable Quotes</p>
+                          <div className="space-y-2">
+                            {transcriptIntel.analysis.notable_quotes.map((q, i) => (
+                              <div key={i} className="pl-3 border-l-2 border-emerald-300">
+                                <p className="text-xs text-charcoal italic">&ldquo;{q.quote}&rdquo;</p>
+                                {q.context && <p className="text-[11px] text-gray-warm mt-0.5">{q.context}</p>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Quick Actions */}
               <div>

@@ -14,6 +14,7 @@ from services.supabase_client import get_supabase, get_engagement_by_id, update_
 from services.email_service import get_email_service
 from services.docusign_service import get_docusign_service
 from services.firecrawl_service import research_contacts
+from services.transcript_service import extract_text, analyze_transcript, get_transcript_intelligence
 
 logger = logging.getLogger("baxterlabs.engagements")
 
@@ -425,6 +426,7 @@ TRANSCRIPT_MAX_SIZE = 50 * 1024 * 1024  # 50 MB
 async def upload_interview_transcript(
     engagement_id: str,
     contact_id: str,
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     user: dict = Depends(verify_partner_auth),
 ):
@@ -497,6 +499,21 @@ async def upload_interview_transcript(
     }).execute()
 
     doc_id = doc_result.data[0]["id"]
+
+    # Extract text content from the file
+    extracted = extract_text(content, ext)
+    if extracted:
+        sb.table("documents").update({"extracted_text": extracted}).eq("id", doc_id).execute()
+        logger.info(f"Transcript text extracted — doc={doc_id} chars={len(extracted)}")
+
+        # Trigger LLM analysis in background
+        company_name = engagement.get("clients", {}).get("company_name", "Unknown")
+        background_tasks.add_task(
+            analyze_transcript, doc_id, engagement_id,
+            contact["name"], contact.get("title"), company_name,
+        )
+    else:
+        logger.warning(f"Text extraction returned nothing for {filename} ({ext})")
 
     # Update interview_contacts.transcript_document_id
     sb.table("interview_contacts").update({
@@ -598,6 +615,23 @@ async def download_interview_transcript(
     except Exception as e:
         logger.error(f"Failed to create signed URL for transcript: {e}")
         raise HTTPException(status_code=500, detail="Failed to generate download link")
+
+
+# ---------------------------------------------------------------------------
+# Transcript Intelligence
+# ---------------------------------------------------------------------------
+
+
+@router.get("/engagements/{engagement_id}/transcript-intelligence")
+async def transcript_intelligence_endpoint(
+    engagement_id: str,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Return all analyzed transcript summaries and citations for an engagement."""
+    engagement = get_engagement_by_id(engagement_id)
+    if not engagement:
+        raise HTTPException(status_code=404, detail="Engagement not found")
+    return get_transcript_intelligence(engagement_id)
 
 
 # ---------------------------------------------------------------------------

@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from middleware.auth import verify_partner_auth
 from services.supabase_client import get_supabase, get_engagement_by_id
+from services.transcript_service import get_citation_reference
 
 logger = logging.getLogger("baxterlabs.prompts")
 
@@ -61,6 +62,49 @@ def _format_contacts(contacts: list) -> str:
     return "\n".join(lines)
 
 
+def _format_interview_intelligence(contacts: list, sb) -> str:
+    """Build the Interview Intelligence section from analyzed transcripts."""
+    sections = []
+    for c in contacts:
+        doc_id = c.get("transcript_document_id")
+        if not doc_id:
+            continue
+        doc = sb.table("documents").select("analysis_json, uploaded_at").eq("id", doc_id).execute()
+        if not doc.data or not doc.data[0].get("analysis_json"):
+            continue
+        analysis = doc.data[0]["analysis_json"]
+        citation = get_citation_reference(
+            c.get("name", "Unknown"),
+            c.get("title"),
+            doc.data[0].get("uploaded_at"),
+        )
+        header = f"### Interview: {c.get('name', 'Unknown')}, {c.get('title', 'Unknown')}"
+        parts = [header, f"Citation: {citation}"]
+
+        if analysis.get("key_findings"):
+            parts.append("\n**Key Findings:**")
+            for f in analysis["key_findings"]:
+                parts.append(f"- [From interview with {c.get('name')}]: {f}")
+
+        if analysis.get("financial_indicators"):
+            parts.append("\n**Financial Indicators:**")
+            for fi in analysis["financial_indicators"]:
+                parts.append(f"- {fi}")
+
+        if analysis.get("notable_quotes"):
+            parts.append("\n**Notable Quotes:**")
+            for q in analysis["notable_quotes"]:
+                quote = q if isinstance(q, str) else q.get("quote", "")
+                context = q.get("context", "") if isinstance(q, dict) else ""
+                parts.append(f'- "{quote}"' + (f" — {context}" if context else ""))
+
+        sections.append("\n".join(parts))
+
+    if not sections:
+        return ""
+    return "## Interview Intelligence\n\n" + "\n\n---\n\n".join(sections)
+
+
 @router.get("/engagements/{engagement_id}/prompt/{phase_number}")
 async def get_rendered_prompt(
     engagement_id: str,
@@ -102,6 +146,8 @@ async def get_rendered_prompt(
 
     pain_points = engagement.get("pain_points") or client.get("pain_points") or "[NOT SET]"
 
+    interview_intel = _format_interview_intelligence(contacts, sb)
+
     variables_used = {
         "engagement_id": engagement.get("id", "[NOT SET: engagement_id]"),
         "client_name": client.get("primary_contact_name") or "[NOT SET: client_name]",
@@ -113,6 +159,7 @@ async def get_rendered_prompt(
         "storage_base": f"engagements/{engagement.get('id', engagement_id)}",
         "interview_contacts": _format_contacts(contacts),
         "pain_points": pain_points,
+        "interview_intelligence": interview_intel or "[No transcript analysis available]",
     }
 
     # Perform variable injection on the template text
