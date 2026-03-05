@@ -291,7 +291,7 @@ export default function UploadPortal() {
       {/* Header */}
       <header className="bg-crimson">
         <div className="max-w-3xl mx-auto px-4 py-5 flex items-center gap-4">
-          <img src="/baxterlabs-logo-white-text.png" alt="BaxterLabs Advisory" className="h-10" />
+          <img src="/images/baxterlabs-logo-white-text.png" alt="BaxterLabs Advisory" className="h-10" />
           <div className="border-l border-white/30 pl-4">
             <h1 className="text-white font-display text-lg font-bold leading-tight">Document Upload Portal</h1>
             <p className="text-white/70 text-sm">{status.company_name}</p>

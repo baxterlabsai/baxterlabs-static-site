@@ -18,7 +18,7 @@ export default function Header() {
           {/* Logo */}
           <Link to="/" className="flex-shrink-0">
             <img
-              src="/baxterlabs-logo.png"
+              src="/images/baxterlabs-logo.png"
               alt="BaxterLabs Advisory"
               className="h-[55px] w-auto"
             />

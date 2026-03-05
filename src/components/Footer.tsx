@@ -9,7 +9,7 @@ export default function Footer() {
           <div className="flex flex-col items-center md:items-start gap-4">
             <Link to="/">
               <img
-                src="/baxterlabs-logo-white-text.png"
+                src="/images/baxterlabs-logo-white-text.png"
                 alt="BaxterLabs Advisory"
                 className="h-[55px] w-auto"
               />
