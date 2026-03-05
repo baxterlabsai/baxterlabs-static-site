@@ -20,7 +20,7 @@ export default function Header() {
             <img
               src="/images/baxterlabs-logo.png"
               alt="BaxterLabs Advisory"
-              className="h-[55px] w-auto"
+              className="h-[83px] w-auto"
             />
           </Link>
 

@@ -194,7 +194,7 @@ export default function Onboard() {
       <div className="min-h-screen bg-ivory">
         <header className="bg-crimson">
           <div className="max-w-2xl mx-auto px-4 py-5 flex items-center gap-4">
-            <img src="/images/baxterlabs-logo-white-text.png" alt="BaxterLabs Advisory" className="h-10" />
+            <img src="/images/baxterlabs-logo-white-text.png" alt="BaxterLabs Advisory" className="h-15" />
             <div className="border-l border-white/30 pl-4">
               <h1 className="text-white font-display text-lg font-bold leading-tight">Onboarding</h1>
               <p className="text-white/70 text-sm">{data.company_name}</p>
@@ -233,7 +233,7 @@ export default function Onboard() {
       <div className="min-h-screen bg-ivory">
         <header className="bg-crimson">
           <div className="max-w-2xl mx-auto px-4 py-5 flex items-center gap-4">
-            <img src="/images/baxterlabs-logo-white-text.png" alt="BaxterLabs Advisory" className="h-10" />
+            <img src="/images/baxterlabs-logo-white-text.png" alt="BaxterLabs Advisory" className="h-15" />
             <div className="border-l border-white/30 pl-4">
               <h1 className="text-white font-display text-lg font-bold leading-tight">Onboarding</h1>
               <p className="text-white/70 text-sm">{data.company_name}</p>
@@ -296,7 +296,7 @@ export default function Onboard() {
     <div className="min-h-screen bg-ivory">
       <header className="bg-crimson">
         <div className="max-w-2xl mx-auto px-4 py-5 flex items-center gap-4">
-          <img src="/images/baxterlabs-logo-white-text.png" alt="BaxterLabs Advisory" className="h-10" />
+          <img src="/images/baxterlabs-logo-white-text.png" alt="BaxterLabs Advisory" className="h-15" />
           <div className="border-l border-white/30 pl-4">
             <h1 className="text-white font-display text-lg font-bold leading-tight">Onboarding</h1>
             <p className="text-white/70 text-sm">{data.company_name}</p>

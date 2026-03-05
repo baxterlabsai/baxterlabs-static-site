@@ -11,7 +11,7 @@ export default function Footer() {
               <img
                 src="/images/baxterlabs-logo-white-text.png"
                 alt="BaxterLabs Advisory"
-                className="h-[55px] w-auto"
+                className="h-[83px] w-auto"
               />
             </Link>
             <Link
