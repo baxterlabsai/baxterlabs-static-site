@@ -549,6 +549,23 @@ class DocuSignService:
                 "error": str(e),
             }
 
+    def get_signed_document(self, envelope_id: str) -> bytes:
+        """Download the combined signed PDF from a completed DocuSign envelope."""
+        self._ensure_auth()
+        envelopes_api = EnvelopesApi(self._api_client)
+        # "combined" returns all documents merged into a single PDF
+        pdf_bytes = envelopes_api.get_document(
+            account_id=self._ds_account_id,
+            envelope_id=envelope_id,
+            document_id="combined",
+        )
+        # get_document returns a file path in temp dir; read and return bytes
+        if isinstance(pdf_bytes, str):
+            with open(pdf_bytes, "rb") as f:
+                return f.read()
+        # If it's already bytes-like, return directly
+        return bytes(pdf_bytes)
+
     def _lookup_doc_type(self, envelope_id: str) -> str:
         """Look up document type from legal_documents or pipeline_opportunities.
 

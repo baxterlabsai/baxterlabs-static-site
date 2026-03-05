@@ -172,6 +172,11 @@ async def docusign_webhook(request: Request, background_tasks: BackgroundTasks):
             except Exception as inv_err:
                 logger.error(f"Deposit invoice generation failed (non-blocking): {inv_err}")
 
+            # Download and store signed PDF in background
+            background_tasks.add_task(
+                _download_and_store_signed_pdf, envelope_id, engagement_id,
+            )
+
             logger.info(f"Agreement signed — envelope={envelope_id} engagement={engagement_id}")
 
     # --- Pipeline Agreement signed → auto-conversion ---
@@ -192,6 +197,28 @@ async def docusign_webhook(request: Request, background_tasks: BackgroundTasks):
             logger.info(f"Pipeline agreement signed — envelope={envelope_id} opp={opp_id} — auto-conversion triggered")
 
     return Response(status_code=200)
+
+
+def _download_and_store_signed_pdf(envelope_id: str, engagement_id: str) -> None:
+    """Download the signed PDF from DocuSign and store it in Supabase storage."""
+    try:
+        ds = get_docusign_service()
+        pdf_bytes = ds.get_signed_document(envelope_id)
+
+        sb = get_supabase()
+        storage_path = f"{engagement_id}/agreements/{envelope_id}_signed.pdf"
+
+        sb.storage.from_("engagements").upload(
+            storage_path, pdf_bytes, {"content-type": "application/pdf"},
+        )
+
+        sb.table("legal_documents").update({
+            "signed_pdf_path": storage_path,
+        }).eq("docusign_envelope_id", envelope_id).execute()
+
+        logger.info(f"Signed PDF stored — envelope={envelope_id} path={storage_path}")
+    except Exception as e:
+        logger.error(f"Failed to download/store signed PDF for envelope {envelope_id}: {e}")
 
 
 async def _auto_convert_pipeline_opportunity(opp_id: str) -> None:
@@ -270,6 +297,20 @@ async def _auto_convert_pipeline_opportunity(opp_id: str) -> None:
                 "linkedin_url": raw_c.get("linkedin_url"),
             }).execute()
         logger.info(f"Auto-convert: created {min(len(parsed), 3)} interview contacts from JSON")
+
+    # 4b. Create legal_documents record for the signed agreement and store PDF
+    envelope_id = opp.get("agreement_envelope_id")
+    if envelope_id:
+        legal_row = sb.table("legal_documents").insert({
+            "engagement_id": new_engagement_id,
+            "type": "agreement",
+            "docusign_envelope_id": envelope_id,
+            "status": "signed",
+            "sent_at": "now()",
+            "signed_at": "now()",
+        }).execute()
+        logger.info(f"Auto-convert: created legal_documents record for envelope {envelope_id}")
+        _download_and_store_signed_pdf(envelope_id, new_engagement_id)
 
     # 5. Link opportunity → won
     sb.table("pipeline_opportunities").update({

@@ -600,6 +600,74 @@ async def download_interview_transcript(
         raise HTTPException(status_code=500, detail="Failed to generate download link")
 
 
+# ---------------------------------------------------------------------------
+# Agreement View / Download (signed PDF from Supabase storage)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/engagements/{engagement_id}/agreements/{document_id}/view")
+async def view_agreement(
+    engagement_id: str,
+    document_id: str,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Generate a short-lived signed URL for inline PDF viewing."""
+    sb = get_supabase()
+    doc = (
+        sb.table("legal_documents")
+        .select("signed_pdf_path")
+        .eq("id", document_id)
+        .eq("engagement_id", engagement_id)
+        .execute()
+    )
+    if not doc.data or not doc.data[0].get("signed_pdf_path"):
+        raise HTTPException(status_code=404, detail="Signed agreement not found")
+
+    storage_path = doc.data[0]["signed_pdf_path"]
+    try:
+        signed = sb.storage.from_("engagements").create_signed_url(storage_path, 3600)
+        return {
+            "success": True,
+            "url": signed.get("signedURL") or signed.get("signedUrl", ""),
+        }
+    except Exception as e:
+        logger.error(f"Failed to create signed URL for agreement: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate view link")
+
+
+@router.get("/engagements/{engagement_id}/agreements/{document_id}/download")
+async def download_agreement(
+    engagement_id: str,
+    document_id: str,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Generate a signed URL with content-disposition: attachment for download."""
+    sb = get_supabase()
+    doc = (
+        sb.table("legal_documents")
+        .select("signed_pdf_path")
+        .eq("id", document_id)
+        .eq("engagement_id", engagement_id)
+        .execute()
+    )
+    if not doc.data or not doc.data[0].get("signed_pdf_path"):
+        raise HTTPException(status_code=404, detail="Signed agreement not found")
+
+    storage_path = doc.data[0]["signed_pdf_path"]
+    try:
+        signed = sb.storage.from_("engagements").create_signed_url(
+            storage_path, 3600, {"download": "signed-agreement.pdf"},
+        )
+        return {
+            "success": True,
+            "url": signed.get("signedURL") or signed.get("signedUrl", ""),
+            "filename": "signed-agreement.pdf",
+        }
+    except Exception as e:
+        logger.error(f"Failed to create download URL for agreement: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate download link")
+
+
 @router.get("/engagements/{engagement_id}/contacts/{contact_id}")
 async def get_interview_contact(
     engagement_id: str,

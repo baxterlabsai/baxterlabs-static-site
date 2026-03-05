@@ -1454,7 +1454,7 @@ export default function EngagementDetail() {
       <section className="bg-white rounded-lg border border-gray-light p-5 mt-6">
         <h3 className="font-display text-lg font-bold text-teal mb-4">Legal Documents</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <LegalDoc label="Engagement Agreement" doc={agreement} />
+          <LegalDoc label="Engagement Agreement" doc={agreement} engagementId={id} />
         </div>
       </section>
 
@@ -1976,7 +1976,21 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   )
 }
 
-function LegalDoc({ label, doc }: { label: string; doc?: { status: string; docusign_envelope_id: string | null; sent_at: string | null; signed_at: string | null } }) {
+function LegalDoc({ label, doc, engagementId }: { label: string; engagementId?: string; doc?: { id: string; status: string; docusign_envelope_id: string | null; sent_at: string | null; signed_at: string | null; signed_pdf_path: string | null } }) {
+  const handleView = async () => {
+    if (!engagementId || !doc) return
+    try {
+      const res = await apiGet<{ url: string }>(`/api/engagements/${engagementId}/agreements/${doc.id}/view`)
+      if (res.url) window.open(res.url, '_blank')
+    } catch { /* ignore */ }
+  }
+  const handleDownload = async () => {
+    if (!engagementId || !doc) return
+    try {
+      const res = await apiGet<{ url: string }>(`/api/engagements/${engagementId}/agreements/${doc.id}/download`)
+      if (res.url) window.open(res.url, '_blank')
+    } catch { /* ignore */ }
+  }
   return (
     <div className="p-4 bg-ivory rounded-lg">
       <div className="flex items-center justify-between mb-2">
@@ -1998,17 +2012,37 @@ function LegalDoc({ label, doc }: { label: string; doc?: { status: string; docus
         <div className="space-y-1.5 text-xs">
           {doc.sent_at && <p className="text-gray-warm">Sent: {formatDate(doc.sent_at)}</p>}
           {doc.signed_at && <p className="text-gray-warm">Signed: {formatDate(doc.signed_at)}</p>}
-          {doc.docusign_envelope_id && (
-            <a
-              href={`https://app.docusign.com/documents/details/${doc.docusign_envelope_id}`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-teal font-semibold hover:underline mt-1"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-              View in DocuSign
-            </a>
-          )}
+          <div className="flex flex-wrap items-center gap-3 mt-1">
+            {doc.docusign_envelope_id && (
+              <a
+                href={`https://app.docusign.com/documents/details/${doc.docusign_envelope_id}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-teal font-semibold hover:underline"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                View in DocuSign
+              </a>
+            )}
+            {doc.signed_at && doc.signed_pdf_path && (
+              <>
+                <button
+                  onClick={handleView}
+                  className="inline-flex items-center gap-1 text-teal font-semibold hover:underline"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                  View PDF
+                </button>
+                <button
+                  onClick={handleDownload}
+                  className="inline-flex items-center gap-1 text-teal font-semibold hover:underline"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                  Download
+                </button>
+              </>
+            )}
+          </div>
         </div>
       ) : (
         <p className="text-gray-warm text-xs">Not yet sent</p>
