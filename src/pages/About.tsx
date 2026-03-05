@@ -71,7 +71,7 @@ export default function About() {
               <p className="text-teal text-sm font-medium mt-1 mb-4">Managing Partner</p>
               <div className="space-y-4 text-charcoal text-base leading-relaxed">
                 <p>
-                  I've spent 25 years inside the finance function of companies that were growing faster than their infrastructure. Venture-backed startups closing $100M+ rounds. Healthcare services organizations managing 600 people across six states. Food technology companies in the middle of $175M Series Cs. At every stage, the same pattern: the money was there, but nobody had built the systems to see where it was going.
+                  I've spent 25 years inside the finance function of companies that were growing faster than their infrastructure. Venture-backed startups closing $100M+ rounds. Healthcare services organizations managing 600 people across six states. Food technology companies in the middle of $175M Series C. At every stage, the same pattern: the money was there, but nobody had built the systems to see where it was going.
                 </p>
                 <p>
                   I've generated over $8M in annual cost savings at a single organization. I've cut month-end close by five days. I've watched companies lose $200K+ a year to billing gaps they didn't know existed. What I've learned is that margin erosion rarely comes from one big mistake — it comes from a dozen small systems that nobody owns.
