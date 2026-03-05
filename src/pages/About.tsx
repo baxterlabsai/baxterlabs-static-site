@@ -58,6 +58,50 @@ export default function About() {
         </div>
       </section>
 
+      {/* The Partners */}
+      <section className="bg-white py-16 md:py-20">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="font-display text-3xl md:text-4xl font-bold text-crimson mb-12 text-center">
+            The Partners.
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+            {/* George DeVries */}
+            <div>
+              <h3 className="text-xl font-bold text-charcoal">George DeVries</h3>
+              <p className="text-teal text-sm font-medium mt-1 mb-4">Managing Partner</p>
+              <div className="space-y-4 text-charcoal text-base leading-relaxed">
+                <p>
+                  I've spent 25 years inside the finance function of companies that were growing faster than their infrastructure. Venture-backed startups closing $100M+ rounds. Healthcare services organizations managing 600 people across six states. Food technology companies in the middle of $175M Series Cs. At every stage, the same pattern: the money was there, but nobody had built the systems to see where it was going.
+                </p>
+                <p>
+                  I've generated over $8M in annual cost savings at a single organization. I've cut month-end close by five days. I've watched companies lose $200K+ a year to billing gaps they didn't know existed. What I've learned is that margin erosion rarely comes from one big mistake — it comes from a dozen small systems that nobody owns.
+                </p>
+                <p>
+                  That's why I built BaxterLabs. Not to sell another advisory retainer, but to give firms a clean answer in two weeks: here's exactly what's leaking, here's what it's worth, here's where to start.
+                </p>
+              </div>
+            </div>
+
+            {/* Alfonso Cordón */}
+            <div>
+              <h3 className="text-xl font-bold text-charcoal">Alfonso Cordón</h3>
+              <p className="text-teal text-sm font-medium mt-1 mb-4">Partner</p>
+              <div className="space-y-4 text-charcoal text-base leading-relaxed">
+                <p>
+                  For 16 years at Moody's Analytics, I ran the finance function for businesses generating over $3 billion in annual recurring revenue. That means I've seen what scale actually looks like from the inside — the forecasting breakdowns, the pricing models that quietly underperform, the transition points where a business outgrows its financial infrastructure before anyone realizes it.
+                </p>
+                <p>
+                  I led the finance work for a $400M line of business through a full shift from on-premise to SaaS. I built the pricing framework that drove 12% revenue growth and got adopted company-wide. Before that, at Bayer and Abbott, I managed financial consolidations across multiple countries and currencies. What you learn doing that work is how to find signal in complex data — and how quickly things drift when nobody's built the right monitoring in.
+                </p>
+                <p>
+                  What drew me to BaxterLabs is the specificity of the model. We're not selling a strategy engagement or a roadmap. We're telling you, in two weeks, exactly where margin is leaving your business and what it's worth to get it back.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* How We're Different */}
       <section className="bg-ivory py-16 md:py-20">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
