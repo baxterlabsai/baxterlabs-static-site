@@ -59,16 +59,30 @@ export default function About() {
       </section>
 
       {/* The Partners */}
-      <section className="bg-white py-16 md:py-20">
+      <section className="py-20 md:py-28" style={{ backgroundColor: '#FAF8F2' }}>
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-crimson mb-12 text-center">
+          <h2 className="font-display text-3xl md:text-4xl font-bold text-crimson mb-4 text-center">
             The Partners.
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+          <p className="text-center text-charcoal/60 text-base mb-16 max-w-xl mx-auto">
+            Senior operators who have run the finance function from the inside.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-16">
+
             {/* George DeVries */}
-            <div>
+            <div className="flex flex-col items-center text-center md:items-start md:text-left">
+              <div className="mb-6">
+                <img
+                  src="/images/George.png"
+                  alt="George DeVries"
+                  className="w-40 h-40 rounded-full object-cover object-top border-4 border-white shadow-lg"
+                />
+              </div>
               <h3 className="text-xl font-bold text-charcoal">George DeVries</h3>
-              <p className="text-teal text-sm font-medium mt-1 mb-4">Managing Partner</p>
+              <p className="text-teal text-sm font-semibold tracking-wide uppercase mt-1 mb-5">
+                Managing Partner
+              </p>
               <div className="space-y-4 text-charcoal text-base leading-relaxed">
                 <p>
                   I've spent 25 years inside the finance function of companies that were growing faster than their infrastructure. Venture-backed startups closing $100M+ rounds. Healthcare services organizations managing 600 people across six states. Food technology companies in the middle of $175M Series C. At every stage, the same pattern: the money was there, but nobody had built the systems to see where it was going.
@@ -83,9 +97,18 @@ export default function About() {
             </div>
 
             {/* Alfonso Cordón */}
-            <div>
+            <div className="flex flex-col items-center text-center md:items-start md:text-left">
+              <div className="mb-6">
+                <img
+                  src="/images/Alfonso.png"
+                  alt="Alfonso Cordón"
+                  className="w-40 h-40 rounded-full object-cover object-top border-4 border-white shadow-lg"
+                />
+              </div>
               <h3 className="text-xl font-bold text-charcoal">Alfonso Cordón</h3>
-              <p className="text-teal text-sm font-medium mt-1 mb-4">Partner</p>
+              <p className="text-teal text-sm font-semibold tracking-wide uppercase mt-1 mb-5">
+                Partner
+              </p>
               <div className="space-y-4 text-charcoal text-base leading-relaxed">
                 <p>
                   For 16 years at Moody's Analytics, I ran the finance function for businesses generating over $3 billion in annual recurring revenue. That means I've seen what scale actually looks like from the inside — the forecasting breakdowns, the pricing models that quietly underperform, the transition points where a business outgrows its financial infrastructure before anyone realizes it.
@@ -98,6 +121,7 @@ export default function About() {
                 </p>
               </div>
             </div>
+
           </div>
         </div>
       </section>
