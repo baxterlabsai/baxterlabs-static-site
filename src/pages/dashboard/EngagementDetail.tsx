@@ -83,11 +83,13 @@ interface EngagementData {
     transcript_document_id: string | null
   }>
   legal_documents: Array<{
+    id: string
     type: string
     status: string
     docusign_envelope_id: string | null
     sent_at: string | null
     signed_at: string | null
+    signed_pdf_path: string | null
   }>
   documents: DocumentRecord[]
   research_documents: Array<{
