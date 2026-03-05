@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { apiGet, apiPost, apiPut, apiPatch, apiUpload, apiDelete } from '../../lib/api'
 import { useToast } from '../../components/Toast'
+import ResearchModal from '../../components/ResearchModal'
 import EngagementContactSlideOver from './EngagementContactSlideOver'
 
 interface PhaseOutput {
@@ -250,6 +251,8 @@ export default function EngagementDetail() {
   const [acceptingOutputId, setAcceptingOutputId] = useState<string | null>(null)
   const [acceptingPhase, setAcceptingPhase] = useState<number | null>(null)
   const [transcriptIntel, setTranscriptIntel] = useState<Array<{ contact_name: string; contact_title: string | null; analysis: { summary: string; key_findings: string[]; financial_indicators: string[]; notable_quotes: Array<{ quote: string; context: string }> } | null; citation: string; analyzed: boolean }>>([])
+  const [dossierModalOpen, setDossierModalOpen] = useState(false)
+  const [briefModalContent, setBriefModalContent] = useState<{ name: string; content: string } | null>(null)
 
   const outputFileRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null)
@@ -1403,13 +1406,27 @@ export default function EngagementDetail() {
       <section className="bg-white rounded-lg border border-gray-light p-5 mt-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-display text-lg font-bold text-teal">Research Dossier</h3>
-          <button
-            onClick={() => triggerResearch('discovery')}
-            disabled={researchLoading === 'discovery'}
-            className="text-xs text-teal font-semibold hover:underline disabled:opacity-50"
-          >
-            {researchLoading === 'discovery' ? 'Running...' : 'Re-run Research'}
-          </button>
+          <div className="flex items-center gap-2">
+            {dossier && (
+              <button
+                onClick={() => setDossierModalOpen(true)}
+                className="text-gray-warm hover:text-teal p-1 rounded hover:bg-ivory transition-colors"
+                aria-label="Expand Research Dossier"
+                title="View fullscreen"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9m11.25-5.25v4.5m0-4.5h-4.5m4.5 0L15 9m-11.25 11.25v-4.5m0 4.5h4.5m-4.5 0L9 15m11.25 5.25v-4.5m0 4.5h-4.5m4.5 0L15 15" />
+                </svg>
+              </button>
+            )}
+            <button
+              onClick={() => triggerResearch('discovery')}
+              disabled={researchLoading === 'discovery'}
+              className="text-xs text-teal font-semibold hover:underline disabled:opacity-50"
+            >
+              {researchLoading === 'discovery' ? 'Running...' : 'Re-run Research'}
+            </button>
+          </div>
         </div>
         {dossier ? (
           <div className="prose prose-sm max-w-none text-charcoal whitespace-pre-wrap text-sm leading-relaxed">
@@ -1436,15 +1453,27 @@ export default function EngagementDetail() {
           <div className="space-y-3">
             {briefs.map((brief, i) => (
               <div key={i} className="border border-gray-light rounded-lg overflow-hidden">
-                <button
-                  onClick={() => setExpandedBrief(expandedBrief === brief.contact_name ? null : brief.contact_name)}
-                  className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-ivory/50"
-                >
-                  <span className="font-semibold text-charcoal text-sm">{brief.contact_name || `Brief ${i + 1}`}</span>
-                  <svg className={`w-4 h-4 text-gray-warm transition-transform ${expandedBrief === brief.contact_name ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
+                <div className="flex items-center">
+                  <button
+                    onClick={() => setExpandedBrief(expandedBrief === brief.contact_name ? null : brief.contact_name)}
+                    className="flex-1 px-4 py-3 flex items-center justify-between text-left hover:bg-ivory/50"
+                  >
+                    <span className="font-semibold text-charcoal text-sm">{brief.contact_name || `Brief ${i + 1}`}</span>
+                    <svg className={`w-4 h-4 text-gray-warm transition-transform ${expandedBrief === brief.contact_name ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => setBriefModalContent({ name: brief.contact_name || `Brief ${i + 1}`, content: brief.content })}
+                    className="text-gray-warm hover:text-teal p-1 mr-2 rounded hover:bg-ivory transition-colors"
+                    aria-label={`Expand ${brief.contact_name || 'brief'}`}
+                    title="View fullscreen"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9m11.25-5.25v4.5m0-4.5h-4.5m4.5 0L15 9m-11.25 11.25v-4.5m0 4.5h4.5m-4.5 0L9 15m11.25 5.25v-4.5m0 4.5h-4.5m4.5 0L15 15" />
+                    </svg>
+                  </button>
+                </div>
                 {expandedBrief === brief.contact_name && (
                   <div className="px-4 pb-4 text-sm text-charcoal whitespace-pre-wrap leading-relaxed border-t border-gray-light pt-3">
                     {brief.content}
@@ -2002,6 +2031,20 @@ export default function EngagementDetail() {
           </div>
         </div>
       )}
+
+      {/* Fullscreen Research Modals */}
+      <ResearchModal
+        title="Research Dossier"
+        content={dossier?.content || ''}
+        isOpen={dossierModalOpen}
+        onClose={() => setDossierModalOpen(false)}
+      />
+      <ResearchModal
+        title={briefModalContent?.name ? `Interview Brief — ${briefModalContent.name}` : 'Interview Brief'}
+        content={briefModalContent?.content || ''}
+        isOpen={briefModalContent !== null}
+        onClose={() => setBriefModalContent(null)}
+      />
     </div>
   )
 }

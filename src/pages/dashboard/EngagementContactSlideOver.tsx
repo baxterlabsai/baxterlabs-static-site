@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPatch, apiUpload } from '../../lib/api'
 import MarkdownContent from '../../components/MarkdownContent'
+import ResearchModal from '../../components/ResearchModal'
 import TranscriptUpload from '../../components/TranscriptUpload'
 
 interface ContactDetail {
@@ -59,6 +60,8 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
   const [transcriptIntel, setTranscriptIntel] = useState<TranscriptIntelContact | null>(null)
   const [analysisOpen, setAnalysisOpen] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
+  const [researchModalOpen, setResearchModalOpen] = useState(false)
+  const [prepModalOpen, setPrepModalOpen] = useState(false)
 
   const fetchIntel = () => {
     apiGet<{ contacts: TranscriptIntelContact[] }>(`/api/engagements/${engagementId}/transcript-intelligence`)
@@ -109,6 +112,18 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
 
   return (
     <>
+      <ResearchModal
+        title={`Research & Intelligence — ${contact?.name || ''}`}
+        content={research?.content || (research ? JSON.stringify(research, null, 2) : '')}
+        isOpen={researchModalOpen}
+        onClose={() => setResearchModalOpen(false)}
+      />
+      <ResearchModal
+        title={`Interview Prep — ${contact?.name || ''}`}
+        content={callPrep?.content || (callPrep ? JSON.stringify(callPrep, null, 2) : '')}
+        isOpen={prepModalOpen}
+        onClose={() => setPrepModalOpen(false)}
+      />
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
       <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-white shadow-xl flex flex-col">
         {/* Header */}
@@ -170,15 +185,24 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
               {/* Research & Intelligence */}
               {research && (
                 <div className="border border-purple-200 rounded-lg overflow-hidden">
-                  <button
-                    onClick={() => setResearchOpen(!researchOpen)}
-                    className="w-full flex items-center justify-between px-4 py-2.5 bg-purple-50 hover:bg-purple-100 transition-colors"
-                  >
-                    <span className="text-sm font-semibold text-purple-800">Research & Intelligence</span>
-                    <svg className={`w-4 h-4 text-purple-600 transition-transform ${researchOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                    </svg>
-                  </button>
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-purple-50">
+                    <button
+                      onClick={() => setResearchOpen(!researchOpen)}
+                      className="flex-1 flex items-center justify-between hover:bg-purple-100 transition-colors -mx-4 -my-2.5 px-4 py-2.5"
+                    >
+                      <span className="text-sm font-semibold text-purple-800">Research & Intelligence</span>
+                      <svg className={`w-4 h-4 text-purple-600 transition-transform ${researchOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setResearchModalOpen(true) }}
+                      className="ml-2 p-1 text-purple-500 hover:text-purple-700 hover:bg-purple-100 rounded transition-colors flex-shrink-0"
+                      title="Open fullscreen"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9m11.25-5.25v4.5m0-4.5h-4.5m4.5 0L15 9m-11.25 11.25v-4.5m0 4.5h4.5m-4.5 0L9 15m11.25 5.25v-4.5m0 4.5h-4.5m4.5 0L15 15" /></svg>
+                    </button>
+                  </div>
                   {researchOpen && (
                     <div className="px-4 py-3 bg-white">
                       <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-60 overflow-y-auto">
@@ -192,18 +216,27 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
               {/* Interview Prep */}
               {callPrep && (
                 <div className="border border-amber-200 rounded-lg overflow-hidden">
-                  <button
-                    onClick={() => setPrepOpen(!prepOpen)}
-                    className="w-full flex items-center justify-between px-4 py-2.5 bg-amber-50 hover:bg-amber-100 transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-amber-800">Interview Prep</span>
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700">Prep</span>
-                    </div>
-                    <svg className={`w-4 h-4 text-amber-600 transition-transform ${prepOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                    </svg>
-                  </button>
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-amber-50">
+                    <button
+                      onClick={() => setPrepOpen(!prepOpen)}
+                      className="flex-1 flex items-center justify-between hover:bg-amber-100 transition-colors -mx-4 -my-2.5 px-4 py-2.5"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-amber-800">Interview Prep</span>
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700">Prep</span>
+                      </div>
+                      <svg className={`w-4 h-4 text-amber-600 transition-transform ${prepOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setPrepModalOpen(true) }}
+                      className="ml-2 p-1 text-amber-500 hover:text-amber-700 hover:bg-amber-100 rounded transition-colors flex-shrink-0"
+                      title="Open fullscreen"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9m11.25-5.25v4.5m0-4.5h-4.5m4.5 0L15 9m-11.25 11.25v-4.5m0 4.5h4.5m-4.5 0L9 15m11.25 5.25v-4.5m0 4.5h-4.5m4.5 0L15 15" /></svg>
+                    </button>
+                  </div>
                   {prepOpen && (
                     <div className="px-4 py-3 bg-white">
                       <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-60 overflow-y-auto">
