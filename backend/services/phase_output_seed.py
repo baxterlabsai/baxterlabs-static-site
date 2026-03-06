@@ -49,8 +49,23 @@ PHASE_NAMES = {
 }
 
 
+def _is_pipeline_engagement(sb, engagement_id: str) -> bool:
+    """Check if this engagement was created from a pipeline conversion."""
+    result = (
+        sb.table("pipeline_opportunities")
+        .select("id")
+        .eq("converted_engagement_id", engagement_id)
+        .limit(1)
+        .execute()
+    )
+    return bool(result.data)
+
+
 def seed_phase_outputs(sb, engagement_id: str) -> int:
     """Seed all 23 phase output records for an engagement. Idempotent.
+
+    For pipeline-sourced engagements, Phase 0 only includes the Data Request
+    List (Proposal and Agreement were handled before conversion).
 
     Returns the number of records created.
     """
@@ -63,8 +78,14 @@ def seed_phase_outputs(sb, engagement_id: str) -> int:
     if existing.data:
         return 0  # Already seeded
 
+    from_pipeline = _is_pipeline_engagement(sb, engagement_id)
+    # For pipeline engagements, skip Proposal and Agreement (output_number 1 & 2 in phase 0)
+    skip_phase0 = {"Engagement Proposal", "Engagement Agreement"} if from_pipeline else set()
+
     rows = []
     for output in PHASE_OUTPUTS_SEED:
+        if output["phase"] == 0 and output["name"] in skip_phase0:
+            continue
         rows.append({
             "engagement_id": engagement_id,
             "phase": output["phase"],
