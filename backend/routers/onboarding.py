@@ -157,6 +157,31 @@ async def submit_onboarding(token: str, body: OnboardSubmission):
     except Exception as e:
         logger.error(f"Upload portal email failed: {e}")
 
+    # Send interview scheduling emails to each interview contact
+    try:
+        _email_svc = get_email_service()
+        partner_lead = engagement.get("partner_lead", "George DeVries")
+        for contact in body.contacts:
+            if not contact.email:
+                continue
+            sched_result = _email_svc.send_interview_scheduling_email(
+                contact_name=contact.name,
+                contact_email=contact.email,
+                client_company_name=company_name,
+                partner_lead=partner_lead,
+            )
+            log_activity(engagement_id, "system", "interview_scheduling_email_sent", {
+                "to": contact.email,
+                "contact_name": contact.name,
+                "result": sched_result,
+            })
+        logger.info(
+            f"Interview scheduling emails sent to {len(body.contacts)} contacts "
+            f"for engagement {engagement_id}"
+        )
+    except Exception as e:
+        logger.error(f"Interview scheduling emails failed: {e}")
+
     # Notify partner
     try:
         email_svc = get_email_service()

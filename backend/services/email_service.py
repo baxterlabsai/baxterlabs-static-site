@@ -792,6 +792,51 @@ class EmailService:
             from_name=p_name,
         )
 
+    def send_interview_scheduling_email(
+        self,
+        contact_name: str,
+        contact_email: str,
+        client_company_name: str,
+        partner_lead: str = "George DeVries",
+    ) -> dict:
+        """Email each interview contact with a Calendly link to schedule their leadership interview."""
+        partner = get_partner_info(partner_lead)
+        calendly_url = partner.get("calendly_url") or os.getenv(
+            "CALENDLY_SCHEDULING_URL", "https://calendly.com/george-baxterlabs"
+        )
+        partner_name = partner.get("name") or partner_lead or "George DeVries"
+        partner_title = partner.get("title") or "Managing Partner"
+
+        body = f"""
+        <h2 style="color:{CRIMSON};font-family:Georgia,serif;margin-top:0;">Schedule Your Leadership Interview</h2>
+        <p>Hi {contact_name},</p>
+        <p><strong>{client_company_name}</strong> has engaged BaxterLabs Advisory for an Operational Diagnostic,
+        and you've been identified as a key voice in the process.</p>
+        <p>As part of the engagement, we conduct confidential 45-minute leadership interviews with select members
+        of the team. These conversations are candid, structured, and designed to surface operational insights
+        that don't always show up in the numbers.</p>
+        <p>Please use the link below to choose a time that works for you:</p>
+        <p style="margin:24px 0;text-align:center;">
+          <a href="{calendly_url}"
+             style="display:inline-block;padding:14px 32px;background-color:{CRIMSON};color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;font-size:16px;">
+            Schedule Interview
+          </a>
+        </p>
+        <p style="font-size:13px;color:{CHARCOAL};">Your responses are confidential and will not be attributed to you individually in our report.</p>
+        <hr style="border:none;border-top:1px solid #E5E7EB;margin:24px 0;" />
+        <p style="font-size:13px;color:{CHARCOAL};">Questions? Reply directly to this email or reach out at
+        <a href="mailto:{partner.get('email', DEFAULT_PARTNER_EMAIL)}" style="color:{TEAL};">{partner.get('email', DEFAULT_PARTNER_EMAIL)}</a></p>
+        """
+        p_email = partner.get("email") or DEFAULT_PARTNER_EMAIL
+        p_name = f"{partner_name} — BaxterLabs"
+        return self._send_email(
+            contact_email,
+            f"Your Interview with BaxterLabs Advisory — {client_company_name}",
+            body,
+            from_email=p_email,
+            from_name=p_name,
+        )
+
     def send_onboarding_completed_notification(
         self,
         contact_name: str,
