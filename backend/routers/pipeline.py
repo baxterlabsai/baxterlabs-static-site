@@ -651,6 +651,40 @@ async def convert_opportunity(
         },
     )
 
+    # 10. Google Drive archiving (non-blocking) — if agreement was sent via DocuSign
+    envelope_id = opp.get("agreement_envelope_id")
+    if envelope_id:
+        try:
+            from services.docusign_service import list_envelope_documents, fetch_envelope_document
+            from services.google_drive_service import upload_signed_document
+
+            _client_name = company["name"]
+            doc_list = list_envelope_documents(envelope_id)
+
+            label_map = {}
+            for doc in doc_list:
+                name_lower = doc.get("name", "").lower()
+                if "nda" in name_lower or "non-disclosure" in name_lower or "mutual" in name_lower:
+                    label_map[doc["documentId"]] = "NDA"
+                elif "engagement" in name_lower or "agreement" in name_lower:
+                    label_map[doc["documentId"]] = "Engagement Agreement"
+
+            if len(label_map) < 2 and len(doc_list) >= 2:
+                label_map[doc_list[0]["documentId"]] = "NDA"
+                label_map[doc_list[1]["documentId"]] = "Engagement Agreement"
+
+            for doc in doc_list:
+                doc_id = doc["documentId"]
+                label = label_map.get(doc_id)
+                if not label:
+                    continue
+                pdf_bytes = fetch_envelope_document(envelope_id, doc_id)
+                drive_file_id = upload_signed_document(pdf_bytes, label, _client_name)
+                logger.info(f"Archived {label} for {_client_name} to Google Drive: {drive_file_id}")
+
+        except Exception as e:
+            logger.error(f"Google Drive archiving failed — conversion unaffected: {e}", exc_info=True)
+
     logger.info(f"Converted opportunity {opp_id} → client {new_client_id}, engagement {new_engagement_id}")
 
     return {
