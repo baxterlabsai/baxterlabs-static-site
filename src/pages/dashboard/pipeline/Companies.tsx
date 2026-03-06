@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { apiGet, apiPost, apiPut, apiDelete, apiUpload } from '../../../lib/api'
 import MarkdownContent from '../../../components/MarkdownContent'
+import ResearchModal from '../../../components/ResearchModal'
 import TranscriptUpload from '../../../components/TranscriptUpload'
 
 // ---------------------------------------------------------------------------
@@ -840,9 +841,16 @@ function normalizeEnrichmentValue(value: unknown): string | null {
 
 function ResearchIntelSection({ enrichmentData }: { enrichmentData: Record<string, any> }) {
   const [open, setOpen] = useState(false)
+  const [researchModalOpen, setResearchModalOpen] = useState(false)
   const research = enrichmentData?.research
   const enrichment = enrichmentData?.enrichment
   const callPrep = enrichmentData?.call_prep
+
+  const modalContent = [
+    research ? normalizeEnrichmentValue(research) : null,
+    callPrep ? normalizeEnrichmentValue(callPrep) : null,
+    enrichment ? normalizeEnrichmentValue(enrichment) : null,
+  ].filter(Boolean).join('\n\n---\n\n')
 
   return (
     <div className="border border-purple-200 rounded-lg overflow-hidden">
@@ -859,9 +867,18 @@ function ResearchIntelSection({ enrichmentData }: { enrichmentData: Record<strin
             {[research && 'Research', enrichment && 'Enrichment', callPrep && 'Call Prep', enrichmentData?.discovery_transcript && 'Transcript'].filter(Boolean).join(' + ')}
           </span>
         </div>
-        <svg className={`w-4 h-4 text-purple-600 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-        </svg>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={(e) => { e.stopPropagation(); setResearchModalOpen(true) }}
+            className="p-1 text-purple-500 hover:text-purple-700 hover:bg-purple-100 rounded transition-colors"
+            title="Open in full view"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9m11.25-5.25v4.5m0-4.5h-4.5m4.5 0L15 9m-11.25 11.25v-4.5m0 4.5h4.5m-4.5 0L9 15m11.25 5.25v-4.5m0 4.5h-4.5m4.5 0L15 15" /></svg>
+          </button>
+          <svg className={`w-4 h-4 text-purple-600 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+          </svg>
+        </div>
       </button>
 
       {open && (
@@ -952,6 +969,13 @@ function ResearchIntelSection({ enrichmentData }: { enrichmentData: Record<strin
           )}
         </div>
       )}
+
+      <ResearchModal
+        isOpen={researchModalOpen}
+        onClose={() => setResearchModalOpen(false)}
+        content={modalContent}
+        title="Research & Intelligence"
+      />
     </div>
   )
 }
