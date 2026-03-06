@@ -781,3 +781,38 @@ async def download_document(engagement_id: str, doc_id: str, user: dict = Depend
     except Exception as e:
         logger.error(f"Failed to create signed URL for {storage_path}: {e}")
         raise HTTPException(status_code=500, detail="Failed to generate download link")
+
+
+@router.post("/engagements/{engagement_id}/send-onboarding-email")
+async def send_onboarding_email(
+    engagement_id: str,
+    user: dict = Depends(verify_partner_auth),
+):
+    """(Re)send the onboarding welcome email to the primary contact."""
+    engagement = get_engagement_by_id(engagement_id)
+    if not engagement:
+        raise HTTPException(status_code=404, detail="Engagement not found")
+
+    onboarding_token = engagement.get("onboarding_token")
+    if not onboarding_token:
+        raise HTTPException(status_code=400, detail="No onboarding token set on this engagement")
+
+    client = engagement.get("clients", {})
+    contact_email = client.get("primary_contact_email")
+    if not contact_email:
+        raise HTTPException(status_code=400, detail="No primary contact email on this engagement")
+
+    email_svc = get_email_service()
+    result = email_svc.send_engagement_confirmation_email(
+        engagement=engagement,
+        client=client,
+        onboarding_token=onboarding_token,
+    )
+
+    log_activity(engagement_id, "system", "onboarding_email_sent", {
+        "trigger": "manual_resend",
+        "to": contact_email,
+        "result": result,
+    })
+
+    return {"status": "sent", "recipient": contact_email}

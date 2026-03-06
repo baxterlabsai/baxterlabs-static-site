@@ -545,6 +545,8 @@ async def convert_opportunity(
     # 5. Create engagement record
     # If stage is "won", agreement has already been signed
     eng_status = "agreement_signed" if opp["stage"] == "won" else "agreement_pending"
+    import secrets as _secrets
+    onboarding_token = _secrets.token_urlsafe(32)
     engagement_row = {
         "client_id": new_client_id,
         "status": eng_status,
@@ -554,6 +556,7 @@ async def convert_opportunity(
         "discovery_notes": discovery_notes,
         "pain_points": pain_points,
         "upload_token": str(uuid.uuid4()),
+        "onboarding_token": onboarding_token,
     }
     if req.preferred_start_date:
         engagement_row["preferred_start_date"] = req.preferred_start_date
@@ -651,7 +654,27 @@ async def convert_opportunity(
         },
     )
 
-    # 10. Google Drive archiving (non-blocking) — if agreement was sent via DocuSign
+    # 10. Send onboarding confirmation email (matching auto-conversion path)
+    try:
+        from services.email_service import get_email_service
+        from services.supabase_client import get_engagement_by_id
+        full_engagement = get_engagement_by_id(new_engagement_id)
+        if full_engagement:
+            email_svc = get_email_service()
+            email_svc.send_engagement_confirmation_email(
+                engagement=full_engagement,
+                client=full_engagement.get("clients", {}),
+                onboarding_token=onboarding_token,
+            )
+            log_activity(new_engagement_id, "system", "onboarding_email_sent", {
+                "trigger": "manual_conversion",
+                "to": (contact or {}).get("email"),
+            })
+            logger.info(f"Manual convert: onboarding email sent for engagement {new_engagement_id}")
+    except Exception as e:
+        logger.error(f"Manual convert: onboarding email failed: {e}")
+
+    # 11. Google Drive archiving (non-blocking) — if agreement was sent via DocuSign
     envelope_id = opp.get("agreement_envelope_id")
     if envelope_id:
         try:
