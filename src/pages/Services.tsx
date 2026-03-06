@@ -18,13 +18,47 @@ export default function Services() {
           </h1>
           <div className="space-y-5 text-charcoal text-base md:text-lg">
             <p>
-              Our flagship engagement is a 14-day fixed-fee diagnostic that identifies, quantifies, and prioritizes the operational and financial inefficiencies costing your business margin. The engagement includes everything from data collection and analysis to leadership interviews, workflow mapping, and a full report with a 90-day implementation roadmap.
+              Our flagship engagement is a fixed-scope, fixed-fee diagnostic that identifies, quantifies, and prioritizes the operational and financial inefficiencies costing your business margin. We collect your financials, interview your leadership, map your workflows, and deliver a complete findings package in 14 days — including a board-ready report and a 90-day implementation roadmap.
             </p>
           </div>
           <div className="mt-8 bg-ivory border-l-4 border-l-crimson rounded-lg p-6">
             <p className="text-teal font-semibold text-lg">
               $12,500 | Fixed-fee | All-inclusive | Remote-first
             </p>
+          </div>
+
+          <div className="mt-12">
+            <h3 className="font-display text-2xl font-bold text-crimson mb-6">What You Receive</h3>
+            <div className="grid gap-4">
+              <div className="bg-ivory rounded-lg p-5">
+                <p className="font-semibold text-teal mb-1">Executive Summary</p>
+                <p className="text-charcoal text-base">Board-ready overview of key findings and the highest-priority actions to take first.</p>
+              </div>
+              <div className="bg-ivory rounded-lg p-5">
+                <p className="font-semibold text-teal mb-1">Full Diagnostic Report</p>
+                <p className="text-charcoal text-base">Complete analysis of every identified profit leak, with root causes, dollar quantification, and supporting evidence for each finding.</p>
+              </div>
+              <div className="bg-ivory rounded-lg p-5">
+                <p className="font-semibold text-teal mb-1">Implementation Roadmap</p>
+                <p className="text-charcoal text-base">90-day prioritized action plan tied directly to the dollar-quantified findings. Sequenced by impact and feasibility.</p>
+              </div>
+              <div className="bg-ivory rounded-lg p-5">
+                <p className="font-semibold text-teal mb-1">Profit Leak Quantification Workbook</p>
+                <p className="text-charcoal text-base">The underlying financial model showing exactly where margin is going, how much each leak is worth, and what recovery looks like.</p>
+              </div>
+            </div>
+
+            <p className="text-sm font-semibold text-charcoal/60 uppercase tracking-wide mt-8 mb-4">Delivered after your debrief meeting:</p>
+            <div className="grid gap-4">
+              <div className="bg-ivory rounded-lg p-5">
+                <p className="font-semibold text-teal mb-1">Executive Presentation Deck</p>
+                <p className="text-charcoal text-base">A formatted presentation of your findings, ready to share with your leadership team or board.</p>
+              </div>
+              <div className="bg-ivory rounded-lg p-5">
+                <p className="font-semibold text-teal mb-1">Phase 2 Retainer Proposal</p>
+                <p className="text-charcoal text-base">A tailored implementation proposal for continued support. Only if you want it. The roadmap is yours either way.</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -38,9 +72,32 @@ export default function Services() {
           </h2>
           <div className="space-y-5 text-charcoal text-base md:text-lg">
             <p>
-              After the diagnostic, we offer an optional Implementation Retainer to support your team in executing the recommendations. Whether you need strategic guidance or hands-on support, we have a tier that fits your pace and bandwidth.
+              After the diagnostic debrief, we offer an optional Implementation Retainer for firms that want partner-level support executing the roadmap. Engagements are month-to-month with no long-term contract — you stay because it's working, not because you're locked in.
             </p>
           </div>
+
+          <div className="mt-8">
+            <p className="font-semibold text-teal text-lg mb-4">What's included:</p>
+            <div className="grid gap-4">
+              <div className="bg-white rounded-lg p-5">
+                <p className="font-semibold text-teal mb-1">Weekly working sessions</p>
+                <p className="text-charcoal text-base">with a BaxterLabs partner to drive implementation of the roadmap priorities</p>
+              </div>
+              <div className="bg-white rounded-lg p-5">
+                <p className="font-semibold text-teal mb-1">Financial monitoring</p>
+                <p className="text-charcoal text-base">we track the metrics that matter and flag drift before it compounds</p>
+              </div>
+              <div className="bg-white rounded-lg p-5">
+                <p className="font-semibold text-teal mb-1">Vendor and process analysis</p>
+                <p className="text-charcoal text-base">as new cost or efficiency questions arise</p>
+              </div>
+              <div className="bg-white rounded-lg p-5">
+                <p className="font-semibold text-teal mb-1">On-call advisory</p>
+                <p className="text-charcoal text-base">between sessions for decisions that can't wait for the next meeting</p>
+              </div>
+            </div>
+          </div>
+
           <div className="mt-8 bg-white border-l-4 border-l-crimson rounded-lg p-6">
             <p className="text-teal font-semibold text-lg">
               $5,000–$10,000/month | Month-to-month | No long-term contract
