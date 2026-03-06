@@ -543,9 +543,11 @@ async def convert_opportunity(
     new_client_id = client_result.data[0]["id"]
 
     # 5. Create engagement record
+    # If stage is "won", agreement has already been signed
+    eng_status = "agreement_signed" if opp["stage"] == "won" else "agreement_pending"
     engagement_row = {
         "client_id": new_client_id,
-        "status": "agreement_pending",
+        "status": eng_status,
         "phase": 0,
         "fee": req.fee,
         "partner_lead": req.partner_lead,
@@ -655,7 +657,7 @@ async def convert_opportunity(
         "client_id": new_client_id,
         "engagement_id": new_engagement_id,
         "interview_contacts_created": created_contacts_count,
-        "status": "agreement_pending",
+        "status": eng_status,
         "message": f"Opportunity converted successfully. Engagement created for {company['name']}.",
     }
 

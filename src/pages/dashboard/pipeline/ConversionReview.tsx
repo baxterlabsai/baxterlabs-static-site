@@ -61,11 +61,12 @@ interface SelectedContact {
 // ---------------------------------------------------------------------------
 
 const REVENUE_OPTIONS = [
-  '$1M – $5M',
-  '$5M – $10M',
-  '$10M – $25M',
-  '$25M – $50M',
-  '$50M – $100M',
+  'Under $1M',
+  '$1M-$5M',
+  '$5M-$10M',
+  '$10M-$25M',
+  '$25M-$50M',
+  '$50M-$100M',
   '$100M+',
 ]
 
@@ -226,12 +227,12 @@ export default function ConversionReview() {
     )
   }
 
-  const allowedStages = ['won', 'negotiation', 'proposal_sent']
+  const allowedStages = ['won', 'negotiation', 'agreement_sent', 'discovery_complete']
   if (preview && !allowedStages.includes(preview.stage)) {
     return (
       <div className="max-w-3xl mx-auto py-8">
         <div className="p-4 bg-gold/10 border border-gold/30 rounded-lg text-charcoal text-sm">
-          Opportunity must be in Won, Negotiation, or Proposal Sent stage to convert. Current stage: {preview.stage.replace(/_/g, ' ')}.
+          Opportunity must be in Won, Negotiation, Agreement Sent, or Discovery Complete stage to convert. Current stage: {preview.stage.replace(/_/g, ' ')}.
         </div>
         <Link to="/dashboard/pipeline" className="text-teal text-sm hover:underline mt-4 inline-block">Back to Pipeline</Link>
       </div>
@@ -370,8 +371,8 @@ export default function ConversionReview() {
           <div className="bg-ivory rounded-lg p-3">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-gray-warm">Starting Status:</span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-gold/20 text-charcoal">
-                Agreement Pending
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${preview?.stage === 'won' ? 'bg-teal/20 text-teal' : 'bg-gold/20 text-charcoal'}`}>
+                {preview?.stage === 'won' ? 'Agreement Signed' : 'Agreement Pending'}
               </span>
             </div>
             <p className="text-xs text-gray-warm mt-1">Skips intake — data is already captured from the pipeline.</p>
