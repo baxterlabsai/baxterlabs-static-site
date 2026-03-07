@@ -62,6 +62,9 @@ app.include_router(webhooks.router)
 app.include_router(follow_ups.router)
 app.include_router(onboarding.router)
 
+# Startup confirmation — helps verify correct code is deployed
+logger.info("DocuSign webhook handler ready — XML+JSON support active")
+
 
 @app.get("/api/health", response_model=HealthResponse)
 async def health_check():

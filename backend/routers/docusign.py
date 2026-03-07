@@ -102,16 +102,15 @@ async def docusign_webhook(request: Request, background_tasks: BackgroundTasks):
     if payload is None:
         try:
             import xml.etree.ElementTree as ET
-            root = ET.fromstring(body)
-            # Extract envelope status from DocuSign XML
-            ns = {"ds": "http://www.docusign.net/API/3.0"}
-            # Try with namespace first, then without
-            env_status = root.find(".//ds:EnvelopeStatus", ns)
-            if env_status is None:
-                env_status = root.find(".//EnvelopeStatus")
+            import re
+            # Strip XML namespace declarations for reliable element lookup
+            body_str = body.decode("utf-8") if isinstance(body, bytes) else body
+            body_clean = re.sub(r'\sxmlns(?::\w+)?="[^"]*"', "", body_str)
+            root = ET.fromstring(body_clean)
+            env_status = root.find(".//EnvelopeStatus")
             if env_status is not None:
-                status_el = env_status.find("ds:Status", ns) or env_status.find("Status")
-                env_id_el = env_status.find("ds:EnvelopeID", ns) or env_status.find("EnvelopeID")
+                status_el = env_status.find("Status")
+                env_id_el = env_status.find("EnvelopeID")
                 payload = {
                     "EnvelopeStatus": {
                         "Status": status_el.text if status_el is not None else "",
