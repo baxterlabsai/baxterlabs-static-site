@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from middleware.auth import verify_onboarding_token
 from services.supabase_client import get_supabase, get_engagement_by_id, log_activity
 from services.email_service import get_email_service, DEFAULT_PARTNER_EMAIL
+from services.firecrawl_service import research_contacts
 
 logger = logging.getLogger("baxterlabs.onboarding")
 
@@ -186,6 +187,13 @@ async def submit_onboarding(token: str, body: OnboardSubmission):
         )
     except Exception as e:
         logger.error(f"Interview scheduling emails failed: {e}")
+
+    # Trigger interview brief generation for each contact
+    try:
+        await research_contacts(engagement_id)
+        logger.info(f"Interview briefs triggered for engagement {engagement_id}")
+    except Exception as e:
+        logger.error(f"Interview brief generation failed (non-blocking): {e}")
 
     # Notify partner
     try:
