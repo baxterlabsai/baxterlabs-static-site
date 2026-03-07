@@ -87,6 +87,13 @@ async def send_agreement(body: DocuSignSendRequest):
 async def docusign_webhook(request: Request, background_tasks: BackgroundTasks):
     """Receive DocuSign Connect webhook callbacks."""
     body = await request.body()
+
+    # TRACE logging — remove after debugging
+    content_type = request.headers.get("content-type", "")
+    logger.info(f"WEBHOOK TRACE — Content-Type: {content_type}")
+    body_preview = body[:2000].decode("utf-8", errors="replace") if isinstance(body, bytes) else str(body)[:2000]
+    logger.info(f"WEBHOOK TRACE — Raw body (first 2000 chars): {body_preview}")
+
     if not body:
         return Response(status_code=400)
 
@@ -95,6 +102,7 @@ async def docusign_webhook(request: Request, background_tasks: BackgroundTasks):
     try:
         import json
         payload = json.loads(body)
+        logger.info("WEBHOOK TRACE — Parsed as JSON")
     except (json.JSONDecodeError, ValueError):
         pass
 
@@ -106,11 +114,21 @@ async def docusign_webhook(request: Request, background_tasks: BackgroundTasks):
             # Strip XML namespace declarations for reliable element lookup
             body_str = body.decode("utf-8") if isinstance(body, bytes) else body
             body_clean = re.sub(r'\sxmlns(?::\w+)?="[^"]*"', "", body_str)
+            logger.info(f"WEBHOOK TRACE — Cleaned XML (first 1000 chars): {body_clean[:1000]}")
             root = ET.fromstring(body_clean)
+            logger.info(f"WEBHOOK TRACE — XML root tag: {root.tag}")
+            # Log all direct children of root for debugging
+            child_tags = [child.tag for child in root]
+            logger.info(f"WEBHOOK TRACE — Root children: {child_tags}")
             env_status = root.find(".//EnvelopeStatus")
+            logger.info(f"WEBHOOK TRACE — EnvelopeStatus found: {env_status is not None}")
             if env_status is not None:
+                es_child_tags = [child.tag for child in env_status]
+                logger.info(f"WEBHOOK TRACE — EnvelopeStatus children: {es_child_tags}")
                 status_el = env_status.find("Status")
                 env_id_el = env_status.find("EnvelopeID")
+                logger.info(f"WEBHOOK TRACE — Status element: {status_el}, text={status_el.text if status_el is not None else 'N/A'}")
+                logger.info(f"WEBHOOK TRACE — EnvelopeID element: {env_id_el}, text={env_id_el.text if env_id_el is not None else 'N/A'}")
                 payload = {
                     "EnvelopeStatus": {
                         "Status": status_el.text if status_el is not None else "",
@@ -129,8 +147,10 @@ async def docusign_webhook(request: Request, background_tasks: BackgroundTasks):
     result = ds.handle_webhook(payload)
     action = result.get("action", "unknown")
     envelope_id = result.get("envelope_id", "")
+    logger.info(f"WEBHOOK TRACE — handle_webhook result: action={action} envelope_id={envelope_id}")
 
     if not envelope_id:
+        logger.info("WEBHOOK TRACE — No envelope_id, returning 200 early")
         return Response(status_code=200)
 
     sb = get_supabase()
@@ -215,20 +235,28 @@ async def docusign_webhook(request: Request, background_tasks: BackgroundTasks):
 
     # --- Pipeline Agreement signed → auto-conversion ---
     elif action == "pipeline_agreement_signed":
+        logger.info(f"WEBHOOK TRACE — pipeline_agreement_signed branch entered, looking up envelope_id={envelope_id}")
         pipeline_result = (
             sb.table("pipeline_opportunities")
-            .select("id")
+            .select("id, stage, agreement_envelope_id")
             .eq("agreement_envelope_id", envelope_id)
             .eq("is_deleted", False)
             .execute()
         )
+        logger.info(f"WEBHOOK TRACE — pipeline DB lookup result: {pipeline_result.data}")
         if pipeline_result.data:
             opp_id = pipeline_result.data[0]["id"]
+            logger.info(f"WEBHOOK TRACE — Calling auto-conversion for opp {opp_id}")
             background_tasks.add_task(
                 _run_async_in_background,
                 _auto_convert_pipeline_opportunity(opp_id),
             )
             logger.info(f"Pipeline agreement signed — envelope={envelope_id} opp={opp_id} — auto-conversion triggered")
+        else:
+            logger.warning(f"WEBHOOK TRACE — No pipeline opportunity found for envelope_id={envelope_id}")
+
+    else:
+        logger.info(f"WEBHOOK TRACE — Unhandled action: {action}")
 
     return Response(status_code=200)
 
