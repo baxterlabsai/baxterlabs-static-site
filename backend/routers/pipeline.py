@@ -1053,6 +1053,18 @@ async def create_activity(body: ActivityCreate, user: dict = Depends(verify_part
     if body.outreach_channel and body.outreach_channel not in VALID_OUTREACH_CHANNELS:
         raise HTTPException(status_code=400, detail=f"Invalid outreach channel: {body.outreach_channel}")
     sb = get_supabase()
+
+    # Auto-resolve company_id when missing
+    if not body.company_id:
+        if body.contact_id:
+            contact = sb.table("pipeline_contacts").select("company_id").eq("id", body.contact_id).execute()
+            if contact.data and contact.data[0].get("company_id"):
+                body.company_id = contact.data[0]["company_id"]
+        elif body.opportunity_id:
+            opp = sb.table("pipeline_opportunities").select("company_id").eq("id", body.opportunity_id).execute()
+            if opp.data and opp.data[0].get("company_id"):
+                body.company_id = opp.data[0]["company_id"]
+
     row = body.model_dump(exclude_none=True)
     if body.occurred_at:
         row["occurred_at"] = body.occurred_at.isoformat()
