@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { apiGet, apiPatch, apiUpload } from '../../lib/api'
+import { apiGet, apiPost, apiPatch, apiUpload } from '../../lib/api'
 import MarkdownContent from '../../components/MarkdownContent'
 import ResearchModal from '../../components/ResearchModal'
 import TranscriptUpload from '../../components/TranscriptUpload'
@@ -328,6 +328,33 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
                           .catch(() => {})
                       }, 4000)
                       // Stop polling after 2 minutes
+                      setTimeout(() => { clearInterval(poll); setAnalyzing(false) }, 120000)
+                    } finally {
+                      setTranscriptUploading(false)
+                    }
+                  }}
+                  onGDocImport={async (gdocUrl) => {
+                    setTranscriptUploading(true)
+                    try {
+                      const updated = await apiPost<ContactDetail>(
+                        `/api/engagements/${engagementId}/contacts/${contactId}/transcript-gdoc`,
+                        { gdoc_url: gdocUrl }
+                      )
+                      setContact(updated)
+                      setAnalyzing(true)
+                      const poll = setInterval(() => {
+                        apiGet<{ contacts: TranscriptIntelContact[] }>(`/api/engagements/${engagementId}/transcript-intelligence`)
+                          .then(res => {
+                            const match = res.contacts.find(c => c.contact_id === contactId)
+                            if (match?.analyzed) {
+                              setTranscriptIntel(match)
+                              setAnalyzing(false)
+                              setAnalysisOpen(true)
+                              clearInterval(poll)
+                            }
+                          })
+                          .catch(() => {})
+                      }, 4000)
                       setTimeout(() => { clearInterval(poll); setAnalyzing(false) }, 120000)
                     } finally {
                       setTranscriptUploading(false)

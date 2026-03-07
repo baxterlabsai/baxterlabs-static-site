@@ -1270,6 +1270,7 @@ function CompanySlideOver({
                         filename: detail.enrichment_data.discovery_transcript.original_filename,
                         uploaded_at: detail.enrichment_data.discovery_transcript.uploaded_at,
                         file_size: detail.enrichment_data.discovery_transcript.file_size,
+                        google_doc_url: detail.enrichment_data.discovery_transcript.google_doc_url,
                       } : null}
                       uploading={transcriptUploading}
                       onUpload={async (file) => {
@@ -1283,10 +1284,19 @@ function CompanySlideOver({
                           setTranscriptUploading(false)
                         }
                       }}
-                      onDownload={async () => {
+                      onGDocImport={async (gdocUrl) => {
+                        setTranscriptUploading(true)
+                        try {
+                          const updated = await apiPost<CompanyDetail>(`/api/pipeline/companies/${companyId}/transcript-gdoc`, { gdoc_url: gdocUrl })
+                          setDetail(prev => prev ? { ...prev, enrichment_data: updated.enrichment_data } : prev)
+                        } finally {
+                          setTranscriptUploading(false)
+                        }
+                      }}
+                      onDownload={detail.enrichment_data?.discovery_transcript?.storage_path ? async () => {
                         const res = await apiGet<{ url: string }>(`/api/pipeline/companies/${companyId}/transcript/download`)
                         window.open(res.url, '_blank')
-                      }}
+                      } : undefined}
                     />
                   </div>
 

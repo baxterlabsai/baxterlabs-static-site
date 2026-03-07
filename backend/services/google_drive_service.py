@@ -106,3 +106,35 @@ def upload_signed_document(pdf_bytes: bytes, document_label: str, client_name: s
         supportsAllDrives=True,
     ).execute()
     return uploaded.get("id")
+
+
+def fetch_google_doc_text(doc_url: str) -> str:
+    """Fetch the plain text content of a Google Doc by its URL.
+
+    Accepts standard Google Docs URL formats:
+      - https://docs.google.com/document/d/{id}/edit
+      - https://docs.google.com/document/d/{id}/edit?usp=sharing
+      - https://docs.google.com/document/d/{id}/
+
+    Returns the full document text as a string.
+    Raises ValueError if the URL is not a recognizable Google Docs URL.
+    Raises Exception if the document cannot be fetched.
+    """
+    import re
+
+    match = re.search(r'/document/d/([a-zA-Z0-9_-]+)', doc_url)
+    if not match:
+        raise ValueError(f"Could not extract Google Doc ID from URL: {doc_url}")
+
+    doc_id = match.group(1)
+    service = _get_drive_service()
+
+    # Export as plain text via Drive files.export
+    export_response = service.files().export(
+        fileId=doc_id,
+        mimeType='text/plain',
+    ).execute()
+
+    if isinstance(export_response, bytes):
+        return export_response.decode('utf-8')
+    return str(export_response)

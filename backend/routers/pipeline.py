@@ -10,6 +10,7 @@ from typing import Optional, List, Dict, Any
 
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
+from pydantic import BaseModel
 from middleware.auth import verify_partner_auth
 from services.supabase_client import get_supabase, log_activity, create_engagement_folders
 import json
@@ -2091,6 +2092,96 @@ async def upload_discovery_transcript(
         "type": "note",
         "subject": "Discovery transcript uploaded",
         "body": f"File: {filename} ({len(content)} bytes)",
+        "created_by": user.get("sub"),
+    }).execute()
+
+    return result.data[0]
+
+
+class GDocRequest(BaseModel):
+    gdoc_url: str
+
+
+@router.post("/companies/{company_id}/transcript-gdoc")
+async def upload_discovery_transcript_gdoc(
+    company_id: str,
+    body: GDocRequest,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Import a discovery call transcript from a Google Doc URL."""
+    from services.google_drive_service import fetch_google_doc_text
+
+    if not body.gdoc_url.startswith("https://docs.google.com/document/d/"):
+        raise HTTPException(status_code=422, detail="URL must be a Google Docs URL (https://docs.google.com/document/d/...)")
+
+    sb = get_supabase()
+
+    # Verify company exists
+    company = (
+        sb.table("pipeline_companies")
+        .select("id, name, enrichment_data")
+        .eq("id", company_id)
+        .eq("is_deleted", False)
+        .execute()
+    )
+    if not company.data:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    comp = company.data[0]
+
+    # Fetch Google Doc content
+    try:
+        extracted_text = fetch_google_doc_text(body.gdoc_url)
+    except Exception as e:
+        logger.error(f"Google Doc fetch failed for {body.gdoc_url}: {e}")
+        raise HTTPException(
+            status_code=422,
+            detail="Could not access this Google Doc. Make sure the document is shared with 'Anyone with the link can view' and try again.",
+        )
+
+    if not extracted_text or not extracted_text.strip():
+        raise HTTPException(status_code=422, detail="The Google Doc appears to be empty.")
+
+    # Extract doc ID for filename
+    doc_id_match = re.search(r'/document/d/([a-zA-Z0-9_-]+)', body.gdoc_url)
+    doc_id_str = doc_id_match.group(1) if doc_id_match else "unknown"
+    filename = f"Google Doc — {doc_id_str[:60]}.gdoc"
+
+    # Delete old transcript file if replacing
+    existing_ed = comp.get("enrichment_data") or {}
+    old_transcript = existing_ed.get("discovery_transcript")
+    if old_transcript and old_transcript.get("storage_path"):
+        try:
+            sb.storage.from_("engagements").remove([old_transcript["storage_path"]])
+        except Exception as e:
+            logger.warning(f"Failed to delete old transcript: {e}")
+
+    # Build discovery_transcript metadata
+    transcript_meta: Dict[str, Any] = {
+        "storage_path": None,
+        "original_filename": filename,
+        "uploaded_at": datetime.utcnow().isoformat(),
+        "file_size": len(extracted_text.encode("utf-8")),
+        "summary": None,
+        "google_doc_url": body.gdoc_url,
+    }
+
+    # Merge into enrichment_data
+    updated_ed = {**existing_ed, "discovery_transcript": transcript_meta}
+
+    result = (
+        sb.table("pipeline_companies")
+        .update({"enrichment_data": updated_ed})
+        .eq("id", company_id)
+        .execute()
+    )
+
+    # Log pipeline activity
+    sb.table("pipeline_activities").insert({
+        "company_id": company_id,
+        "type": "note",
+        "subject": "Discovery transcript imported from Google Doc",
+        "body": f"Source: {body.gdoc_url}",
         "created_by": user.get("sub"),
     }).execute()
 

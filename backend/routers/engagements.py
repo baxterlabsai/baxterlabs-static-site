@@ -576,6 +576,162 @@ async def upload_interview_transcript(
     return updated.data[0]
 
 
+class GDocTranscriptRequest(BaseModel):
+    gdoc_url: str
+
+
+@router.post("/engagements/{engagement_id}/contacts/{contact_id}/transcript-gdoc")
+async def upload_interview_transcript_gdoc(
+    engagement_id: str,
+    contact_id: str,
+    background_tasks: BackgroundTasks,
+    body: GDocTranscriptRequest,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Import an interview transcript from a Google Doc URL."""
+    from services.google_drive_service import fetch_google_doc_text
+
+    if not body.gdoc_url.startswith("https://docs.google.com/document/d/"):
+        raise HTTPException(status_code=422, detail="URL must be a Google Docs URL (https://docs.google.com/document/d/...)")
+
+    sb = get_supabase()
+
+    # Verify engagement exists
+    engagement = get_engagement_by_id(engagement_id)
+    if not engagement:
+        raise HTTPException(status_code=404, detail="Engagement not found")
+
+    # Verify contact belongs to engagement
+    contact_result = (
+        sb.table("interview_contacts")
+        .select("id, name, title, engagement_id, transcript_document_id")
+        .eq("id", contact_id)
+        .eq("engagement_id", engagement_id)
+        .execute()
+    )
+    if not contact_result.data:
+        raise HTTPException(status_code=404, detail="Contact not found")
+
+    contact = contact_result.data[0]
+
+    # Fetch Google Doc content
+    try:
+        extracted_text = fetch_google_doc_text(body.gdoc_url)
+    except Exception as e:
+        logger.error(f"Google Doc fetch failed for {body.gdoc_url}: {e}")
+        raise HTTPException(
+            status_code=422,
+            detail="Could not access this Google Doc. Make sure the document is shared with 'Anyone with the link can view' and try again.",
+        )
+
+    if not extracted_text or not extracted_text.strip():
+        raise HTTPException(status_code=422, detail="The Google Doc appears to be empty.")
+
+    # Extract doc ID for filename
+    import re as _re_gdoc
+    doc_id_match = _re_gdoc.search(r'/document/d/([a-zA-Z0-9_-]+)', body.gdoc_url)
+    doc_id_str = doc_id_match.group(1) if doc_id_match else "unknown"
+    filename = f"Google Doc — {doc_id_str[:60]}.gdoc"
+
+    # Delete old transcript if replacing
+    old_doc_id = contact.get("transcript_document_id")
+    if old_doc_id:
+        old_doc = sb.table("documents").select("storage_path").eq("id", old_doc_id).execute()
+        if old_doc.data and old_doc.data[0].get("storage_path"):
+            try:
+                sb.storage.from_("engagements").remove([old_doc.data[0]["storage_path"]])
+            except Exception as e:
+                logger.warning(f"Failed to delete old transcript file: {e}")
+        sb.table("documents").delete().eq("id", old_doc_id).execute()
+
+    # Create documents record (no file in storage — source is GDoc)
+    doc_result = sb.table("documents").insert({
+        "engagement_id": engagement_id,
+        "category": "transcript",
+        "filename": filename,
+        "storage_path": None,
+        "file_size": len(extracted_text.encode("utf-8")),
+        "document_type": "interview_transcript",
+        "uploaded_by": "analyst",
+        "storage_bucket": "engagements",
+        "status": "uploaded",
+        "extracted_text": extracted_text,
+        "gdoc_url": body.gdoc_url,
+    }).execute()
+
+    doc_id = doc_result.data[0]["id"]
+    logger.info(f"GDoc transcript imported — doc={doc_id} chars={len(extracted_text)}")
+
+    # Trigger LLM analysis in background
+    company_name = engagement.get("clients", {}).get("company_name", "Unknown")
+    background_tasks.add_task(
+        analyze_transcript, doc_id, engagement_id,
+        contact["name"], contact.get("title"), company_name,
+    )
+
+    # Update interview_contacts.transcript_document_id
+    sb.table("interview_contacts").update({
+        "transcript_document_id": doc_id,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }).eq("id", contact_id).execute()
+
+    # Fold intelligence back into pipeline_companies via converted_engagement_id
+    try:
+        opp_result = (
+            sb.table("pipeline_opportunities")
+            .select("company_id")
+            .eq("converted_engagement_id", engagement_id)
+            .eq("is_deleted", False)
+            .execute()
+        )
+        if opp_result.data:
+            co_id = opp_result.data[0]["company_id"]
+            co_result = (
+                sb.table("pipeline_companies")
+                .select("id, enrichment_data")
+                .eq("id", co_id)
+                .execute()
+            )
+            if co_result.data:
+                co = co_result.data[0]
+                co_ed = co.get("enrichment_data") or {}
+                intel_list = co_ed.get("interview_intelligence", [])
+                intel_list.append({
+                    "contact_name": contact["name"],
+                    "contact_title": contact.get("title"),
+                    "engagement_id": engagement_id,
+                    "document_id": doc_id,
+                    "storage_path": None,
+                    "uploaded_at": datetime.now(timezone.utc).isoformat(),
+                    "summary": None,
+                    "google_doc_url": body.gdoc_url,
+                })
+                co_ed["interview_intelligence"] = intel_list
+                sb.table("pipeline_companies").update({
+                    "enrichment_data": co_ed,
+                }).eq("id", co_id).execute()
+    except Exception as e:
+        logger.warning(f"Intelligence fold-back failed (non-blocking): {e}")
+
+    # Log activity
+    log_activity(engagement_id, "analyst", "interview_transcript_uploaded", {
+        "contact_id": contact_id,
+        "contact_name": contact["name"],
+        "filename": filename,
+        "document_id": doc_id,
+        "source": "google_doc",
+    })
+
+    # Return updated contact
+    updated = (
+        sb.table("interview_contacts")
+        .select("*")
+        .eq("id", contact_id)
+        .execute()
+    )
+    return updated.data[0]
+
+
 @router.get("/engagements/{engagement_id}/contacts/{contact_id}/transcript/download")
 async def download_interview_transcript(
     engagement_id: str,
