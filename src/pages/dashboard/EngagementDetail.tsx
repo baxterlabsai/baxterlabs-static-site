@@ -4,6 +4,7 @@ import { apiGet, apiPost, apiPut, apiPatch, apiUpload, apiDelete } from '../../l
 import { useToast } from '../../components/Toast'
 import ResearchModal from '../../components/ResearchModal'
 import EngagementContactSlideOver from './EngagementContactSlideOver'
+import MarkdownContent from '../../components/MarkdownContent'
 
 interface PhaseOutput {
   id: string
@@ -1436,8 +1437,8 @@ export default function EngagementDetail() {
           </div>
         </div>
         {dossier ? (
-          <div className="prose prose-sm max-w-none text-charcoal whitespace-pre-wrap text-sm leading-relaxed">
-            {dossier.content}
+          <div className="text-sm text-charcoal leading-relaxed">
+            <MarkdownContent content={dossier.content} />
           </div>
         ) : (
           <p className="text-gray-warm text-sm">Research pending — click "Enrich Research" to generate the company dossier.</p>
@@ -1482,8 +1483,8 @@ export default function EngagementDetail() {
                   </button>
                 </div>
                 {expandedBrief === brief.contact_name && (
-                  <div className="px-4 pb-4 text-sm text-charcoal whitespace-pre-wrap leading-relaxed border-t border-gray-light pt-3">
-                    {brief.content}
+                  <div className="px-4 pb-4 text-sm text-charcoal leading-relaxed border-t border-gray-light pt-3">
+                    <MarkdownContent content={brief.content} />
                     {(() => {
                       const intel = transcriptIntel.find(t => t.contact_name === brief.contact_name && t.analyzed && t.analysis)
                       if (!intel?.analysis) return null
@@ -1496,7 +1497,10 @@ export default function EngagementDetail() {
                               <p className="text-xs font-semibold text-charcoal mb-1">Key Findings</p>
                               <ul className="space-y-0.5">
                                 {intel.analysis.key_findings.map((f, fi) => (
-                                  <li key={fi} className="text-xs text-charcoal">&#8226; {f}</li>
+                                  <li key={fi} className="text-xs text-charcoal flex gap-1.5">
+                                    <span className="flex-shrink-0">&#8226;</span>
+                                    <MarkdownContent content={f} className="inline-prose" />
+                                  </li>
                                 ))}
                               </ul>
                             </div>
@@ -1507,7 +1511,7 @@ export default function EngagementDetail() {
                               {intel.analysis.notable_quotes.map((q, qi) => (
                                 <div key={qi} className="pl-3 border-l-2 border-emerald-300 mb-1.5">
                                   <p className="text-xs text-charcoal italic">&ldquo;{q.quote}&rdquo;</p>
-                                  {q.context && <p className="text-[11px] text-gray-warm">{q.context}</p>}
+                                  {q.context && <p className="text-[11px] text-gray-warm"><MarkdownContent content={q.context} className="inline-prose" /></p>}
                                 </div>
                               ))}
                             </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { apiGet, apiPost } from '../../lib/api'
+import MarkdownContent from '../../components/MarkdownContent'
 
 interface EngagementData {
   id: string
@@ -128,8 +129,8 @@ export default function StartEngagement() {
             <h3 className="font-display text-lg font-bold text-teal mb-3">Research Dossier</h3>
             {dossier ? (
               <>
-                <div className={`text-sm text-charcoal whitespace-pre-wrap leading-relaxed ${showFullDossier ? '' : 'max-h-48 overflow-hidden relative'}`}>
-                  {dossier.content}
+                <div className={`text-sm text-charcoal leading-relaxed ${showFullDossier ? '' : 'max-h-48 overflow-hidden relative'}`}>
+                  <MarkdownContent content={dossier.content} />
                   {!showFullDossier && (
                     <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent" />
                   )}

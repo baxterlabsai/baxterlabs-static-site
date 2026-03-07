@@ -400,7 +400,7 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
                       {/* Summary */}
                       <div>
                         <p className="text-xs font-semibold text-charcoal mb-1">Summary</p>
-                        <p className="text-xs text-charcoal leading-relaxed">{transcriptIntel.analysis.summary}</p>
+                        <div className="text-xs text-charcoal leading-relaxed"><MarkdownContent content={transcriptIntel.analysis.summary} /></div>
                       </div>
 
                       {/* Key Findings */}
@@ -411,7 +411,7 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
                             {transcriptIntel.analysis.key_findings.map((f, i) => (
                               <li key={i} className="text-xs text-charcoal flex gap-1.5">
                                 <span className="text-emerald-600 mt-0.5 flex-shrink-0">&#8226;</span>
-                                <span>{f}</span>
+                                <MarkdownContent content={f} className="inline-prose" />
                               </li>
                             ))}
                           </ul>
@@ -426,7 +426,7 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
                             {transcriptIntel.analysis.financial_indicators.map((fi, i) => (
                               <li key={i} className="text-xs text-charcoal flex gap-1.5">
                                 <span className="text-gold mt-0.5 flex-shrink-0">$</span>
-                                <span>{fi}</span>
+                                <MarkdownContent content={fi} className="inline-prose" />
                               </li>
                             ))}
                           </ul>
@@ -441,7 +441,7 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
                             {transcriptIntel.analysis.notable_quotes.map((q, i) => (
                               <div key={i} className="pl-3 border-l-2 border-emerald-300">
                                 <p className="text-xs text-charcoal italic">&ldquo;{q.quote}&rdquo;</p>
-                                {q.context && <p className="text-[11px] text-gray-warm mt-0.5">{q.context}</p>}
+                                {q.context && <div className="text-[11px] text-gray-warm mt-0.5"><MarkdownContent content={q.context} className="inline-prose" /></div>}
                               </div>
                             ))}
                           </div>
