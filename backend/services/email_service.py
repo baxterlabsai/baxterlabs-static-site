@@ -184,10 +184,19 @@ class EmailService:
             msg.attach(text_part)
             msg.attach(html_part)
 
+            recipients = [to_email]
+            if cc_email:
+                recipients.append(cc_email)
+
             with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
                 server.starttls()
                 server.login(self.smtp_username, self.smtp_password)
-                smtp_response = server.send_message(msg)
+                # Use sendmail() with explicit envelope sender so Gmail
+                # honors the "Send mail as" alias instead of rewriting
+                # the From header to the SMTP_USERNAME (Gmail auth account).
+                smtp_response = server.sendmail(
+                    sender_email, recipients, msg.as_string()
+                )
                 logger.info(f"SMTP response for to={to_email}: {smtp_response}")
 
             logger.info(f"Email sent from={sender_email} to={to_email} cc={cc_email} subject='{subject}'")
