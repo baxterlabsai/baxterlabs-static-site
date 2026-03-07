@@ -73,7 +73,8 @@ def _get_or_create_folder(service, parent_id: str, folder_name: str) -> str:
 def upload_signed_document(pdf_bytes: bytes, document_label: str, client_name: str) -> str:
     """Upload a signed document PDF to Google Drive.
 
-    Creates folder structure: Legal/{client_name} — {year}/{label} — {client} — {date}.pdf
+    Creates folder structure:
+        Legal/Client Agreements/{client_name} — {year}/{label} — {client} — {date}.pdf
     Returns the Drive file ID on success. Raises on failure (caller must handle).
     """
     service = _get_drive_service()
@@ -84,8 +85,9 @@ def upload_signed_document(pdf_bytes: bytes, document_label: str, client_name: s
     year = datetime.utcnow().strftime("%Y")
     date_str = datetime.utcnow().strftime("%Y-%m-%d")
 
+    agreements_folder_id = _get_or_create_folder(service, legal_folder_id, "Client Agreements")
     client_folder_name = f"{client_name} — {year}"
-    client_folder_id = _get_or_create_folder(service, legal_folder_id, client_folder_name)
+    client_folder_id = _get_or_create_folder(service, agreements_folder_id, client_folder_name)
 
     file_name = f"{document_label} — {client_name} — {date_str}.pdf"
     file_metadata = {

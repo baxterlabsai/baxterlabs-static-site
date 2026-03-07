@@ -84,12 +84,55 @@ async def get_engagement(engagement_id: str, user: dict = Depends(verify_partner
     phase_outputs_result = sb.table("phase_outputs").select("*").eq("engagement_id", engagement_id).order("phase").order("output_number").execute()
     activity = sb.table("activity_log").select("*").eq("engagement_id", engagement_id).order("created_at", desc=True).limit(50).execute()
 
+    research_docs = research.data
+
+    # Fallback: if no company_dossier research doc exists, check pipeline_companies.enrichment_data
+    has_dossier = any(r.get("type") == "company_dossier" for r in research_docs)
+    if not has_dossier:
+        try:
+            opp_result = (
+                sb.table("pipeline_opportunities")
+                .select("company_id")
+                .eq("converted_engagement_id", engagement_id)
+                .eq("is_deleted", False)
+                .execute()
+            )
+            if opp_result.data:
+                co_id = opp_result.data[0]["company_id"]
+                co_result = (
+                    sb.table("pipeline_companies")
+                    .select("enrichment_data")
+                    .eq("id", co_id)
+                    .execute()
+                )
+                if co_result.data:
+                    ed = co_result.data[0].get("enrichment_data") or {}
+                    enrichment = ed.get("enrichment") or ed.get("research")
+                    if enrichment:
+                        content_parts = []
+                        if isinstance(enrichment, dict):
+                            for key, val in enrichment.items():
+                                if val:
+                                    label = key.replace("_", " ").title()
+                                    content_parts.append(f"**{label}:** {val}")
+                        elif isinstance(enrichment, str):
+                            content_parts.append(enrichment)
+                        if content_parts:
+                            research_docs = research_docs + [{
+                                "type": "company_dossier",
+                                "content": "\n\n".join(content_parts),
+                                "contact_name": None,
+                                "created_at": ed.get("researched_at", datetime.now(timezone.utc).isoformat()),
+                            }]
+        except Exception as e:
+            logger.warning(f"Enrichment data fallback failed (non-blocking): {e}")
+
     return {
         **engagement,
         "interview_contacts": contacts.data,
         "legal_documents": legal.data,
         "documents": docs.data,
-        "research_documents": research.data,
+        "research_documents": research_docs,
         "deliverables": deliverables_result.data,
         "phase_outputs": phase_outputs_result.data,
         "activity_log": activity.data,

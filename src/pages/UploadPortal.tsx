@@ -35,11 +35,11 @@ interface UploadStatus {
 
 const CATEGORY_LABELS: Record<string, string> = {
   financial: 'A. Financial Statements',
-  payroll: 'B. Payroll & Compensation',
-  vendor: 'C. Vendor & Expense',
-  revenue: 'D. Revenue & Collections',
-  operations: 'E. Operations',
-  legal: 'F. Legal & Tax',
+  payroll: 'B. Payroll & Headcount',
+  vendor: 'C. Vendor & Software Spend',
+  revenue: 'D. Revenue & Billing',
+  operations: 'E. Operations & Process',
+  legal: 'F. Legal & Governance',
 }
 
 const CATEGORY_ORDER = ['financial', 'payroll', 'vendor', 'revenue', 'operations', 'legal']
@@ -291,7 +291,7 @@ export default function UploadPortal() {
       {/* Header */}
       <header className="bg-crimson">
         <div className="max-w-3xl mx-auto px-4 py-5 flex items-center gap-4">
-          <img src="/images/baxterlabs-logo.png" alt="BaxterLabs Advisory" className="h-15" />
+          <img src="/images/baxterlabs-logo-white-text.png" alt="BaxterLabs Advisory" className="h-15" />
           <div className="border-l border-white/30 pl-4">
             <h1 className="text-white font-display text-lg font-bold leading-tight">Document Upload Portal</h1>
             <p className="text-white/70 text-sm">{status.company_name}</p>
@@ -475,6 +475,11 @@ export default function UploadPortal() {
             )}
           </div>
         )}
+
+        {/* Submission timeline note */}
+        <div className="mt-6 bg-amber/5 border border-amber/20 rounded-lg p-4 text-center">
+          <p className="text-sm text-charcoal font-medium">All <span className="text-crimson font-bold">Required</span> documents should be uploaded by Day 3 of the engagement to stay on schedule.</p>
+        </div>
 
         {/* Footer */}
         <footer className="mt-12 pt-6 border-t border-gray-light text-center">

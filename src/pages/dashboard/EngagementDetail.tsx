@@ -170,37 +170,34 @@ const DELIVERABLE_STATUSES_SHOWING = new Set([
 
 const CATEGORY_LABELS: Record<string, string> = {
   financial: 'A. Financial Statements',
-  payroll: 'B. Payroll & Compensation',
-  vendor: 'C. Vendor & Expense',
-  revenue: 'D. Revenue & Collections',
-  operations: 'E. Operations',
-  legal: 'F. Legal & Tax',
+  payroll: 'B. Payroll & Headcount',
+  vendor: 'C. Vendor & Software Spend',
+  revenue: 'D. Revenue & Billing',
+  operations: 'E. Operations & Process',
+  legal: 'F. Legal & Governance',
 }
 
 const CATEGORY_ORDER = ['financial', 'payroll', 'vendor', 'revenue', 'operations', 'legal']
 
-// The 12 required item keys (must match backend checklist)
+// The 10 required item keys (must match backend checklist)
 const REQUIRED_ITEM_KEYS = new Set([
-  'income_stmt_ytd', 'balance_sheet', 'cash_flow_stmt', 'trial_balance', 'chart_of_accounts',
-  'payroll_register', 'benefits_summary',
-  'ap_aging', 'vendor_list',
-  'ar_aging', 'revenue_by_customer',
-  'tax_returns',
+  'pnl_statement', 'balance_sheet', 'general_ledger',
+  'payroll_summary', 'org_chart',
+  'vendor_list', 'software_subscriptions',
+  'revenue_by_customer', 'invoicing_billing', 'ar_aging',
 ])
 
 const REQUIRED_ITEM_NAMES: Record<string, string> = {
-  income_stmt_ytd: 'Income Statement (YTD + prior 2 years)',
-  balance_sheet: 'Balance Sheet (current + prior 2 years)',
-  cash_flow_stmt: 'Cash Flow Statement (prior 2 years)',
-  trial_balance: 'Trial Balance (current period)',
-  chart_of_accounts: 'Chart of Accounts',
-  payroll_register: 'Payroll Register (last 12 months)',
-  benefits_summary: 'Benefits Summary / Enrollment',
-  ap_aging: 'Accounts Payable Aging Report',
-  vendor_list: 'Vendor List with Annual Spend',
-  ar_aging: 'Accounts Receivable Aging Report',
-  revenue_by_customer: 'Revenue by Customer / Segment (last 12 months)',
-  tax_returns: 'Tax Returns (prior 2 years)',
+  pnl_statement: 'Profit & Loss Statement',
+  balance_sheet: 'Balance Sheet',
+  general_ledger: 'General Ledger Export',
+  payroll_summary: 'Payroll Summary Report',
+  org_chart: 'Org Chart',
+  vendor_list: 'Vendor List with Spend',
+  software_subscriptions: 'Software Subscriptions',
+  revenue_by_customer: 'Revenue by Customer / Account',
+  invoicing_billing: 'Invoicing & Billing Records',
+  ar_aging: 'Accounts Receivable Aging',
 }
 
 function statusLabel(s: string) { return s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) }
@@ -334,7 +331,17 @@ export default function EngagementDetail() {
     setResearchLoading(type)
     try {
       await apiPost(`/api/engagements/${id}/research/${type}`)
-    } catch {}
+      toast(type === 'discovery' ? 'Company research started — dossier will update shortly' : 'Interview research started', 'success')
+      // Re-fetch engagement data after a delay to pick up results
+      setTimeout(async () => {
+        try {
+          const d = await apiGet<EngagementData>(`/api/engagements/${id}`)
+          setData(d)
+        } catch {}
+      }, 5000)
+    } catch (err) {
+      toast(`Research failed: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error')
+    }
     setResearchLoading('')
   }
 
@@ -1433,7 +1440,7 @@ export default function EngagementDetail() {
             {dossier.content}
           </div>
         ) : (
-          <p className="text-gray-warm text-sm">Research pending — will be generated when agreements are signed.</p>
+          <p className="text-gray-warm text-sm">Research pending — click "Re-run Research" to generate the company dossier.</p>
         )}
       </section>
 
@@ -1514,7 +1521,7 @@ export default function EngagementDetail() {
             ))}
           </div>
         ) : (
-          <p className="text-gray-warm text-sm">Interview briefs will be generated when engagement is started.</p>
+          <p className="text-gray-warm text-sm">Interview briefs are generated after running Research & Call Prep for each contact in their individual modal.</p>
         )}
       </section>
 
