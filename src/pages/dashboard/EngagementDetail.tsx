@@ -330,8 +330,8 @@ export default function EngagementDetail() {
     if (!id) return
     setResearchLoading(type)
     try {
-      await apiPost(`/api/engagements/${id}/research/${type}`)
-      toast(type === 'discovery' ? 'Company research started — dossier will update shortly' : 'Interview research started', 'success')
+      await apiPost(type === 'discovery' ? `/api/engagements/${id}/enrich-research` : `/api/engagements/${id}/research/${type}`)
+      toast(type === 'discovery' ? 'Research enriched — new findings merged with existing dossier' : 'Interview research started', 'success')
       // Re-fetch engagement data after a delay to pick up results
       setTimeout(async () => {
         try {
@@ -340,7 +340,7 @@ export default function EngagementDetail() {
         } catch {}
       }, 5000)
     } catch (err) {
-      toast(`Research failed: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error')
+      toast(type === 'discovery' ? `Enrich failed — existing research preserved` : `Research failed: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error')
     }
     setResearchLoading('')
   }
@@ -1431,7 +1431,7 @@ export default function EngagementDetail() {
               disabled={researchLoading === 'discovery'}
               className="text-xs text-teal font-semibold hover:underline disabled:opacity-50"
             >
-              {researchLoading === 'discovery' ? 'Running...' : 'Re-run Research'}
+              {researchLoading === 'discovery' ? 'Enriching...' : 'Enrich Research'}
             </button>
           </div>
         </div>
@@ -1440,7 +1440,7 @@ export default function EngagementDetail() {
             {dossier.content}
           </div>
         ) : (
-          <p className="text-gray-warm text-sm">Research pending — click "Re-run Research" to generate the company dossier.</p>
+          <p className="text-gray-warm text-sm">Research pending — click "Enrich Research" to generate the company dossier.</p>
         )}
       </section>
 

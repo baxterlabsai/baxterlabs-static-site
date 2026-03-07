@@ -379,6 +379,216 @@ def _role_perspective(role_lower: str) -> str:
         return "- Day-to-day departmental operations\n- Process bottlenecks and manual workarounds\n- Tool and system effectiveness\n- Resource constraints and priorities"
 
 
+# ── Enrichment Seeding & Merging ─────────────────────────────────
+
+
+def _normalize_enrichment_value(val) -> str:
+    """Extract a plain string from an enrichment_data field value."""
+    if not val:
+        return ""
+    if isinstance(val, str):
+        return val
+    if isinstance(val, dict):
+        return val.get("briefing") or val.get("content") or val.get("summary") or ""
+    return ""
+
+
+def _format_enrichment_as_dossier(enrichment_data: dict, company_name: str) -> str:
+    """Convert pipeline enrichment_data into dossier-format markdown."""
+    now = datetime.now(timezone.utc).strftime("%B %d, %Y")
+
+    research_text = _normalize_enrichment_value(enrichment_data.get("research"))
+    enrichment_text = _normalize_enrichment_value(enrichment_data.get("enrichment"))
+    call_prep_text = _normalize_enrichment_value(enrichment_data.get("call_prep"))
+
+    # If research or enrichment is already a full dossier markdown, use it directly
+    if research_text and research_text.startswith("#"):
+        sections = [research_text]
+        if enrichment_text:
+            sections.append(f"\n\n## Enrichment Data\n{enrichment_text}")
+        if call_prep_text:
+            sections.append(f"\n\n## Call Prep Notes\n{call_prep_text}")
+        return "\n".join(sections)
+
+    # Otherwise build structured dossier from parts
+    parts = [f"# Pre-Discovery Dossier: {company_name}", f"*Seeded from lead generation research · {now}*", "", "---"]
+
+    if research_text:
+        parts.append(f"\n## Company Research\n{research_text}")
+    if enrichment_text:
+        parts.append(f"\n## Enrichment Data\n{enrichment_text}")
+    if call_prep_text:
+        parts.append(f"\n## Call Prep Notes\n{call_prep_text}")
+
+    transcript = enrichment_data.get("discovery_transcript")
+    if transcript and isinstance(transcript, dict):
+        parts.append(f"\n## Discovery Transcript\nTranscript uploaded: {transcript.get('original_filename', 'Unknown')}")
+        if transcript.get("summary"):
+            parts.append(f"\n**Summary:** {transcript['summary']}")
+
+    if not research_text and not enrichment_text:
+        parts.append("\n## Research Notes\nNo lead generation research data available. Click **Enrich Research** to run a fresh research pass.")
+
+    parts.append(f"\n## Research History\n- Seeded from pipeline enrichment: {datetime.now(timezone.utc).isoformat()}")
+
+    return "\n".join(parts)
+
+
+def _merge_dossier_sections(old_content: str, new_content: str) -> str:
+    """Merge two dossier markdown strings section by section.
+
+    New sections overwrite old ones only if the new content is non-empty
+    and not a placeholder. Research History is appended, not replaced.
+    """
+    import re
+
+    SECTION_ORDER = [
+        "Pre-Discovery Dossier",
+        "Company Overview", "Company Research",
+        "Leadership Team", "Services / Products",
+        "Recent News & Growth Signals",
+        "Primary Contact Background",
+        "Enrichment Data", "Call Prep Notes",
+        "Discovery Transcript",
+        "LinkedIn URLs Discovered", "Source URLs",
+        "Research Notes", "Research History",
+    ]
+
+    def _parse_sections(md: str) -> Dict[str, str]:
+        sections = {}  # type: Dict[str, str]
+        current_key = "_preamble"
+        current_lines = []  # type: List[str]
+        for line in md.split("\n"):
+            heading_match = re.match(r"^##?\s+(.+)$", line)
+            if heading_match:
+                sections[current_key] = "\n".join(current_lines).strip()
+                current_key = heading_match.group(1).strip()
+                current_lines = []
+            else:
+                current_lines.append(line)
+        sections[current_key] = "\n".join(current_lines).strip()
+        return sections
+
+    def _is_placeholder(text: str) -> bool:
+        lower = text.lower()
+        return any(p in lower for p in [
+            "no data available", "no public", "not found",
+            "no lead generation", "no website data",
+        ])
+
+    old_sections = _parse_sections(old_content or "")
+    new_sections = _parse_sections(new_content or "")
+
+    # Merge: new wins unless empty/placeholder
+    merged = {}  # type: Dict[str, str]
+    all_keys = list(dict.fromkeys(list(old_sections.keys()) + list(new_sections.keys())))
+
+    for key in all_keys:
+        old_val = old_sections.get(key, "")
+        new_val = new_sections.get(key, "")
+
+        if key == "Research History":
+            # Append, not replace
+            history_parts = []
+            if old_val:
+                history_parts.append(old_val)
+            if new_val:
+                history_parts.append(new_val)
+            history_parts.append(f"- Enriched: {datetime.now(timezone.utc).isoformat()}")
+            merged[key] = "\n".join(history_parts)
+        elif new_val and not _is_placeholder(new_val):
+            merged[key] = new_val
+        elif old_val:
+            merged[key] = old_val
+        else:
+            merged[key] = new_val
+
+    # Reconstruct in canonical order
+    result_lines = []
+    preamble = merged.pop("_preamble", "")
+    if preamble:
+        result_lines.append(preamble)
+        result_lines.append("")
+
+    # Output known sections in order, then any remaining
+    seen = set()
+    for heading in SECTION_ORDER:
+        if heading in merged:
+            seen.add(heading)
+            level = "#" if heading.endswith("Dossier") else "##"
+            result_lines.append(f"{level} {heading}")
+            result_lines.append(merged[heading])
+            result_lines.append("")
+
+    for heading, body in merged.items():
+        if heading not in seen:
+            result_lines.append(f"## {heading}")
+            result_lines.append(body)
+            result_lines.append("")
+
+    return "\n".join(result_lines).strip()
+
+
+async def seed_research_from_enrichment(engagement_id: str, company_id: str) -> None:
+    """Seed research_documents from pipeline_companies.enrichment_data on conversion.
+
+    Does NOT run Firecrawl or LLM. If enrichment_data is NULL/empty, inserts a
+    placeholder so the frontend always has something to render.
+    """
+    sb = get_supabase()
+
+    company = (
+        sb.table("pipeline_companies")
+        .select("enrichment_data, name, website")
+        .eq("id", company_id)
+        .execute()
+    )
+    comp = company.data[0] if company.data else None
+    enrichment = (comp.get("enrichment_data") or {}) if comp else {}
+    company_name = comp["name"] if comp else "Unknown"
+
+    if enrichment and any(enrichment.get(k) for k in ("research", "enrichment", "call_prep")):
+        content = _format_enrichment_as_dossier(enrichment, company_name)
+    else:
+        content = (
+            f"# Pre-Discovery Dossier: {company_name}\n\n"
+            "No lead generation research available. Click **Enrich Research** to populate this section."
+        )
+
+    # Check if a company_dossier already exists
+    existing = (
+        sb.table("research_documents")
+        .select("id")
+        .eq("engagement_id", engagement_id)
+        .eq("type", "company_dossier")
+        .execute()
+    )
+
+    if existing.data:
+        sb.table("research_documents").update({
+            "content": content,
+        }).eq("id", existing.data[0]["id"]).execute()
+    else:
+        sb.table("research_documents").insert({
+            "engagement_id": engagement_id,
+            "type": "company_dossier",
+            "content": content,
+        }).execute()
+
+    # Upload to storage
+    storage_path = f"{engagement_id}/research/company_dossier.md"
+    try:
+        sb.storage.from_("engagements").upload(
+            storage_path,
+            content.encode("utf-8"),
+            {"content-type": "text/markdown"},
+        )
+    except Exception as e:
+        logger.warning(f"Storage upload for seeded dossier failed: {e}")
+
+    logger.info(f"Seeded research dossier for {company_name} (engagement {engagement_id})")
+
+
 # ── Public Research Functions ────────────────────────────────────
 
 

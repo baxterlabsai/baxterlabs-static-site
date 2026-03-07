@@ -12,7 +12,7 @@ from services.supabase_client import (
     log_activity,
 )
 from services.email_service import get_email_service
-from services.firecrawl_service import research_company
+from services.firecrawl_service import seed_research_from_enrichment
 
 logger = logging.getLogger("baxterlabs.docusign.router")
 
@@ -362,12 +362,12 @@ async def _auto_convert_pipeline_opportunity(opp_id: str) -> None:
     except Exception as e:
         logger.warning(f"Auto-convert: failed to create folders: {e}")
 
-    # 6b. Trigger company research dossier
+    # 6b. Seed research dossier from pipeline enrichment_data
     try:
-        await research_company(new_engagement_id)
-        logger.info(f"Auto-convert: company research triggered for engagement {new_engagement_id}")
+        await seed_research_from_enrichment(new_engagement_id, company["id"])
+        logger.info(f"Auto-convert: research dossier seeded from enrichment for engagement {new_engagement_id}")
     except Exception as e:
-        logger.error(f"Auto-convert: research failed (non-blocking): {e}")
+        logger.error(f"Auto-convert: research seed failed (non-blocking): {e}")
 
     # 7. Send deposit invoice
     try:
