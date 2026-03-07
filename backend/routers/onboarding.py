@@ -154,6 +154,11 @@ async def submit_onboarding(token: str, body: OnboardSubmission):
                 "result": upload_result,
             })
             logger.info(f"Upload portal email sent to {dc.email} for engagement {engagement_id}")
+            # Advance engagement to documents_pending now that upload link is out
+            sb.table("engagements").update({
+                "status": "documents_pending",
+            }).eq("id", engagement_id).execute()
+            logger.info(f"Engagement {engagement_id} advanced to documents_pending")
     except Exception as e:
         logger.error(f"Upload portal email failed: {e}")
 

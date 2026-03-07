@@ -14,6 +14,10 @@ from google.auth.transport.requests import Request
 
 logger = logging.getLogger("baxterlabs.google_drive")
 
+# In-process cache to prevent duplicate folder creation when multiple
+# uploads happen back-to-back (e.g. NDA + Agreement in auto-conversion).
+_folder_cache: dict = {}  # key = (parent_id, folder_name) → folder_id
+
 
 def _get_drive_service():
     """Build authenticated Google Drive service using OAuth refresh token."""
@@ -31,6 +35,10 @@ def _get_drive_service():
 
 def _get_or_create_folder(service, parent_id: str, folder_name: str) -> str:
     """Get or create a subfolder inside parent_id. Returns the folder ID."""
+    cache_key = (parent_id, folder_name)
+    if cache_key in _folder_cache:
+        return _folder_cache[cache_key]
+
     query = (
         f"name = '{folder_name}' and "
         f"'{parent_id}' in parents and "
@@ -45,6 +53,7 @@ def _get_or_create_folder(service, parent_id: str, folder_name: str) -> str:
     ).execute()
     files = results.get("files", [])
     if files:
+        _folder_cache[cache_key] = files[0]["id"]
         return files[0]["id"]
 
     metadata = {
@@ -57,6 +66,7 @@ def _get_or_create_folder(service, parent_id: str, folder_name: str) -> str:
         fields="id",
         supportsAllDrives=True,
     ).execute()
+    _folder_cache[cache_key] = folder["id"]
     return folder["id"]
 
 

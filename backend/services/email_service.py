@@ -291,10 +291,10 @@ class EmailService:
         primary_email = client.get("primary_contact_email")
         upload_token = engagement.get("upload_token")
 
-        # Determine recipient
+        # Determine recipient — send only to document contact, no CC
         to_email = document_contact_email or primary_email
         to_name = document_contact_name or primary_name
-        cc_email = primary_email if document_contact_email and document_contact_email != primary_email else None
+        cc_email = None
 
         required_list = "".join(
             f'<li style="padding:4px 0;color:{CHARCOAL};">{item["name"]}</li>'
