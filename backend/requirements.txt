@@ -18,3 +18,4 @@ python-docx>=1.0.0
 striprtf>=0.0.26
 google-api-python-client==2.118.0
 google-auth==2.28.0
+resend

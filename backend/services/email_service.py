@@ -2,12 +2,9 @@ from __future__ import annotations
 
 import os
 import re
-import smtplib
+import resend
 import logging
 from typing import Optional
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.utils import formatdate, make_msgid
 from datetime import datetime, timezone
 
 logger = logging.getLogger("baxterlabs.email")
@@ -84,10 +81,7 @@ def get_partner_info(partner_name: str) -> dict:
 class EmailService:
     def __init__(self):
         self.development_mode = os.getenv("DEVELOPMENT_MODE", "false").lower() == "true"
-        self.smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-        self.smtp_port = int(os.getenv("SMTP_PORT", "587"))
-        self.smtp_username = os.getenv("SMTP_USERNAME", "")
-        self.smtp_password = os.getenv("SMTP_PASSWORD", "")
+        resend.api_key = os.environ.get("RESEND_API_KEY", "")
         self.from_email = os.getenv("FROM_EMAIL", "noreply@baxterlabs.ai")
         self.from_name = os.getenv("FROM_NAME", "BaxterLabs Advisory")
         self.frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
@@ -146,7 +140,7 @@ class EmailService:
         from_name: Optional[str] = None,
         cc_email: Optional[str] = None,
     ) -> dict:
-        """Core send method using SMTP."""
+        """Core send method using Resend."""
         full_html = self._wrap_html(html_body)
         sender_email = from_email or self.from_email
         sender_name = from_name or self.from_name
@@ -165,39 +159,24 @@ class EmailService:
             }
 
         try:
-            msg = MIMEMultipart("alternative")
-            msg["Subject"] = subject
-            msg["From"] = f"{sender_name} <{sender_email}>"
-            msg["To"] = to_email
+            params: dict = {
+                "from": f"{sender_name} <{sender_email}>",
+                "to": [to_email],
+                "subject": subject,
+                "html": full_html,
+                "text": self._html_to_plain(html_body),
+                "reply_to": sender_email,
+                "headers": {
+                    "X-Mailer": "BaxterLabs Advisory Platform",
+                    "List-Unsubscribe": "<mailto:info@baxterlabs.ai?subject=unsubscribe>",
+                    "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+                },
+            }
             if cc_email:
-                msg["Cc"] = cc_email
-            msg["Reply-To"] = sender_email
-            msg["Message-ID"] = make_msgid(domain="baxterlabs.ai")
-            msg["Date"] = formatdate(localtime=True)
-            msg["X-Mailer"] = "BaxterLabs Advisory Platform"
-            msg["List-Unsubscribe"] = "<mailto:info@baxterlabs.ai?subject=unsubscribe>"
-            msg["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
+                params["cc"] = [cc_email]
 
-            plain_text = self._html_to_plain(html_body)
-            text_part = MIMEText(plain_text, "plain")
-            html_part = MIMEText(full_html, "html")
-            msg.attach(text_part)
-            msg.attach(html_part)
-
-            recipients = [to_email]
-            if cc_email:
-                recipients.append(cc_email)
-
-            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
-                server.starttls()
-                server.login(self.smtp_username, self.smtp_password)
-                # Use sendmail() with explicit envelope sender so Gmail
-                # honors the "Send mail as" alias instead of rewriting
-                # the From header to the SMTP_USERNAME (Gmail auth account).
-                smtp_response = server.sendmail(
-                    sender_email, recipients, msg.as_string()
-                )
-                logger.info(f"SMTP response for to={to_email}: {smtp_response}")
+            response = resend.Emails.send(params)
+            logger.info(f"Resend response for to={to_email}: {response}")
 
             logger.info(f"Email sent from={sender_email} to={to_email} cc={cc_email} subject='{subject}'")
             return {
