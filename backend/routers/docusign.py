@@ -111,9 +111,11 @@ async def docusign_webhook(request: Request, background_tasks: BackgroundTasks):
         try:
             import xml.etree.ElementTree as ET
             import re
-            # Strip XML namespace declarations for reliable element lookup
+            # Strip only the default namespace declaration so bare element
+            # names work in find().  Keep xmlns:xsi / xmlns:xsd so prefixed
+            # attributes like xsi:nil="true" remain valid.
             body_str = body.decode("utf-8") if isinstance(body, bytes) else body
-            body_clean = re.sub(r'\sxmlns(?::\w+)?="[^"]*"', "", body_str)
+            body_clean = re.sub(r'\sxmlns="[^"]*"', "", body_str)
             logger.info(f"WEBHOOK TRACE — Cleaned XML (first 1000 chars): {body_clean[:1000]}")
             root = ET.fromstring(body_clean)
             logger.info(f"WEBHOOK TRACE — XML root tag: {root.tag}")
