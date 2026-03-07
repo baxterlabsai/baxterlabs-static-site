@@ -154,25 +154,12 @@ export default function Home() {
           <h2 className="font-display text-3xl md:text-4xl font-bold text-crimson mb-8 text-center">
             Built for Growth-Stage Mid-Market Businesses.
           </h2>
-          <p className="text-charcoal text-base md:text-lg mb-10 text-center max-w-3xl mx-auto">
-            BaxterLabs Advisory works with privately held businesses generating $5M–$50M in annual revenue with 20–200 employees. Our clients are typically founder-led or owner-operated, growing quickly, and dealing with the operational complexity that comes with scale.
+          <p className="text-charcoal text-base md:text-lg mb-6 text-center max-w-3xl mx-auto">
+            BaxterLabs Advisory is purpose-built for professional services firms — accounting, legal, staffing, consulting, and advisory businesses generating $5M–$50M in annual revenue. These firms share a common set of structural profit-leak patterns: utilization drag, billing inefficiencies, project margin erosion, and cost structures that haven't kept pace with growth.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-3xl mx-auto">
-            {[
-              'Professional services (accounting, legal, staffing, consulting)',
-              'Healthcare and specialty services',
-              'Light manufacturing and distribution',
-              'Technology and SaaS',
-              'Real estate and property management',
-            ].map((industry) => (
-              <div
-                key={industry}
-                className="bg-white rounded-lg px-4 py-3 text-charcoal text-sm border border-gray-light"
-              >
-                {industry}
-              </div>
-            ))}
-          </div>
+          <p className="text-charcoal/70 text-sm md:text-base text-center max-w-3xl mx-auto">
+            We also work with growth-stage businesses in healthcare and specialty services, technology, and other founder-led industries facing similar margin compression challenges.
+          </p>
         </div>
       </section>
 
