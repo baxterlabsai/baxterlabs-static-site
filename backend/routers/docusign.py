@@ -86,10 +86,45 @@ async def send_agreement(body: DocuSignSendRequest):
 @router.post("/webhook")
 async def docusign_webhook(request: Request, background_tasks: BackgroundTasks):
     """Receive DocuSign Connect webhook callbacks."""
-    try:
-        payload = await request.json()
-    except Exception:
+    body = await request.body()
+    if not body:
         return Response(status_code=400)
+
+    payload = None
+    # Try JSON first (Connect v2.0 / SIM format)
+    try:
+        import json
+        payload = json.loads(body)
+    except (json.JSONDecodeError, ValueError):
+        pass
+
+    # Fall back to XML (default Connect v1 / eventNotification format)
+    if payload is None:
+        try:
+            import xml.etree.ElementTree as ET
+            root = ET.fromstring(body)
+            # Extract envelope status from DocuSign XML
+            ns = {"ds": "http://www.docusign.net/API/3.0"}
+            # Try with namespace first, then without
+            env_status = root.find(".//ds:EnvelopeStatus", ns)
+            if env_status is None:
+                env_status = root.find(".//EnvelopeStatus")
+            if env_status is not None:
+                status_el = env_status.find("ds:Status", ns) or env_status.find("Status")
+                env_id_el = env_status.find("ds:EnvelopeID", ns) or env_status.find("EnvelopeID")
+                payload = {
+                    "EnvelopeStatus": {
+                        "Status": status_el.text if status_el is not None else "",
+                        "EnvelopeID": env_id_el.text if env_id_el is not None else "",
+                    }
+                }
+                logger.info(f"Parsed DocuSign XML webhook — Status={payload['EnvelopeStatus']['Status']} EnvelopeID={payload['EnvelopeStatus']['EnvelopeID']}")
+            else:
+                logger.warning(f"DocuSign XML webhook — could not find EnvelopeStatus element")
+                payload = {}
+        except Exception as xml_err:
+            logger.error(f"DocuSign webhook — failed to parse body as JSON or XML: {xml_err}")
+            return Response(status_code=400)
 
     ds = get_docusign_service()
     result = ds.handle_webhook(payload)
