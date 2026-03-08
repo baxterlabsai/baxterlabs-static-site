@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { apiGet, apiPost, apiPut } from '../../../lib/api'
+import { useToast } from '../../../components/Toast'
 
 interface Post {
   id: string
@@ -81,6 +82,7 @@ function renderMarkdown(md: string): string {
 export default function BlogEditor() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { toast } = useToast()
   const isNew = id === 'new'
 
   const [title, setTitle] = useState('')
@@ -101,7 +103,6 @@ export default function BlogEditor() {
   const [saving, setSaving] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [publishConfirm, setPublishConfirm] = useState(false)
-  const [savedMessage, setSavedMessage] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Load existing post
@@ -171,10 +172,10 @@ export default function BlogEditor() {
       } else {
         await apiPut(`/api/content-posts/${id}`, payload)
       }
-      setSavedMessage('Saved')
-      setTimeout(() => setSavedMessage(''), 2000)
-    } catch {
-      // ignore
+      toast('Draft saved', 'success')
+    } catch (err) {
+      console.error('Save failed:', err)
+      toast(err instanceof Error ? err.message : 'Failed to save post', 'error')
     } finally {
       setSaving(false)
     }
@@ -208,10 +209,10 @@ export default function BlogEditor() {
       setPublished(true)
       setPublishedDate(now)
       setStatus('published')
-      setSavedMessage('Published')
-      setTimeout(() => setSavedMessage(''), 2000)
-    } catch {
-      // ignore
+      toast('Post published', 'success')
+    } catch (err) {
+      console.error('Publish failed:', err)
+      toast(err instanceof Error ? err.message : 'Failed to publish post', 'error')
     } finally {
       setSaving(false)
     }
@@ -223,10 +224,10 @@ export default function BlogEditor() {
       await apiPut(`/api/content-posts/${id}`, { published: false, status: 'draft' })
       setPublished(false)
       setStatus('draft')
-      setSavedMessage('Unpublished')
-      setTimeout(() => setSavedMessage(''), 2000)
-    } catch {
-      // ignore
+      toast('Post unpublished', 'success')
+    } catch (err) {
+      console.error('Unpublish failed:', err)
+      toast(err instanceof Error ? err.message : 'Failed to unpublish post', 'error')
     } finally {
       setSaving(false)
     }
@@ -279,9 +280,6 @@ export default function BlogEditor() {
             {isNew ? 'New Blog Post' : 'Edit Blog Post'}
           </h1>
         </div>
-        {savedMessage && (
-          <span className="text-sm font-medium text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">{savedMessage}</span>
-        )}
       </div>
 
       <div className="flex gap-6">
