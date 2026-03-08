@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { apiGet, apiPut, apiDelete } from '../../../lib/api'
+import { apiGet, apiPut } from '../../../lib/api'
 
 interface NewsItem {
   id: string
