@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
@@ -166,9 +167,11 @@ async def submit_onboarding(token: str, body: OnboardSubmission):
     try:
         _email_svc = get_email_service()
         partner_lead = engagement.get("partner_lead", "George DeVries")
-        for contact in body.contacts:
+        for i, contact in enumerate(body.contacts):
             if not contact.email:
                 continue
+            if i > 0:
+                time.sleep(1)
             sched_result = _email_svc.send_interview_scheduling_email(
                 contact_name=contact.name,
                 contact_email=contact.email,
