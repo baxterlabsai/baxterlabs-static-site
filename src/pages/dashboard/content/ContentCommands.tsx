@@ -160,6 +160,22 @@ After writing the post:
   type='linkedin', status='draft', title=[hook line], body=[full post]
 - Confirm post ID and quality score`,
   },
+  {
+    title: 'Write a Blog Post From Feed Analysis',
+    description: 'Takes a blog brief from a Claude in Chrome feed scan and writes a full draft to the Blog Post Manager.',
+    buttonColor: '#2D6A4F',
+    prompt: `Write a BaxterLabs Advisory blog post using the brief below.
+
+Requirements:
+- 600\u2013800 words
+- George DeVries voice: direct, credible, specific dollar figures, no jargon, no fluff
+- Structure: hook that names a real scenario \u2192 core argument with at least one specific dollar range or financial ratio \u2192 practical takeaway the reader can act on today
+- Do not mention BaxterLabs by name until the final CTA paragraph
+- End with a single CTA paragraph: "If this pattern sounds familiar in your firm, this is exactly what a BaxterLabs profit leak diagnostic surfaces in 14 days. [link to /#services]"
+- Write the completed draft to content_posts via Supabase MCP: type='blog', status='draft', title from the working title below, excerpt from the first 200 characters of the post body
+
+Paste your Claude in Chrome brief below this line:`,
+  },
 ]
 
 const CHROME_COMMANDS: Command[] = [
