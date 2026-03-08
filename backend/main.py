@@ -11,6 +11,7 @@ load_dotenv(os.path.expanduser("~/Projects/master.env"))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from fastapi import FastAPI
+from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from routers import intake, engagements, docusign, upload, deliverables, research, prompts, clients, archive, users, reminders, phase_outputs, pipeline, invoices, webhooks, follow_ups, onboarding, content
@@ -78,3 +79,51 @@ async def health_check():
     except Exception:
         pass
     return HealthResponse(status="ok", supabase=supabase_ok)
+
+
+@app.get("/sitemap.xml", include_in_schema=False)
+async def sitemap():
+    """Dynamic XML sitemap with static pages and published blog posts."""
+    BASE = "https://baxterlabs.ai"
+
+    entries = [
+        (f"{BASE}/", "monthly", "0.8", ""),
+        (f"{BASE}/about", "monthly", "0.8", ""),
+        (f"{BASE}/blog", "weekly", "0.8", ""),
+    ]
+
+    try:
+        sb = get_supabase()
+        result = (
+            sb.table("content_posts")
+            .select("blog_slug, published_date")
+            .eq("type", "blog")
+            .eq("published", True)
+            .order("published_date", desc=True)
+            .execute()
+        )
+        for row in result.data:
+            slug = row.get("blog_slug")
+            if not slug:
+                continue
+            pub_date = row.get("published_date") or ""
+            lastmod = pub_date[:10] if pub_date else ""
+            entries.append((f"{BASE}/blog/{slug}", "never", "0.6", lastmod))
+    except Exception:
+        logger.warning("Sitemap: Supabase query failed, returning static pages only")
+
+    urls = []
+    for loc, freq, priority, lastmod in entries:
+        parts = [f"    <loc>{loc}</loc>"]
+        if lastmod:
+            parts.append(f"    <lastmod>{lastmod}</lastmod>")
+        parts.append(f"    <changefreq>{freq}</changefreq>")
+        parts.append(f"    <priority>{priority}</priority>")
+        urls.append("  <url>\n" + "\n".join(parts) + "\n  </url>")
+
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    xml += "\n".join(urls) + "\n"
+    xml += "</urlset>\n"
+
+    return Response(content=xml, media_type="application/xml")
