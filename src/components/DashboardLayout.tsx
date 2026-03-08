@@ -17,6 +17,7 @@ const CONTENT_NAV_ITEMS = [
   { to: '/dashboard/content/calendar', label: 'Calendar', icon: 'M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5' },
   { to: '/dashboard/content/blog', label: 'Blog Posts', icon: 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z' },
   { to: '/dashboard/content/commands', label: 'Commands', icon: 'M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z' },
+  { to: '/dashboard/content/news', label: 'News', icon: 'M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z' },
 ]
 
 const PIPELINE_NAV_ITEMS = [
@@ -34,6 +35,7 @@ export default function DashboardLayout() {
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [followUpCount, setFollowUpCount] = useState(0)
+  const [newsUnreviewedCount, setNewsUnreviewedCount] = useState(0)
   const menuRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
 
@@ -59,6 +61,9 @@ export default function DashboardLayout() {
   useEffect(() => {
     apiGet<{ count: number }>('/api/follow-ups?upcoming_only=true')
       .then(data => setFollowUpCount(data.count))
+      .catch(() => {})
+    apiGet<{ unreviewed_count: number }>('/api/content-news/stats')
+      .then(data => setNewsUnreviewedCount(data.unreviewed_count))
       .catch(() => {})
   }, [])
 
@@ -149,6 +154,11 @@ export default function DashboardLayout() {
                 <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
               </svg>
               {item.label}
+              {item.label === 'News' && newsUnreviewedCount > 0 && (
+                <span className="ml-auto bg-gold text-charcoal text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                  {newsUnreviewedCount}
+                </span>
+              )}
             </NavLink>
           ))}
 

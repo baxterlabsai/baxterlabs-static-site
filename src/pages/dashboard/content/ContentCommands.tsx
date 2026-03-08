@@ -121,6 +121,45 @@ Write the completed blog post to the content_posts table in Supabase:
 
 Confirm write-back, blog post ID, and estimated word count.`,
   },
+  {
+    title: 'Write a Post From a News Story',
+    description: 'Paste a news article link or excerpt and get a LinkedIn post that applies your diagnostic lens to the story. The article URL renders as a rich preview card in the post.',
+    buttonColor: '#2D6A4F',
+    prompt: `I need to write a LinkedIn post responding to a news article.
+
+Article details:
+Headline: [PASTE ARTICLE HEADLINE]
+Source: [SOURCE PUBLICATION]
+URL: [PASTE ARTICLE URL]
+Excerpt: [PASTE KEY EXCERPT OR SUMMARY]
+
+My positioning: George DeVries, Managing Partner, BaxterLabs Advisory.
+I help $5M–$50M professional service firms find hidden profit leaks
+through 14-day financial diagnostics. My background is in
+multi-location operations and capital raises — I have been on the
+inside of P&Ls at the exact scale these firms operate at.
+
+Write a LinkedIn post that:
+1. Opens with a "How I" or "The day I" hook — 8 words or fewer
+2. Connects this news story to a specific profit-leak pattern
+   that $5M–$50M professional service firm CEOs are experiencing
+   right now
+3. Adds a diagnostic insight this article didn't include —
+   something only someone who has been inside these firms would know
+4. Ends with a "You" section pointing it back to the reader
+5. Includes the article URL on its own line at the end of the post
+   so LinkedIn renders it as a rich preview card
+6. Follows the SLAY framework throughout
+7. Passes the ChatGPT test — must contain at least one specific
+   number, ratio, or operational detail from George's background
+
+After writing the post:
+- Score it against the 10-point BaxterLabs quality checklist
+- If any item scores 0, rewrite that section before delivering
+- Write the final post to content_posts table in Supabase:
+  type='linkedin', status='draft', title=[hook line], body=[full post]
+- Confirm post ID and quality score`,
+  },
 ]
 
 export default function ContentCommands() {

@@ -1,4 +1,4 @@
-"""Story Bank, Content Posts, and Content Ideas CRUD endpoints."""
+"""Story Bank, Content Posts, Content Ideas, and Content News CRUD endpoints."""
 
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ VALID_POST_TYPES = {"linkedin", "blog"}
 VALID_POST_STATUSES = {"idea", "draft", "review", "scheduled", "published", "archived"}
 VALID_POST_PLATFORMS = {"linkedin", "blog", "both"}
 VALID_IDEA_STATUSES = {"unused", "assigned", "used"}
+VALID_NEWS_STATUSES = {"unreviewed", "queued", "used", "dismissed"}
 
 
 # ── Pydantic Models ─────────────────────────────────────────────────────
@@ -102,6 +103,11 @@ class IdeaUpdate(BaseModel):
     insider_detail: Optional[str] = None
     status: Optional[str] = None
     assigned_week: Optional[str] = None
+
+
+class NewsUpdate(BaseModel):
+    status: Optional[str] = None
+    used_in_post_id: Optional[str] = None
 
 
 # ==========================================================================
@@ -299,6 +305,86 @@ async def update_idea(
     if not result.data:
         raise HTTPException(404, "Idea not found")
     return result.data[0]
+
+
+# ==========================================================================
+# Content News
+# ==========================================================================
+
+@router.get("/content-news/stats")
+async def news_stats(
+    user: dict = Depends(verify_partner_auth),
+):
+    """Return aggregate stats for content news items."""
+    sb = get_supabase()
+    all_news = sb.table("content_news").select("status, relevance_score, fetched_at").execute()
+    rows = all_news.data
+    unreviewed = sum(1 for r in rows if r.get("status") == "unreviewed")
+    queued = sum(1 for r in rows if r.get("status") == "queued")
+    used = sum(1 for r in rows if r.get("status") == "used")
+    scores = [r["relevance_score"] for r in rows if r.get("relevance_score") is not None]
+    avg_score = round(sum(scores) / len(scores), 1) if scores else None
+    fetched_dates = [r["fetched_at"] for r in rows if r.get("fetched_at")]
+    last_fetched = max(fetched_dates) if fetched_dates else None
+    return {
+        "unreviewed_count": unreviewed,
+        "queued_count": queued,
+        "used_count": used,
+        "avg_relevance_score": avg_score,
+        "last_fetched_at": last_fetched,
+    }
+
+
+@router.get("/content-news")
+async def list_news(
+    status: Optional[str] = Query(None),
+    min_relevance: Optional[int] = Query(None),
+    alert_topic: Optional[str] = Query(None),
+    user: dict = Depends(verify_partner_auth),
+):
+    sb = get_supabase()
+    query = sb.table("content_news").select("*")
+    if status:
+        if status not in VALID_NEWS_STATUSES:
+            raise HTTPException(400, f"Invalid status: {status}")
+        query = query.eq("status", status)
+    else:
+        query = query.neq("status", "dismissed")
+    if min_relevance is not None:
+        query = query.gte("relevance_score", min_relevance)
+    if alert_topic:
+        query = query.eq("alert_topic", alert_topic)
+    query = query.order("relevance_score", desc=True).order("created_at", desc=True)
+    result = query.execute()
+    return result.data
+
+
+@router.put("/content-news/{news_id}")
+async def update_news(
+    news_id: str,
+    payload: NewsUpdate,
+    user: dict = Depends(verify_partner_auth),
+):
+    if payload.status and payload.status not in VALID_NEWS_STATUSES:
+        raise HTTPException(400, f"Invalid status: {payload.status}")
+    sb = get_supabase()
+    data = payload.model_dump(exclude_none=True)
+    result = sb.table("content_news").update(data).eq("id", news_id).execute()
+    if not result.data:
+        raise HTTPException(404, "News item not found")
+    return result.data[0]
+
+
+@router.delete("/content-news/{news_id}")
+async def delete_news(
+    news_id: str,
+    user: dict = Depends(verify_partner_auth),
+):
+    sb = get_supabase()
+    result = sb.table("content_news").delete().eq("id", news_id).execute()
+    if not result.data:
+        raise HTTPException(404, "News item not found")
+    return {"ok": True}
 
 
 # ==========================================================================

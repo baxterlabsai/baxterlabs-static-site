@@ -26,6 +26,7 @@ import ContentCalendar from './pages/dashboard/content/ContentCalendar'
 import BlogPosts from './pages/dashboard/content/BlogPosts'
 import BlogEditor from './pages/dashboard/content/BlogEditor'
 import ContentCommands from './pages/dashboard/content/ContentCommands'
+import ContentNews from './pages/dashboard/content/ContentNews'
 import ScheduleDiscovery from './pages/ScheduleDiscovery'
 import Onboard from './pages/Onboard'
 import UploadPortal from './pages/UploadPortal'
@@ -88,6 +89,7 @@ export default function App() {
             <Route path="/dashboard/content/blog" element={<BlogPosts />} />
             <Route path="/dashboard/content/blog/:id" element={<BlogEditor />} />
             <Route path="/dashboard/content/commands" element={<ContentCommands />} />
+            <Route path="/dashboard/content/news" element={<ContentNews />} />
             <Route path="/dashboard/pipeline" element={<PipelineBoard />} />
             <Route path="/dashboard/pipeline/companies" element={<PipelineCompanies />} />
             <Route path="/dashboard/pipeline/contacts" element={<PipelineContacts />} />
