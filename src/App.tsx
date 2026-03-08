@@ -23,6 +23,8 @@ import ConversionReview from './pages/dashboard/pipeline/ConversionReview'
 import BulkImport from './pages/dashboard/pipeline/BulkImport'
 import StoryBank from './pages/dashboard/content/StoryBank'
 import ContentCalendar from './pages/dashboard/content/ContentCalendar'
+import BlogPosts from './pages/dashboard/content/BlogPosts'
+import BlogEditor from './pages/dashboard/content/BlogEditor'
 import ScheduleDiscovery from './pages/ScheduleDiscovery'
 import Onboard from './pages/Onboard'
 import UploadPortal from './pages/UploadPortal'
@@ -82,6 +84,8 @@ export default function App() {
             <Route path="/dashboard/users" element={<UserManagement />} />
             <Route path="/dashboard/content/stories" element={<StoryBank />} />
             <Route path="/dashboard/content/calendar" element={<ContentCalendar />} />
+            <Route path="/dashboard/content/blog" element={<BlogPosts />} />
+            <Route path="/dashboard/content/blog/:id" element={<BlogEditor />} />
             <Route path="/dashboard/pipeline" element={<PipelineBoard />} />
             <Route path="/dashboard/pipeline/companies" element={<PipelineCompanies />} />
             <Route path="/dashboard/pipeline/contacts" element={<PipelineContacts />} />

@@ -299,3 +299,56 @@ async def update_idea(
     if not result.data:
         raise HTTPException(404, "Idea not found")
     return result.data[0]
+
+
+# ==========================================================================
+# Public Blog Endpoints (no auth)
+# ==========================================================================
+
+@router.get("/public/blog")
+async def public_list_blog_posts():
+    """Return all published blog posts, newest first."""
+    import re
+    sb = get_supabase()
+    result = (
+        sb.table("content_posts")
+        .select("id, title, blog_slug, seo_title, seo_description, featured_image_url, published_date, body")
+        .eq("type", "blog")
+        .eq("published", True)
+        .order("published_date", desc=True)
+        .execute()
+    )
+    posts = []
+    for row in result.data:
+        body = row.get("body") or ""
+        # Strip markdown syntax for excerpt
+        plain = re.sub(r'[#*_\[\]()>`~]', '', body)
+        excerpt = plain[:200].strip()
+        posts.append({
+            "id": row["id"],
+            "title": row["title"],
+            "blog_slug": row["blog_slug"],
+            "seo_title": row["seo_title"],
+            "seo_description": row["seo_description"],
+            "featured_image_url": row["featured_image_url"],
+            "published_date": row["published_date"],
+            "excerpt": excerpt,
+        })
+    return posts
+
+
+@router.get("/public/blog/{slug}")
+async def public_get_blog_post(slug: str):
+    """Return a single published blog post by slug."""
+    sb = get_supabase()
+    result = (
+        sb.table("content_posts")
+        .select("id, title, blog_slug, seo_title, seo_description, featured_image_url, published_date, body")
+        .eq("type", "blog")
+        .eq("published", True)
+        .eq("blog_slug", slug)
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(404, "Blog post not found")
+    return result.data[0]
