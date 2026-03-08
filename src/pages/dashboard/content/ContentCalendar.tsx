@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api'
+import { useToast } from '../../../components/Toast'
 
 interface Post {
   id: string
@@ -91,6 +92,10 @@ export default function ContentCalendar() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [statsOpen, setStatsOpen] = useState(false)
+  const [statsRows, setStatsRows] = useState<Array<{ id: string; title: string; impressions: string; likes: string; comments: string }>>([])
+  const [statsSaving, setStatsSaving] = useState(false)
+  const { toast } = useToast()
 
   // Calendar state
   const now = new Date()
@@ -235,6 +240,42 @@ export default function ContentCalendar() {
     setSelectedDay(null)
   }
 
+  const openStats = () => {
+    const published = posts.filter(p => p.status === 'published')
+    setStatsRows(published.map(p => ({
+      id: p.id,
+      title: p.title,
+      impressions: p.impressions?.toString() || '',
+      likes: p.likes?.toString() || '',
+      comments: p.comments?.toString() || '',
+    })))
+    setStatsOpen(true)
+  }
+
+  const saveStats = async () => {
+    setStatsSaving(true)
+    try {
+      for (const row of statsRows) {
+        const impressions = row.impressions ? parseInt(row.impressions) : undefined
+        const likes = row.likes ? parseInt(row.likes) : undefined
+        const comments = row.comments ? parseInt(row.comments) : undefined
+        await apiPut(`/api/content-posts/${row.id}`, {
+          impressions,
+          likes,
+          comments,
+        })
+      }
+      await apiPost('/api/content/metrics-rollup', {})
+      setStatsOpen(false)
+      toast('Stats updated and engagement rates recalculated', 'success')
+      fetchPosts()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Failed to save stats', 'error')
+    } finally {
+      setStatsSaving(false)
+    }
+  }
+
   const selectedDatePosts = selectedDay
     ? postsByDate[`${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`] || []
     : []
@@ -259,6 +300,12 @@ export default function ContentCalendar() {
               List
             </button>
           </div>
+          <button
+            onClick={openStats}
+            className="border border-[#005454] text-[#005454] px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#005454]/5 transition-colors"
+          >
+            Update Stats
+          </button>
           <button
             onClick={openCreate}
             className="bg-[#005454] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#005454]/90 transition-colors"
@@ -492,6 +539,91 @@ export default function ContentCalendar() {
                 )}
                 <button onClick={() => openEdit(detailPost)} className="bg-[#005454] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#005454]/90 transition-colors">
                   Edit
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Update Stats Modal */}
+      {statsOpen && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setStatsOpen(false)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              <h2 className="font-display text-xl font-bold text-[#66151C] mb-1">Update Post Performance Stats</h2>
+              <p className="text-sm text-[#2D3436]/60 mb-5">Enter the latest impression and engagement data for your published posts.</p>
+              {statsRows.length === 0 ? (
+                <p className="text-sm text-[#2D3436]/50 text-center py-8">No published posts to update.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-[#FAF8F2] border-b border-gray-200">
+                        <th className="text-left px-3 py-2 font-semibold text-[#2D3436]">Post</th>
+                        <th className="text-right px-3 py-2 font-semibold text-[#2D3436] w-24">Impressions</th>
+                        <th className="text-right px-3 py-2 font-semibold text-[#2D3436] w-20">Likes</th>
+                        <th className="text-right px-3 py-2 font-semibold text-[#2D3436] w-24">Comments</th>
+                        <th className="text-right px-3 py-2 font-semibold text-[#2D3436] w-24">Eng. Rate</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {statsRows.map((row, i) => {
+                        const imp = parseInt(row.impressions) || 0
+                        const lik = parseInt(row.likes) || 0
+                        const com = parseInt(row.comments) || 0
+                        const rate = imp > 0 ? ((lik + com) / imp * 100).toFixed(1) : '—'
+                        return (
+                          <tr key={row.id} className="border-b border-gray-100">
+                            <td className="px-3 py-2 text-[#2D3436] max-w-[200px] truncate">{row.title.length > 40 ? row.title.slice(0, 40) + '...' : row.title}</td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="number"
+                                value={row.impressions}
+                                onChange={e => setStatsRows(prev => prev.map((r, j) => j === i ? { ...r, impressions: e.target.value } : r))}
+                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm text-right"
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="number"
+                                value={row.likes}
+                                onChange={e => setStatsRows(prev => prev.map((r, j) => j === i ? { ...r, likes: e.target.value } : r))}
+                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm text-right"
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="number"
+                                value={row.comments}
+                                onChange={e => setStatsRows(prev => prev.map((r, j) => j === i ? { ...r, comments: e.target.value } : r))}
+                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm text-right"
+                              />
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              <span className={`text-sm font-medium ${
+                                rate === '—' ? 'text-[#2D3436]/50' :
+                                parseFloat(rate) > 3 ? 'text-[#2D6A4F]' :
+                                parseFloat(rate) >= 1 ? 'text-[#D4A843]' : 'text-[#C0392B]'
+                              }`}>
+                                {rate === '—' ? rate : `${rate}%`}
+                              </span>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
+                <button onClick={() => setStatsOpen(false)} className="px-4 py-2 text-sm font-medium text-[#2D3436]/60 hover:text-[#2D3436] transition-colors">Cancel</button>
+                <button
+                  onClick={saveStats}
+                  disabled={statsSaving || statsRows.length === 0}
+                  className="bg-[#005454] text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-[#005454]/90 transition-colors disabled:opacity-50"
+                >
+                  {statsSaving ? 'Saving...' : 'Save All'}
                 </button>
               </div>
             </div>

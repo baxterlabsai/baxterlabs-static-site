@@ -302,6 +302,135 @@ async def update_idea(
 
 
 # ==========================================================================
+# Content Metrics Rollup
+# ==========================================================================
+
+@router.post("/content/metrics-rollup")
+async def metrics_rollup(
+    user: dict = Depends(verify_partner_auth),
+):
+    """Recalculate engagement_rate for all published posts with impressions."""
+    sb = get_supabase()
+    result = (
+        sb.table("content_posts")
+        .select("id, impressions, likes, comments, engagement_rate")
+        .eq("status", "published")
+        .gt("impressions", 0)
+        .execute()
+    )
+    posts_updated = 0
+    rates: List[float] = []
+    top_post = None
+    top_rate = -1.0
+
+    for row in result.data:
+        impressions = row.get("impressions") or 0
+        likes = row.get("likes") or 0
+        comments = row.get("comments") or 0
+        if impressions <= 0:
+            continue
+        rate = round(((likes + comments) / impressions) * 100, 2)
+        sb.table("content_posts").update({
+            "engagement_rate": rate,
+            "updated_at": datetime.utcnow().isoformat(),
+        }).eq("id", row["id"]).execute()
+        posts_updated += 1
+        rates.append(rate)
+        if rate > top_rate:
+            top_rate = rate
+            top_post = {"id": row["id"], "title": "", "engagement_rate": rate}
+
+    # Fetch title for top post
+    if top_post:
+        title_result = sb.table("content_posts").select("title").eq("id", top_post["id"]).execute()
+        if title_result.data:
+            top_post["title"] = title_result.data[0]["title"]
+
+    avg_rate = round(sum(rates) / len(rates), 2) if rates else 0.0
+
+    return {
+        "posts_updated": posts_updated,
+        "average_engagement_rate": avg_rate,
+        "top_post": top_post,
+    }
+
+
+# ==========================================================================
+# Content Performance Summary (for Overview dashboard)
+# ==========================================================================
+
+@router.get("/content/performance")
+async def content_performance(
+    user: dict = Depends(verify_partner_auth),
+):
+    """Return content performance metrics for the current month."""
+    sb = get_supabase()
+    now = datetime.utcnow()
+    month_start = now.strftime("%Y-%m-01")
+    if now.month == 12:
+        next_month_start = f"{now.year + 1}-01-01"
+    else:
+        next_month_start = f"{now.year}-{now.month + 1:02d}-01"
+
+    # Published this month
+    pub_result = (
+        sb.table("content_posts")
+        .select("id, title, engagement_rate, impressions, published_date")
+        .eq("status", "published")
+        .gte("published_date", month_start)
+        .lt("published_date", next_month_start)
+        .execute()
+    )
+    published_this_month = len(pub_result.data)
+    total_impressions = sum(r.get("impressions") or 0 for r in pub_result.data)
+
+    # Avg engagement rate (all published with non-null rate)
+    all_pub = (
+        sb.table("content_posts")
+        .select("engagement_rate")
+        .eq("status", "published")
+        .not_.is_("engagement_rate", "null")
+        .execute()
+    )
+    rates = [r["engagement_rate"] for r in all_pub.data if r.get("engagement_rate") is not None]
+    avg_engagement = round(sum(rates) / len(rates), 1) if rates else None
+
+    # Unused stories
+    stories_result = (
+        sb.table("story_bank")
+        .select("id", count="exact")
+        .eq("used_in_post", False)
+        .execute()
+    )
+    stories_available = stories_result.count if stories_result.count is not None else len(stories_result.data)
+
+    # Top post this month by engagement_rate
+    top_post = None
+    month_posts_with_rate = [
+        r for r in pub_result.data
+        if r.get("engagement_rate") is not None
+    ]
+    if month_posts_with_rate:
+        best = max(month_posts_with_rate, key=lambda r: r["engagement_rate"])
+        top_post = {
+            "id": best["id"],
+            "title": best["title"],
+            "engagement_rate": best["engagement_rate"],
+            "impressions": best.get("impressions"),
+            "published_date": best.get("published_date"),
+        }
+
+    return {
+        "published_this_month": published_this_month,
+        "avg_engagement_rate": avg_engagement,
+        "total_impressions": total_impressions if total_impressions > 0 else None,
+        "stories_available": stories_available,
+        "top_post": top_post,
+        "month_label": now.strftime("%B %Y"),
+    }
+
+
+# ==========================================================================
 # Public Blog Endpoints (no auth)
 # ==========================================================================
 

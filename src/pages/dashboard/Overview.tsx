@@ -1,6 +1,21 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { apiGet, apiPatch, apiPost, apiPut } from '../../lib/api'
+
+interface ContentPerformance {
+  published_this_month: number
+  avg_engagement_rate: number | null
+  total_impressions: number | null
+  stories_available: number
+  top_post: {
+    id: string
+    title: string
+    engagement_rate: number
+    impressions: number | null
+    published_date: string | null
+  } | null
+  month_label: string
+}
 import { TaskFormModal } from './pipeline/Tasks'
 
 interface Engagement {
@@ -280,6 +295,7 @@ export default function Overview() {
   const [cockpitContacts, setCockpitContacts] = useState<CockpitContact[]>([])
   const [showCockpitAddTask, setShowCockpitAddTask] = useState(false)
   const [cockpitTomorrowOpen, setCockpitTomorrowOpen] = useState(false)
+  const [contentPerf, setContentPerf] = useState<ContentPerformance | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [sortField, setSortField] = useState<SortField>('created')
@@ -351,8 +367,9 @@ export default function Overview() {
       apiGet<CockpitData>('/api/pipeline/tasks/cockpit').catch(() => null),
       apiGet<{ companies: CockpitCompany[] }>('/api/pipeline/companies').catch(() => null),
       apiGet<{ contacts: CockpitContact[] }>('/api/pipeline/contacts').catch(() => null),
+      apiGet<ContentPerformance>('/api/content/performance').catch(() => null),
     ])
-      .then(([engData, statsData, revenueData, followUpData, draftsData, pipelineFuData, analyticsData, cockpitData, companiesData, contactsData]) => {
+      .then(([engData, statsData, revenueData, followUpData, draftsData, pipelineFuData, analyticsData, cockpitData, companiesData, contactsData, contentPerfData]) => {
         setEngagements(engData.engagements)
         if (statsData) setPipelineStats(statsData)
         if (revenueData) setRevenueSummary(revenueData)
@@ -366,6 +383,7 @@ export default function Overview() {
         if (cockpitData) setCockpit(cockpitData)
         if (companiesData) setCockpitCompanies(companiesData.companies)
         if (contactsData) setCockpitContacts(contactsData.contacts)
+        if (contentPerfData) setContentPerf(contentPerfData)
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
@@ -692,6 +710,88 @@ export default function Overview() {
                 <span className="text-[10px] text-gray-warm">{Object.keys(analytics.activity_trends).sort()[0]}</span>
                 <span className="text-[10px] text-gray-warm">{Object.keys(analytics.activity_trends).sort().slice(-1)[0]}</span>
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Content Performance */}
+      {contentPerf && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="font-display text-xl font-bold text-crimson">Content Performance</h2>
+              <p className="text-xs text-gray-warm mt-0.5">{contentPerf.month_label}</p>
+            </div>
+            <Link to="/dashboard/content/calendar" className="text-teal text-sm font-semibold hover:underline flex items-center gap-1">
+              Content Calendar
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+              </svg>
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            <div className="bg-white rounded-lg border border-gray-light p-4 text-center">
+              <div className="text-2xl font-bold text-charcoal">{contentPerf.published_this_month}</div>
+              <div className="text-xs text-gray-warm mt-1">Published This Month</div>
+            </div>
+            <div className="bg-white rounded-lg border border-gray-light p-4 text-center">
+              <div className={`text-2xl font-bold ${
+                contentPerf.avg_engagement_rate === null ? 'text-charcoal' :
+                contentPerf.avg_engagement_rate > 3 ? 'text-[#2D6A4F]' :
+                contentPerf.avg_engagement_rate >= 1 ? 'text-[#D4A843]' : 'text-[#C0392B]'
+              }`}>
+                {contentPerf.avg_engagement_rate !== null ? `${contentPerf.avg_engagement_rate}%` : '—'}
+              </div>
+              <div className="text-xs text-gray-warm mt-1">Avg Engagement Rate</div>
+            </div>
+            <div className="bg-white rounded-lg border border-gray-light p-4 text-center">
+              <div className="text-2xl font-bold text-charcoal">
+                {contentPerf.total_impressions !== null ? contentPerf.total_impressions.toLocaleString() : '—'}
+              </div>
+              <div className="text-xs text-gray-warm mt-1">Impressions This Month</div>
+            </div>
+            <div className="bg-white rounded-lg border border-gray-light p-4 text-center">
+              <div className="text-2xl font-bold text-charcoal">{contentPerf.stories_available}</div>
+              <div className="text-xs text-gray-warm mt-1">Stories Available</div>
+            </div>
+          </div>
+
+          {contentPerf.top_post ? (
+            <div className="bg-white rounded-lg border border-gray-light p-4">
+              <p className="text-xs font-semibold text-gray-warm mb-2">Top Post This Month</p>
+              <div className="flex items-center justify-between">
+                <Link
+                  to="/dashboard/content/calendar"
+                  className="text-sm font-medium text-charcoal hover:text-teal transition-colors truncate max-w-[60%]"
+                >
+                  {contentPerf.top_post.title.length > 60
+                    ? contentPerf.top_post.title.slice(0, 60) + '...'
+                    : contentPerf.top_post.title}
+                </Link>
+                <div className="flex items-center gap-3 text-xs flex-shrink-0">
+                  <span className={`inline-block px-2 py-0.5 rounded-full font-semibold ${
+                    contentPerf.top_post.engagement_rate > 3 ? 'bg-[#2D6A4F]/10 text-[#2D6A4F]' :
+                    contentPerf.top_post.engagement_rate >= 1 ? 'bg-[#D4A843]/10 text-[#D4A843]' :
+                    'bg-[#C0392B]/10 text-[#C0392B]'
+                  }`}>
+                    {contentPerf.top_post.engagement_rate}%
+                  </span>
+                  {contentPerf.top_post.impressions != null && (
+                    <span className="text-gray-warm">{contentPerf.top_post.impressions.toLocaleString()} impressions</span>
+                  )}
+                  {contentPerf.top_post.published_date && (
+                    <span className="text-gray-warm">{new Date(contentPerf.top_post.published_date).toLocaleDateString()}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg border border-gray-light p-4 text-center">
+              <p className="text-sm text-gray-warm">
+                Content performance data will appear here after your first posts are published. Your Story Bank has {contentPerf.stories_available} {contentPerf.stories_available === 1 ? 'entry' : 'entries'} ready to use.
+              </p>
             </div>
           )}
         </div>
