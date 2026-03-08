@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import intake, engagements, docusign, upload, deliverables, research, prompts, clients, archive, users, reminders, phase_outputs, pipeline, invoices, webhooks, follow_ups, onboarding
+from routers import intake, engagements, docusign, upload, deliverables, research, prompts, clients, archive, users, reminders, phase_outputs, pipeline, invoices, webhooks, follow_ups, onboarding, content
 from services.supabase_client import get_supabase
 from models.schemas import HealthResponse
 
@@ -61,6 +61,7 @@ app.include_router(invoices.router)
 app.include_router(webhooks.router)
 app.include_router(follow_ups.router)
 app.include_router(onboarding.router)
+app.include_router(content.router)
 
 # Startup confirmation — helps verify correct code is deployed
 logger.info("DocuSign webhook handler ready — XML+JSON support active")

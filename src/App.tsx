@@ -21,6 +21,8 @@ import PipelineActivities from './pages/dashboard/pipeline/Activities'
 import PipelineTasks from './pages/dashboard/pipeline/Tasks'
 import ConversionReview from './pages/dashboard/pipeline/ConversionReview'
 import BulkImport from './pages/dashboard/pipeline/BulkImport'
+import StoryBank from './pages/dashboard/content/StoryBank'
+import ContentCalendar from './pages/dashboard/content/ContentCalendar'
 import ScheduleDiscovery from './pages/ScheduleDiscovery'
 import Onboard from './pages/Onboard'
 import UploadPortal from './pages/UploadPortal'
@@ -78,6 +80,8 @@ export default function App() {
             <Route path="/dashboard/clients" element={<ClientDirectory />} />
             <Route path="/dashboard/calendar" element={<Calendar />} />
             <Route path="/dashboard/users" element={<UserManagement />} />
+            <Route path="/dashboard/content/stories" element={<StoryBank />} />
+            <Route path="/dashboard/content/calendar" element={<ContentCalendar />} />
             <Route path="/dashboard/pipeline" element={<PipelineBoard />} />
             <Route path="/dashboard/pipeline/companies" element={<PipelineCompanies />} />
             <Route path="/dashboard/pipeline/contacts" element={<PipelineContacts />} />
