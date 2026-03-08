@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { apiGet, apiPost, apiPut } from '../../../lib/api'
+import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api'
 import { useToast } from '../../../components/Toast'
 
 interface Post {
@@ -103,6 +103,7 @@ export default function BlogEditor() {
   const [saving, setSaving] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [publishConfirm, setPublishConfirm] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Load existing post
@@ -230,6 +231,18 @@ export default function BlogEditor() {
       toast(err instanceof Error ? err.message : 'Failed to unpublish post', 'error')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    setDeleteConfirm(false)
+    try {
+      await apiDelete(`/api/content-posts/${id}`)
+      toast('Post deleted', 'success')
+      navigate('/dashboard/content/blog')
+    } catch (err) {
+      console.error('Delete failed:', err)
+      toast(err instanceof Error ? err.message : 'Failed to delete post', 'error')
     }
   }
 
@@ -459,6 +472,18 @@ export default function BlogEditor() {
                 </button>
               )}
             </div>
+
+            {/* Delete */}
+            {!isNew && (
+              <div className="border-t border-gray-100 pt-3">
+                <button
+                  onClick={() => setDeleteConfirm(true)}
+                  className="text-xs font-medium text-[#C0392B] hover:text-[#C0392B]/80 transition-colors"
+                >
+                  Delete this post
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -483,6 +508,32 @@ export default function BlogEditor() {
                 className="bg-[#66151C] text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-[#66151C]/90 transition-colors"
               >
                 Yes, Publish
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setDeleteConfirm(false)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="font-display text-lg font-bold text-[#2D3436] mb-2">Delete Post?</h3>
+            <p className="text-sm text-[#2D3436]/70 mb-5">
+              Are you sure you want to delete this post? This cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteConfirm(false)}
+                className="px-4 py-2 text-sm font-medium text-[#2D3436]/60 hover:text-[#2D3436] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="bg-[#C0392B] text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-[#C0392B]/90 transition-colors"
+              >
+                Yes, Delete
               </button>
             </div>
           </div>
