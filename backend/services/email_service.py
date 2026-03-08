@@ -4,6 +4,7 @@ import os
 import re
 import resend
 import logging
+import urllib.parse
 from typing import Optional
 from datetime import datetime, timezone
 
@@ -805,7 +806,7 @@ class EmailService:
         that don't always show up in the numbers.</p>
         <p>Please use the link below to choose a time that works for you:</p>
         <p style="margin:24px 0;text-align:center;">
-          <a href="{calendly_url}"
+          <a href="{calendly_url}?name={urllib.parse.quote(contact_name)}&email={urllib.parse.quote(contact_email)}"
              style="display:inline-block;padding:14px 32px;background-color:{CRIMSON};color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;font-size:16px;">
             Schedule Interview
           </a>
