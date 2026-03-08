@@ -9,6 +9,7 @@ export default function Header() {
     { to: '/', label: 'Home' },
     { to: '/services', label: 'Services' },
     { to: '/about', label: 'About' },
+    { to: '/blog', label: 'Insights' },
   ]
 
   return (
@@ -31,7 +32,7 @@ export default function Header() {
                 key={link.to}
                 to={link.to}
                 className={`text-base font-medium transition-colors hover:text-teal ${
-                  pathname === link.to ? 'text-teal' : 'text-charcoal'
+                  (link.to === '/' ? pathname === '/' : pathname.startsWith(link.to)) ? 'text-teal' : 'text-charcoal'
                 }`}
               >
                 {link.label}

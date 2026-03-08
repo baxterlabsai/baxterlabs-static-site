@@ -27,6 +27,8 @@ import BlogPosts from './pages/dashboard/content/BlogPosts'
 import BlogEditor from './pages/dashboard/content/BlogEditor'
 import ContentCommands from './pages/dashboard/content/ContentCommands'
 import ContentNews from './pages/dashboard/content/ContentNews'
+import BlogIndex from './pages/BlogIndex'
+import BlogPost from './pages/BlogPost'
 import ScheduleDiscovery from './pages/ScheduleDiscovery'
 import Onboard from './pages/Onboard'
 import UploadPortal from './pages/UploadPortal'
@@ -56,6 +58,8 @@ export default function App() {
           <Route path="/services" element={<Services />} />
           <Route path="/about" element={<About />} />
           <Route path="/get-started" element={<GetStarted />} />
+          <Route path="/blog" element={<BlogIndex />} />
+          <Route path="/blog/:slug" element={<BlogPost />} />
         </Route>
 
         {/* Public portals (token-based, no auth) */}
