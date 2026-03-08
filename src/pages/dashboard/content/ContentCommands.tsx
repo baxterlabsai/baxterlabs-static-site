@@ -7,7 +7,7 @@ interface Command {
   prompt: string
 }
 
-const COMMANDS: Command[] = [
+const COWORK_COMMANDS: Command[] = [
   {
     title: 'Mine My Monetizable Expertise',
     description: 'Generate 25-30 post topics with hooks from your background. Run once a month or when the content pipeline feels thin.',
@@ -162,44 +162,143 @@ After writing the post:
   },
 ]
 
-export default function ContentCommands() {
-  const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
+const CHROME_COMMANDS: Command[] = [
+  {
+    title: 'Find Posts to Comment On',
+    description: 'Scans your LinkedIn feed and ranks the best commenting opportunities by relevance to your ICP and positioning.',
+    buttonColor: '#005454',
+    prompt: `Scan my LinkedIn feed and find the best posts for me to comment on. Here's my context:
 
-  const copyCommand = async (index: number) => {
-    await navigator.clipboard.writeText(COMMANDS[index].prompt)
-    setCopiedIndex(index)
+Who I am: I'm George DeVries, Managing Partner of BaxterLabs Advisory. I help $5M\u2013$50M professional service firms find and recover hidden profit leaks through structured 14-day financial diagnostics. I have deep experience as a senior finance executive analyzing margins, billing lag, vendor concentration, payroll drift, software redundancy, and approval bottlenecks.
+
+What I'm looking for: Posts where I can add genuine value with a substantive comment that demonstrates financial operations expertise. Prioritize posts about: firm profitability or margins, operational efficiency, professional services challenges (law firms, accounting firms, consulting firms, staffing firms, architecture/engineering firms), revenue growth that isn't translating to cash, scaling pain, financial visibility, vendor management, or billing/collections.
+
+What to skip: Motivational quotes, job change announcements, product launches unrelated to professional services, anything where I'd have to force a connection to my expertise.
+
+For each post worth commenting on, give me:
+1. Who posted it and a one-line summary of their post
+2. Why it's a good commenting opportunity (relevance to my positioning, audience quality, engagement level)
+3. A draft comment I can modify into my own voice \u2014 acknowledge their insight, then add a specific data point, ratio, example, or additional angle from my financial diagnostics experience. Keep it conversational, not salesy. No mention of BaxterLabs unless it fits naturally. 2\u20134 sentences max.
+
+Read everything visible in my feed and give me your top 10 recommendations ranked by opportunity quality.`,
+  },
+  {
+    title: 'Find Blog Post Material in My Feed',
+    description: 'Scans your LinkedIn feed for posts worth expanding into a full BaxterLabs blog post or responding to with your own perspective.',
+    buttonColor: '#2D6A4F',
+    prompt: `Scan my LinkedIn feed and identify posts that would make good source material for a BaxterLabs Advisory blog post. Here's my context:
+
+Who I am: I'm George DeVries, Managing Partner of BaxterLabs Advisory. I help $5M\u2013$50M professional service firms diagnose and recover hidden profit leaks. My blog (baxterlabs.ai/blog) publishes diagnostic thinking and financial analysis for professional service firm leaders.
+
+What makes good blog material:
+- A post making a claim I can validate, challenge, or add nuance to from a financial operations lens
+- A data point or statistic I can contextualize for professional service firm owners specifically
+- A common misconception about margins, profitability, or operational efficiency I can correct
+- A trend I can translate into dollar impact for a $5M\u2013$50M firm
+- A question being debated in the professional services space where I have a specific, defensible answer
+
+What to skip: Motivational content, personal announcements, generic business advice with no financial operations angle.
+
+For each post worth blogging about, give me:
+1. Who posted it and a one-line summary
+2. The blog angle \u2014 what's the BaxterLabs perspective or response that would be genuinely useful to a managing partner?
+3. A working title for the post (8\u201312 words, specific, not generic)
+4. One paragraph rough outline: what's the hook, what's the core argument, what's the practical takeaway?
+
+Give me your top 5 ranked by how strong the blog angle is.`,
+  },
+]
+
+export default function ContentCommands() {
+  const [copiedIndex, setCopiedIndex] = useState<string | null>(null)
+
+  const copyCommand = async (section: string, index: number) => {
+    const commands = section === 'cowork' ? COWORK_COMMANDS : CHROME_COMMANDS
+    await navigator.clipboard.writeText(commands[index].prompt)
+    const key = `${section}-${index}`
+    setCopiedIndex(key)
     setTimeout(() => setCopiedIndex(null), 2000)
+  }
+
+  const coworkCard = (cmd: Command, i: number) => {
+    const key = `cowork-${i}`
+    return (
+      <div
+        key={key}
+        className="border border-gray-200 rounded-lg p-4 bg-white flex flex-col gap-2"
+      >
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-[#2D3436]">{cmd.title}</p>
+          <p className="text-xs text-[#2D3436]/60 mt-1 leading-relaxed">{cmd.description}</p>
+        </div>
+        <button
+          onClick={() => copyCommand('cowork', i)}
+          className="self-start inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-semibold text-white transition-colors mt-1"
+          style={{ backgroundColor: copiedIndex === key ? '#2D3436' : cmd.buttonColor }}
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+          </svg>
+          {copiedIndex === key ? 'Copied! Paste into Cowork' : 'Copy Command'}
+        </button>
+      </div>
+    )
+  }
+
+  const chromeCard = (cmd: Command, i: number) => {
+    const key = `chrome-${i}`
+    return (
+      <div
+        key={key}
+        className="border border-gray-200 border-l-[3px] border-l-[#005454] rounded-lg p-4 bg-white flex flex-col gap-2 relative"
+      >
+        <span className="absolute top-3 right-3 text-[10px] font-medium text-[#005454] border border-[#005454] rounded-full px-2 py-0.5 leading-none">
+          Claude in Chrome
+        </span>
+        <div className="flex-1 min-w-0 pr-24">
+          <p className="text-sm font-semibold text-[#2D3436]">{cmd.title}</p>
+          <p className="text-xs text-[#2D3436]/60 mt-1 leading-relaxed">{cmd.description}</p>
+        </div>
+        <button
+          onClick={() => copyCommand('chrome', i)}
+          className="self-start inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-semibold text-white transition-colors mt-1"
+          style={{ backgroundColor: copiedIndex === key ? '#2D3436' : cmd.buttonColor }}
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+          </svg>
+          {copiedIndex === key ? 'Copied! Paste into Claude in Chrome' : 'Copy Command'}
+        </button>
+      </div>
+    )
   }
 
   return (
     <div>
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-[#66151C]">Content Commands</h1>
-        <p className="text-sm text-[#2D3436]/60 mt-1">Copy commands to run in Cowork</p>
+        <p className="text-sm text-[#2D3436]/60 mt-1">Copy commands to run in Cowork or Claude in Chrome</p>
       </div>
 
+      {/* Cowork Commands */}
+      <div className="mb-4">
+        <h2 className="font-display text-lg font-bold text-[#2D3436]">Cowork Commands</h2>
+        <p className="text-xs text-[#2D3436]/60 italic mt-0.5">Copy prompt &rarr; paste into Cowork</p>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {COMMANDS.map((cmd, i) => (
-          <div
-            key={i}
-            className="border border-gray-200 rounded-lg p-4 bg-white flex flex-col gap-2"
-          >
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-[#2D3436]">{cmd.title}</p>
-              <p className="text-xs text-[#2D3436]/60 mt-1 leading-relaxed">{cmd.description}</p>
-            </div>
-            <button
-              onClick={() => copyCommand(i)}
-              className="self-start inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-semibold text-white transition-colors mt-1"
-              style={{ backgroundColor: copiedIndex === i ? '#2D3436' : cmd.buttonColor }}
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-              </svg>
-              {copiedIndex === i ? 'Copied! Paste into Cowork' : 'Copy Command'}
-            </button>
-          </div>
-        ))}
+        {COWORK_COMMANDS.map((cmd, i) => coworkCard(cmd, i))}
+      </div>
+
+      {/* Divider */}
+      <div className="border-t border-[#E5E0D5] my-8" />
+
+      {/* Claude in Chrome Commands */}
+      <div className="mb-4">
+        <h2 className="font-display text-lg font-bold text-[#2D3436]">Claude in Chrome Commands</h2>
+        <p className="text-xs text-[#2D3436]/60 italic mt-0.5">Copy prompt &rarr; open LinkedIn in Chrome &rarr; paste into Claude in Chrome sidebar</p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {CHROME_COMMANDS.map((cmd, i) => chromeCard(cmd, i))}
       </div>
     </div>
   )
