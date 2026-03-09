@@ -85,7 +85,7 @@ export default function Onboard() {
   }
 
   const addContact = () => {
-    if (contacts.length < 5) setContacts(prev => [...prev, emptyContact()])
+    if (contacts.length < 3) setContacts(prev => [...prev, emptyContact()])
   }
 
   const removeContact = (idx: number) => {
@@ -404,7 +404,7 @@ export default function Onboard() {
               ))}
             </div>
 
-            {contacts.length < 5 && (
+            {contacts.length < 3 && (
               <button
                 type="button"
                 onClick={addContact}

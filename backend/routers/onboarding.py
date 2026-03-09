@@ -97,8 +97,8 @@ async def submit_onboarding(token: str, body: OnboardSubmission):
 
     if not body.contacts or len(body.contacts) < 1:
         raise HTTPException(status_code=400, detail="At least 1 interview contact is required.")
-    if len(body.contacts) > 5:
-        raise HTTPException(status_code=400, detail="Maximum 5 interview contacts allowed.")
+    if len(body.contacts) > 3:
+        raise HTTPException(status_code=400, detail="Maximum 3 interview contacts allowed.")
 
     sb = get_supabase()
 
