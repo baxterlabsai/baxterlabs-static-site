@@ -1240,6 +1240,7 @@ function CockpitTaskRow({ task, onDone, onSnooze, formatDate, navigate, variant 
   navigate: (path: string) => void
   variant: 'overdue' | 'today' | 'future'
 }) {
+  const [descExpanded, setDescExpanded] = useState(false)
   const typeLabel = COCKPIT_TYPE_LABELS[task.task_type] || task.task_type
   const typeBadge = COCKPIT_TYPE_BADGE[task.task_type] || 'bg-gray-100 text-gray-700'
 
@@ -1292,7 +1293,15 @@ function CockpitTaskRow({ task, onDone, onSnooze, formatDate, navigate, variant 
           )}
         </div>
         {variant === 'today' && task.description && (
-          <p className="text-xs text-gray-warm mt-0.5 truncate">{task.description}</p>
+          <p className={`text-xs text-gray-warm mt-0.5 ${descExpanded ? 'whitespace-pre-wrap' : ''}`}>
+            {descExpanded ? task.description : task.description.length > 80 ? task.description.slice(0, 80) + '...' : task.description}
+            {!descExpanded && task.description.length > 80 && (
+              <button onClick={(e) => { e.stopPropagation(); setDescExpanded(true) }} className="ml-1 text-teal font-semibold hover:underline">more</button>
+            )}
+            {descExpanded && task.description.length > 80 && (
+              <button onClick={(e) => { e.stopPropagation(); setDescExpanded(false) }} className="ml-1 text-teal font-semibold hover:underline">less</button>
+            )}
+          </p>
         )}
       </div>
 
