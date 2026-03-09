@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api'
+import MarkdownContent from '../../../components/MarkdownContent'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -563,15 +564,23 @@ function TaskRow({ task, onToggle, onSnooze, onEdit, onDelete }: {
           )}
         </div>
         {task.description && (
-          <p className={`text-xs text-gray-warm mt-0.5 ${descExpanded ? 'whitespace-pre-wrap' : ''}`}>
-            {descExpanded ? task.description : task.description.length > 80 ? task.description.slice(0, 80) + '...' : task.description}
-            {!descExpanded && task.description.length > 80 && (
-              <button onClick={(e) => { e.stopPropagation(); setDescExpanded(true) }} className="ml-1 text-teal font-semibold hover:underline">more</button>
+          <div className="mt-0.5">
+            {descExpanded ? (
+              <>
+                <div className="text-xs text-gray-warm"><MarkdownContent content={task.description} className="inline-prose" /></div>
+                {task.description.length > 80 && (
+                  <button onClick={(e) => { e.stopPropagation(); setDescExpanded(false) }} className="text-xs text-teal font-semibold hover:underline">less</button>
+                )}
+              </>
+            ) : (
+              <p className="text-xs text-gray-warm">
+                {task.description.length > 80 ? task.description.slice(0, 80) + '...' : task.description}
+                {task.description.length > 80 && (
+                  <button onClick={(e) => { e.stopPropagation(); setDescExpanded(true) }} className="ml-1 text-teal font-semibold hover:underline">more</button>
+                )}
+              </p>
             )}
-            {descExpanded && task.description.length > 80 && (
-              <button onClick={(e) => { e.stopPropagation(); setDescExpanded(false) }} className="ml-1 text-teal font-semibold hover:underline">less</button>
-            )}
-          </p>
+          </div>
         )}
       </div>
 
