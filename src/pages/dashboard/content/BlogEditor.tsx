@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api'
 import { useToast } from '../../../components/Toast'
+import { supabase } from '../../../lib/supabase'
 
 interface Post {
   id: string
@@ -97,6 +98,8 @@ export default function BlogEditor() {
   const [sourcePostId, setSourcePostId] = useState('')
   const [published, setPublished] = useState(false)
   const [publishedDate, setPublishedDate] = useState('')
+  const [imageUploading, setImageUploading] = useState(false)
+  const [imageError, setImageError] = useState('')
 
   const [linkedInPosts, setLinkedInPosts] = useState<LinkedInPost[]>([])
   const [loading, setLoading] = useState(!isNew)
@@ -243,6 +246,33 @@ export default function BlogEditor() {
     } catch (err) {
       console.error('Delete failed:', err)
       toast(err instanceof Error ? err.message : 'Failed to delete post', 'error')
+    }
+  }
+
+  const handleImageUpload = async (file: File) => {
+    setImageError('')
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp']
+    if (!validTypes.includes(file.type)) {
+      setImageError('Please upload a JPG, PNG, or WEBP image')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setImageError('Image must be under 5MB')
+      return
+    }
+    setImageUploading(true)
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+      const prefix = isNew ? 'new' : id
+      const path = `${prefix}-${Date.now()}.${ext}`
+      const { error } = await supabase.storage.from('blog-images').upload(path, file)
+      if (error) throw error
+      const { data: urlData } = supabase.storage.from('blog-images').getPublicUrl(path)
+      setFeaturedImageUrl(urlData.publicUrl)
+    } catch (err) {
+      setImageError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setImageUploading(false)
     }
   }
 
@@ -418,13 +448,51 @@ export default function BlogEditor() {
               <p className="mt-1 text-xs text-[#2D3436]/40 break-all">baxterlabs.ai/blog/{slug || '...'}</p>
             </div>
 
-            {/* Featured Image URL */}
+            {/* Featured Image */}
             <div>
-              <label className="block text-sm font-medium text-[#2D3436] mb-1">Featured Image URL</label>
+              <label className="block text-sm font-medium text-[#2D3436] mb-1">Featured Image</label>
+              {/* Upload zone */}
+              <label
+                className={`block w-full border-2 border-dashed rounded-lg cursor-pointer transition-colors mb-2 ${
+                  imageUploading ? 'border-[#005454]/40 bg-[#005454]/5' : 'border-gray-300 hover:border-[#005454]/50 hover:bg-gray-50'
+                }`}
+                onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
+                onDrop={e => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  const file = e.dataTransfer.files?.[0]
+                  if (file) handleImageUpload(file)
+                }}
+              >
+                <input
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.webp"
+                  className="hidden"
+                  onChange={e => {
+                    const file = e.target.files?.[0]
+                    if (file) handleImageUpload(file)
+                    e.target.value = ''
+                  }}
+                />
+                <div className="flex items-center justify-center h-[72px]">
+                  {imageUploading ? (
+                    <svg className="w-5 h-5 animate-spin text-[#005454]" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  ) : (
+                    <span className="text-xs text-[#2D3436]/50">Click to upload or drag and drop</span>
+                  )}
+                </div>
+              </label>
+              {imageError && (
+                <p className="text-xs text-[#C0392B] mb-1">{imageError}</p>
+              )}
+              {/* URL field — manual entry or auto-populated */}
               <input
                 value={featuredImageUrl}
                 onChange={e => setFeaturedImageUrl(e.target.value)}
-                placeholder="https://..."
+                placeholder="https://... or upload above"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
               />
             </div>

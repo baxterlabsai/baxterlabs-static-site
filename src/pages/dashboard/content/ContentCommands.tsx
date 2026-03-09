@@ -110,14 +110,14 @@ Expand into a 600-800 word blog post with:
 - Conclusion paragraph synthesizing the main lesson
 - CTA: "If this pattern sounds familiar in your firm, BaxterLabs Advisory conducts 14-day profit diagnostics for professional service firms in the $5M–$50M range. Learn more at baxterlabs.ai."
 
-Write the completed blog post to the content_posts table in Supabase:
-- type: 'blog'
-- status: 'draft'
-- title: [SEO title]
-- body: [full post in markdown]
-- seo_title: [same as title, max 60 chars]
-- seo_description: [155-char summary for search results]
-- blog_slug: [auto-generated from title]
+Write the completed draft to content_posts via Supabase MCP with these exact fields:
+- type = 'blog'
+- status = 'draft'
+- title = the working title provided in the brief
+- body = the full post body in markdown
+- seo_title = same as title, maximum 60 characters, truncate with "..." if needed
+- seo_description = a single sentence summarizing the post's core argument, maximum 150 characters, written as a complete sentence, no truncation mid-word
+- excerpt = first 200 characters of the post body
 
 Confirm write-back, blog post ID, and estimated word count.`,
   },
@@ -172,7 +172,15 @@ Requirements:
 - Structure: hook that names a real scenario \u2192 core argument with at least one specific dollar range or financial ratio \u2192 practical takeaway the reader can act on today
 - Do not mention BaxterLabs by name until the final CTA paragraph
 - End with a single CTA paragraph: "If this pattern sounds familiar in your firm, this is exactly what a BaxterLabs profit leak diagnostic surfaces in 14 days. [link to /#services]"
-- Write the completed draft to content_posts via Supabase MCP: type='blog', status='draft', title from the working title below, excerpt from the first 200 characters of the post body
+
+Write the completed draft to content_posts via Supabase MCP with these exact fields:
+- type = 'blog'
+- status = 'draft'
+- title = the working title provided in the brief
+- body = the full post body in markdown
+- seo_title = same as title, maximum 60 characters, truncate with "..." if needed
+- seo_description = a single sentence summarizing the post's core argument, maximum 150 characters, written as a complete sentence, no truncation mid-word
+- excerpt = first 200 characters of the post body
 
 Paste your Claude in Chrome brief below this line:`,
   },
