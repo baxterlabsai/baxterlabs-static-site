@@ -18,6 +18,13 @@ interface Contact {
   company_id: string | null
 }
 
+interface Partner {
+  id: string
+  name: string
+  email: string
+  is_active: boolean
+}
+
 interface Task {
   id: string
   task_type: string
@@ -215,6 +222,7 @@ export default function PipelineTasks() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
   const [contacts, setContacts] = useState<Contact[]>([])
+  const [partners, setPartners] = useState<Partner[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -237,14 +245,16 @@ export default function PipelineTasks() {
 
   async function loadData() {
     try {
-      const [taskData, compData, contactData] = await Promise.all([
+      const [taskData, compData, contactData, partnerData] = await Promise.all([
         apiGet<{ tasks: Task[] }>('/api/pipeline/tasks'),
         apiGet<{ companies: Company[] }>('/api/pipeline/companies'),
         apiGet<{ contacts: Contact[] }>('/api/pipeline/contacts'),
+        apiGet<Partner[]>('/api/pipeline/partners'),
       ])
       setTasks(taskData.tasks)
       setCompanies(compData.companies)
       setContacts(contactData.contacts)
+      setPartners(partnerData)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load tasks')
     } finally {
@@ -454,7 +464,7 @@ export default function PipelineTasks() {
           title="Add Task"
           companies={companies}
           contacts={contacts}
-
+          partners={partners}
           onSave={handleAddTask}
           onClose={() => setShowAddModal(false)}
         />
@@ -467,7 +477,7 @@ export default function PipelineTasks() {
           task={editTask}
           companies={companies}
           contacts={contacts}
-
+          partners={partners}
           showStatus
           onSave={data => handleUpdateTask(editTask.id, data)}
           onClose={() => setEditTask(null)}
@@ -562,6 +572,14 @@ function TaskRow({ task, onToggle, onSnooze, onEdit, onDelete }: {
               <span className="text-xs text-gray-warm italic truncate">{task.plugin_tool}</span>
             </>
           )}
+          {task.assigned_to && (
+            <>
+              {(task.pipeline_companies || task.pipeline_contacts || task.pipeline_opportunities || task.plugin_tool) && (
+                <span className="text-xs text-gray-warm">&middot;</span>
+              )}
+              <span className="text-xs text-gray-warm truncate">{task.assigned_to}</span>
+            </>
+          )}
         </div>
         {task.description && (
           <div className="mt-0.5">
@@ -624,11 +642,12 @@ function TaskRow({ task, onToggle, onSnooze, onEdit, onDelete }: {
 // TaskFormModal Component — exported for reuse from Overview cockpit
 // ---------------------------------------------------------------------------
 
-export function TaskFormModal({ title, task, companies, contacts, showStatus, onSave, onClose }: {
+export function TaskFormModal({ title, task, companies, contacts, partners = [], showStatus, onSave, onClose }: {
   title: string
   task?: Task
   companies: Company[]
   contacts: Contact[]
+  partners?: Partner[]
   showStatus?: boolean
   onSave: (data: Record<string, unknown>) => Promise<unknown>
   onClose: () => void
@@ -646,6 +665,7 @@ export function TaskFormModal({ title, task, companies, contacts, showStatus, on
   const [companySearch, setCompanySearch] = useState(task?.pipeline_companies?.name || '')
   const [contactSearch, setContactSearch] = useState(task?.pipeline_contacts?.name || '')
   const [pluginTool, setPluginTool] = useState(task?.plugin_tool || '')
+  const [assignedTo, setAssignedTo] = useState(task?.assigned_to || '')
   const [showCompanyDropdown, setShowCompanyDropdown] = useState(false)
   const [showContactDropdown, setShowContactDropdown] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -679,6 +699,7 @@ export function TaskFormModal({ title, task, companies, contacts, showStatus, on
       if (scheduledEndTime) data.scheduled_end_time = scheduledEndTime
       if (description.trim()) data.description = description.trim()
       if (pluginTool.trim()) data.plugin_tool = pluginTool.trim()
+      if (assignedTo) data.assigned_to = assignedTo
       if (companyId) data.company_id = companyId
       if (contactId) data.contact_id = contactId
       if (showStatus) data.status = status
@@ -691,6 +712,7 @@ export function TaskFormModal({ title, task, companies, contacts, showStatus, on
         if (!scheduledEndTime && task.scheduled_end_time) data.scheduled_end_time = null
         if (!description.trim() && task.description) data.description = null
         if (!pluginTool.trim() && task.plugin_tool) data.plugin_tool = null
+        if (!assignedTo && task.assigned_to) data.assigned_to = null
       }
       await onSave(data)
     } catch (err: unknown) {
@@ -769,10 +791,21 @@ export function TaskFormModal({ title, task, companies, contacts, showStatus, on
             </div>
           </div>
 
-          {/* Plugin / Tool */}
-          <div>
-            <label className="block text-sm font-semibold text-charcoal mb-1">Plugin / Tool</label>
-            <input type="text" value={pluginTool} onChange={e => setPluginTool(e.target.value)} placeholder="e.g. Sales: Draft Outreach, Claude in Chrome" className="w-full px-3 py-2 border border-gray-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal" />
+          {/* Plugin / Tool + Assigned To row */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-charcoal mb-1">Plugin / Tool</label>
+              <input type="text" value={pluginTool} onChange={e => setPluginTool(e.target.value)} placeholder="e.g. Sales: Draft Outreach" className="w-full px-3 py-2 border border-gray-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-charcoal mb-1">Assigned To</label>
+              <select value={assignedTo} onChange={e => setAssignedTo(e.target.value)} className="w-full px-3 py-2 border border-gray-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal">
+                <option value="">Unassigned</option>
+                {partners.map(p => (
+                  <option key={p.id} value={p.name}>{p.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Company typeahead */}

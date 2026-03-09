@@ -303,6 +303,7 @@ export default function Overview() {
   const [cockpit, setCockpit] = useState<CockpitData | null>(null)
   const [cockpitCompanies, setCockpitCompanies] = useState<CockpitCompany[]>([])
   const [cockpitContacts, setCockpitContacts] = useState<CockpitContact[]>([])
+  const [cockpitPartners, setCockpitPartners] = useState<{ id: string; name: string; email: string; is_active: boolean }[]>([])
   const [showCockpitAddTask, setShowCockpitAddTask] = useState(false)
   const [cockpitEditTask, setCockpitEditTask] = useState<CockpitTask | null>(null)
   const [cockpitTomorrowOpen, setCockpitTomorrowOpen] = useState(false)
@@ -385,8 +386,9 @@ export default function Overview() {
       apiGet<{ companies: CockpitCompany[] }>('/api/pipeline/companies').catch(() => null),
       apiGet<{ contacts: CockpitContact[] }>('/api/pipeline/contacts').catch(() => null),
       apiGet<ContentPerformance>('/api/content/performance').catch(() => null),
+      apiGet<{ id: string; name: string; email: string; is_active: boolean }[]>('/api/pipeline/partners').catch(() => null),
     ])
-      .then(([engData, statsData, revenueData, followUpData, draftsData, pipelineFuData, analyticsData, cockpitData, companiesData, contactsData, contentPerfData]) => {
+      .then(([engData, statsData, revenueData, followUpData, draftsData, pipelineFuData, analyticsData, cockpitData, companiesData, contactsData, contentPerfData, partnersData]) => {
         setEngagements(engData.engagements)
         if (statsData) setPipelineStats(statsData)
         if (revenueData) setRevenueSummary(revenueData)
@@ -401,6 +403,7 @@ export default function Overview() {
         if (companiesData) setCockpitCompanies(companiesData.companies)
         if (contactsData) setCockpitContacts(contactsData.contacts)
         if (contentPerfData) setContentPerf(contentPerfData)
+        if (partnersData) setCockpitPartners(partnersData)
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
@@ -548,6 +551,7 @@ export default function Overview() {
           title="Add Task"
           companies={cockpitCompanies}
           contacts={cockpitContacts}
+          partners={cockpitPartners}
           onSave={cockpitAddTask}
           onClose={() => setShowCockpitAddTask(false)}
         />
@@ -560,6 +564,7 @@ export default function Overview() {
           task={cockpitEditTask as any}
           companies={cockpitCompanies}
           contacts={cockpitContacts}
+          partners={cockpitPartners}
           showStatus
           onSave={data => cockpitUpdateTask(cockpitEditTask.id, data)}
           onClose={() => setCockpitEditTask(null)}
