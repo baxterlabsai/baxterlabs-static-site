@@ -189,8 +189,11 @@ function groupTasks(tasks: Task[]): TaskGroup[] {
     }
   }
 
-  // Sub-sort within each group by scheduled_time ASC (nulls last), then task_type
-  const sortByTime = (a: Task, b: Task) => {
+  // Sub-sort: due_date ASC, then scheduled_time ASC (nulls last), then task_type
+  const sortByDateTime = (a: Task, b: Task) => {
+    const aDate = a.due_date || ''
+    const bDate = b.due_date || ''
+    if (aDate !== bDate) return aDate.localeCompare(bDate)
     const aTime = a.scheduled_time || ''
     const bTime = b.scheduled_time || ''
     if (aTime && !bTime) return -1
@@ -198,10 +201,10 @@ function groupTasks(tasks: Task[]): TaskGroup[] {
     if (aTime !== bTime) return aTime.localeCompare(bTime)
     return (a.task_type || '').localeCompare(b.task_type || '')
   }
-  overdue.sort(sortByTime)
-  dueToday.sort(sortByTime)
-  thisWeek.sort(sortByTime)
-  later.sort(sortByTime)
+  overdue.sort(sortByDateTime)
+  dueToday.sort(sortByDateTime)
+  thisWeek.sort(sortByDateTime)
+  later.sort(sortByDateTime)
 
   const groups: TaskGroup[] = []
   if (overdue.length)   groups.push({ key: 'overdue', label: 'Overdue', headerClass: 'text-crimson', dotClass: 'bg-crimson', tasks: overdue, defaultCollapsed: false })
