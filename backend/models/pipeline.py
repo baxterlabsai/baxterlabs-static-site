@@ -196,6 +196,7 @@ class TaskCreate(BaseModel):
     priority: str = "normal"
     assigned_to: Optional[str] = None
     source_plugin: Optional[str] = None
+    plugin_tool: Optional[str] = None
 
 
 class TaskUpdate(BaseModel):
@@ -212,6 +213,7 @@ class TaskUpdate(BaseModel):
     status: Optional[str] = None
     assigned_to: Optional[str] = None
     outcome_notes: Optional[str] = None
+    plugin_tool: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------

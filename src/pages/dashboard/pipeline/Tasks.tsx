@@ -34,6 +34,7 @@ interface Task {
   assigned_to: string | null
   outcome_notes: string | null
   source_plugin: string | null
+  plugin_tool: string | null
   created_at: string
   created_by: string | null
   pipeline_companies: { id: string; name: string } | null
@@ -543,6 +544,14 @@ function TaskRow({ task, onToggle, onSnooze, onEdit, onDelete }: {
           {task.pipeline_opportunities && (
             <span className="text-xs text-teal truncate">{task.pipeline_opportunities.title}</span>
           )}
+          {task.plugin_tool && (
+            <>
+              {(task.pipeline_companies || task.pipeline_contacts || task.pipeline_opportunities) && (
+                <span className="text-xs text-gray-warm">&middot;</span>
+              )}
+              <span className="text-xs text-gray-warm italic truncate">{task.plugin_tool}</span>
+            </>
+          )}
         </div>
       </div>
 
@@ -607,6 +616,7 @@ export function TaskFormModal({ title, task, companies, contacts, showStatus, on
   const [contactId, setContactId] = useState(task?.contact_id || '')
   const [companySearch, setCompanySearch] = useState(task?.pipeline_companies?.name || '')
   const [contactSearch, setContactSearch] = useState(task?.pipeline_contacts?.name || '')
+  const [pluginTool, setPluginTool] = useState(task?.plugin_tool || '')
   const [showCompanyDropdown, setShowCompanyDropdown] = useState(false)
   const [showContactDropdown, setShowContactDropdown] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -639,6 +649,7 @@ export function TaskFormModal({ title, task, companies, contacts, showStatus, on
       if (scheduledTime) data.scheduled_time = scheduledTime
       if (scheduledEndTime) data.scheduled_end_time = scheduledEndTime
       if (description.trim()) data.description = description.trim()
+      if (pluginTool.trim()) data.plugin_tool = pluginTool.trim()
       if (companyId) data.company_id = companyId
       if (contactId) data.contact_id = contactId
       if (showStatus) data.status = status
@@ -650,6 +661,7 @@ export function TaskFormModal({ title, task, companies, contacts, showStatus, on
         if (!scheduledTime && task.scheduled_time) data.scheduled_time = null
         if (!scheduledEndTime && task.scheduled_end_time) data.scheduled_end_time = null
         if (!description.trim() && task.description) data.description = null
+        if (!pluginTool.trim() && task.plugin_tool) data.plugin_tool = null
       }
       await onSave(data)
     } catch (err: unknown) {
@@ -726,6 +738,12 @@ export function TaskFormModal({ title, task, companies, contacts, showStatus, on
               <label className="block text-sm font-semibold text-charcoal mb-1">End Time</label>
               <input type="time" value={scheduledEndTime} onChange={e => setScheduledEndTime(e.target.value)} className="w-full px-3 py-2 border border-gray-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal" />
             </div>
+          </div>
+
+          {/* Plugin / Tool */}
+          <div>
+            <label className="block text-sm font-semibold text-charcoal mb-1">Plugin / Tool</label>
+            <input type="text" value={pluginTool} onChange={e => setPluginTool(e.target.value)} placeholder="e.g. Sales: Draft Outreach, Claude in Chrome" className="w-full px-3 py-2 border border-gray-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal" />
           </div>
 
           {/* Company typeahead */}
