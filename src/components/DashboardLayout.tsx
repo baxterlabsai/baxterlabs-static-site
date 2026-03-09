@@ -214,7 +214,7 @@ export default function DashboardLayout() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
               </svg>
             </button>
-            <img src="/images/baxterlabs-logo.png" alt="BaxterLabs" className="h-8" />
+            <img src="/images/baxterlabs-logo.png" alt="BaxterLabs" className="h-[83px] w-auto" />
           </div>
 
           {/* User menu */}
