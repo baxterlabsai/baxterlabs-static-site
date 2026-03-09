@@ -303,6 +303,7 @@ export default function Overview() {
   const [cockpitCompanies, setCockpitCompanies] = useState<CockpitCompany[]>([])
   const [cockpitContacts, setCockpitContacts] = useState<CockpitContact[]>([])
   const [showCockpitAddTask, setShowCockpitAddTask] = useState(false)
+  const [cockpitEditTask, setCockpitEditTask] = useState<CockpitTask | null>(null)
   const [cockpitTomorrowOpen, setCockpitTomorrowOpen] = useState(false)
   const [contentPerf, setContentPerf] = useState<ContentPerformance | null>(null)
   const [loading, setLoading] = useState(true)
@@ -361,6 +362,12 @@ export default function Overview() {
   async function cockpitAddTask(data: Record<string, unknown>) {
     await apiPost('/api/pipeline/tasks', data)
     setShowCockpitAddTask(false)
+    loadCockpit()
+  }
+
+  async function cockpitUpdateTask(taskId: string, data: Record<string, unknown>) {
+    await apiPut(`/api/pipeline/tasks/${taskId}`, data)
+    setCockpitEditTask(null)
     loadCockpit()
   }
 
@@ -488,7 +495,7 @@ export default function Overview() {
                 </div>
                 <div className="divide-y divide-gray-light">
                   {cockpit.overdue.map(task => (
-                    <CockpitTaskRow key={task.id} task={task} onDone={() => cockpitDone(task.id)} onSnooze={() => cockpitSnooze(task.id)} formatDate={formatCockpitDate} navigate={navigate} variant="overdue" />
+                    <CockpitTaskRow key={task.id} task={task} onDone={() => cockpitDone(task.id)} onSnooze={() => cockpitSnooze(task.id)} onEdit={() => setCockpitEditTask(task)} formatDate={formatCockpitDate} navigate={navigate} variant="overdue" />
                   ))}
                 </div>
               </div>
@@ -502,7 +509,7 @@ export default function Overview() {
                 </div>
                 <div className="divide-y divide-gray-light">
                   {cockpit.due_today.map(task => (
-                    <CockpitTaskRow key={task.id} task={task} onDone={() => cockpitDone(task.id)} onSnooze={() => cockpitSnooze(task.id)} formatDate={formatCockpitDate} navigate={navigate} variant="today" />
+                    <CockpitTaskRow key={task.id} task={task} onDone={() => cockpitDone(task.id)} onSnooze={() => cockpitSnooze(task.id)} onEdit={() => setCockpitEditTask(task)} formatDate={formatCockpitDate} navigate={navigate} variant="today" />
                   ))}
                 </div>
               </div>
@@ -520,7 +527,7 @@ export default function Overview() {
                 {cockpitTomorrowOpen && (
                   <div className="divide-y divide-gray-light">
                     {cockpit.due_tomorrow.map(task => (
-                      <CockpitTaskRow key={task.id} task={task} onDone={() => cockpitDone(task.id)} onSnooze={() => cockpitSnooze(task.id)} formatDate={formatCockpitDate} navigate={navigate} variant="future" />
+                      <CockpitTaskRow key={task.id} task={task} onDone={() => cockpitDone(task.id)} onSnooze={() => cockpitSnooze(task.id)} onEdit={() => setCockpitEditTask(task)} formatDate={formatCockpitDate} navigate={navigate} variant="future" />
                     ))}
                   </div>
                 )}
@@ -542,6 +549,19 @@ export default function Overview() {
           contacts={cockpitContacts}
           onSave={cockpitAddTask}
           onClose={() => setShowCockpitAddTask(false)}
+        />
+      )}
+
+      {/* Edit Task Modal from cockpit */}
+      {cockpitEditTask && (
+        <TaskFormModal
+          title="Edit Task"
+          task={cockpitEditTask as any}
+          companies={cockpitCompanies}
+          contacts={cockpitContacts}
+          showStatus
+          onSave={data => cockpitUpdateTask(cockpitEditTask.id, data)}
+          onClose={() => setCockpitEditTask(null)}
         />
       )}
 
@@ -1232,10 +1252,11 @@ function formatCockpitTime(timeStr: string): string {
 // Cockpit Task Row
 // ---------------------------------------------------------------------------
 
-function CockpitTaskRow({ task, onDone, onSnooze, formatDate, navigate, variant }: {
+function CockpitTaskRow({ task, onDone, onSnooze, onEdit, formatDate, navigate, variant }: {
   task: CockpitTask
   onDone: () => void
   onSnooze: () => void
+  onEdit: () => void
   formatDate: (d: string | null) => string
   navigate: (path: string) => void
   variant: 'overdue' | 'today' | 'future'
@@ -1317,6 +1338,11 @@ function CockpitTaskRow({ task, onDone, onSnooze, formatDate, navigate, variant 
         <button onClick={onDone} className="p-1 text-gray-warm hover:text-teal transition-colors" title="Done">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+        </button>
+        <button onClick={onEdit} className="p-1 text-gray-warm hover:text-teal transition-colors" title="Edit">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
           </svg>
         </button>
         <button onClick={onSnooze} className="p-1 text-gray-warm hover:text-gold transition-colors" title="Snooze to tomorrow">

@@ -501,6 +501,7 @@ function TaskRow({ task, onToggle, onSnooze, onEdit, onDelete }: {
   onEdit: () => void
   onDelete: () => void
 }) {
+  const [descExpanded, setDescExpanded] = useState(false)
   const isComplete = task.status === 'complete' || task.status === 'skipped'
   const priority = PRIORITY_MAP[task.priority] || PRIORITY_MAP['normal']
   const isOverdue = !isComplete && task.due_date && task.due_date < todayStr()
@@ -561,6 +562,17 @@ function TaskRow({ task, onToggle, onSnooze, onEdit, onDelete }: {
             </>
           )}
         </div>
+        {task.description && (
+          <p className={`text-xs text-gray-warm mt-0.5 ${descExpanded ? 'whitespace-pre-wrap' : ''}`}>
+            {descExpanded ? task.description : task.description.length > 80 ? task.description.slice(0, 80) + '...' : task.description}
+            {!descExpanded && task.description.length > 80 && (
+              <button onClick={(e) => { e.stopPropagation(); setDescExpanded(true) }} className="ml-1 text-teal font-semibold hover:underline">more</button>
+            )}
+            {descExpanded && task.description.length > 80 && (
+              <button onClick={(e) => { e.stopPropagation(); setDescExpanded(false) }} className="ml-1 text-teal font-semibold hover:underline">less</button>
+            )}
+          </p>
+        )}
       </div>
 
       {/* Due date + scheduled time */}
