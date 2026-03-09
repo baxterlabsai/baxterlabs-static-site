@@ -52,6 +52,8 @@ VALID_TASK_TYPES = {
     "in_person", "conference",
     # Operational types
     "video_call", "review_draft", "prep", "follow_up", "admin", "other",
+    # Strategic types
+    "lead_gen", "content", "engagement",
 }
 VALID_COMPANY_TYPES = {"prospect", "partner", "connector"}
 VALID_LEAD_TIERS = {"tier_1", "tier_2", "tier_3"}
@@ -1435,6 +1437,9 @@ async def get_task_cockpit(user: dict = Depends(verify_partner_auth)):
                 cockpit["due_tomorrow"].append(task)
             elif due <= week_end:
                 cockpit["due_this_week"].append(task)
+
+    # Sort due_today by scheduled_time ASC, nulls last
+    cockpit["due_today"].sort(key=lambda t: (t.get("scheduled_time") is None, t.get("scheduled_time") or ""))
 
     cockpit["summary"]["overdue_count"] = len(cockpit["overdue"])
     cockpit["summary"]["today_count"] = len(cockpit["due_today"])

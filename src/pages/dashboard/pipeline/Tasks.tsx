@@ -88,6 +88,14 @@ const TASK_TYPE_GROUPS = [
       { key: 'other', label: 'Other', badge: 'bg-gray-100 text-gray-700' },
     ],
   },
+  {
+    label: 'Strategic',
+    types: [
+      { key: 'lead_gen', label: 'Lead Gen', badge: 'bg-emerald-100 text-emerald-700' },
+      { key: 'content', label: 'Content', badge: 'bg-purple-100 text-purple-700' },
+      { key: 'engagement', label: 'Engagement', badge: 'bg-orange-100 text-orange-700' },
+    ],
+  },
 ]
 
 const TASK_TYPE_MAP = Object.fromEntries(

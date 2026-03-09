@@ -129,6 +129,9 @@ interface CockpitTask {
   company_id: string | null
   contact_id: string | null
   due_date: string | null
+  scheduled_time: string | null
+  scheduled_end_time: string | null
+  plugin_tool: string | null
   priority: string
   status: string
   pipeline_companies: { id: string; name: string } | null
@@ -180,6 +183,9 @@ const COCKPIT_TYPE_LABELS: Record<string, string> = {
   follow_up: 'Follow-Up',
   admin: 'Admin',
   other: 'Other',
+  lead_gen: 'Lead Gen',
+  content: 'Content',
+  engagement: 'Engagement',
 }
 
 const COCKPIT_TYPE_BADGE: Record<string, string> = {
@@ -199,6 +205,9 @@ const COCKPIT_TYPE_BADGE: Record<string, string> = {
   follow_up: 'bg-gray-100 text-gray-700',
   admin: 'bg-gray-100 text-gray-700',
   other: 'bg-gray-100 text-gray-700',
+  lead_gen: 'bg-emerald-100 text-emerald-700',
+  content: 'bg-purple-100 text-purple-700',
+  engagement: 'bg-orange-100 text-orange-700',
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -1209,6 +1218,17 @@ export default function Overview() {
 
 
 // ---------------------------------------------------------------------------
+// Cockpit helpers
+// ---------------------------------------------------------------------------
+
+function formatCockpitTime(timeStr: string): string {
+  const [h, m] = timeStr.split(':').map(Number)
+  const suffix = h >= 12 ? 'PM' : 'AM'
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h
+  return `${h12}:${String(m).padStart(2, '0')} ${suffix}`
+}
+
+// ---------------------------------------------------------------------------
 // Cockpit Task Row
 // ---------------------------------------------------------------------------
 
@@ -1239,6 +1259,23 @@ function CockpitTaskRow({ task, onDone, onSnooze, formatDate, navigate, variant 
       <div className="flex-1 min-w-0">
         <span className="text-sm font-medium text-charcoal truncate block">{task.title}</span>
         <div className="flex items-center gap-1.5 mt-0.5">
+          {variant === 'today' && task.scheduled_time && (
+            <>
+              <span className="flex items-center gap-1 text-xs text-gray-warm">
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {formatCockpitTime(task.scheduled_time)}{task.scheduled_end_time ? ` – ${formatCockpitTime(task.scheduled_end_time)}` : ''}
+              </span>
+              <span className="text-xs text-gray-warm">&middot;</span>
+            </>
+          )}
+          {variant === 'today' && task.plugin_tool && (
+            <>
+              <span className="text-xs text-gray-warm italic truncate">{task.plugin_tool}</span>
+              {(task.pipeline_companies || task.pipeline_contacts) && <span className="text-xs text-gray-warm">&middot;</span>}
+            </>
+          )}
           {task.pipeline_companies && (
             <button
               onClick={() => navigate('/dashboard/pipeline/companies')}
