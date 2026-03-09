@@ -26,6 +26,8 @@ interface Task {
   contact_id: string | null
   opportunity_id: string | null
   due_date: string | null
+  scheduled_time: string | null
+  scheduled_end_time: string | null
   priority: string
   status: string
   completed_at: string | null
@@ -113,6 +115,22 @@ function formatDate(dateStr: string | null): string {
   return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
+function formatTime12(timeStr: string): string {
+  const [h, m] = timeStr.split(':').map(Number)
+  const suffix = h >= 12 ? 'PM' : 'AM'
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h
+  return `${h12}:${String(m).padStart(2, '0')} ${suffix}`
+}
+
+function formatDateWithTime(task: Task): string {
+  const datePart = formatDate(task.due_date)
+  if (!task.scheduled_time) return datePart
+  const startStr = formatTime12(task.scheduled_time)
+  if (!task.scheduled_end_time) return datePart ? `${datePart} · ${startStr}` : startStr
+  const endStr = formatTime12(task.scheduled_end_time)
+  return datePart ? `${datePart} · ${startStr}–${endStr}` : `${startStr}–${endStr}`
+}
+
 
 // ---------------------------------------------------------------------------
 // Grouping helper — groups by time bucket, sub-groups by task_type
@@ -154,12 +172,19 @@ function groupTasks(tasks: Task[]): TaskGroup[] {
     }
   }
 
-  // Sub-sort within each group by task_type for batching
-  const sortByType = (a: Task, b: Task) => (a.task_type || '').localeCompare(b.task_type || '')
-  overdue.sort(sortByType)
-  dueToday.sort(sortByType)
-  thisWeek.sort(sortByType)
-  later.sort(sortByType)
+  // Sub-sort within each group by scheduled_time ASC (nulls last), then task_type
+  const sortByTime = (a: Task, b: Task) => {
+    const aTime = a.scheduled_time || ''
+    const bTime = b.scheduled_time || ''
+    if (aTime && !bTime) return -1
+    if (!aTime && bTime) return 1
+    if (aTime !== bTime) return aTime.localeCompare(bTime)
+    return (a.task_type || '').localeCompare(b.task_type || '')
+  }
+  overdue.sort(sortByTime)
+  dueToday.sort(sortByTime)
+  thisWeek.sort(sortByTime)
+  later.sort(sortByTime)
 
   const groups: TaskGroup[] = []
   if (overdue.length)   groups.push({ key: 'overdue', label: 'Overdue', headerClass: 'text-crimson', dotClass: 'bg-crimson', tasks: overdue, defaultCollapsed: false })
@@ -521,10 +546,15 @@ function TaskRow({ task, onToggle, onSnooze, onEdit, onDelete }: {
         </div>
       </div>
 
-      {/* Due date */}
-      {task.due_date && (
-        <span className={`flex-shrink-0 text-xs font-medium ${isOverdue ? 'text-crimson' : isDueToday ? 'text-gold' : isComplete ? 'text-gray-warm' : 'text-charcoal'}`}>
-          {formatDate(task.due_date)}
+      {/* Due date + scheduled time */}
+      {(task.due_date || task.scheduled_time) && (
+        <span className={`flex-shrink-0 text-xs font-medium flex items-center gap-1 ${isOverdue ? 'text-crimson' : isDueToday ? 'text-gold' : isComplete ? 'text-gray-warm' : 'text-charcoal'}`}>
+          {task.scheduled_time && (
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          )}
+          {formatDateWithTime(task)}
         </span>
       )}
 
@@ -569,6 +599,8 @@ export function TaskFormModal({ title, task, companies, contacts, showStatus, on
   const [taskType, setTaskType] = useState(task?.task_type || 'follow_up')
   const [description, setDescription] = useState(task?.description || '')
   const [dueDate, setDueDate] = useState(task?.due_date || todayStr())
+  const [scheduledTime, setScheduledTime] = useState(task?.scheduled_time?.slice(0, 5) || '')
+  const [scheduledEndTime, setScheduledEndTime] = useState(task?.scheduled_end_time?.slice(0, 5) || '')
   const [priority, setPriority] = useState(task?.priority || 'normal')
   const [status, setStatus] = useState(task?.status || 'pending')
   const [companyId, setCompanyId] = useState(task?.company_id || '')
@@ -604,6 +636,8 @@ export function TaskFormModal({ title, task, companies, contacts, showStatus, on
         priority,
       }
       if (dueDate) data.due_date = dueDate
+      if (scheduledTime) data.scheduled_time = scheduledTime
+      if (scheduledEndTime) data.scheduled_end_time = scheduledEndTime
       if (description.trim()) data.description = description.trim()
       if (companyId) data.company_id = companyId
       if (contactId) data.contact_id = contactId
@@ -613,6 +647,8 @@ export function TaskFormModal({ title, task, companies, contacts, showStatus, on
         if (!companyId && task.company_id) data.company_id = null
         if (!contactId && task.contact_id) data.contact_id = null
         if (!dueDate && task.due_date) data.due_date = null
+        if (!scheduledTime && task.scheduled_time) data.scheduled_time = null
+        if (!scheduledEndTime && task.scheduled_end_time) data.scheduled_end_time = null
         if (!description.trim() && task.description) data.description = null
       }
       await onSave(data)
@@ -677,6 +713,18 @@ export function TaskFormModal({ title, task, companies, contacts, showStatus, on
                   </button>
                 ))}
               </div>
+            </div>
+          </div>
+
+          {/* Scheduled time row */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-charcoal mb-1">Start Time</label>
+              <input type="time" value={scheduledTime} onChange={e => setScheduledTime(e.target.value)} className="w-full px-3 py-2 border border-gray-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-charcoal mb-1">End Time</label>
+              <input type="time" value={scheduledEndTime} onChange={e => setScheduledEndTime(e.target.value)} className="w-full px-3 py-2 border border-gray-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal" />
             </div>
           </div>
 

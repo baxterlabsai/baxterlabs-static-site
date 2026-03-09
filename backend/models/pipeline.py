@@ -191,6 +191,8 @@ class TaskCreate(BaseModel):
     contact_id: Optional[str] = None
     opportunity_id: Optional[str] = None
     due_date: Optional[date] = None
+    scheduled_time: Optional[str] = None      # "HH:MM" or "HH:MM:SS"
+    scheduled_end_time: Optional[str] = None   # "HH:MM" or "HH:MM:SS"
     priority: str = "normal"
     assigned_to: Optional[str] = None
     source_plugin: Optional[str] = None
@@ -204,6 +206,8 @@ class TaskUpdate(BaseModel):
     contact_id: Optional[str] = None
     opportunity_id: Optional[str] = None
     due_date: Optional[date] = None
+    scheduled_time: Optional[str] = None      # "HH:MM" or "HH:MM:SS"
+    scheduled_end_time: Optional[str] = None   # "HH:MM" or "HH:MM:SS"
     priority: Optional[str] = None
     status: Optional[str] = None
     assigned_to: Optional[str] = None
