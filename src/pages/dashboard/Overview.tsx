@@ -1291,6 +1291,9 @@ function CockpitTaskRow({ task, onDone, onSnooze, formatDate, navigate, variant 
             </>
           )}
         </div>
+        {variant === 'today' && task.description && (
+          <p className="text-xs text-gray-warm mt-0.5 truncate">{task.description}</p>
+        )}
       </div>
 
       {/* Due date */}
