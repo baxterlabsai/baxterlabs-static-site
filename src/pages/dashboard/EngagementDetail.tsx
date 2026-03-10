@@ -261,16 +261,9 @@ export default function EngagementDetail() {
   const [deleting, setDeleting] = useState(false)
   const [reminderLoading, setReminderLoading] = useState<string | null>(null)
   const [lastReminders, setLastReminders] = useState<{ agreement: string; documents: string }>({ agreement: '', documents: '' })
-  const [expandedPhases, setExpandedPhases] = useState<Set<number>>(new Set())
-  const [seedingOutputs, setSeedingOutputs] = useState(false)
-  const [uploadingOutputId, setUploadingOutputId] = useState<string | null>(null)
-  const [acceptingOutputId, setAcceptingOutputId] = useState<string | null>(null)
-  const [acceptingPhase, setAcceptingPhase] = useState<number | null>(null)
   const [transcriptIntel, setTranscriptIntel] = useState<Array<{ contact_name: string; contact_title: string | null; analysis: { summary: string; key_findings: string[]; financial_indicators: string[]; notable_quotes: Array<{ quote: string; context: string }> } | null; citation: string; analyzed: boolean }>>([])
   const [dossierModalOpen, setDossierModalOpen] = useState(false)
   const [briefModalContent, setBriefModalContent] = useState<{ name: string; content: string } | null>(null)
-
-  const outputFileRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   // Phase output content (Cowork-synced)
   const [phaseOutputContent, setPhaseOutputContent] = useState<PhaseOutputContent[]>([])
@@ -578,39 +571,6 @@ export default function EngagementDetail() {
     return new Date(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
   }
 
-  const togglePhase = (phase: number) => {
-    setExpandedPhases(prev => {
-      const next = new Set(prev)
-      if (next.has(phase)) next.delete(phase)
-      else next.add(phase)
-      return next
-    })
-  }
-
-  const seedOutputs = async () => {
-    if (!id) return
-    setSeedingOutputs(true)
-    try {
-      await apiPost(`/api/engagements/${id}/seed-outputs`)
-      const d = await apiGet<EngagementData>(`/api/engagements/${id}`)
-      setData(d)
-    } catch {}
-    setSeedingOutputs(false)
-  }
-
-  const uploadPhaseOutput = async (outputId: string, file: File) => {
-    if (!id) return
-    setUploadingOutputId(outputId)
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      await apiUpload(`/api/phase-outputs/${outputId}/upload`, formData)
-      const d = await apiGet<EngagementData>(`/api/engagements/${id}`)
-      setData(d)
-    } catch {}
-    setUploadingOutputId(null)
-  }
-
   const togglePocPhase = (phase: number) => {
     setPocExpandedPhases(prev => {
       const next = new Set(prev)
@@ -707,28 +667,6 @@ export default function EngagementDetail() {
       setViewingVersionsId(outputId)
       setViewingVersionContent(null)
     } catch {}
-  }
-
-  const acceptPhaseOutput = async (outputId: string) => {
-    if (!id) return
-    setAcceptingOutputId(outputId)
-    try {
-      await apiPut(`/api/phase-outputs/${outputId}/accept`)
-      const d = await apiGet<EngagementData>(`/api/engagements/${id}`)
-      setData(d)
-    } catch {}
-    setAcceptingOutputId(null)
-  }
-
-  const acceptAllPhaseOutputs = async (phase: number) => {
-    if (!id) return
-    setAcceptingPhase(phase)
-    try {
-      await apiPut(`/api/engagements/${id}/phase-outputs/${phase}/accept-all`)
-      const d = await apiGet<EngagementData>(`/api/engagements/${id}`)
-      setData(d)
-    } catch {}
-    setAcceptingPhase(null)
   }
 
   if (loading) {
@@ -1035,8 +973,6 @@ export default function EngagementDetail() {
         }
 
         const activePhase = data.phase ?? 0
-        const hasAnyContent = phaseOutputContent.length > 0
-        const totalOutputs = phaseOutputContent.length + oldOutputs.length
 
         return (
           <section className="bg-white rounded-lg border border-gray-light p-5 mb-6">
@@ -1667,7 +1603,7 @@ export default function EngagementDetail() {
                           <p className="text-xs text-charcoal flex-1">Resend interview scheduling email to {c.name} at {c.email}?</p>
                           <button onClick={() => setResendConfirmContact(null)} className="text-xs text-gray-warm font-semibold px-2 py-1 rounded hover:bg-gray-light">Cancel</button>
                           <button
-                            onClick={() => resendInterviewEmail(c.id, c.name, c.email)}
+                            onClick={() => resendInterviewEmail(c.id, c.name, c.email || '')}
                             disabled={resendingInterviewId === c.id}
                             className="text-xs bg-teal text-white px-3 py-1 rounded font-semibold hover:bg-teal/90 disabled:opacity-50"
                           >
@@ -1676,7 +1612,7 @@ export default function EngagementDetail() {
                         </div>
                       ) : (
                         <button
-                          onClick={() => setResendConfirmContact({ id: c.id, name: c.name, email: c.email })}
+                          onClick={() => setResendConfirmContact({ id: c.id, name: c.name, email: c.email || '' })}
                           className="text-xs text-teal font-semibold hover:underline flex items-center gap-1"
                         >
                           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
