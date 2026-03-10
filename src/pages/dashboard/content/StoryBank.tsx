@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api'
+import SEO from '../../../components/SEO'
 
 interface Story {
   id: string
@@ -137,6 +138,7 @@ export default function StoryBank() {
 
   return (
     <div>
+      <SEO title="Story Bank | BaxterLabs Advisory — Dashboard" description="Capture and organize stories for content creation." />
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-display text-2xl font-bold text-[#66151C]">Story Bank</h1>

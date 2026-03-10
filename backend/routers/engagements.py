@@ -972,3 +972,40 @@ async def send_onboarding_email(
     })
 
     return {"status": "sent", "recipient": contact_email}
+
+
+class ResendInterviewEmailBody(BaseModel):
+    contact_id: str
+    contact_name: str
+    contact_email: str
+
+
+@router.post("/engagements/{engagement_id}/resend-interview-email")
+async def resend_interview_email(
+    engagement_id: str,
+    body: ResendInterviewEmailBody,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Resend the interview scheduling email to a specific contact."""
+    engagement = get_engagement_by_id(engagement_id)
+    if not engagement:
+        raise HTTPException(status_code=404, detail="Engagement not found")
+
+    client = engagement.get("clients", {})
+    company_name = client.get("company_name", "Unknown")
+    partner_lead = engagement.get("partner_lead", "George DeVries")
+
+    email_svc = get_email_service()
+    result = email_svc.send_interview_scheduling_email(
+        contact_name=body.contact_name,
+        contact_email=body.contact_email,
+        client_company_name=company_name,
+        partner_lead=partner_lead,
+    )
+
+    log_activity(engagement_id, "george", "interview_email_resent", {
+        "contact_name": body.contact_name,
+        "contact_email": body.contact_email,
+    })
+
+    return {"status": "sent", "recipient": body.contact_email}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api'
 import MarkdownContent from '../../../components/MarkdownContent'
+import SEO from '../../../components/SEO'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -364,6 +365,7 @@ export default function PipelineTasks() {
 
   return (
     <div>
+      <SEO title="Tasks | BaxterLabs Advisory — Dashboard" description="Manage and track pipeline tasks and follow-ups." />
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -408,6 +410,11 @@ export default function PipelineTasks() {
             </button>
           ))}
         </div>
+
+        {/* Priority legend */}
+        <span className="text-[11px] text-gray-warm flex items-center gap-1 cursor-help" title="A crimson dot next to a task indicates high priority. No dot means normal or low priority.">
+          <span className="w-2 h-2 rounded-full bg-crimson inline-block" /> = High priority
+        </span>
 
         {/* Search */}
         <div className="relative flex-1 min-w-[200px]">
@@ -533,10 +540,19 @@ function TaskRow({ task, onToggle, onSnooze, onEdit, onDelete }: {
         )}
       </button>
 
-      {/* Task type badge */}
-      <span className={`flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${typeInfo.badge}`}>
-        {typeInfo.label}
-      </span>
+      {/* Due date + scheduled time (moved before type badge) */}
+      {(task.due_date || task.scheduled_time) ? (
+        <span className={`flex-shrink-0 text-xs font-medium flex items-center gap-1 min-w-[70px] ${isOverdue ? 'text-crimson' : isDueToday ? 'text-gold' : isComplete ? 'text-gray-warm' : 'text-charcoal'}`}>
+          {task.scheduled_time && (
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          )}
+          {formatDateWithTime(task)}
+        </span>
+      ) : (
+        <span className="flex-shrink-0 min-w-[70px]" />
+      )}
 
       {/* Priority dot (only if high) */}
       {task.priority === 'high' && (
@@ -605,16 +621,10 @@ function TaskRow({ task, onToggle, onSnooze, onEdit, onDelete }: {
         )}
       </div>
 
-      {/* Due date + scheduled time */}
-      {(task.due_date || task.scheduled_time) && (
-        <span className={`flex-shrink-0 text-xs font-medium flex items-center gap-1 ${isOverdue ? 'text-crimson' : isDueToday ? 'text-gold' : isComplete ? 'text-gray-warm' : 'text-charcoal'}`}>
-          {task.scheduled_time && (
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          )}
-          {formatDateWithTime(task)}
-        </span>
+      {/* Task type badge (moved to right side) */}
+      <span className={`flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${typeInfo.badge}`}>
+        {typeInfo.label}
+      </span>
       )}
 
       {/* Actions */}

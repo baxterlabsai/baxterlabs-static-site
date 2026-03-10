@@ -171,7 +171,7 @@ export default function DeliverablePortal() {
             <img
               src="/images/baxterlabs-logo.png"
               alt="BaxterLabs Advisory"
-              className="h-15"
+              className="h-[83px] w-auto"
             />
           </div>
         </header>
@@ -231,7 +231,7 @@ export default function DeliverablePortal() {
           <img
             src="/images/baxterlabs-logo.png"
             alt="BaxterLabs Advisory"
-            className="h-15"
+            className="h-[83px] w-auto"
           />
         </div>
       </header>

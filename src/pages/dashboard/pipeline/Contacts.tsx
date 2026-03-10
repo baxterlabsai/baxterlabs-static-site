@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api'
 import { formatPhone, stripPhone } from '../../../lib/formatPhone'
+import SEO from '../../../components/SEO'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -202,6 +203,7 @@ export default function PipelineContacts() {
 
   return (
     <div>
+      <SEO title="Contacts | BaxterLabs Advisory — Dashboard" description="Browse and manage pipeline contacts." />
       {/* Header */}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

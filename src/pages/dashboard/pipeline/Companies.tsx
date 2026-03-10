@@ -4,6 +4,7 @@ import { apiGet, apiPost, apiPut, apiDelete, apiUpload } from '../../../lib/api'
 import MarkdownContent from '../../../components/MarkdownContent'
 import ResearchModal from '../../../components/ResearchModal'
 import TranscriptUpload from '../../../components/TranscriptUpload'
+import SEO from '../../../components/SEO'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -217,6 +218,7 @@ export default function PipelineCompanies() {
 
   return (
     <div>
+      <SEO title="Companies | BaxterLabs Advisory — Dashboard" description="Browse and manage pipeline companies." />
       {/* Header */}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

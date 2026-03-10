@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { apiGet, apiPatch, apiPost, apiPut } from '../../lib/api'
+import SEO from '../../components/SEO'
 
 interface ContentPerformance {
   published_this_month: number
@@ -449,6 +450,7 @@ export default function Overview() {
 
   return (
     <div>
+      <SEO title="BaxterLabs Advisory — Dashboard" description="Partner dashboard overview." />
       {/* Today's Work Cockpit */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">

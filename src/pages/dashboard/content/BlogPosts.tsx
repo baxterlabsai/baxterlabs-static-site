@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiGet } from '../../../lib/api'
+import SEO from '../../../components/SEO'
 
 interface Post {
   id: string
@@ -55,6 +56,7 @@ export default function BlogPosts() {
 
   return (
     <div>
+      <SEO title="Blog | BaxterLabs Advisory — Dashboard" description="Manage and publish blog posts." />
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-display text-2xl font-bold text-[#66151C]">Blog Posts</h1>
         <button

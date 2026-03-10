@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api'
 import MarkdownContent from '../../../components/MarkdownContent'
+import SEO from '../../../components/SEO'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -422,6 +423,7 @@ export default function PipelineBoard() {
 
   return (
     <div>
+      <SEO title="Pipeline | BaxterLabs Advisory — Dashboard" description="Manage opportunities across pipeline stages." />
       {/* Header */}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

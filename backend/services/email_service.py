@@ -113,7 +113,7 @@ class EmailService:
         <!-- Footer -->
         <tr><td style="height:1px;background-color:{GOLD};"></td></tr>
         <tr><td style="background-color:{TEAL};padding:20px;text-align:center;">
-          <span style="color:rgba(255,255,255,0.7);font-size:12px;">&copy; 2026 BaxterLabs Advisory &middot; baxterlabs.ai</span>
+          <span style="color:rgba(255,255,255,0.7);font-size:12px;">&copy; 2026 BaxterLabs Advisory</span>
         </td></tr>
       </table>
     </td></tr>
@@ -356,6 +356,41 @@ class EmailService:
         """
         return self._send_email(
             DEFAULT_PARTNER_EMAIL, f"Document Uploaded: {company} — {item_display_name}", body,
+            from_email=EMAIL_INFO, from_name="BaxterLabs",
+        )
+
+    def send_documents_uploaded_batch_notification(self, engagement: dict, files: list) -> dict:
+        """Notify partner: batch of documents uploaded in a single session."""
+        client = engagement.get("clients", {})
+        company = client.get("company_name", "Unknown")
+        count = len(files)
+        rows = ""
+        for f in files:
+            rows += (
+                f'<tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;">{f["item_name"]}</td>'
+                f'<td style="padding:8px;border-bottom:1px solid #E5E7EB;">{f["category"].title()}</td>'
+                f'<td style="padding:8px;border-bottom:1px solid #E5E7EB;">{f["filename"]}</td></tr>'
+            )
+        body = f"""
+        <h2 style="color:{CRIMSON};font-family:Georgia,serif;margin-top:0;">Documents Uploaded ({count})</h2>
+        <p><strong>{company}</strong> uploaded {count} document{"s" if count != 1 else ""} in this session.</p>
+        <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+          <tr style="background-color:{IVORY};">
+            <th style="padding:8px;border-bottom:2px solid {GOLD};text-align:left;font-weight:600;">Item</th>
+            <th style="padding:8px;border-bottom:2px solid {GOLD};text-align:left;font-weight:600;">Category</th>
+            <th style="padding:8px;border-bottom:2px solid {GOLD};text-align:left;font-weight:600;">Filename</th>
+          </tr>
+          {rows}
+        </table>
+        <p style="margin-top:24px;">
+          <a href="{self.frontend_url}/dashboard/engagement/{engagement.get('id')}"
+             style="display:inline-block;padding:12px 24px;background-color:{CRIMSON};color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">
+            View Engagement
+          </a>
+        </p>
+        """
+        return self._send_email(
+            DEFAULT_PARTNER_EMAIL, f"{count} Document{'s' if count != 1 else ''} Uploaded: {company}", body,
             from_email=EMAIL_INFO, from_name="BaxterLabs",
         )
 
@@ -808,7 +843,7 @@ class EmailService:
         <p>Hi {contact_name},</p>
         <p><strong>{client_company_name}</strong> has engaged BaxterLabs Advisory for an Operational Diagnostic,
         and you've been identified as a key voice in the process.</p>
-        <p>As part of the engagement, we conduct confidential 45-minute leadership interviews with select members
+        <p>As part of the engagement, we conduct confidential 60-minute leadership interviews with select members
         of the team. These conversations are candid, structured, and designed to surface operational insights
         that don't always show up in the numbers.</p>
         <p>Please use the link below to choose a time that works for you:</p>

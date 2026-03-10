@@ -256,7 +256,7 @@ export default function Calendar() {
   return (
     <div>
       <SEO
-        title="Capacity Calendar | BaxterLabs Advisory"
+        title="Calendar | BaxterLabs Advisory — Dashboard"
         description="Gantt-style timeline view of all active engagements."
       />
 

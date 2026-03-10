@@ -122,3 +122,52 @@ async def convert_and_upload_pdf(
 
     logger.info(f"Converted and uploaded PDF for {deliverable_type}: {pdf_storage_path}")
     return pdf_storage_path
+
+
+async def convert_phase_output_to_pdf(
+    sb,
+    source_storage_path: str,
+    engagement_id: str,
+    output_name: str,
+    version: int,
+) -> Optional[str]:
+    """Download a phase output binary from Supabase, convert to PDF, upload, return path.
+
+    Returns:
+        The storage path of the uploaded PDF, or None on failure.
+    """
+    try:
+        source_bytes = sb.storage.from_("engagements").download(source_storage_path)
+    except Exception as e:
+        logger.error(f"Failed to download phase output for conversion: {e}")
+        return None
+
+    _, ext = os.path.splitext(source_storage_path)
+    if not ext:
+        return None
+
+    try:
+        pdf_bytes = await convert_to_pdf(source_bytes, ext)
+    except ConversionError as e:
+        logger.error(f"Phase output PDF conversion failed: {e}")
+        return None
+
+    safe_name = output_name.replace(" ", "_").replace("/", "_")
+    pdf_storage_path = f"{engagement_id}/phase-outputs/pdf/{safe_name}_v{version}.pdf"
+
+    try:
+        try:
+            sb.storage.from_("engagements").remove([pdf_storage_path])
+        except Exception:
+            pass
+        sb.storage.from_("engagements").upload(
+            pdf_storage_path,
+            pdf_bytes,
+            {"content-type": "application/pdf"},
+        )
+    except Exception as e:
+        logger.error(f"Failed to upload phase output PDF: {e}")
+        return None
+
+    logger.info(f"Converted phase output to PDF: {pdf_storage_path}")
+    return pdf_storage_path

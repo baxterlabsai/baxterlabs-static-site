@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { apiGet, apiPost, apiPut, apiPatch, apiUpload, apiDelete } from '../../lib/api'
 import { useToast } from '../../components/Toast'
+import SEO from '../../components/SEO'
 import ResearchModal from '../../components/ResearchModal'
 import EngagementContactSlideOver from './EngagementContactSlideOver'
 import MarkdownContent from '../../components/MarkdownContent'
@@ -25,6 +26,23 @@ interface PhaseOutput {
   accepted_at: string | null
   accepted_by: string | null
   download_url?: string | null
+}
+
+interface PhaseOutputContent {
+  id: string
+  engagement_id: string
+  phase_number: number
+  output_name: string
+  output_type: string
+  content_md: string | null
+  storage_path: string | null
+  storage_path_url: string | null
+  pdf_storage_path: string | null
+  pdf_storage_path_url: string | null
+  version: number
+  status: string
+  created_at: string
+  updated_at: string
 }
 
 interface DocumentRecord {
@@ -253,6 +271,22 @@ export default function EngagementDetail() {
   const [briefModalContent, setBriefModalContent] = useState<{ name: string; content: string } | null>(null)
 
   const outputFileRefs = useRef<Record<string, HTMLInputElement | null>>({})
+
+  // Phase output content (Cowork-synced)
+  const [phaseOutputContent, setPhaseOutputContent] = useState<PhaseOutputContent[]>([])
+  const [pocExpandedPhases, setPocExpandedPhases] = useState<Set<number>>(new Set())
+  const [editingOutputId, setEditingOutputId] = useState<string | null>(null)
+  const [editInstruction, setEditInstruction] = useState('')
+  const [approvingOutputId, setApprovingOutputId] = useState<string | null>(null)
+  const [approveConfirmId, setApproveConfirmId] = useState<string | null>(null)
+  const [copiedEdit, setCopiedEdit] = useState<string | null>(null)
+  const [copiedSendDeliverables, setCopiedSendDeliverables] = useState(false)
+  const [viewingVersionsId, setViewingVersionsId] = useState<string | null>(null)
+  const [versionHistory, setVersionHistory] = useState<Array<{ id: string; version: number; status: string; content_md: string | null; created_at: string }>>([])
+  const [viewingVersionContent, setViewingVersionContent] = useState<string | null>(null)
+  const [resendingInterviewId, setResendingInterviewId] = useState<string | null>(null)
+  const [resendConfirmContact, setResendConfirmContact] = useState<{ id: string; name: string; email: string } | null>(null)
+
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null)
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -325,6 +359,13 @@ export default function EngagementDetail() {
     apiGet<{ contacts: typeof transcriptIntel }>(`/api/engagements/${id}/transcript-intelligence`)
       .then(res => setTranscriptIntel(res.contacts || []))
       .catch(() => {})
+    // Fetch phase output content (Cowork-synced)
+    apiGet<{ outputs: PhaseOutputContent[] }>(`/api/engagements/${id}/phase-output-content`)
+      .then(res => {
+        setPhaseOutputContent(res.outputs || [])
+        // Auto-expand the active phase
+      })
+      .catch(() => {})
   }, [id])
 
   const triggerResearch = async (type: 'discovery' | 'interviews') => {
@@ -365,7 +406,7 @@ export default function EngagementDetail() {
     const rawName = data.clients.company_name
     const slug = rawName.replace(/,?\s*(Inc\.?|LLC|Corp\.?|Ltd\.?)$/i, '').replace(/[^a-zA-Z0-9]/g, '')
     const year = data.start_date ? new Date(data.start_date).getFullYear() : new Date().getFullYear()
-    return `/run-phase ${phase} ${slug}_${year}`
+    return `/baxterlabs-advisory:run-phase ${phase} ${slug}_${year}`
   }
 
   const copyPhaseCommand = async (phase: number) => {
@@ -570,6 +611,104 @@ export default function EngagementDetail() {
     setUploadingOutputId(null)
   }
 
+  const togglePocPhase = (phase: number) => {
+    setPocExpandedPhases(prev => {
+      const next = new Set(prev)
+      if (next.has(phase)) next.delete(phase)
+      else next.add(phase)
+      return next
+    })
+  }
+
+  const refreshPhaseOutputContent = async () => {
+    if (!id) return
+    try {
+      const res = await apiGet<{ outputs: PhaseOutputContent[] }>(`/api/engagements/${id}/phase-output-content`)
+      setPhaseOutputContent(res.outputs || [])
+    } catch {}
+  }
+
+  const getEngagementSlug = () => {
+    if (!data) return ''
+    const rawName = data.clients.company_name
+    const slug = rawName.replace(/,?\s*(Inc\.?|LLC|Corp\.?|Ltd\.?)$/i, '').replace(/[^a-zA-Z0-9]/g, '')
+    const year = data.start_date ? new Date(data.start_date).getFullYear() : new Date().getFullYear()
+    return `${slug}_${year}`
+  }
+
+  const copyEditCommand = (outputName: string) => {
+    const cmd = `/baxterlabs-advisory:edit-deliverable ${outputName} ${getEngagementSlug()} "${editInstruction}"`
+    navigator.clipboard.writeText(cmd).catch(() => {
+      const ta = document.createElement('textarea')
+      ta.value = cmd
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    })
+    setCopiedEdit(outputName)
+    toast(`Copied edit command`)
+    setTimeout(() => setCopiedEdit(null), 2000)
+  }
+
+  const approveOutput = async (outputId: string) => {
+    setApprovingOutputId(outputId)
+    try {
+      await apiPut(`/api/phase-output-content/${outputId}/approve`)
+      await refreshPhaseOutputContent()
+      toast('Deliverable approved', 'success')
+    } catch {
+      toast('Approval failed', 'error')
+    }
+    setApprovingOutputId(null)
+    setApproveConfirmId(null)
+  }
+
+  const copySendDeliverablesCommand = () => {
+    const cmd = `/baxterlabs-advisory:send-deliverables ${getEngagementSlug()}`
+    navigator.clipboard.writeText(cmd).catch(() => {
+      const ta = document.createElement('textarea')
+      ta.value = cmd
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    })
+    setCopiedSendDeliverables(true)
+    toast('Copied send-deliverables command')
+    setTimeout(() => setCopiedSendDeliverables(false), 2000)
+  }
+
+  const resendInterviewEmail = async (contactId: string, contactName: string, contactEmail: string) => {
+    if (!id) return
+    setResendingInterviewId(contactId)
+    try {
+      await apiPost(`/api/engagements/${id}/resend-interview-email`, {
+        contact_id: contactId,
+        contact_name: contactName,
+        contact_email: contactEmail,
+      })
+      toast(`Interview email resent to ${contactName}`, 'success')
+    } catch {
+      toast('Failed to resend interview email', 'error')
+    }
+    setResendingInterviewId(null)
+    setResendConfirmContact(null)
+  }
+
+  const loadVersionHistory = async (outputId: string) => {
+    if (viewingVersionsId === outputId) {
+      setViewingVersionsId(null)
+      return
+    }
+    try {
+      const res = await apiGet<{ versions: typeof versionHistory }>(`/api/phase-output-content/${outputId}/versions`)
+      setVersionHistory(res.versions || [])
+      setViewingVersionsId(outputId)
+      setViewingVersionContent(null)
+    } catch {}
+  }
+
   const acceptPhaseOutput = async (outputId: string) => {
     if (!id) return
     setAcceptingOutputId(outputId)
@@ -627,6 +766,7 @@ export default function EngagementDetail() {
 
   return (
     <div className="max-w-5xl">
+      <SEO title={`BaxterLabs Advisory — ${client.company_name}`} description={`Engagement detail for ${client.company_name}`} />
       {/* Header */}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -872,198 +1012,354 @@ export default function EngagementDetail() {
         </section>
       )}
 
-      {/* Phase Outputs Viewer — ALWAYS visible */}
+      {/* Phase Outputs — Dynamic Cowork-synced viewer */}
       {data && (() => {
-        const outputs = data.phase_outputs || []
-        const phaseGroups: Record<number, PhaseOutput[]> = {}
-        for (const o of outputs) {
-          if (!phaseGroups[o.phase]) phaseGroups[o.phase] = []
-          phaseGroups[o.phase].push(o)
-        }
         const PHASE_TIMING: Record<number, string> = {
           0: 'Pre-Engagement', 1: 'Days 1–3', 2: 'Days 4–6', 3: 'Days 7–9',
           4: 'Days 10–11', 5: 'Days 12–13', 6: 'Pre-Delivery', 7: 'Post-Debrief',
         }
-        const totalAccepted = outputs.filter(o => o.status === 'accepted').length
+
+        // Group phase_output_content by phase
+        const pocByPhase: Record<number, PhaseOutputContent[]> = {}
+        for (const o of phaseOutputContent) {
+          if (!pocByPhase[o.phase_number]) pocByPhase[o.phase_number] = []
+          pocByPhase[o.phase_number].push(o)
+        }
+
+        // Also keep old phase_outputs for phases that haven't been synced yet
+        const oldOutputs = data.phase_outputs || []
+        const oldByPhase: Record<number, PhaseOutput[]> = {}
+        for (const o of oldOutputs) {
+          if (!oldByPhase[o.phase]) oldByPhase[o.phase] = []
+          oldByPhase[o.phase].push(o)
+        }
+
+        const activePhase = data.phase ?? 0
+        const hasAnyContent = phaseOutputContent.length > 0
+        const totalOutputs = phaseOutputContent.length + oldOutputs.length
 
         return (
           <section className="bg-white rounded-lg border border-gray-light p-5 mb-6">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="font-display text-lg font-bold text-teal">Phase Outputs</h3>
-                {outputs.length > 0 && (
-                  <p className="text-xs text-gray-warm mt-0.5">{totalAccepted} of {outputs.length} outputs accepted across 8 phases</p>
-                )}
+                <p className="text-xs text-gray-warm mt-0.5">
+                  {phaseOutputContent.length > 0
+                    ? `${phaseOutputContent.length} output${phaseOutputContent.length !== 1 ? 's' : ''} synced from Cowork`
+                    : 'Outputs will appear here as phases are completed in Cowork'}
+                </p>
               </div>
-              {outputs.length === 0 && (
-                <button
-                  onClick={seedOutputs}
-                  disabled={seedingOutputs}
-                  className="px-4 py-2 bg-crimson text-white text-sm font-semibold rounded-lg hover:bg-crimson/90 disabled:opacity-50"
-                >
-                  {seedingOutputs ? 'Creating...' : 'Initialize Phase Outputs'}
-                </button>
-              )}
             </div>
 
-            {outputs.length === 0 ? (
-              <div className="py-6 text-center">
-                <svg className="mx-auto w-10 h-10 text-gray-warm/50 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                </svg>
-                <p className="text-gray-warm text-sm mb-1">No phase outputs created yet.</p>
-                <p className="text-gray-warm text-xs">Click "Initialize Phase Outputs" to set up all 23 output tracking records.</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {[0, 1, 2, 3, 4, 5, 6, 7].map(phase => {
-                  const phaseOutputs = phaseGroups[phase] || []
-                  if (phaseOutputs.length === 0) return null
-                  const accepted = phaseOutputs.filter(o => o.status === 'accepted').length
-                  const uploaded = phaseOutputs.filter(o => o.status === 'uploaded').length
-                  const total = phaseOutputs.length
-                  const allAccepted = accepted === total
-                  const isGate = REVIEW_GATE_PHASES.has(phase)
-                  const isExpanded = expandedPhases.has(phase)
+            <div className="space-y-2">
+              {[0, 1, 2, 3, 4, 5, 6, 7].map(phase => {
+                const pocOutputs = pocByPhase[phase] || []
+                const oldPhaseOutputs = oldByPhase[phase] || []
 
-                  return (
-                    <div key={phase} className={`border rounded-lg overflow-hidden ${allAccepted ? 'border-green/30' : 'border-gray-light'}`}>
-                      {/* Phase header */}
-                      <button
-                        onClick={() => togglePhase(phase)}
-                        className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-ivory/50 transition-colors cursor-pointer"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <span className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                            allAccepted ? 'bg-teal text-white' : uploaded > 0 || accepted > 0 ? 'bg-crimson/10 text-crimson' : 'bg-crimson text-white'
-                          }`}>
-                            {allAccepted ? (
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                            ) : phase}
-                          </span>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-semibold text-charcoal text-sm">{PHASE_NAMES[phase]}</span>
-                              <span className="text-xs text-gray-warm">{PHASE_TIMING[phase]}</span>
-                              {isGate && (
-                                <span className="inline-flex items-center gap-1 text-xs bg-amber/10 text-amber px-1.5 py-0.5 rounded">
-                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" /></svg>
-                                  Review Gate
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs text-gray-warm mt-0.5">{accepted} of {total} accepted{uploaded > 0 ? ` · ${uploaded} awaiting review` : ''}</p>
+                // Skip phases with no content at all
+                if (pocOutputs.length === 0 && oldPhaseOutputs.length === 0) return null
+
+                const isGate = REVIEW_GATE_PHASES.has(phase)
+                const isActive = phase === activePhase
+                const isPocExpanded = pocExpandedPhases.has(phase) || (isActive && !pocExpandedPhases.has(-1))
+
+                return (
+                  <div key={phase} className={`border rounded-lg overflow-hidden ${isActive ? 'border-teal' : 'border-gray-light'}`}>
+                    {/* Phase header */}
+                    <button
+                      onClick={() => togglePocPhase(phase)}
+                      className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-ivory/50 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                          data.phase > phase ? 'bg-teal text-white' :
+                          isActive ? 'bg-crimson text-white' :
+                          'bg-gray-light text-gray-warm'
+                        }`}>
+                          {data.phase > phase ? (
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                          ) : phase}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-charcoal text-sm">{PHASE_NAMES[phase]}</span>
+                            <span className="text-xs text-gray-warm">{PHASE_TIMING[phase]}</span>
+                            {isGate && (
+                              <span className="inline-flex items-center gap-1 text-xs bg-amber/10 text-amber px-1.5 py-0.5 rounded">
+                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" /></svg>
+                                Review Gate
+                              </span>
+                            )}
                           </div>
+                          <p className="text-xs text-gray-warm mt-0.5">
+                            {pocOutputs.length > 0 ? `${pocOutputs.length} output${pocOutputs.length !== 1 ? 's' : ''}` : 'No synced outputs yet'}
+                          </p>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          {/* Copy command button */}
-                          <button
-                            onClick={e => { e.stopPropagation(); copyPhaseCommand(phase) }}
-                            className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded font-semibold transition-colors ${
-                              copiedCommand === phase
-                                ? 'bg-teal/10 text-teal'
-                                : 'bg-ivory text-teal hover:bg-teal/10'
-                            }`}
-                            title={getPhaseCommand(phase)}
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
-                            {copiedCommand === phase ? 'Copied!' : 'Copy Command'}
-                          </button>
-                          <svg className={`w-4 h-4 text-gray-warm transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </div>
-                      </button>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          onClick={e => { e.stopPropagation(); copyPhaseCommand(phase) }}
+                          className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded font-semibold transition-colors ${
+                            copiedCommand === phase
+                              ? 'bg-teal/10 text-teal'
+                              : 'bg-ivory text-teal hover:bg-teal/10'
+                          }`}
+                          title={getPhaseCommand(phase)}
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                          {copiedCommand === phase ? 'Copied!' : 'Copy Command'}
+                        </button>
+                        <svg className={`w-4 h-4 text-gray-warm transition-transform ${isPocExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </button>
 
-                      {/* Phase outputs list */}
-                      {isExpanded && (
-                        <div className="border-t border-gray-light">
-                          {/* Accept All button */}
-                          {uploaded > 0 && (
-                            <div className="px-4 py-2 bg-ivory/50 border-b border-gray-light flex justify-end">
+                    {/* Expanded content */}
+                    {isPocExpanded && (
+                      <div className="border-t border-gray-light">
+                        {/* Send to Client button for Phase 5 when all deliverables approved */}
+                        {phase === 5 && pocOutputs.length > 0 && (() => {
+                          const PHASE5_DELIVERABLES = ['Executive Summary', 'Full Diagnostic Report', 'Presentation Deck', '90-Day Implementation Roadmap']
+                          const phase5Deliverables = pocOutputs.filter(o => PHASE5_DELIVERABLES.includes(o.output_name))
+                          const allApproved = phase5Deliverables.length === 4 && phase5Deliverables.every(o => o.status === 'approved')
+                          if (!allApproved) return null
+                          return (
+                            <div className="px-4 py-3 bg-green/5 border-b border-green/20 flex items-center justify-between">
+                              <p className="text-sm font-semibold text-green">All deliverables approved</p>
                               <button
-                                onClick={() => acceptAllPhaseOutputs(phase)}
-                                disabled={acceptingPhase === phase}
-                                className="text-xs bg-teal text-white px-3 py-1.5 rounded font-semibold hover:bg-teal/90 disabled:opacity-50"
+                                onClick={copySendDeliverablesCommand}
+                                className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-semibold transition-colors ${
+                                  copiedSendDeliverables ? 'bg-teal/10 text-teal' : 'bg-teal text-white hover:bg-teal/90'
+                                }`}
                               >
-                                {acceptingPhase === phase ? 'Accepting...' : `Accept All Phase ${phase}`}
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                                {copiedSendDeliverables ? 'Copied!' : 'Copy Send to Client Command'}
                               </button>
                             </div>
-                          )}
+                          )
+                        })()}
+
+                        {pocOutputs.length > 0 ? (
                           <div className="divide-y divide-gray-light">
-                            {phaseOutputs.map(output => (
+                            {pocOutputs.map(output => {
+                              const PHASE5_DELIVERABLES = ['Executive Summary', 'Full Diagnostic Report', 'Presentation Deck', '90-Day Implementation Roadmap']
+                              const isPhase5Deliverable = phase === 5 && PHASE5_DELIVERABLES.includes(output.output_name)
+                              const isEditing = editingOutputId === output.id
+
+                              return (
+                              <div key={output.id} className="px-4 py-4">
+                                <div className="flex items-center gap-3 mb-2">
+                                  {/* File type icon */}
+                                  <span className="w-8 h-8 rounded bg-ivory flex items-center justify-center text-xs font-bold text-gray-warm flex-shrink-0">
+                                    {FILE_TYPE_ICONS[output.output_type] || '?'}
+                                  </span>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold text-charcoal">{output.output_name}</p>
+                                    <p className="text-xs text-gray-warm">
+                                      .{output.output_type} · Version {output.version}
+                                      {output.updated_at ? ` · ${formatDate(output.updated_at)}` : ''}
+                                    </p>
+                                  </div>
+                                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                                    output.status === 'approved' ? 'bg-green/10 text-green' : 'bg-amber/10 text-amber'
+                                  }`}>
+                                    {output.status === 'approved' ? 'Approved' : 'Draft'}
+                                  </span>
+                                  {/* Download buttons for binary files */}
+                                  {output.output_type !== 'md' && (
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                      {output.storage_path_url && (
+                                        <a href={output.storage_path_url} target="_blank" rel="noreferrer" className="text-xs text-teal font-semibold hover:underline">
+                                          Download
+                                        </a>
+                                      )}
+                                    </div>
+                                  )}
+                                  {/* Phase 5 deliverable actions: Approve + Version history */}
+                                  {isPhase5Deliverable && (
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                      {output.version > 1 && (
+                                        <button
+                                          onClick={() => loadVersionHistory(output.id)}
+                                          className="text-xs text-gray-warm hover:text-teal font-semibold"
+                                        >
+                                          {viewingVersionsId === output.id ? 'Hide versions' : `v${output.version}`}
+                                        </button>
+                                      )}
+                                      {output.status === 'draft' && (
+                                        <button
+                                          onClick={() => setApproveConfirmId(output.id)}
+                                          disabled={approvingOutputId === output.id}
+                                          className="text-xs bg-green text-white px-3 py-1 rounded font-semibold hover:bg-green/90 disabled:opacity-50"
+                                        >
+                                          {approvingOutputId === output.id ? '...' : 'Approve'}
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Approve confirmation dialog */}
+                                {approveConfirmId === output.id && (
+                                  <div className="mt-2 mb-3 p-3 bg-amber/5 border border-amber/20 rounded-lg flex items-center justify-between">
+                                    <p className="text-sm text-charcoal">Approve <strong>{output.output_name}</strong> for client delivery? This will generate the final PDF.</p>
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                      <button onClick={() => setApproveConfirmId(null)} className="text-xs text-gray-warm font-semibold px-3 py-1 rounded hover:bg-gray-light">Cancel</button>
+                                      <button
+                                        onClick={() => approveOutput(output.id)}
+                                        disabled={approvingOutputId === output.id}
+                                        className="text-xs bg-green text-white px-3 py-1 rounded font-semibold hover:bg-green/90 disabled:opacity-50"
+                                      >
+                                        {approvingOutputId === output.id ? 'Approving...' : 'Confirm Approve'}
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Render markdown content inline */}
+                                {output.output_type === 'md' && output.content_md && (
+                                  <div className="mt-3 border border-gray-light rounded-lg p-4 bg-ivory/30 max-h-[600px] overflow-y-auto">
+                                    <MarkdownContent content={output.content_md} />
+                                  </div>
+                                )}
+
+                                {/* Render PDF embed for binary files */}
+                                {output.output_type !== 'md' && output.pdf_storage_path_url && (
+                                  <div className="mt-3 border border-gray-light rounded-lg overflow-hidden">
+                                    <embed
+                                      src={output.pdf_storage_path_url}
+                                      type="application/pdf"
+                                      className="w-full h-[600px]"
+                                    />
+                                  </div>
+                                )}
+
+                                {/* Phase 5 edit interface */}
+                                {isPhase5Deliverable && output.status === 'draft' && (
+                                  <div className="mt-3">
+                                    {isEditing ? (
+                                      <div className="border border-gray-light rounded-lg p-3 bg-ivory/30">
+                                        <textarea
+                                          value={editInstruction}
+                                          onChange={e => setEditInstruction(e.target.value)}
+                                          placeholder="Describe what you want to change — e.g. 'Soften the tone in the third paragraph of the Financial Visibility section' or 'Change the revenue figure in the headline to $2.4M'"
+                                          className="w-full border border-gray-light rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal resize-none"
+                                          rows={3}
+                                        />
+                                        <div className="flex items-center gap-2 mt-2">
+                                          <button
+                                            onClick={() => copyEditCommand(output.output_name)}
+                                            disabled={!editInstruction.trim()}
+                                            className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-semibold transition-colors ${
+                                              copiedEdit === output.output_name ? 'bg-teal/10 text-teal' :
+                                              editInstruction.trim() ? 'bg-teal text-white hover:bg-teal/90' : 'bg-gray-light text-gray-warm cursor-not-allowed'
+                                            }`}
+                                          >
+                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                                            {copiedEdit === output.output_name ? 'Copied!' : 'Copy Edit Command'}
+                                          </button>
+                                          <button onClick={() => { setEditingOutputId(null); setEditInstruction('') }} className="text-xs text-gray-warm font-semibold hover:underline">
+                                            Cancel
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        onClick={() => { setEditingOutputId(output.id); setEditInstruction('') }}
+                                        className="text-xs text-teal font-semibold hover:underline"
+                                      >
+                                        Edit
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* Version history for Phase 5 deliverables */}
+                                {isPhase5Deliverable && viewingVersionsId === output.id && versionHistory.length > 0 && (
+                                  <div className="mt-3 border border-gray-light rounded-lg overflow-hidden">
+                                    <div className="px-3 py-2 bg-ivory/50 border-b border-gray-light">
+                                      <p className="text-xs font-semibold text-charcoal">Version History</p>
+                                    </div>
+                                    <div className="divide-y divide-gray-light">
+                                      {versionHistory.map(v => (
+                                        <div key={v.id} className="px-3 py-2 flex items-center gap-3">
+                                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                            v.status === 'approved' ? 'bg-green/10 text-green' : 'bg-amber/10 text-amber'
+                                          }`}>
+                                            v{v.version}
+                                          </span>
+                                          <span className="text-xs text-gray-warm flex-1">{formatDate(v.created_at)}</span>
+                                          {v.content_md && (
+                                            <button
+                                              onClick={() => setViewingVersionContent(viewingVersionContent === v.id ? null : v.id)}
+                                              className="text-xs text-teal font-semibold hover:underline"
+                                            >
+                                              {viewingVersionContent === v.id ? 'Hide' : 'View'}
+                                            </button>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                    {/* Inline view of a selected prior version */}
+                                    {viewingVersionContent && (() => {
+                                      const ver = versionHistory.find(v => v.id === viewingVersionContent)
+                                      if (!ver || !ver.content_md) return null
+                                      return (
+                                        <div className="border-t border-gray-light p-4 bg-ivory/30 max-h-[400px] overflow-y-auto">
+                                          <p className="text-xs font-semibold text-gray-warm mb-2">Version {ver.version} (read-only)</p>
+                                          <MarkdownContent content={ver.content_md} />
+                                        </div>
+                                      )
+                                    })()}
+                                  </div>
+                                )}
+                              </div>
+                              )
+                            })}
+                          </div>
+                        ) : oldPhaseOutputs.length > 0 ? (
+                          /* Fallback: show old phase_outputs tracking records */
+                          <div className="divide-y divide-gray-light">
+                            {oldPhaseOutputs.map(output => (
                               <div key={output.id} className="px-4 py-3 flex items-center gap-3">
-                                {/* File type icon */}
                                 <span className="w-8 h-8 rounded bg-ivory flex items-center justify-center text-xs font-bold text-gray-warm flex-shrink-0">
                                   {FILE_TYPE_ICONS[output.file_type || ''] || '?'}
                                 </span>
-
-                                {/* Info */}
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-semibold text-charcoal">{output.name}</p>
                                   <p className="text-xs text-gray-warm">
                                     .{output.file_type} &rarr; {output.destination_folder}/
                                     {output.file_size ? ` · ${formatFileSize(output.file_size)}` : ''}
-                                    {output.uploaded_at ? ` · ${formatDate(output.uploaded_at)}` : ''}
                                     {output.accepted_at ? ` · Accepted ${formatDate(output.accepted_at)}` : ''}
-                                    {output.is_client_deliverable && <span className="ml-1 text-gold font-semibold">Client Deliverable</span>}
                                   </p>
                                 </div>
-
-                                {/* Status badge */}
                                 <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${
                                   output.status === 'accepted' ? 'bg-green/10 text-green' :
                                   output.status === 'uploaded' ? 'bg-amber/10 text-amber' :
                                   'bg-gray-light text-gray-warm'
                                 }`}>
-                                  {output.status === 'accepted' ? 'Accepted' : output.status === 'uploaded' ? 'Awaiting review' : 'Not yet created'}
+                                  {output.status === 'accepted' ? 'Accepted' : output.status === 'uploaded' ? 'Awaiting review' : 'Pending'}
                                 </span>
-
-                                {/* Actions */}
-                                <div className="flex items-center gap-2 flex-shrink-0">
-                                  {output.download_url && (
-                                    <a href={output.download_url} target="_blank" rel="noreferrer" className="text-xs text-teal font-semibold hover:underline">
-                                      Download
-                                    </a>
-                                  )}
-                                  <input
-                                    type="file"
-                                    ref={el => { outputFileRefs.current[output.id] = el }}
-                                    className="hidden"
-                                    accept=".docx,.xlsx,.pptx,.pdf,.md"
-                                    onChange={e => {
-                                      const file = e.target.files?.[0]
-                                      if (file) uploadPhaseOutput(output.id, file)
-                                      e.target.value = ''
-                                    }}
-                                  />
-                                  <button
-                                    onClick={() => outputFileRefs.current[output.id]?.click()}
-                                    disabled={uploadingOutputId === output.id}
-                                    className="text-xs text-teal font-semibold hover:underline disabled:opacity-50"
-                                  >
-                                    {uploadingOutputId === output.id ? 'Uploading...' : output.storage_path ? 'Replace' : 'Upload'}
-                                  </button>
-                                  {output.status === 'uploaded' && (
-                                    <button
-                                      onClick={() => acceptPhaseOutput(output.id)}
-                                      disabled={acceptingOutputId === output.id}
-                                      className="text-xs bg-teal text-white px-3 py-1 rounded font-semibold hover:bg-teal/90 disabled:opacity-50"
-                                    >
-                                      {acceptingOutputId === output.id ? '...' : 'Accept'}
-                                    </button>
-                                  )}
-                                </div>
+                                {output.download_url && (
+                                  <a href={output.download_url} target="_blank" rel="noreferrer" className="text-xs text-teal font-semibold hover:underline">
+                                    Download
+                                  </a>
+                                )}
                               </div>
                             ))}
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
+                        ) : (
+                          <div className="px-4 py-6 text-center text-gray-warm text-sm">
+                            No outputs for this phase yet. Run the phase in Cowork to generate outputs.
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           </section>
         )
       })()}
@@ -1363,6 +1659,34 @@ export default function EngagementDetail() {
                     )}
                   </div>
                   {c.context_notes && <p className="mt-2 text-xs text-charcoal italic">{c.context_notes}</p>}
+                  {/* Resend Interview Email button */}
+                  {c.email && (
+                    <div className="mt-2" onClick={e => e.stopPropagation()}>
+                      {resendConfirmContact?.id === c.id ? (
+                        <div className="flex items-center gap-2 p-2 bg-amber/5 border border-amber/20 rounded">
+                          <p className="text-xs text-charcoal flex-1">Resend interview scheduling email to {c.name} at {c.email}?</p>
+                          <button onClick={() => setResendConfirmContact(null)} className="text-xs text-gray-warm font-semibold px-2 py-1 rounded hover:bg-gray-light">Cancel</button>
+                          <button
+                            onClick={() => resendInterviewEmail(c.id, c.name, c.email)}
+                            disabled={resendingInterviewId === c.id}
+                            className="text-xs bg-teal text-white px-3 py-1 rounded font-semibold hover:bg-teal/90 disabled:opacity-50"
+                          >
+                            {resendingInterviewId === c.id ? 'Sending...' : 'Confirm'}
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setResendConfirmContact({ id: c.id, name: c.name, email: c.email })}
+                          className="text-xs text-teal font-semibold hover:underline flex items-center gap-1"
+                        >
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                          Resend Interview Email
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

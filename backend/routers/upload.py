@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 from datetime import datetime, timezone, timedelta
-from typing import Optional
+from typing import Dict, List, Optional
 
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from pydantic import BaseModel
 
 from middleware.auth import verify_upload_token
@@ -23,6 +24,64 @@ from config.upload_checklist import (
 logger = logging.getLogger("baxterlabs.upload")
 
 router = APIRouter(prefix="/api", tags=["upload"])
+
+
+# ---------------------------------------------------------------------------
+# Upload session batching — groups uploads within a 60-second inactivity
+# window into a single email + activity log entry.
+# ---------------------------------------------------------------------------
+
+_SESSION_TIMEOUT = 60  # seconds of inactivity before flushing
+
+class _UploadSession:
+    __slots__ = ("engagement_id", "files", "timer", "lock")
+
+    def __init__(self, engagement_id: str):
+        self.engagement_id = engagement_id
+        self.files: List[Dict[str, str]] = []
+        self.timer: Optional[threading.Timer] = None
+        self.lock = threading.Lock()
+
+    def add(self, filename: str, item_name: str, category: str) -> None:
+        with self.lock:
+            self.files.append({
+                "filename": filename,
+                "item_name": item_name,
+                "category": category,
+            })
+            # Reset the inactivity timer
+            if self.timer is not None:
+                self.timer.cancel()
+            self.timer = threading.Timer(_SESSION_TIMEOUT, _flush_session, args=[self.engagement_id])
+            self.timer.daemon = True
+            self.timer.start()
+
+_sessions: Dict[str, _UploadSession] = {}
+_sessions_lock = threading.Lock()
+
+
+def _flush_session(engagement_id: str) -> None:
+    """Flush a completed upload session: send one batch email + one activity log entry."""
+    with _sessions_lock:
+        session = _sessions.pop(engagement_id, None)
+    if not session or not session.files:
+        return
+
+    with session.lock:
+        files = list(session.files)
+
+    try:
+        eng = get_engagement_by_id(engagement_id)
+        if eng:
+            email_svc = get_email_service()
+            email_svc.send_documents_uploaded_batch_notification(eng, files)
+    except Exception as e:
+        logger.warning(f"Batch upload notification email failed: {e}")
+
+    log_activity(engagement_id, "client", "documents_uploaded", {
+        "count": len(files),
+        "files": files,
+    })
 
 ALLOWED_EXTENSIONS = {".pdf", ".xlsx", ".xls", ".csv", ".docx", ".doc", ".png", ".jpg", ".jpeg"}
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
@@ -135,7 +194,6 @@ async def upload_status(token: str):
 @router.post("/upload/{token}")
 async def upload_file(
     token: str,
-    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     item_key: str = Form(...),
 ):
@@ -210,25 +268,13 @@ async def upload_file(
         "uploaded_by": "client",
     }).execute()
 
-    log_activity(engagement_id, "client", "document_uploaded", {
-        "filename": filename,
-        "item_key": item_key,
-        "item_name": item["name"],
-        "category": category,
-        "size": len(content),
-    })
-
-    # Email partner per file (non-blocking)
-    def _notify():
-        try:
-            eng = get_engagement_by_id(engagement_id)
-            if eng:
-                email_svc = get_email_service()
-                email_svc.send_document_uploaded_notification(eng, filename, item["name"], category)
-        except Exception as e:
-            logger.warning(f"Upload notification email failed: {e}")
-
-    background_tasks.add_task(_notify)
+    # Batch uploads: add to session instead of per-file email/log
+    with _sessions_lock:
+        session = _sessions.get(engagement_id)
+        if session is None:
+            session = _UploadSession(engagement_id)
+            _sessions[engagement_id] = session
+    session.add(filename, item["name"], category)
 
     # Return updated progress
     docs = (

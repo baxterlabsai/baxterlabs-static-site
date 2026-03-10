@@ -14,7 +14,7 @@ from fastapi import FastAPI
 from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import intake, engagements, docusign, upload, deliverables, research, prompts, clients, archive, users, reminders, phase_outputs, pipeline, invoices, webhooks, follow_ups, onboarding, content
+from routers import intake, engagements, docusign, upload, deliverables, research, prompts, clients, archive, users, reminders, phase_outputs, phase_output_content, pipeline, invoices, webhooks, follow_ups, onboarding, content
 from services.supabase_client import get_supabase
 from models.schemas import HealthResponse
 
@@ -57,6 +57,7 @@ app.include_router(archive.router)
 app.include_router(users.router)
 app.include_router(reminders.router)
 app.include_router(phase_outputs.router)
+app.include_router(phase_output_content.router)
 app.include_router(pipeline.router)
 app.include_router(invoices.router)
 app.include_router(webhooks.router)

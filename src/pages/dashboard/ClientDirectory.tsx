@@ -201,7 +201,7 @@ export default function ClientDirectory() {
 
   return (
     <div>
-      <SEO title="Clients | BaxterLabs Advisory" description="Client directory for BaxterLabs Advisory partners." />
+      <SEO title="Clients | BaxterLabs Advisory — Dashboard" description="Client directory for BaxterLabs Advisory partners." />
 
       {/* Header */}
       <div className="mb-6">

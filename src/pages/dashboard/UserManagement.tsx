@@ -161,7 +161,7 @@ export default function UserManagement() {
 
   return (
     <div>
-      <SEO title="Team Management | BaxterLabs Advisory" description="Manage team members for the BaxterLabs Advisory dashboard." />
+      <SEO title="Team | BaxterLabs Advisory — Dashboard" description="Manage team members for the BaxterLabs Advisory dashboard." />
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">

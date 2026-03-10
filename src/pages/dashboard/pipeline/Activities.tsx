@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { apiGet, apiPost, apiPut } from '../../../lib/api'
 import MarkdownContent from '../../../components/MarkdownContent'
+import SEO from '../../../components/SEO'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -267,6 +268,7 @@ export default function PipelineActivities() {
 
   return (
     <div>
+      <SEO title="Activities | BaxterLabs Advisory — Dashboard" description="View and log pipeline activities and interactions." />
       {/* Header */}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
