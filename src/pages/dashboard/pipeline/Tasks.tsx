@@ -411,10 +411,6 @@ export default function PipelineTasks() {
           ))}
         </div>
 
-        {/* Priority legend */}
-        <span className="text-[11px] text-gray-warm flex items-center gap-1 cursor-help" title="A crimson dot next to a task indicates high priority. No dot means normal or low priority.">
-          <span className="w-2 h-2 rounded-full bg-crimson inline-block" /> = High priority
-        </span>
 
         {/* Search */}
         <div className="relative flex-1 min-w-[200px]">
@@ -554,10 +550,14 @@ function TaskRow({ task, onToggle, onSnooze, onEdit, onDelete }: {
         <span className="flex-shrink-0 min-w-[70px]" />
       )}
 
-      {/* Priority dot (only if high) */}
-      {task.priority === 'high' && (
-        <span className={`flex-shrink-0 w-2 h-2 rounded-full ${priority.dot}`} title="High priority" />
-      )}
+      {/* Priority badge */}
+      <span className={`flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+        task.priority === 'high' ? 'bg-crimson/10 text-crimson' :
+        task.priority === 'low' ? 'bg-gray-100 text-gray-warm' :
+        'bg-gold/10 text-gold'
+      }`}>
+        {priority.label}
+      </span>
 
       {/* Content */}
       <div className="flex-1 min-w-0">

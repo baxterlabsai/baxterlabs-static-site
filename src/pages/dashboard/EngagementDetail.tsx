@@ -574,8 +574,15 @@ export default function EngagementDetail() {
   const togglePocPhase = (phase: number) => {
     setPocExpandedPhases(prev => {
       const next = new Set(prev)
-      if (next.has(phase)) next.delete(phase)
-      else next.add(phase)
+      const sentinel = -(phase + 1)
+      if (next.has(phase)) {
+        next.delete(phase)
+        next.add(sentinel)
+      } else if (next.has(sentinel)) {
+        next.delete(sentinel)
+      } else {
+        next.add(phase)
+      }
       return next
     })
   }
@@ -997,7 +1004,7 @@ export default function EngagementDetail() {
 
                 const isGate = REVIEW_GATE_PHASES.has(phase)
                 const isActive = phase === activePhase
-                const isPocExpanded = pocExpandedPhases.has(phase) || (isActive && !pocExpandedPhases.has(-1))
+                const isPocExpanded = pocExpandedPhases.has(phase) || (isActive && !pocExpandedPhases.has(-(phase + 1)))
 
                 return (
                   <div key={phase} className={`border rounded-lg overflow-hidden ${isActive ? 'border-teal' : 'border-gray-light'}`}>
@@ -1032,23 +1039,9 @@ export default function EngagementDetail() {
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <button
-                          onClick={e => { e.stopPropagation(); copyPhaseCommand(phase) }}
-                          className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded font-semibold transition-colors ${
-                            copiedCommand === phase
-                              ? 'bg-teal/10 text-teal'
-                              : 'bg-ivory text-teal hover:bg-teal/10'
-                          }`}
-                          title={getPhaseCommand(phase)}
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
-                          {copiedCommand === phase ? 'Copied!' : 'Copy Command'}
-                        </button>
-                        <svg className={`w-4 h-4 text-gray-warm transition-transform ${isPocExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </div>
+                      <svg className={`flex-shrink-0 w-4 h-4 text-gray-warm transition-transform ${isPocExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
                     </button>
 
                     {/* Expanded content */}
@@ -1596,33 +1589,33 @@ export default function EngagementDetail() {
                   </div>
                   {c.context_notes && <p className="mt-2 text-xs text-charcoal italic">{c.context_notes}</p>}
                   {/* Resend Interview Email button */}
-                  {c.email && (
-                    <div className="mt-2" onClick={e => e.stopPropagation()}>
-                      {resendConfirmContact?.id === c.id ? (
-                        <div className="flex items-center gap-2 p-2 bg-amber/5 border border-amber/20 rounded">
-                          <p className="text-xs text-charcoal flex-1">Resend interview scheduling email to {c.name} at {c.email}?</p>
-                          <button onClick={() => setResendConfirmContact(null)} className="text-xs text-gray-warm font-semibold px-2 py-1 rounded hover:bg-gray-light">Cancel</button>
-                          <button
-                            onClick={() => resendInterviewEmail(c.id, c.name, c.email || '')}
-                            disabled={resendingInterviewId === c.id}
-                            className="text-xs bg-teal text-white px-3 py-1 rounded font-semibold hover:bg-teal/90 disabled:opacity-50"
-                          >
-                            {resendingInterviewId === c.id ? 'Sending...' : 'Confirm'}
-                          </button>
-                        </div>
-                      ) : (
+                  <div className="mt-2" onClick={e => e.stopPropagation()}>
+                    {resendConfirmContact?.id === c.id ? (
+                      <div className="flex items-center gap-2 p-2 bg-amber/5 border border-amber/20 rounded">
+                        <p className="text-xs text-charcoal flex-1">Resend interview scheduling email to {c.name}{c.email ? ` at ${c.email}` : ''}?</p>
+                        <button onClick={() => setResendConfirmContact(null)} className="text-xs text-gray-warm font-semibold px-2 py-1 rounded hover:bg-gray-light">Cancel</button>
                         <button
-                          onClick={() => setResendConfirmContact({ id: c.id, name: c.name, email: c.email || '' })}
-                          className="text-xs text-teal font-semibold hover:underline flex items-center gap-1"
+                          onClick={() => resendInterviewEmail(c.id, c.name, c.email || '')}
+                          disabled={resendingInterviewId === c.id || !c.email}
+                          className="text-xs bg-teal text-white px-3 py-1 rounded font-semibold hover:bg-teal/90 disabled:opacity-50"
                         >
-                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                          </svg>
-                          Resend Interview Email
+                          {resendingInterviewId === c.id ? 'Sending...' : 'Confirm'}
                         </button>
-                      )}
-                    </div>
-                  )}
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setResendConfirmContact({ id: c.id, name: c.name, email: c.email || '' })}
+                        disabled={!c.email}
+                        className={`text-xs font-semibold flex items-center gap-1 ${c.email ? 'text-teal hover:underline' : 'text-gray-warm cursor-not-allowed'}`}
+                        title={c.email ? undefined : 'No email address on file'}
+                      >
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        Resend Interview Email
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
