@@ -7,14 +7,16 @@ RUN apt-get update -qq && \
       fontconfig curl unzip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install Google Fonts (Inter + Playfair Display)
-RUN mkdir -p /usr/share/fonts/google && \
-    curl -sL "https://fonts.google.com/download?family=Inter" -o /tmp/inter.zip && \
-    unzip -o /tmp/inter.zip -d /usr/share/fonts/google/inter && \
-    curl -sL "https://fonts.google.com/download?family=Playfair+Display" -o /tmp/playfair.zip && \
-    unzip -o /tmp/playfair.zip -d /usr/share/fonts/google/playfair && \
+# Install Google Fonts (Inter + Playfair Display) from GitHub releases
+RUN mkdir -p /usr/share/fonts/google/inter /usr/share/fonts/google/playfair && \
+    curl -sL "https://github.com/rsms/inter/releases/download/v4.1/Inter-4.1.zip" -o /tmp/inter.zip && \
+    unzip -o /tmp/inter.zip -d /tmp/inter && \
+    find /tmp/inter -name '*.ttf' -exec cp {} /usr/share/fonts/google/inter/ \; && \
+    curl -sL "https://github.com/clauseggers/Playfair-Display/archive/refs/heads/master.zip" -o /tmp/playfair.zip && \
+    unzip -o /tmp/playfair.zip -d /tmp/playfair && \
+    find /tmp/playfair -name '*.ttf' -exec cp {} /usr/share/fonts/google/playfair/ \; && \
     fc-cache -f && \
-    rm -f /tmp/inter.zip /tmp/playfair.zip
+    rm -rf /tmp/inter /tmp/playfair /tmp/inter.zip /tmp/playfair.zip
 
 WORKDIR /app
 
