@@ -5,11 +5,8 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from middleware.auth import verify_partner_auth
 from services.supabase_client import get_supabase, get_engagement_by_id, log_activity
-from services.firecrawl_service import (
-    research_company,
-    research_contacts,
-    _merge_dossier_sections,
-)
+from services.research_service import research_company, research_contacts
+from services.firecrawl_service import _merge_dossier_sections
 
 logger = logging.getLogger("baxterlabs.research")
 
@@ -162,3 +159,67 @@ async def trigger_interview_research(
     logger.info(f"Interview research triggered for engagement {engagement_id}")
 
     return {"message": "Interview research started", "engagement_id": engagement_id}
+
+
+@router.post("/engagements/{engagement_id}/generate-interview-briefs")
+async def generate_interview_briefs(
+    engagement_id: str,
+    background_tasks: BackgroundTasks,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Generate interview briefs using Phase 1 findings + contact research.
+
+    Returns 202 immediately — brief generation runs as a background task.
+    """
+    sb = get_supabase()
+    engagement = get_engagement_by_id(engagement_id)
+    if not engagement:
+        raise HTTPException(status_code=404, detail="Engagement not found")
+
+    # Allow from documents_received onward (any phase status or later)
+    allowed_statuses = {
+        "documents_received", "phase_0", "phase_1", "phase_2", "phase_3",
+        "phase_4", "phase_5", "phase_6", "phase_7", "phases_complete",
+    }
+    if engagement["status"] not in allowed_statuses:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot generate briefs in status '{engagement['status']}'. "
+                   "Engagement must be in 'documents_received' or later.",
+        )
+
+    # Fetch Phase 1 preliminary findings memo if available
+    phase1_content = None
+    try:
+        findings_result = (
+            sb.table("research_documents")
+            .select("content")
+            .eq("engagement_id", engagement_id)
+            .eq("type", "preliminary_findings_memo")
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        if findings_result.data:
+            phase1_content = findings_result.data[0]["content"]
+    except Exception as e:
+        logger.warning(f"Could not fetch Phase 1 findings for {engagement_id}: {e}")
+
+    background_tasks.add_task(
+        _run_async_in_background,
+        research_contacts(engagement_id, phase1_findings=phase1_content),
+    )
+    logger.info(
+        f"Interview brief generation triggered for {engagement_id} "
+        f"(phase1_findings={'available' if phase1_content else 'not available'})"
+    )
+
+    from starlette.responses import JSONResponse
+    return JSONResponse(
+        status_code=202,
+        content={
+            "message": "Interview brief generation started",
+            "engagement_id": engagement_id,
+            "phase1_findings_available": phase1_content is not None,
+        },
+    )

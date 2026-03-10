@@ -13,7 +13,7 @@ from middleware.auth import verify_partner_auth
 from services.supabase_client import get_supabase, get_engagement_by_id, update_engagement_status, log_activity
 from services.email_service import get_email_service
 from services.docusign_service import get_docusign_service
-from services.firecrawl_service import research_contacts
+from services.research_service import research_contacts
 from services.transcript_service import extract_text, analyze_transcript, get_transcript_intelligence
 
 logger = logging.getLogger("baxterlabs.engagements")
@@ -111,7 +111,7 @@ async def start_engagement(
     background_tasks: BackgroundTasks,
     user: dict = Depends(verify_partner_auth),
 ):
-    """Start Engagement — update fields, send agreement via DocuSign, trigger interview research."""
+    """Start Engagement — update fields and send agreement via DocuSign."""
     sb = get_supabase()
     engagement = get_engagement_by_id(engagement_id)
     if not engagement:
@@ -163,8 +163,7 @@ async def start_engagement(
     except Exception as e:
         logger.warning(f"DocuSign agreement send failed (non-blocking): {e}")
 
-    # 3. Trigger interview research in background
-    background_tasks.add_task(_run_async_in_background, research_contacts(engagement_id))
+    # 3. Interview briefs now triggered at Phase 1 completion, not here.
 
     # 4. Log activity
     log_activity(engagement_id, "partner", "engagement_started", {
@@ -176,7 +175,7 @@ async def start_engagement(
     return {
         "success": True,
         "agreement_sent": agreement_sent,
-        "message": "Engagement started. Agreement sent and interview research triggered.",
+        "message": "Engagement started. Agreement sent.",
     }
 
 
@@ -205,6 +204,7 @@ class AdvancePhaseInput(BaseModel):
 async def advance_phase(
     engagement_id: str,
     body: AdvancePhaseInput,
+    background_tasks: BackgroundTasks,
     user: dict = Depends(verify_partner_auth),
 ):
     """Advance engagement to the next phase. Requires partner auth.
@@ -308,6 +308,32 @@ async def advance_phase(
         "prompt_version": prompt_version,
         "notes": body.notes,
     })
+
+    # Trigger interview brief generation when Phase 1 completes (advancing from phase 1 → phase 2)
+    if current_phase == 1:
+        try:
+            phase1_content = None
+            findings_result = (
+                sb.table("research_documents")
+                .select("content")
+                .eq("engagement_id", engagement_id)
+                .eq("type", "preliminary_findings_memo")
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if findings_result.data:
+                phase1_content = findings_result.data[0]["content"]
+            background_tasks.add_task(
+                _run_async_in_background,
+                research_contacts(engagement_id, phase1_findings=phase1_content),
+            )
+            logger.info(
+                f"Interview brief generation triggered on Phase 1 completion for {engagement_id} "
+                f"(phase1_findings={'available' if phase1_content else 'not available'})"
+            )
+        except Exception as e:
+            logger.error(f"Interview brief trigger failed (non-blocking): {e}")
 
     # Trigger final invoice when all phases complete
     if new_status == "phases_complete":

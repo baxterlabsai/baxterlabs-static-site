@@ -20,8 +20,11 @@ DOCUSIGN_NDA_TEMPLATE_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 DOCUSIGN_AGREEMENT_TEMPLATE_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 DOCUSIGN_WEBHOOK_SECRET=your-webhook-hmac-secret
 
-# ── Firecrawl ────────────────────────────────────────────────
+# ── Firecrawl (legacy — being replaced by Apify) ────────────
 FIRECRAWL_API_KEY=fc-xxxxxxxx
+
+# ── Apify ───────────────────────────────────────────────────
+APIFY_API_KEY=
 
 # ── Email (SMTP / Gmail) ────────────────────────────────────
 SMTP_SERVER=smtp.gmail.com

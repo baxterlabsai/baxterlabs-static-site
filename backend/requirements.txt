@@ -20,4 +20,5 @@ openpyxl>=3.1.0
 striprtf>=0.0.26
 google-api-python-client==2.118.0
 google-auth==2.28.0
+apify-client>=1.7.0
 

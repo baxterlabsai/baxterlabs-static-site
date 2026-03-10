@@ -13,6 +13,7 @@ from services.supabase_client import (
 )
 from services.email_service import get_email_service
 from services.firecrawl_service import seed_research_from_enrichment
+from services.research_service import research_company
 
 logger = logging.getLogger("baxterlabs.docusign.router")
 
@@ -368,6 +369,13 @@ async def _auto_convert_pipeline_opportunity(opp_id: str) -> None:
         logger.info(f"Auto-convert: research dossier seeded from enrichment for engagement {new_engagement_id}")
     except Exception as e:
         logger.error(f"Auto-convert: research seed failed (non-blocking): {e}")
+
+    # 6c. Trigger full company research (Apify + Vibe) in background
+    try:
+        await research_company(new_engagement_id)
+        logger.info(f"Auto-convert: company research triggered for engagement {new_engagement_id}")
+    except Exception as e:
+        logger.error(f"Auto-convert: company research failed (non-blocking): {e}")
 
     # 7. Send deposit invoice
     try:
