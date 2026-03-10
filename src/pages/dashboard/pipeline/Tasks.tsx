@@ -625,7 +625,6 @@ function TaskRow({ task, onToggle, onSnooze, onEdit, onDelete }: {
       <span className={`flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${typeInfo.badge}`}>
         {typeInfo.label}
       </span>
-      )}
 
       {/* Actions */}
       <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
