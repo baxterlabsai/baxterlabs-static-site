@@ -17,13 +17,12 @@ services:
         source: /*
         destination: /index.html
 
-  # Backend — FastAPI API
+  # Backend — FastAPI API (Docker for LibreOffice headless)
   - type: web
-    runtime: python
+    runtime: docker
     name: baxterlabs-api
     repo: https://github.com/baxterlabsai/baxterlabs-static-site
     branch: main
-    buildCommand: apt-get update && apt-get install -y --no-install-recommends libreoffice-writer libreoffice-impress && cd backend && pip install -r requirements.txt
-    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    dockerfilePath: backend/Dockerfile
     plan: starter
     region: oregon
