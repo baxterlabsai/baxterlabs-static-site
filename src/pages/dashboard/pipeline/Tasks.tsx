@@ -551,13 +551,7 @@ function TaskRow({ task, onToggle, onSnooze, onEdit, onDelete }: {
       )}
 
       {/* Priority badge */}
-      <span className={`flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${
-        task.priority === 'high' ? 'bg-crimson/10 text-crimson' :
-        task.priority === 'low' ? 'bg-gray-100 text-gray-warm' :
-        'bg-gold/10 text-gold'
-      }`}>
-        {priority.label}
-      </span>
+      <span className={`flex-shrink-0 w-2.5 h-2.5 rounded-full ${priority.dot}`} title={priority.label} />
 
       {/* Content */}
       <div className="flex-1 min-w-0">
