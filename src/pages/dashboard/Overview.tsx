@@ -202,7 +202,7 @@ export default function Overview() {
 
   return (
     <>
-      <SEO title="Dashboard — BaxterLabs" />
+      <SEO title="Dashboard — BaxterLabs" description="BaxterLabs advisory workflow hub" />
 
       {/* Top bar */}
       <div className="mb-8">
