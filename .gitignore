@@ -27,6 +27,9 @@ master.env
 # Docs (internal, not deployed)
 docs/
 
+# Claude Code
+.claude/worktrees/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
