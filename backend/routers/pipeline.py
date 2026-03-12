@@ -2306,6 +2306,26 @@ async def get_partner_by_name(
 # Call Prep Sessions
 # ==========================================================================
 
+@router.get("/call-prep-sessions")
+async def list_call_prep_sessions(
+    company_id: str = Query(...),
+    limit: int = Query(5, ge=1, le=50),
+    user: dict = Depends(verify_partner_auth),
+):
+    """List call prep sessions for a company, newest first."""
+    sb = get_supabase()
+    result = (
+        sb.table("call_prep_sessions")
+        .select("*")
+        .eq("company_id", company_id)
+        .eq("is_deleted", False)
+        .order("created_at", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    return {"sessions": result.data, "count": len(result.data)}
+
+
 @router.post("/call-prep-sessions", status_code=201)
 async def create_call_prep_session(
     body: CallPrepSessionCreate,

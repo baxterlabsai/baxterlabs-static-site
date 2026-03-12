@@ -58,6 +58,19 @@ interface Activity {
   pipeline_opportunities: { id: string; title: string } | null
 }
 
+interface CallPrepSession {
+  id: string
+  company_id: string
+  contact_id: string | null
+  opportunity_id: string | null
+  title: string | null
+  content: string | null
+  status: string
+  session_date: string | null
+  notes: string | null
+  created_at: string
+}
+
 interface CompanyDetail extends Company {
   contacts: Contact[]
   opportunities: Opportunity[]
@@ -819,39 +832,42 @@ function LogPluginActivityForm({
 }
 
 // ---------------------------------------------------------------------------
-// Enrichment value normalizer — plugins should write plain markdown strings,
-// but some older writes used JSON objects with a 'briefing'/'content' key.
-// ---------------------------------------------------------------------------
-
-function normalizeEnrichmentValue(value: unknown): string | null {
-  if (!value) return null
-  if (typeof value === 'string') return value
-  if (typeof value === 'object' && value !== null) {
-    const obj = value as Record<string, unknown>
-    if (typeof obj.briefing === 'string') return obj.briefing
-    if (typeof obj.content === 'string') return obj.content
-    if (typeof obj.summary === 'string') return obj.summary
-    const stringValues = Object.values(obj).filter(v => typeof v === 'string' && (v as string).length > 100)
-    if (stringValues.length === 1) return stringValues[0] as string
-  }
-  return null
-}
-
-// ---------------------------------------------------------------------------
 // Research & Intelligence Collapsible Section
 // ---------------------------------------------------------------------------
 
-function ResearchIntelSection({ enrichmentData }: { enrichmentData: Record<string, any> }) {
+function ResearchIntelSection({ enrichmentData, companyId }: { enrichmentData: Record<string, any>; companyId: string }) {
   const [open, setOpen] = useState(false)
   const [researchModalOpen, setResearchModalOpen] = useState(false)
+  const [callPrepSessions, setCallPrepSessions] = useState<CallPrepSession[]>([])
+  const [activeSessionIdx, setActiveSessionIdx] = useState(0)
+  const [sessionsLoaded, setSessionsLoaded] = useState(false)
+
   const research = enrichmentData?.research
-  const enrichment = enrichmentData?.enrichment
-  const callPrep = enrichmentData?.call_prep
+
+  // Fetch call prep sessions from dedicated table
+  useEffect(() => {
+    apiGet<{ sessions: CallPrepSession[]; count: number }>(`/api/pipeline/call-prep-sessions?company_id=${companyId}`)
+      .then(data => {
+        setCallPrepSessions(data.sessions)
+        setActiveSessionIdx(0)
+      })
+      .catch(() => {})
+      .finally(() => setSessionsLoaded(true))
+  }, [companyId])
+
+  const activeSession = callPrepSessions[activeSessionIdx] || null
+  const hasCallPrep = callPrepSessions.length > 0
+
+  // Extract research content — handle both string and object shapes
+  const researchContent: string | null = research
+    ? (typeof research === 'string' ? research
+      : typeof research?.content === 'string' ? research.content
+      : null)
+    : null
 
   const modalContent = [
-    research ? normalizeEnrichmentValue(research) : null,
-    callPrep ? normalizeEnrichmentValue(callPrep) : null,
-    enrichment ? normalizeEnrichmentValue(enrichment) : null,
+    researchContent,
+    activeSession?.content,
   ].filter(Boolean).join('\n\n---\n\n')
 
   return (
@@ -866,7 +882,7 @@ function ResearchIntelSection({ enrichmentData }: { enrichmentData: Record<strin
           </svg>
           <span className="text-sm font-semibold text-purple-800">Research & Intelligence</span>
           <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-200 text-purple-800">
-            {[research && 'Research', enrichment && 'Enrichment', callPrep && 'Call Prep', enrichmentData?.discovery_transcript && 'Transcript'].filter(Boolean).join(' + ')}
+            {[research && 'Research', hasCallPrep && 'Call Prep', enrichmentData?.discovery_transcript && 'Transcript'].filter(Boolean).join(' + ')}
           </span>
         </div>
         <div className="flex items-center gap-1">
@@ -886,87 +902,62 @@ function ResearchIntelSection({ enrichmentData }: { enrichmentData: Record<strin
       {open && (
         <div className="px-4 py-3 space-y-4 bg-white">
           {/* Research results */}
-          {research && (
+          {researchContent && (
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <h5 className="text-xs font-semibold text-charcoal uppercase tracking-wider">Research</h5>
                 <div className="flex items-center gap-2 text-[10px] text-gray-warm">
-                  {research.source && <span>Source: {research.source}</span>}
-                  {research.timestamp && <span>{new Date(research.timestamp).toLocaleDateString()}</span>}
+                  {research?.source && <span>Source: {research.source}</span>}
+                  {research?.timestamp && <span>{new Date(research.timestamp).toLocaleDateString()}</span>}
                 </div>
               </div>
               <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-60 overflow-y-auto">
-                <MarkdownContent content={normalizeEnrichmentValue(research) || JSON.stringify(research, null, 2)} />
+                <MarkdownContent content={researchContent} />
               </div>
             </div>
           )}
 
-          {/* Call Prep Briefing */}
-          {callPrep && (
+          {/* Call Prep Sessions (from dedicated table) */}
+          {sessionsLoaded && hasCallPrep && (
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
                   <h5 className="text-xs font-semibold text-charcoal uppercase tracking-wider">Call Prep Briefing</h5>
-                  <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber/15 text-amber">Prep</span>
-                </div>
-                <div className="flex items-center gap-2 text-[10px] text-gray-warm">
-                  {callPrep.source && <span>Source: {callPrep.source}</span>}
-                  {callPrep.timestamp && <span>{new Date(callPrep.timestamp).toLocaleDateString()}</span>}
+                  <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber/15 text-amber">
+                    {callPrepSessions.length} session{callPrepSessions.length !== 1 ? 's' : ''}
+                  </span>
                 </div>
               </div>
-              <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-60 overflow-y-auto">
-                <MarkdownContent content={normalizeEnrichmentValue(callPrep) || JSON.stringify(callPrep, null, 2)} />
-              </div>
-            </div>
-          )}
 
-          {/* Enrichment data */}
-          {enrichment?.data && (
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <h5 className="text-xs font-semibold text-charcoal uppercase tracking-wider">Enrichment</h5>
-                {enrichment.timestamp && (
-                  <span className="text-[10px] text-gray-warm">{new Date(enrichment.timestamp).toLocaleDateString()}</span>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {enrichment.data.industry && (
-                  <div className="bg-ivory/50 rounded px-2.5 py-1.5">
-                    <p className="text-[10px] text-gray-warm">Industry</p>
-                    <p className="text-xs font-medium text-charcoal">{enrichment.data.industry}</p>
-                  </div>
-                )}
-                {enrichment.data.employee_count && (
-                  <div className="bg-ivory/50 rounded px-2.5 py-1.5">
-                    <p className="text-[10px] text-gray-warm">Employees</p>
-                    <p className="text-xs font-medium text-charcoal">{enrichment.data.employee_count}</p>
-                  </div>
-                )}
-                {enrichment.data.revenue_range && (
-                  <div className="bg-ivory/50 rounded px-2.5 py-1.5">
-                    <p className="text-[10px] text-gray-warm">Revenue</p>
-                    <p className="text-xs font-medium text-charcoal">{enrichment.data.revenue_range}</p>
-                  </div>
-                )}
-                {enrichment.data.funding && (
-                  <div className="bg-ivory/50 rounded px-2.5 py-1.5">
-                    <p className="text-[10px] text-gray-warm">Funding</p>
-                    <p className="text-xs font-medium text-charcoal">{enrichment.data.funding}</p>
-                  </div>
-                )}
-                {enrichment.data.hq_location && (
-                  <div className="bg-ivory/50 rounded px-2.5 py-1.5">
-                    <p className="text-[10px] text-gray-warm">HQ Location</p>
-                    <p className="text-xs font-medium text-charcoal">{enrichment.data.hq_location}</p>
-                  </div>
-                )}
-                {enrichment.data.tech_stack && (
-                  <div className="col-span-2 bg-ivory/50 rounded px-2.5 py-1.5">
-                    <p className="text-[10px] text-gray-warm">Tech Stack</p>
-                    <p className="text-xs font-medium text-charcoal">{Array.isArray(enrichment.data.tech_stack) ? enrichment.data.tech_stack.join(', ') : enrichment.data.tech_stack}</p>
-                  </div>
-                )}
-              </div>
+              {/* Session history switcher */}
+              {callPrepSessions.length > 1 && (
+                <div className="flex gap-1.5 mb-2 overflow-x-auto pb-1">
+                  {callPrepSessions.map((session, idx) => {
+                    const meetingType = session.notes?.match(/meeting_type:\s*(\S+)/)?.[1] || session.title || 'Session'
+                    const dateLabel = new Date(session.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                    return (
+                      <button
+                        key={session.id}
+                        onClick={() => setActiveSessionIdx(idx)}
+                        className={`flex-shrink-0 px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
+                          idx === activeSessionIdx
+                            ? 'bg-amber/15 text-amber'
+                            : 'bg-ivory text-charcoal/50 hover:bg-ivory/80'
+                        }`}
+                      >
+                        {dateLabel} &middot; {meetingType}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Active session content */}
+              {activeSession?.content && (
+                <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-60 overflow-y-auto">
+                  <MarkdownContent content={activeSession.content} />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1260,9 +1251,7 @@ function CompanySlideOver({
                   </div>
 
                   {/* Research & Intelligence */}
-                  {(detail.enrichment_data?.research || detail.enrichment_data?.enrichment || detail.enrichment_data?.call_prep) && (
-                    <ResearchIntelSection enrichmentData={detail.enrichment_data} />
-                  )}
+                  <ResearchIntelSection enrichmentData={detail.enrichment_data || {}} companyId={companyId} />
 
                   {/* Discovery Transcript */}
                   <div>

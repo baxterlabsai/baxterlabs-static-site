@@ -37,6 +37,9 @@ import PaymentSuccess from './pages/PaymentSuccess'
 import PaymentCancelled from './pages/PaymentCancelled'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
+import HelpManual from './pages/dashboard/help/Manual'
+import HelpVideos from './pages/dashboard/help/Videos'
+import HelpReleases from './pages/dashboard/help/Releases'
 import NotFound from './pages/NotFound'
 
 function ScrollToTop() {
@@ -101,6 +104,9 @@ export default function App() {
             <Route path="/dashboard/pipeline/tasks" element={<PipelineTasks />} />
             <Route path="/dashboard/pipeline/import" element={<BulkImport />} />
             <Route path="/dashboard/pipeline/convert/:opportunityId" element={<ConversionReview />} />
+            <Route path="/dashboard/help/manual" element={<HelpManual />} />
+            <Route path="/dashboard/help/videos" element={<HelpVideos />} />
+            <Route path="/dashboard/help/releases" element={<HelpReleases />} />
           </Route>
         </Route>
 
