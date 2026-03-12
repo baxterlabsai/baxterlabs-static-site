@@ -1,32 +1,82 @@
 import { useState, useEffect, useRef } from 'react'
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { apiGet } from '../lib/api'
 import ChangePasswordModal from './ChangePasswordModal'
 import ProfileModal from './ProfileModal'
 
-const NAV_ITEMS = [
-  { to: '/dashboard', label: 'Overview', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
-  { to: '/dashboard/clients', label: 'Clients', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' },
-  { to: '/dashboard/calendar', label: 'Calendar', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
-  { to: '/dashboard/users', label: 'Team', icon: 'M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z' },
+/* ------------------------------------------------------------------ */
+/*  Navigation structure                                               */
+/* ------------------------------------------------------------------ */
+
+interface NavItem {
+  to: string
+  label: string
+  end?: boolean
+  badge?: 'tasks' | 'news'
+}
+
+interface NavSection {
+  label?: string
+  dotColor?: string
+  items: NavItem[]
+}
+
+const MAIN_SECTIONS: NavSection[] = [
+  {
+    items: [
+      { to: '/dashboard', label: 'Dashboard', end: true },
+    ],
+  },
+  {
+    label: 'Pipeline',
+    dotColor: '#378ADD',
+    items: [
+      { to: '/dashboard/pipeline', label: 'Board', end: true },
+      { to: '/dashboard/pipeline/companies', label: 'Companies' },
+      { to: '/dashboard/pipeline/contacts', label: 'Contacts' },
+      { to: '/dashboard/pipeline/activities', label: 'Activities' },
+      { to: '/dashboard/pipeline/tasks', label: 'Tasks', badge: 'tasks' },
+    ],
+  },
+  {
+    label: 'Engagements',
+    dotColor: '#BA7517',
+    items: [
+      { to: '/dashboard/clients', label: 'Active clients' },
+      { to: '/dashboard/calendar', label: 'Calendar' },
+      { to: '/dashboard/users', label: 'Team' },
+    ],
+  },
+  {
+    label: 'Content',
+    dotColor: '#639922',
+    items: [
+      { to: '/dashboard/content/blog', label: 'Blog posts' },
+      { to: '/dashboard/content/stories', label: 'Story bank' },
+      { to: '/dashboard/content/news', label: 'News', badge: 'news' },
+    ],
+  },
+  {
+    label: 'System',
+    items: [
+      { to: '/dashboard/content/commands', label: 'Commands' },
+    ],
+  },
 ]
 
-const CONTENT_NAV_ITEMS = [
-  { to: '/dashboard/content/stories', label: 'Story Bank', icon: 'M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25' },
-  { to: '/dashboard/content/calendar', label: 'Calendar', icon: 'M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5' },
-  { to: '/dashboard/content/blog', label: 'Blog Posts', icon: 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z' },
-  { to: '/dashboard/content/commands', label: 'Commands', icon: 'M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z' },
-  { to: '/dashboard/content/news', label: 'News', icon: 'M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z' },
-]
+const HELP_SECTION: NavSection = {
+  label: 'Help',
+  items: [
+    { to: '/dashboard/help/manual', label: 'Operations manual' },
+    { to: '/dashboard/help/videos', label: 'Video walkthroughs' },
+    { to: '/dashboard/help/releases', label: 'Release notes' },
+  ],
+}
 
-const PIPELINE_NAV_ITEMS = [
-  { to: '/dashboard/pipeline', label: 'Board', icon: 'M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25' },
-  { to: '/dashboard/pipeline/companies', label: 'Companies', icon: 'M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z' },
-  { to: '/dashboard/pipeline/contacts', label: 'Contacts', icon: 'M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z' },
-  { to: '/dashboard/pipeline/activities', label: 'Activities', icon: 'M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z' },
-  { to: '/dashboard/pipeline/tasks', label: 'Tasks', icon: 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
-]
+/* ------------------------------------------------------------------ */
+/*  Component                                                          */
+/* ------------------------------------------------------------------ */
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -34,10 +84,11 @@ export default function DashboardLayout() {
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
-  const [followUpCount, setFollowUpCount] = useState(0)
+  const [openTaskCount, setOpenTaskCount] = useState(0)
   const [newsUnreviewedCount, setNewsUnreviewedCount] = useState(0)
   const menuRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -57,15 +108,15 @@ export default function DashboardLayout() {
     return () => { listener.subscription.unsubscribe() }
   }, [])
 
-  // Fetch actionable follow-up count for sidebar badge
+  // Fetch badge counts
   useEffect(() => {
-    apiGet<{ count: number }>('/api/follow-ups?upcoming_only=true')
-      .then(data => setFollowUpCount(data.count))
+    apiGet<{ tasks: unknown[]; count: number }>('/api/pipeline/tasks?status=pending')
+      .then(data => setOpenTaskCount(data.count))
       .catch(() => {})
     apiGet<{ unreviewed_count: number }>('/api/content-news/stats')
       .then(data => setNewsUnreviewedCount(data.unreviewed_count))
       .catch(() => {})
-  }, [])
+  }, [location.pathname])
 
   // Close menu on outside click
   useEffect(() => {
@@ -89,6 +140,62 @@ export default function DashboardLayout() {
     ? userName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
     : 'P'
 
+  /* helper: resolve badge value */
+  function badgeValue(badge?: 'tasks' | 'news'): number {
+    if (badge === 'tasks') return openTaskCount
+    if (badge === 'news') return newsUnreviewedCount
+    return 0
+  }
+
+  /* helper: render a nav link */
+  function renderNavLink(item: NavItem) {
+    const bv = badgeValue(item.badge)
+    return (
+      <NavLink
+        key={item.to}
+        to={item.to}
+        end={item.end}
+        onClick={() => setSidebarOpen(false)}
+        className={({ isActive }) =>
+          `flex items-center gap-3 pl-4 pr-3 py-2 text-[13px] font-medium transition-colors relative ${
+            isActive
+              ? 'bg-white/8 text-white border-l-[3px] border-crimson pl-[13px]'
+              : 'text-white/70 hover:bg-white/5 hover:text-white'
+          }`
+        }
+      >
+        {item.label}
+        {bv > 0 && (
+          <span className="ml-auto bg-gold text-charcoal text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center leading-tight">
+            {bv}
+          </span>
+        )}
+      </NavLink>
+    )
+  }
+
+  /* helper: render a section */
+  function renderSection(section: NavSection, idx: number) {
+    return (
+      <div key={section.label ?? idx} className={idx > 0 ? 'mt-5' : ''}>
+        {section.label && (
+          <div className="flex items-center gap-2 px-4 mb-1">
+            {section.dotColor && (
+              <span
+                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: section.dotColor }}
+              />
+            )}
+            <span className="text-[10px] font-semibold text-white/40 uppercase tracking-widest">
+              {section.label}
+            </span>
+          </div>
+        )}
+        {section.items.map(renderNavLink)}
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen flex bg-ivory">
       {/* Mobile overlay */}
@@ -101,99 +208,44 @@ export default function DashboardLayout() {
 
       {/* Sidebar */}
       <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-64 bg-teal transform transition-transform lg:transform-none ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} flex flex-col`}>
-        <div className="p-5 border-b border-white/10">
-          <span className="font-display text-xl font-bold text-white">BaxterLabs</span>
-          <span className="text-gold text-sm block">Advisory Dashboard</span>
+
+        {/* Sidebar header: logo + Advisory + rule */}
+        <div className="pt-6 pb-4 px-5">
+          <div className="flex justify-center">
+            <img
+              src="/images/baxterlabs-logo-white-text.png"
+              alt="BaxterLabs"
+              className="h-[83px] w-auto"
+            />
+          </div>
+          <p className="text-center mt-2 text-white/70 text-[11px] font-light tracking-[0.15em] uppercase">
+            Advisory
+          </p>
+          <div className="mt-4 border-t border-white/15" />
         </div>
 
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {NAV_ITEMS.map(item => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === '/dashboard'}
-              onClick={() => setSidebarOpen(false)}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-white/15 text-white'
-                    : 'text-white/70 hover:bg-white/10 hover:text-white'
-                }`
-              }
-            >
-              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
-              </svg>
-              {item.label}
-              {item.label === 'Overview' && followUpCount > 0 && (
-                <span className="ml-auto bg-gold text-charcoal text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
-                  {followUpCount}
-                </span>
-              )}
-            </NavLink>
-          ))}
-
-          {/* Content section */}
-          <div className="border-t border-white/10 my-3" />
-          <p className="px-3 py-1 text-xs font-semibold text-white/40 uppercase tracking-wider">Content</p>
-
-          {CONTENT_NAV_ITEMS.map(item => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              onClick={() => setSidebarOpen(false)}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-white/15 text-white'
-                    : 'text-white/70 hover:bg-white/10 hover:text-white'
-                }`
-              }
-            >
-              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
-              </svg>
-              {item.label}
-              {item.label === 'News' && newsUnreviewedCount > 0 && (
-                <span className="ml-auto bg-gold text-charcoal text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
-                  {newsUnreviewedCount}
-                </span>
-              )}
-            </NavLink>
-          ))}
-
-          {/* Pipeline section */}
-          <div className="border-t border-white/10 my-3" />
-          <p className="px-3 py-1 text-xs font-semibold text-white/40 uppercase tracking-wider">Pipeline</p>
-
-          {PIPELINE_NAV_ITEMS.map(item => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === '/dashboard/pipeline'}
-              onClick={() => setSidebarOpen(false)}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-white/15 text-white'
-                    : 'text-white/70 hover:bg-white/10 hover:text-white'
-                }`
-              }
-            >
-              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
-              </svg>
-              {item.label}
-            </NavLink>
-          ))}
+        {/* Main nav */}
+        <nav className="flex-1 overflow-y-auto pb-2">
+          {MAIN_SECTIONS.map((section, idx) => renderSection(section, idx))}
         </nav>
 
-        <div className="p-4 border-t border-white/10">
+        {/* Help section — pinned to bottom */}
+        <div className="border-t border-white/15 mt-4 pt-3 pb-2">
+          <div className="flex items-center gap-2 px-4 mb-1">
+            <span className="text-[10px] font-semibold text-white/40 uppercase tracking-widest">
+              {HELP_SECTION.label}
+            </span>
+          </div>
+          {HELP_SECTION.items.map(renderNavLink)}
+        </div>
+
+        {/* Sign out */}
+        <div className="px-4 pb-4 pt-1">
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 text-white/60 hover:text-white text-sm font-medium w-full px-3 py-2"
+            className="flex items-center gap-2 text-white/50 hover:text-white text-xs font-medium w-full px-4 py-2 transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
             Sign Out
@@ -203,7 +255,7 @@ export default function DashboardLayout() {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top bar */}
+        {/* Top bar — logo removed, hamburger stays */}
         <header className="bg-white border-b border-gray-light px-4 lg:px-8 h-16 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
             <button
@@ -214,7 +266,6 @@ export default function DashboardLayout() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
               </svg>
             </button>
-            <img src="/images/baxterlabs-logo.png" alt="BaxterLabs" className="h-[83px] w-auto" />
           </div>
 
           {/* User menu */}

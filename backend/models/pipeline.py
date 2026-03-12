@@ -248,3 +248,28 @@ class WebsiteIntakeResponse(BaseModel):
     company_id: str
     contact_id: str
     opportunity_id: str
+
+
+# ---------------------------------------------------------------------------
+# Call Prep Sessions
+# ---------------------------------------------------------------------------
+
+class CallPrepSessionCreate(BaseModel):
+    company_id: str
+    opportunity_id: Optional[str] = None
+    contact_id: Optional[str] = None
+    meeting_type: str
+    meeting_duration_minutes: int = 30
+    briefing_content: str
+    plugin_version: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# Enrichment Patch
+# ---------------------------------------------------------------------------
+
+class EnrichmentPatch(BaseModel):
+    research: Optional[str] = None
+    enrichment: Optional[str] = None
+    discovery_transcript: Optional[dict] = None
+    discovery_summary: Optional[str] = None

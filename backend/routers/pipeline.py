@@ -22,7 +22,10 @@ from models.pipeline import (
     TaskCreate, TaskUpdate,
     ConversionRequest,
     WebsiteIntakeRequest, WebsiteIntakeResponse,
+    CallPrepSessionCreate,
+    EnrichmentPatch,
 )
+from fastapi.responses import JSONResponse
 
 logger = logging.getLogger("baxterlabs.pipeline")
 
@@ -59,6 +62,23 @@ VALID_COMPANY_TYPES = {"prospect", "partner", "connector"}
 VALID_LEAD_TIERS = {"tier_1", "tier_2", "tier_3"}
 VALID_ACTIVITY_STATUSES = {"draft", "sent", "discarded", "logged"}
 VALID_OUTREACH_CHANNELS = {"email", "linkedin", "phone", "other"}
+
+# Activity types that require body content validation on plugin writes
+PLUGIN_WRITE_TYPES = {"call_prep", "outreach_draft", "research"}
+
+
+def _write_validation_error(field: str, reason: str, received_length: int, minimum_length: int):
+    """Return a 422 JSONResponse with structured validation error for Cowork."""
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": "write_validation_failed",
+            "field": field,
+            "reason": reason,
+            "received_length": received_length,
+            "minimum_length": minimum_length,
+        },
+    )
 
 
 # ==========================================================================
@@ -1055,6 +1075,18 @@ async def create_activity(body: ActivityCreate, user: dict = Depends(verify_part
         raise HTTPException(status_code=400, detail=f"Invalid activity status: {body.status}")
     if body.outreach_channel and body.outreach_channel not in VALID_OUTREACH_CHANNELS:
         raise HTTPException(status_code=400, detail=f"Invalid outreach channel: {body.outreach_channel}")
+
+    # Plugin write validation: require body > 100 chars for content-producing types
+    if body.type in PLUGIN_WRITE_TYPES:
+        received = len(body.body) if body.body else 0
+        if received <= 100:
+            return _write_validation_error(
+                field="body",
+                reason=f"Activity type '{body.type}' requires body content longer than 100 characters",
+                received_length=received,
+                minimum_length=101,
+            )
+
     sb = get_supabase()
 
     # Auto-resolve company_id when missing
@@ -2267,4 +2299,94 @@ async def get_partner_by_name(
     )
     if not result.data:
         raise HTTPException(status_code=404, detail=f"Partner '{name}' not found")
+    return result.data[0]
+
+
+# ==========================================================================
+# Call Prep Sessions
+# ==========================================================================
+
+@router.post("/call-prep-sessions", status_code=201)
+async def create_call_prep_session(
+    body: CallPrepSessionCreate,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Create a call prep session. Validates briefing_content > 500 chars."""
+    received = len(body.briefing_content) if body.briefing_content else 0
+    if received <= 500:
+        return _write_validation_error(
+            field="briefing_content",
+            reason="Call prep briefing content must be longer than 500 characters",
+            received_length=received,
+            minimum_length=501,
+        )
+
+    sb = get_supabase()
+    row = {
+        "company_id": body.company_id,
+        "content": body.briefing_content,
+        "title": f"{body.meeting_type} prep",
+        "status": "ready",
+    }
+    if body.opportunity_id:
+        row["opportunity_id"] = body.opportunity_id
+    if body.contact_id:
+        row["contact_id"] = body.contact_id
+    row["created_by"] = user.get("sub")
+
+    # Store meeting metadata in notes field
+    meta_parts = [f"meeting_type: {body.meeting_type}"]
+    meta_parts.append(f"duration: {body.meeting_duration_minutes}m")
+    if body.plugin_version:
+        meta_parts.append(f"plugin_version: {body.plugin_version}")
+    row["notes"] = " | ".join(meta_parts)
+
+    result = sb.table("call_prep_sessions").insert(row).execute()
+    return result.data[0]
+
+
+# ==========================================================================
+# Enrichment Patch
+# ==========================================================================
+
+@router.patch("/companies/{company_id}/enrichment")
+async def patch_company_enrichment(
+    company_id: str,
+    body: EnrichmentPatch,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Merge fields into pipeline_companies.enrichment_data with validation."""
+    sb = get_supabase()
+
+    # Validate research content length
+    if body.research is not None:
+        received = len(body.research)
+        if received <= 200:
+            return _write_validation_error(
+                field="research",
+                reason="Research content must be longer than 200 characters",
+                received_length=received,
+                minimum_length=201,
+            )
+
+    company = (
+        sb.table("pipeline_companies")
+        .select("id, enrichment_data")
+        .eq("id", company_id)
+        .eq("is_deleted", False)
+        .execute()
+    )
+    if not company.data:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    existing_ed = company.data[0].get("enrichment_data") or {}
+    patch = body.model_dump(exclude_none=True)
+    updated_ed = {**existing_ed, **patch}
+
+    result = (
+        sb.table("pipeline_companies")
+        .update({"enrichment_data": updated_ed})
+        .eq("id", company_id)
+        .execute()
+    )
     return result.data[0]
