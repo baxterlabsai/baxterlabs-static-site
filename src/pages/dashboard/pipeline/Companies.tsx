@@ -867,8 +867,24 @@ function ResearchIntelSection({ enrichmentData, companyId }: { enrichmentData: R
       : null)
     : null
 
+  // Build enrichment markdown for modal
+  const enrichmentMarkdown: string | null = enrichment?.data && typeof enrichment.data === 'object' && Object.keys(enrichment.data).length > 0
+    ? [
+        '## Enrichment',
+        enrichment.source ? `**Source:** ${enrichment.source.replace(/_/g, ' ')}` : null,
+        enrichment.generated_at ? `**Generated:** ${new Date(enrichment.generated_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}` : null,
+        '',
+        '| Field | Value |',
+        '|-------|-------|',
+        ...Object.entries(enrichment.data).map(([key, value]) =>
+          `| ${key.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())} | ${value == null ? '—' : typeof value === 'object' ? JSON.stringify(value) : String(value)} |`
+        ),
+      ].filter(v => v !== null).join('\n')
+    : null
+
   const modalContent = [
     researchContent,
+    enrichmentMarkdown,
     activeSession?.content,
   ].filter(Boolean).join('\n\n---\n\n')
 
