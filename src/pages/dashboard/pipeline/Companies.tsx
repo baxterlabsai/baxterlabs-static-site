@@ -838,11 +838,13 @@ function LogPluginActivityForm({
 function ResearchIntelSection({ enrichmentData, companyId }: { enrichmentData: Record<string, any>; companyId: string }) {
   const [open, setOpen] = useState(false)
   const [researchModalOpen, setResearchModalOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState<'research' | 'enrichment' | 'call_prep'>('research')
   const [callPrepSessions, setCallPrepSessions] = useState<CallPrepSession[]>([])
   const [activeSessionIdx, setActiveSessionIdx] = useState(0)
   const [sessionsLoaded, setSessionsLoaded] = useState(false)
 
   const research = enrichmentData?.research
+  const enrichment = enrichmentData?.enrichment
 
   // Fetch call prep sessions from dedicated table
   useEffect(() => {
@@ -870,6 +872,12 @@ function ResearchIntelSection({ enrichmentData, companyId }: { enrichmentData: R
     activeSession?.content,
   ].filter(Boolean).join('\n\n---\n\n')
 
+  const tabs: { key: 'research' | 'enrichment' | 'call_prep'; label: string }[] = [
+    { key: 'research', label: 'Research' },
+    { key: 'enrichment', label: 'Enrichment' },
+    { key: 'call_prep', label: 'Call Prep' },
+  ]
+
   return (
     <div className="border border-purple-200 rounded-lg overflow-hidden">
       <button
@@ -882,7 +890,7 @@ function ResearchIntelSection({ enrichmentData, companyId }: { enrichmentData: R
           </svg>
           <span className="text-sm font-semibold text-purple-800">Research & Intelligence</span>
           <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-200 text-purple-800">
-            {[research && 'Research', hasCallPrep && 'Call Prep', enrichmentData?.discovery_transcript && 'Transcript'].filter(Boolean).join(' + ')}
+            {[research && 'Research', enrichment && 'Enrichment', hasCallPrep && 'Call Prep', enrichmentData?.discovery_transcript && 'Transcript'].filter(Boolean).join(' + ')}
           </span>
         </div>
         <div className="flex items-center gap-1">
@@ -900,66 +908,136 @@ function ResearchIntelSection({ enrichmentData, companyId }: { enrichmentData: R
       </button>
 
       {open && (
-        <div className="px-4 py-3 space-y-4 bg-white">
-          {/* Research results */}
-          {researchContent && (
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <h5 className="text-xs font-semibold text-charcoal uppercase tracking-wider">Research</h5>
-                <div className="flex items-center gap-2 text-[10px] text-gray-warm">
-                  {research?.source && <span>Source: {research.source}</span>}
-                  {research?.timestamp && <span>{new Date(research.timestamp).toLocaleDateString()}</span>}
-                </div>
-              </div>
-              <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-60 overflow-y-auto">
-                <MarkdownContent content={researchContent} />
-              </div>
-            </div>
-          )}
+        <div className="bg-white">
+          {/* Tab bar */}
+          <div className="flex border-b border-gray-light px-4 pt-2">
+            {tabs.map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`px-3 py-2 text-xs font-semibold transition-colors border-b-2 -mb-px ${
+                  activeTab === tab.key
+                    ? 'border-purple-600 text-purple-800'
+                    : 'border-transparent text-gray-warm hover:text-charcoal'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
 
-          {/* Call Prep Sessions (from dedicated table) */}
-          {sessionsLoaded && hasCallPrep && (
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-2">
-                  <h5 className="text-xs font-semibold text-charcoal uppercase tracking-wider">Call Prep Briefing</h5>
-                  <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber/15 text-amber">
-                    {callPrepSessions.length} session{callPrepSessions.length !== 1 ? 's' : ''}
-                  </span>
+          <div className="px-4 py-3">
+            {/* Research tab */}
+            {activeTab === 'research' && (
+              researchContent ? (
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <h5 className="text-xs font-semibold text-charcoal uppercase tracking-wider">Research</h5>
+                    <div className="flex items-center gap-2 text-[10px] text-gray-warm">
+                      {research?.source && <span>Source: {research.source}</span>}
+                      {research?.timestamp && <span>{new Date(research.timestamp).toLocaleDateString()}</span>}
+                    </div>
+                  </div>
+                  <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-60 overflow-y-auto">
+                    <MarkdownContent content={researchContent} />
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <p className="text-xs text-gray-warm py-4 text-center">No research data yet — run the sales-research skill to populate this.</p>
+              )
+            )}
 
-              {/* Session history switcher */}
-              {callPrepSessions.length > 1 && (
-                <div className="flex gap-1.5 mb-2 overflow-x-auto pb-1">
-                  {callPrepSessions.map((session, idx) => {
-                    const meetingType = session.notes?.match(/meeting_type:\s*(\S+)/)?.[1] || session.title || 'Session'
-                    const dateLabel = new Date(session.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                    return (
-                      <button
-                        key={session.id}
-                        onClick={() => setActiveSessionIdx(idx)}
-                        className={`flex-shrink-0 px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
-                          idx === activeSessionIdx
-                            ? 'bg-amber/15 text-amber'
-                            : 'bg-ivory text-charcoal/50 hover:bg-ivory/80'
-                        }`}
-                      >
-                        {dateLabel} &middot; {meetingType}
-                      </button>
-                    )
-                  })}
+            {/* Enrichment tab */}
+            {activeTab === 'enrichment' && (
+              enrichment ? (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h5 className="text-xs font-semibold text-charcoal uppercase tracking-wider">Firmographics</h5>
+                    <div className="flex items-center gap-2 text-[10px] text-gray-warm">
+                      {enrichment.source && (
+                        <span className="inline-block px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-semibold">
+                          {enrichment.source.replace(/_/g, ' ')}
+                        </span>
+                      )}
+                      {enrichment.generated_at && (
+                        <span>{new Date(enrichment.generated_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                      )}
+                    </div>
+                  </div>
+                  {enrichment.data && typeof enrichment.data === 'object' && Object.keys(enrichment.data).length > 0 ? (
+                    <div className="bg-ivory/50 border border-gray-light rounded overflow-hidden max-h-60 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <tbody className="divide-y divide-gray-light">
+                          {Object.entries(enrichment.data).map(([key, value]) => (
+                            <tr key={key}>
+                              <td className="px-3 py-1.5 font-medium text-charcoal whitespace-nowrap w-1/3 align-top">
+                                {key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                              </td>
+                              <td className="px-3 py-1.5 text-charcoal/80 break-words">
+                                {value == null ? '—' : typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-warm py-2 text-center">Enrichment data is empty.</p>
+                  )}
                 </div>
-              )}
+              ) : (
+                <p className="text-xs text-gray-warm py-4 text-center">No enrichment data yet — run the sales-enrichment skill to populate this.</p>
+              )
+            )}
 
-              {/* Active session content */}
-              {activeSession?.content && (
-                <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-60 overflow-y-auto">
-                  <MarkdownContent content={activeSession.content} />
+            {/* Call Prep tab */}
+            {activeTab === 'call_prep' && (
+              sessionsLoaded && hasCallPrep ? (
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <h5 className="text-xs font-semibold text-charcoal uppercase tracking-wider">Call Prep Briefing</h5>
+                      <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber/15 text-amber">
+                        {callPrepSessions.length} session{callPrepSessions.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Session history switcher */}
+                  {callPrepSessions.length > 1 && (
+                    <div className="flex gap-1.5 mb-2 overflow-x-auto pb-1">
+                      {callPrepSessions.map((session, idx) => {
+                        const meetingType = session.notes?.match(/meeting_type:\s*(\S+)/)?.[1] || session.title || 'Session'
+                        const dateLabel = new Date(session.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                        return (
+                          <button
+                            key={session.id}
+                            onClick={() => setActiveSessionIdx(idx)}
+                            className={`flex-shrink-0 px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
+                              idx === activeSessionIdx
+                                ? 'bg-amber/15 text-amber'
+                                : 'bg-ivory text-charcoal/50 hover:bg-ivory/80'
+                            }`}
+                          >
+                            {dateLabel} &middot; {meetingType}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {/* Active session content */}
+                  {activeSession?.content && (
+                    <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-60 overflow-y-auto">
+                      <MarkdownContent content={activeSession.content} />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          )}
+              ) : (
+                <p className="text-xs text-gray-warm py-4 text-center">No call prep sessions yet — run the sales-call-prep skill to populate this.</p>
+              )
+            )}
+          </div>
         </div>
       )}
 
