@@ -12,6 +12,9 @@ services:
       - source: /index.html
         destination: /
         type: 301
+      - source: /privacy-policy.html
+        destination: /privacy-policy
+        type: 301
     routes:
       - type: rewrite
         source: /*
