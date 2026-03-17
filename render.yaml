@@ -12,14 +12,6 @@ services:
       - source: /index.html
         destination: /
         type: 301
-    routes:
-      - type: redirect
-        source: /privacy-policy.html
-        destination: /privacy-policy
-        permanent: true
-      - type: rewrite
-        source: /*
-        destination: /index.html
 
   # Backend — FastAPI API (Docker for LibreOffice headless)
   - type: web
