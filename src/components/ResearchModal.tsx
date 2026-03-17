@@ -1,14 +1,38 @@
 import { useEffect, useRef } from 'react'
 import MarkdownContent from './MarkdownContent'
 
-interface ResearchModalProps {
+type TabKey = 'research' | 'enrichment' | 'call_prep'
+
+interface TabbedProps {
+  title: string
+  isOpen: boolean
+  onClose: () => void
+  activeTab: TabKey
+  onTabChange: (tab: TabKey) => void
+  children: React.ReactNode
+  content?: never
+}
+
+interface LegacyProps {
   title: string
   content: string
   isOpen: boolean
   onClose: () => void
+  activeTab?: never
+  onTabChange?: never
+  children?: never
 }
 
-export default function ResearchModal({ title, content, isOpen, onClose }: ResearchModalProps) {
+type ResearchModalProps = TabbedProps | LegacyProps
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'research', label: 'Research' },
+  { key: 'enrichment', label: 'Enrichment' },
+  { key: 'call_prep', label: 'Call Prep' },
+]
+
+export default function ResearchModal(props: ResearchModalProps) {
+  const { title, isOpen, onClose } = props
   const modalRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -22,6 +46,8 @@ export default function ResearchModal({ title, content, isOpen, onClose }: Resea
   }, [isOpen, onClose])
 
   if (!isOpen) return null
+
+  const isTabbedMode = 'activeTab' in props && props.activeTab !== undefined
 
   return (
     <div
@@ -46,11 +72,34 @@ export default function ResearchModal({ title, content, isOpen, onClose }: Resea
         </button>
       </div>
 
+      {/* Tab bar (only in tabbed mode) */}
+      {isTabbedMode && (
+        <div className="flex border-b border-gray-light px-8 pt-2 flex-shrink-0">
+          {TABS.map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => (props as TabbedProps).onTabChange(tab.key)}
+              className={`px-4 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px ${
+                (props as TabbedProps).activeTab === tab.key
+                  ? 'border-purple-600 text-purple-800'
+                  : 'border-transparent text-gray-warm hover:text-charcoal'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-8">
-        <div className="prose prose-sm max-w-none text-charcoal">
-          <MarkdownContent content={content} />
-        </div>
+        {isTabbedMode ? (
+          (props as TabbedProps).children
+        ) : (
+          <div className="prose prose-sm max-w-none text-charcoal">
+            <MarkdownContent content={(props as LegacyProps).content} />
+          </div>
+        )}
       </div>
     </div>
   )

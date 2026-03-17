@@ -32,6 +32,7 @@ interface Contact {
   title: string | null
   email: string | null
   phone: string | null
+  linkedin_url: string | null
   is_decision_maker: boolean
   enrichment_data: Record<string, any> | null
 }
@@ -51,6 +52,7 @@ interface Activity {
   subject: string
   body: string | null
   occurred_at: string
+  created_at: string
   outcome: string | null
   contact_id: string | null
   plugin_source: string | null
@@ -76,6 +78,7 @@ interface CompanyDetail extends Company {
   contacts: Contact[]
   opportunities: Opportunity[]
   activities: Activity[]
+  last_enrichment_at: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -616,6 +619,11 @@ function QuickActions({ detail }: { detail: CompanyDetail }) {
   const contactName = primaryContact?.name
   const isPartner = (detail.company_type || 'prospect') === 'partner'
 
+  // Enrichment staleness from dedicated API field (source of truth: pipeline_activities.created_at)
+  const lastEnrichmentAt = detail.last_enrichment_at ? new Date(detail.last_enrichment_at) : null
+  const enrichmentDaysAgo = lastEnrichmentAt ? Math.floor((Date.now() - lastEnrichmentAt.getTime()) / (1000 * 60 * 60 * 24)) : null
+  const enrichmentStale = enrichmentDaysAgo !== null && enrichmentDaysAgo > 21
+
   function copyToClipboard(text: string) {
     navigator.clipboard.writeText(text).catch(() => {
       // Fallback for older browsers
@@ -649,12 +657,6 @@ function QuickActions({ detail }: { detail: CompanyDetail }) {
       icon: 'M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z',
       color: 'border-gray-light hover:border-teal hover:bg-teal/5',
     },
-    {
-      label: 'Enrich',
-      text: `/baxterlabs-advisory:sales-enrichment Enrich ${detail.name}`,
-      icon: 'M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z',
-      color: 'border-gray-light hover:border-teal hover:bg-teal/5',
-    },
   ]
 
   return (
@@ -672,6 +674,28 @@ function QuickActions({ detail }: { detail: CompanyDetail }) {
             {a.label}
           </button>
         ))}
+        {/* Enrich button with staleness indicator */}
+        <div className="relative group">
+          <button
+            onClick={() => copyToClipboard(`/baxterlabs-advisory:sales-enrichment Enrich ${detail.name}`)}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium text-charcoal transition-colors border-gray-light hover:border-teal hover:bg-teal/5`}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+            </svg>
+            Enrich
+            {enrichmentStale && (
+              <span className="inline-flex items-center ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-amber-100 text-amber-700">
+                Refresh recommended
+              </span>
+            )}
+          </button>
+          {enrichmentStale && (
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1 rounded bg-charcoal text-white text-[10px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+              Last enriched {enrichmentDaysAgo} days ago
+            </div>
+          )}
+        </div>
         {isPartner && (
           <button
             onClick={() => copyToClipboard(
@@ -917,65 +941,215 @@ function ResearchIntelSection({ enrichmentData, companyId, contacts }: { enrichm
       : null)
     : null
 
-  // Build enrichment markdown for modal
-  const companyEnrichmentMarkdown: string | null = enrichment?.data && typeof enrichment.data === 'object' && Object.keys(enrichment.data).length > 0
-    ? [
-        '## Enrichment',
-        enrichment.source ? `**Source:** ${enrichment.source.replace(/_/g, ' ')}` : null,
-        enrichment.generated_at ? `**Generated:** ${new Date(enrichment.generated_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}` : null,
-        '',
-        '| Field | Value |',
-        '|-------|-------|',
-        ...Object.entries(enrichment.data).map(([key, value]) =>
-          `| ${key.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())} | ${value == null ? '—' : typeof value === 'object' ? JSON.stringify(value) : String(value)} |`
-        ),
-      ].filter(v => v !== null).join('\n')
-    : null
-
-  // Build contact-level enrichment markdown for modal
-  const contactEnrichmentMarkdown: string | null = hasContactEnrichment
-    ? [
-        '## Contact Enrichment',
-        `**Source:** Vibe Prospecting — ${enrichedContacts.length} of ${contacts.length} contacts enriched`,
-        '',
-        ...enrichedContacts.flatMap(contact => {
-          const ed = contact.enrichment_data!
-          const eduEntries = parseEducation(ed.profile_education)
-          const eduStr = eduEntries.length > 0 ? eduEntries.map(formatEducationLine).join('; ') : '—'
-          return [
-            `### ${contact.name}`,
-            ed.profile_job_title ? `*${ed.profile_job_title}*` : '',
-            '',
-            '| Field | Value |',
-            '|-------|-------|',
-            `| Email | ${contact.email || '—'} |`,
-            `| Phone | ${displayPhone(contact.phone)} |`,
-            `| Level | ${ed.profile_job_level_main ? titleCase(ed.profile_job_level_main) : '—'} |`,
-            `| Seniority | ${ed.profile_job_seniority_level ? ed.profile_job_seniority_level.toUpperCase() : '—'} |`,
-            `| Country | ${ed.profile_country_name ? titleCase(ed.profile_country_name) : '—'} |`,
-            `| Age Group | ${ed.profile_age_group || '—'} |`,
-            `| Company Website | ${ed.profile_company_website || '—'} |`,
-            `| LinkedIn | ${ed.profile_company_linkedin || '—'} |`,
-            `| Education | ${eduStr} |`,
-            '',
-          ]
-        }),
-      ].join('\n')
-    : null
-
-  const enrichmentMarkdown = companyEnrichmentMarkdown || contactEnrichmentMarkdown
-
-  const modalContent = [
-    researchContent,
-    enrichmentMarkdown,
-    activeSession?.content,
-  ].filter(Boolean).join('\n\n---\n\n')
-
   const tabs: { key: 'research' | 'enrichment' | 'call_prep'; label: string }[] = [
     { key: 'research', label: 'Research' },
     { key: 'enrichment', label: 'Enrichment' },
     { key: 'call_prep', label: 'Call Prep' },
   ]
+
+  // Shared tab content renderer used by both inline panel and popout modal
+  function renderTabContent(variant: 'inline' | 'popout') {
+    return (
+      <>
+        {/* Research tab */}
+        {activeTab === 'research' && (
+          researchContent ? (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <h5 className="text-xs font-semibold text-charcoal uppercase tracking-wider">Research</h5>
+                <div className="flex items-center gap-2 text-[10px] text-gray-warm">
+                  {research?.source && <span>Source: {research.source}</span>}
+                  {research?.timestamp && <span>{new Date(research.timestamp).toLocaleDateString()}</span>}
+                </div>
+              </div>
+              <div className={`bg-ivory/50 border border-gray-light rounded p-3 overflow-y-auto ${variant === 'popout' ? 'max-h-[calc(100vh-200px)]' : 'max-h-60'}`}>
+                <MarkdownContent content={researchContent} />
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-gray-warm py-4 text-center">No research data yet — run the sales-research skill to populate this.</p>
+          )
+        )}
+
+        {/* Enrichment tab */}
+        {activeTab === 'enrichment' && (
+          enrichment ? (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h5 className="text-xs font-semibold text-charcoal uppercase tracking-wider">Firmographics</h5>
+                <div className="flex items-center gap-2 text-[10px] text-gray-warm">
+                  {enrichment.source && (
+                    <span className="inline-block px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-semibold">
+                      {enrichment.source.replace(/_/g, ' ')}
+                    </span>
+                  )}
+                  {enrichment.generated_at && (
+                    <span>{new Date(enrichment.generated_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                  )}
+                </div>
+              </div>
+              {enrichment.data && typeof enrichment.data === 'object' && Object.keys(enrichment.data).length > 0 ? (
+                <div className={`bg-ivory/50 border border-gray-light rounded overflow-hidden overflow-y-auto ${variant === 'popout' ? 'max-h-[calc(100vh-200px)]' : 'max-h-60'}`}>
+                  <table className="w-full text-xs">
+                    <tbody className="divide-y divide-gray-light">
+                      {Object.entries(enrichment.data).map(([key, value]) => (
+                        <tr key={key}>
+                          <td className="px-3 py-1.5 font-medium text-charcoal whitespace-nowrap w-1/3 align-top">
+                            {key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                          </td>
+                          <td className="px-3 py-1.5 text-charcoal/80 break-words">
+                            {value == null ? '—' : typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-warm py-2 text-center">Enrichment data is empty.</p>
+              )}
+            </div>
+          ) : hasContactEnrichment ? (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h5 className="text-xs font-semibold text-charcoal uppercase tracking-wider">Contact Enrichment</h5>
+                <span className="inline-block px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-semibold text-[10px]">
+                  Vibe Prospecting
+                </span>
+              </div>
+              <p className="text-[10px] text-gray-warm mb-2">{enrichedContacts.length} of {contacts.length} contacts enriched</p>
+              <div className={`overflow-y-auto ${variant === 'popout' ? 'max-h-[calc(100vh-240px)]' : 'max-h-80'}`}>
+                <div className={`grid gap-3 ${variant === 'popout' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
+                  {enrichedContacts.map(contact => {
+                    const ed = contact.enrichment_data!
+                    const eduEntries = parseEducation(ed.profile_education)
+                    return (
+                      <div key={contact.id} className="border border-gray-light rounded-lg p-3.5 bg-ivory/30">
+                        {/* Header */}
+                        <div className="mb-2.5 pb-2 border-b border-gray-light">
+                          <p className="text-sm font-semibold text-charcoal">{contact.name}</p>
+                          <p className="text-xs text-gray-warm mt-0.5">{ed.profile_job_title || '—'}</p>
+                        </div>
+                        {/* Field grid */}
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-[11px]">
+                          <div>
+                            <p className="text-gray-warm">Email</p>
+                            <p className="text-charcoal font-medium truncate">
+                              {contact.email
+                                ? <a href={`mailto:${contact.email}`} className="text-teal hover:underline">{contact.email}</a>
+                                : '—'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-gray-warm">Phone</p>
+                            <p className="text-charcoal font-medium">{displayPhone(contact.phone)}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-warm">Level</p>
+                            <p className="text-charcoal font-medium">{ed.profile_job_level_main ? titleCase(ed.profile_job_level_main) : '—'}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-warm">Seniority</p>
+                            <p className="text-charcoal font-medium">{ed.profile_job_seniority_level ? titleCase(ed.profile_job_seniority_level) : '—'}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-warm">Country</p>
+                            <p className="text-charcoal font-medium">{ed.profile_country_name ? titleCase(ed.profile_country_name) : '—'}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-warm">Age Group</p>
+                            <p className="text-charcoal font-medium">{ed.profile_age_group || '—'}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-warm">Education</p>
+                            {eduEntries.length > 0 ? (
+                              <div className="text-charcoal font-medium">
+                                {eduEntries.map((e, i) => (
+                                  <p key={i}>{formatEducationLine(e)}</p>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-charcoal font-medium">—</p>
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-gray-warm">LinkedIn</p>
+                            <p className="text-charcoal font-medium truncate">
+                              {contact.linkedin_url
+                                ? <a href={contact.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-teal hover:underline">View Profile</a>
+                                : '—'}
+                            </p>
+                          </div>
+                          <div className="col-span-2">
+                            <p className="text-gray-warm">Company Website</p>
+                            <p className="text-charcoal font-medium truncate">
+                              {ed.profile_company_website
+                                ? <a href={String(ed.profile_company_website)} target="_blank" rel="noopener noreferrer" className="text-teal hover:underline">{String(ed.profile_company_website).replace(/^https?:\/\//, '')}</a>
+                                : '—'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-gray-warm py-4 text-center">No enrichment data yet — run the sales-enrichment skill to populate this.</p>
+          )
+        )}
+
+        {/* Call Prep tab */}
+        {activeTab === 'call_prep' && (
+          sessionsLoaded && hasCallPrep ? (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2">
+                  <h5 className="text-xs font-semibold text-charcoal uppercase tracking-wider">Call Prep Briefing</h5>
+                  <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber/15 text-amber">
+                    {callPrepSessions.length} session{callPrepSessions.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              </div>
+
+              {/* Session history switcher */}
+              {callPrepSessions.length > 1 && (
+                <div className="flex gap-1.5 mb-2 overflow-x-auto pb-1">
+                  {callPrepSessions.map((session, idx) => {
+                    const meetingType = session.notes?.match(/meeting_type:\s*(\S+)/)?.[1] || session.title || 'Session'
+                    const dateLabel = new Date(session.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                    return (
+                      <button
+                        key={session.id}
+                        onClick={() => setActiveSessionIdx(idx)}
+                        className={`flex-shrink-0 px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
+                          idx === activeSessionIdx
+                            ? 'bg-amber/15 text-amber'
+                            : 'bg-ivory text-charcoal/50 hover:bg-ivory/80'
+                        }`}
+                      >
+                        {dateLabel} &middot; {meetingType}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Active session content */}
+              {activeSession?.content && (
+                <div className={`bg-ivory/50 border border-gray-light rounded p-3 overflow-y-auto ${variant === 'popout' ? 'max-h-[calc(100vh-200px)]' : 'max-h-60'}`}>
+                  <MarkdownContent content={activeSession.content} />
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-gray-warm py-4 text-center">No call prep sessions yet — run the sales-call-prep skill to populate this.</p>
+          )
+        )}
+      </>
+    )
+  }
 
   return (
     <div className="border border-purple-200 rounded-lg overflow-hidden">
@@ -1026,203 +1200,7 @@ function ResearchIntelSection({ enrichmentData, companyId, contacts }: { enrichm
           </div>
 
           <div className="px-4 py-3">
-            {/* Research tab */}
-            {activeTab === 'research' && (
-              researchContent ? (
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <h5 className="text-xs font-semibold text-charcoal uppercase tracking-wider">Research</h5>
-                    <div className="flex items-center gap-2 text-[10px] text-gray-warm">
-                      {research?.source && <span>Source: {research.source}</span>}
-                      {research?.timestamp && <span>{new Date(research.timestamp).toLocaleDateString()}</span>}
-                    </div>
-                  </div>
-                  <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-60 overflow-y-auto">
-                    <MarkdownContent content={researchContent} />
-                  </div>
-                </div>
-              ) : (
-                <p className="text-xs text-gray-warm py-4 text-center">No research data yet — run the sales-research skill to populate this.</p>
-              )
-            )}
-
-            {/* Enrichment tab */}
-            {activeTab === 'enrichment' && (
-              enrichment ? (
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h5 className="text-xs font-semibold text-charcoal uppercase tracking-wider">Firmographics</h5>
-                    <div className="flex items-center gap-2 text-[10px] text-gray-warm">
-                      {enrichment.source && (
-                        <span className="inline-block px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-semibold">
-                          {enrichment.source.replace(/_/g, ' ')}
-                        </span>
-                      )}
-                      {enrichment.generated_at && (
-                        <span>{new Date(enrichment.generated_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-                      )}
-                    </div>
-                  </div>
-                  {enrichment.data && typeof enrichment.data === 'object' && Object.keys(enrichment.data).length > 0 ? (
-                    <div className="bg-ivory/50 border border-gray-light rounded overflow-hidden max-h-60 overflow-y-auto">
-                      <table className="w-full text-xs">
-                        <tbody className="divide-y divide-gray-light">
-                          {Object.entries(enrichment.data).map(([key, value]) => (
-                            <tr key={key}>
-                              <td className="px-3 py-1.5 font-medium text-charcoal whitespace-nowrap w-1/3 align-top">
-                                {key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                              </td>
-                              <td className="px-3 py-1.5 text-charcoal/80 break-words">
-                                {value == null ? '—' : typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-warm py-2 text-center">Enrichment data is empty.</p>
-                  )}
-                </div>
-              ) : hasContactEnrichment ? (
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h5 className="text-xs font-semibold text-charcoal uppercase tracking-wider">Contact Enrichment</h5>
-                    <span className="inline-block px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-semibold text-[10px]">
-                      Vibe Prospecting
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-gray-warm mb-2">{enrichedContacts.length} of {contacts.length} contacts enriched</p>
-                  <div className="space-y-2.5 max-h-80 overflow-y-auto">
-                    {enrichedContacts.map(contact => {
-                      const ed = contact.enrichment_data!
-                      const eduEntries = parseEducation(ed.profile_education)
-                      return (
-                        <div key={contact.id} className="border border-gray-light rounded-lg p-3 bg-white">
-                          {/* Header */}
-                          <div className="mb-2.5 pb-2 border-b border-gray-light">
-                            <p className="text-sm font-semibold text-charcoal">{contact.name}</p>
-                            <p className="text-xs text-gray-warm mt-0.5">{ed.profile_job_title || '—'}</p>
-                          </div>
-                          {/* Two-column grid */}
-                          <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]">
-                            <div>
-                              <p className="text-gray-warm">Email</p>
-                              <p className="text-charcoal font-medium truncate">
-                                {contact.email
-                                  ? <a href={`mailto:${contact.email}`} className="text-teal hover:underline">{contact.email}</a>
-                                  : '—'}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-gray-warm">Phone</p>
-                              <p className="text-charcoal font-medium">{displayPhone(contact.phone)}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-warm">Level</p>
-                              <p className="text-charcoal font-medium">{ed.profile_job_level_main ? titleCase(ed.profile_job_level_main) : '—'}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-warm">Seniority</p>
-                              <p className="text-charcoal font-medium">{ed.profile_job_seniority_level ? ed.profile_job_seniority_level.toUpperCase() : '—'}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-warm">Country</p>
-                              <p className="text-charcoal font-medium">{ed.profile_country_name ? titleCase(ed.profile_country_name) : '—'}</p>
-                            </div>
-                            <div>
-                              <p className="text-gray-warm">Age Group</p>
-                              <p className="text-charcoal font-medium">{ed.profile_age_group || '—'}</p>
-                            </div>
-                          </div>
-                          {/* Full-width fields */}
-                          <div className="mt-1.5 space-y-1.5 text-[11px]">
-                            <div>
-                              <p className="text-gray-warm">Company Website</p>
-                              <p className="text-charcoal font-medium truncate">
-                                {ed.profile_company_website
-                                  ? <a href={String(ed.profile_company_website)} target="_blank" rel="noopener noreferrer" className="text-teal hover:underline">{String(ed.profile_company_website).replace(/^https?:\/\//, '')}</a>
-                                  : '—'}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-gray-warm">LinkedIn</p>
-                              <p className="text-charcoal font-medium truncate">
-                                {ed.profile_company_linkedin
-                                  ? <a href={String(ed.profile_company_linkedin)} target="_blank" rel="noopener noreferrer" className="text-teal hover:underline">{String(ed.profile_company_linkedin).replace(/^https?:\/\//, '')}</a>
-                                  : '—'}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-gray-warm">Education</p>
-                              {eduEntries.length > 0 ? (
-                                <div className="text-charcoal font-medium">
-                                  {eduEntries.map((e, i) => (
-                                    <p key={i}>{formatEducationLine(e)}</p>
-                                  ))}
-                                </div>
-                              ) : (
-                                <p className="text-charcoal font-medium">—</p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-xs text-gray-warm py-4 text-center">No enrichment data yet — run the sales-enrichment skill to populate this.</p>
-              )
-            )}
-
-            {/* Call Prep tab */}
-            {activeTab === 'call_prep' && (
-              sessionsLoaded && hasCallPrep ? (
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-2">
-                      <h5 className="text-xs font-semibold text-charcoal uppercase tracking-wider">Call Prep Briefing</h5>
-                      <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber/15 text-amber">
-                        {callPrepSessions.length} session{callPrepSessions.length !== 1 ? 's' : ''}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Session history switcher */}
-                  {callPrepSessions.length > 1 && (
-                    <div className="flex gap-1.5 mb-2 overflow-x-auto pb-1">
-                      {callPrepSessions.map((session, idx) => {
-                        const meetingType = session.notes?.match(/meeting_type:\s*(\S+)/)?.[1] || session.title || 'Session'
-                        const dateLabel = new Date(session.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                        return (
-                          <button
-                            key={session.id}
-                            onClick={() => setActiveSessionIdx(idx)}
-                            className={`flex-shrink-0 px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
-                              idx === activeSessionIdx
-                                ? 'bg-amber/15 text-amber'
-                                : 'bg-ivory text-charcoal/50 hover:bg-ivory/80'
-                            }`}
-                          >
-                            {dateLabel} &middot; {meetingType}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
-
-                  {/* Active session content */}
-                  {activeSession?.content && (
-                    <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-60 overflow-y-auto">
-                      <MarkdownContent content={activeSession.content} />
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-xs text-gray-warm py-4 text-center">No call prep sessions yet — run the sales-call-prep skill to populate this.</p>
-              )
-            )}
+            {renderTabContent('inline')}
           </div>
         </div>
       )}
@@ -1230,9 +1208,12 @@ function ResearchIntelSection({ enrichmentData, companyId, contacts }: { enrichm
       <ResearchModal
         isOpen={researchModalOpen}
         onClose={() => setResearchModalOpen(false)}
-        content={modalContent}
         title="Research & Intelligence"
-      />
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      >
+        {renderTabContent('popout')}
+      </ResearchModal>
     </div>
   )
 }

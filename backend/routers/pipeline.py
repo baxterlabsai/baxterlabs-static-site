@@ -129,11 +129,25 @@ async def get_company(company_id: str, user: dict = Depends(verify_partner_auth)
     opportunities = sb.table("pipeline_opportunities").select("*").eq("company_id", company_id).eq("is_deleted", False).order("created_at", desc=True).execute()
     activities = sb.table("pipeline_activities").select("*, pipeline_contacts(id, name, email), pipeline_companies(id, name), pipeline_opportunities(id, title)").eq("company_id", company_id).eq("is_deleted", False).order("occurred_at", desc=True).limit(50).execute()
 
+    # Find most recent enrichment activity for staleness indicator
+    enrichment_activity = (
+        sb.table("pipeline_activities")
+        .select("created_at")
+        .eq("company_id", company_id)
+        .eq("is_deleted", False)
+        .in_("type", ["enrichment", "plugin_enrichment"])
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    last_enrichment_at = enrichment_activity.data[0]["created_at"] if enrichment_activity.data else None
+
     return {
         **company.data[0],
         "contacts": contacts.data,
         "opportunities": opportunities.data,
         "activities": activities.data,
+        "last_enrichment_at": last_enrichment_at,
     }
 
 
