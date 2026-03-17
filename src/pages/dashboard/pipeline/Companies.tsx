@@ -33,6 +33,7 @@ interface Contact {
   email: string | null
   phone: string | null
   is_decision_maker: boolean
+  enrichment_data: Record<string, any> | null
 }
 
 interface Opportunity {
@@ -835,7 +836,7 @@ function LogPluginActivityForm({
 // Research & Intelligence Collapsible Section
 // ---------------------------------------------------------------------------
 
-function ResearchIntelSection({ enrichmentData, companyId }: { enrichmentData: Record<string, any>; companyId: string }) {
+function ResearchIntelSection({ enrichmentData, companyId, contacts }: { enrichmentData: Record<string, any>; companyId: string; contacts: Contact[] }) {
   const [open, setOpen] = useState(false)
   const [researchModalOpen, setResearchModalOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'research' | 'enrichment' | 'call_prep'>('research')
@@ -845,6 +846,10 @@ function ResearchIntelSection({ enrichmentData, companyId }: { enrichmentData: R
 
   const research = enrichmentData?.research
   const enrichment = enrichmentData?.enrichment
+
+  // Contact-level enrichment from pipeline_contacts.enrichment_data (populated by sales-enrichment skill)
+  const enrichedContacts = contacts.filter(c => c.enrichment_data && Object.keys(c.enrichment_data).length > 0)
+  const hasContactEnrichment = enrichedContacts.length > 0
 
   // Fetch call prep sessions from dedicated table
   useEffect(() => {
@@ -906,7 +911,7 @@ function ResearchIntelSection({ enrichmentData, companyId }: { enrichmentData: R
           </svg>
           <span className="text-sm font-semibold text-purple-800">Research & Intelligence</span>
           <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-200 text-purple-800">
-            {[research && 'Research', enrichment && 'Enrichment', hasCallPrep && 'Call Prep', enrichmentData?.discovery_transcript && 'Transcript'].filter(Boolean).join(' + ')}
+            {[research && 'Research', (enrichment || hasContactEnrichment) && 'Enrichment', hasCallPrep && 'Call Prep', enrichmentData?.discovery_transcript && 'Transcript'].filter(Boolean).join(' + ')}
           </span>
         </div>
         <div className="flex items-center gap-1">
@@ -1000,6 +1005,54 @@ function ResearchIntelSection({ enrichmentData, companyId }: { enrichmentData: R
                   ) : (
                     <p className="text-xs text-gray-warm py-2 text-center">Enrichment data is empty.</p>
                   )}
+                </div>
+              ) : hasContactEnrichment ? (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h5 className="text-xs font-semibold text-charcoal uppercase tracking-wider">Contact Enrichment</h5>
+                    <span className="inline-block px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 font-semibold text-[10px]">
+                      Vibe Prospecting
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-gray-warm mb-2">{enrichedContacts.length} of {contacts.length} contacts enriched</p>
+                  <div className="space-y-2 max-h-72 overflow-y-auto">
+                    {enrichedContacts.map(contact => {
+                      const ed = contact.enrichment_data!
+                      const DISPLAY_KEYS: { key: string; label: string }[] = [
+                        { key: 'profile_job_title', label: 'Title' },
+                        { key: 'profile_job_level_main', label: 'Level' },
+                        { key: 'profile_job_seniority_level', label: 'Seniority' },
+                        { key: 'profile_age_group', label: 'Age Group' },
+                        { key: 'profile_country_name', label: 'Country' },
+                        { key: 'profile_company_website', label: 'Company Website' },
+                        { key: 'profile_company_linkedin', label: 'Company LinkedIn' },
+                      ]
+                      const fields = DISPLAY_KEYS.filter(dk => ed[dk.key])
+                      return (
+                        <div key={contact.id} className="bg-ivory/50 border border-gray-light rounded p-2.5">
+                          <p className="text-xs font-semibold text-charcoal mb-1">{contact.name}</p>
+                          {ed.profile_job_title && (
+                            <p className="text-[11px] text-gray-warm mb-1.5">{ed.profile_job_title}</p>
+                          )}
+                          <table className="w-full text-[11px]">
+                            <tbody>
+                              {fields.map(({ key, label }) => (
+                                <tr key={key}>
+                                  <td className="pr-2 py-0.5 text-gray-warm whitespace-nowrap align-top">{label}</td>
+                                  <td className="py-0.5 text-charcoal/80 break-words">
+                                    {key.includes('linkedin') || key.includes('website')
+                                      ? <a href={String(ed[key])} target="_blank" rel="noopener noreferrer" className="text-teal hover:underline">{String(ed[key]).replace(/^https?:\/\//, '')}</a>
+                                      : <span className="capitalize">{String(ed[key])}</span>
+                                    }
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               ) : (
                 <p className="text-xs text-gray-warm py-4 text-center">No enrichment data yet — run the sales-enrichment skill to populate this.</p>
@@ -1345,7 +1398,7 @@ function CompanySlideOver({
                   </div>
 
                   {/* Research & Intelligence */}
-                  <ResearchIntelSection enrichmentData={detail.enrichment_data || {}} companyId={companyId} />
+                  <ResearchIntelSection enrichmentData={detail.enrichment_data || {}} companyId={companyId} contacts={detail.contacts} />
 
                   {/* Discovery Transcript */}
                   <div>
