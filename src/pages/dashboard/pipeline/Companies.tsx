@@ -873,7 +873,7 @@ function ResearchIntelSection({ enrichmentData, companyId, contacts }: { enrichm
     : null
 
   // Build enrichment markdown for modal
-  const enrichmentMarkdown: string | null = enrichment?.data && typeof enrichment.data === 'object' && Object.keys(enrichment.data).length > 0
+  const companyEnrichmentMarkdown: string | null = enrichment?.data && typeof enrichment.data === 'object' && Object.keys(enrichment.data).length > 0
     ? [
         '## Enrichment',
         enrichment.source ? `**Source:** ${enrichment.source.replace(/_/g, ' ')}` : null,
@@ -886,6 +886,48 @@ function ResearchIntelSection({ enrichmentData, companyId, contacts }: { enrichm
         ),
       ].filter(v => v !== null).join('\n')
     : null
+
+  // Build contact-level enrichment markdown for modal
+  const contactEnrichmentMarkdown: string | null = hasContactEnrichment
+    ? [
+        '## Contact Enrichment',
+        `**Source:** Vibe Prospecting — ${enrichedContacts.length} of ${contacts.length} contacts enriched`,
+        '',
+        ...enrichedContacts.flatMap(contact => {
+          const ed = contact.enrichment_data!
+          let eduLines: string[] = []
+          if (ed.profile_education) {
+            try {
+              const parsed = typeof ed.profile_education === 'string' ? JSON.parse(ed.profile_education) : ed.profile_education
+              if (Array.isArray(parsed)) {
+                eduLines = parsed.map((e: { degrees?: string[]; school?: { name?: string }; start_date?: string; end_date?: string }) =>
+                  `${e.degrees?.join(', ').toUpperCase() || ''}${e.school?.name ? ` from ${e.school.name}` : ''}${(e.start_date || e.end_date) ? ` (${[e.start_date, e.end_date].filter(Boolean).join('–')})` : ''}`
+                )
+              }
+            } catch { /* ignore */ }
+          }
+          return [
+            `### ${contact.name}`,
+            '',
+            '| Field | Value |',
+            '|-------|-------|',
+            `| Email | ${contact.email || '—'} |`,
+            `| Phone | ${contact.phone || '—'} |`,
+            ...(ed.profile_job_title ? [`| Title | ${ed.profile_job_title} |`] : []),
+            ...(ed.profile_job_level_main ? [`| Level | ${ed.profile_job_level_main} |`] : []),
+            ...(ed.profile_job_seniority_level ? [`| Seniority | ${ed.profile_job_seniority_level} |`] : []),
+            ...(ed.profile_age_group ? [`| Age Group | ${ed.profile_age_group} |`] : []),
+            ...(ed.profile_country_name ? [`| Country | ${ed.profile_country_name} |`] : []),
+            ...(ed.profile_company_website ? [`| Company Website | ${ed.profile_company_website} |`] : []),
+            ...(ed.profile_company_linkedin ? [`| LinkedIn | ${ed.profile_company_linkedin} |`] : []),
+            ...(eduLines.length > 0 ? [`| Education | ${eduLines.join('; ')} |`] : []),
+            '',
+          ]
+        }),
+      ].join('\n')
+    : null
+
+  const enrichmentMarkdown = companyEnrichmentMarkdown || contactEnrichmentMarkdown
 
   const modalContent = [
     researchContent,
@@ -1022,12 +1064,18 @@ function ResearchIntelSection({ enrichmentData, companyId, contacts }: { enrichm
                         { key: 'profile_job_title', label: 'Title' },
                         { key: 'profile_job_level_main', label: 'Level' },
                         { key: 'profile_job_seniority_level', label: 'Seniority' },
-                        { key: 'profile_age_group', label: 'Age Group' },
-                        { key: 'profile_country_name', label: 'Country' },
-                        { key: 'profile_company_website', label: 'Company Website' },
-                        { key: 'profile_company_linkedin', label: 'Company LinkedIn' },
                       ]
                       const fields = DISPLAY_KEYS.filter(dk => ed[dk.key])
+
+                      // Parse education JSON
+                      let educationEntries: { degrees?: string[]; school?: { name?: string }; start_date?: string; end_date?: string; majors?: string[] }[] = []
+                      if (ed.profile_education) {
+                        try {
+                          const parsed = typeof ed.profile_education === 'string' ? JSON.parse(ed.profile_education) : ed.profile_education
+                          if (Array.isArray(parsed)) educationEntries = parsed
+                        } catch { /* ignore */ }
+                      }
+
                       return (
                         <div key={contact.id} className="bg-ivory/50 border border-gray-light rounded p-2.5">
                           <p className="text-xs font-semibold text-charcoal mb-1">{contact.name}</p>
@@ -1036,17 +1084,67 @@ function ResearchIntelSection({ enrichmentData, companyId, contacts }: { enrichm
                           )}
                           <table className="w-full text-[11px]">
                             <tbody>
+                              <tr>
+                                <td className="pr-2 py-0.5 text-gray-warm whitespace-nowrap align-top">Email</td>
+                                <td className="py-0.5 text-charcoal/80 break-words">
+                                  {contact.email
+                                    ? <a href={`mailto:${contact.email}`} className="text-teal hover:underline">{contact.email}</a>
+                                    : '—'}
+                                </td>
+                              </tr>
+                              <tr>
+                                <td className="pr-2 py-0.5 text-gray-warm whitespace-nowrap align-top">Phone</td>
+                                <td className="py-0.5 text-charcoal/80 break-words">{contact.phone || '—'}</td>
+                              </tr>
                               {fields.map(({ key, label }) => (
                                 <tr key={key}>
                                   <td className="pr-2 py-0.5 text-gray-warm whitespace-nowrap align-top">{label}</td>
                                   <td className="py-0.5 text-charcoal/80 break-words">
-                                    {key.includes('linkedin') || key.includes('website')
-                                      ? <a href={String(ed[key])} target="_blank" rel="noopener noreferrer" className="text-teal hover:underline">{String(ed[key]).replace(/^https?:\/\//, '')}</a>
-                                      : <span className="capitalize">{String(ed[key])}</span>
-                                    }
+                                    <span className="capitalize">{String(ed[key])}</span>
                                   </td>
                                 </tr>
                               ))}
+                              {ed.profile_age_group && (
+                                <tr>
+                                  <td className="pr-2 py-0.5 text-gray-warm whitespace-nowrap align-top">Age Group</td>
+                                  <td className="py-0.5 text-charcoal/80">{ed.profile_age_group}</td>
+                                </tr>
+                              )}
+                              {ed.profile_country_name && (
+                                <tr>
+                                  <td className="pr-2 py-0.5 text-gray-warm whitespace-nowrap align-top">Country</td>
+                                  <td className="py-0.5 text-charcoal/80 capitalize">{ed.profile_country_name}</td>
+                                </tr>
+                              )}
+                              {ed.profile_company_website && (
+                                <tr>
+                                  <td className="pr-2 py-0.5 text-gray-warm whitespace-nowrap align-top">Company Website</td>
+                                  <td className="py-0.5 break-words">
+                                    <a href={String(ed.profile_company_website)} target="_blank" rel="noopener noreferrer" className="text-teal hover:underline">{String(ed.profile_company_website).replace(/^https?:\/\//, '')}</a>
+                                  </td>
+                                </tr>
+                              )}
+                              {ed.profile_company_linkedin && (
+                                <tr>
+                                  <td className="pr-2 py-0.5 text-gray-warm whitespace-nowrap align-top">LinkedIn</td>
+                                  <td className="py-0.5 break-words">
+                                    <a href={String(ed.profile_company_linkedin)} target="_blank" rel="noopener noreferrer" className="text-teal hover:underline">{String(ed.profile_company_linkedin).replace(/^https?:\/\//, '')}</a>
+                                  </td>
+                                </tr>
+                              )}
+                              {educationEntries.length > 0 && (
+                                <tr>
+                                  <td className="pr-2 py-0.5 text-gray-warm whitespace-nowrap align-top">Education</td>
+                                  <td className="py-0.5 text-charcoal/80">
+                                    {educationEntries.map((e, i) => (
+                                      <p key={i}>
+                                        {e.degrees?.join(', ').toUpperCase()}{e.school?.name ? ` from ${e.school.name}` : ''}
+                                        {(e.start_date || e.end_date) ? ` (${[e.start_date, e.end_date].filter(Boolean).join('–')})` : ''}
+                                      </p>
+                                    ))}
+                                  </td>
+                                </tr>
+                              )}
                             </tbody>
                           </table>
                         </div>
