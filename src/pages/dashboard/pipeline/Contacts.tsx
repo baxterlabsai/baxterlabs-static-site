@@ -13,6 +13,24 @@ interface Company {
   industry: string | null
 }
 
+interface EnrichmentData {
+  prospect_id?: string
+  profile_job_title?: string
+  profile_job_level_main?: string
+  profile_job_seniority_level?: string
+  profile_company_name?: string
+  profile_company_website?: string
+  profile_company_linkedin?: string
+  profile_gender?: string
+  profile_age_group?: string
+  profile_country_name?: string
+  profile_education?: string
+  contact_emails?: string[] | null
+  contact_mobile_phone?: string | null
+  contact_phone_numbers?: string[] | null
+  [key: string]: unknown
+}
+
 interface Contact {
   id: string
   company_id: string | null
@@ -25,6 +43,7 @@ interface Contact {
   notes: string | null
   source: string | null
   lead_tier: string | null
+  enrichment_data: EnrichmentData | null
   created_at: string
   updated_at: string
   pipeline_companies: { id: string; name: string } | null
@@ -316,6 +335,11 @@ export default function PipelineContacts() {
                                 {TIER_BADGE[contact.lead_tier].label}
                               </span>
                             )}
+                            {contact.enrichment_data && (
+                              <span className="ml-1.5 inline-block px-1.5 py-0.5 bg-teal/10 text-teal text-xs font-semibold rounded" title="Enriched via Vibe Prospecting">
+                                Enriched
+                              </span>
+                            )}
                           </p>
                         </div>
                       </div>
@@ -323,7 +347,7 @@ export default function PipelineContacts() {
                     <td className="px-4 py-3 text-sm text-charcoal hidden md:table-cell">
                       {contact.pipeline_companies?.name || '—'}
                     </td>
-                    <td className="px-4 py-3 text-sm text-charcoal hidden lg:table-cell">{contact.title || '—'}</td>
+                    <td className="px-4 py-3 text-sm text-charcoal hidden lg:table-cell">{contact.title || contact.enrichment_data?.profile_job_title || '—'}</td>
                     <td className="px-4 py-3 text-sm text-charcoal hidden sm:table-cell">
                       {contact.email ? (
                         <span className="truncate block max-w-[180px]">{contact.email}</span>
@@ -866,7 +890,9 @@ function ContactSlideOver({
                           </span>
                         )}
                       </h3>
-                      {detail.title && <p className="text-sm text-gray-warm">{detail.title}</p>}
+                      {(detail.title || detail.enrichment_data?.profile_job_title) && (
+                        <p className="text-sm text-gray-warm">{detail.title || detail.enrichment_data?.profile_job_title}</p>
+                      )}
                       {detail.source && (
                         <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold mt-1.5 ${SOURCE_COLORS[detail.source] || 'bg-gray-light text-charcoal'}`}>
                           {detail.source.replace(/_/g, ' ')}
@@ -920,6 +946,90 @@ function ContactSlideOver({
                       </div>
                     )}
                   </div>
+
+                  {/* Enrichment Data */}
+                  {detail.enrichment_data && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-charcoal mb-2 flex items-center gap-2">
+                        <svg className="w-4 h-4 text-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+                        </svg>
+                        Enrichment Data
+                      </h4>
+                      <div className="bg-teal/5 rounded-lg p-3 space-y-2 text-sm">
+                        {(detail.enrichment_data.profile_job_title || detail.title) && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-warm">Job Title</span>
+                            <span className="text-charcoal font-medium">{detail.enrichment_data.profile_job_title || detail.title}</span>
+                          </div>
+                        )}
+                        {detail.enrichment_data.profile_job_level_main && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-warm">Level</span>
+                            <span className="text-charcoal font-medium capitalize">{detail.enrichment_data.profile_job_level_main}</span>
+                          </div>
+                        )}
+                        {detail.enrichment_data.profile_job_seniority_level && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-warm">Seniority</span>
+                            <span className="text-charcoal font-medium uppercase">{detail.enrichment_data.profile_job_seniority_level}</span>
+                          </div>
+                        )}
+                        {detail.enrichment_data.profile_age_group && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-warm">Age Group</span>
+                            <span className="text-charcoal font-medium">{detail.enrichment_data.profile_age_group}</span>
+                          </div>
+                        )}
+                        {detail.enrichment_data.profile_country_name && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-warm">Country</span>
+                            <span className="text-charcoal font-medium capitalize">{detail.enrichment_data.profile_country_name}</span>
+                          </div>
+                        )}
+                        {detail.enrichment_data.profile_company_website && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-warm">Company Website</span>
+                            <a href={detail.enrichment_data.profile_company_website} target="_blank" rel="noopener noreferrer" className="text-teal hover:underline truncate ml-2">
+                              {detail.enrichment_data.profile_company_website.replace(/^https?:\/\//, '')}
+                            </a>
+                          </div>
+                        )}
+                        {detail.enrichment_data.profile_company_linkedin && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-warm">Company LinkedIn</span>
+                            <a href={detail.enrichment_data.profile_company_linkedin} target="_blank" rel="noopener noreferrer" className="text-teal hover:underline">
+                              Profile
+                            </a>
+                          </div>
+                        )}
+                        {detail.enrichment_data.profile_education && (
+                          <div>
+                            <span className="text-gray-warm block mb-1">Education</span>
+                            <div className="space-y-1">
+                              {(() => {
+                                try {
+                                  const edu = typeof detail.enrichment_data!.profile_education === 'string'
+                                    ? JSON.parse(detail.enrichment_data!.profile_education)
+                                    : detail.enrichment_data!.profile_education
+                                  if (Array.isArray(edu)) {
+                                    return edu.map((e: { degrees?: string[]; school?: { name?: string }; majors?: string[]; end_date?: string }, i: number) => (
+                                      <p key={i} className="text-charcoal text-xs">
+                                        {e.degrees?.join(', ').toUpperCase()}{e.school?.name ? ` — ${e.school.name}` : ''}
+                                        {e.majors?.length ? ` (${e.majors.join(', ')})` : ''}
+                                        {e.end_date ? ` ${e.end_date}` : ''}
+                                      </p>
+                                    ))
+                                  }
+                                } catch { /* ignore parse errors */ }
+                                return <p className="text-charcoal text-xs">{String(detail.enrichment_data!.profile_education)}</p>
+                              })()}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Opportunities */}
                   <div>
