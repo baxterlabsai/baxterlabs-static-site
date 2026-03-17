@@ -833,6 +833,51 @@ function LogPluginActivityForm({
 }
 
 // ---------------------------------------------------------------------------
+// Enrichment helpers
+// ---------------------------------------------------------------------------
+
+/** Format +1XXXXXXXXXX → (XXX) XXX-XXXX. Non-US numbers returned as-is. */
+function displayPhone(phone: string | null): string {
+  if (!phone) return '—'
+  const stripped = phone.replace(/\D/g, '')
+  if (stripped.length === 11 && stripped.startsWith('1')) {
+    const d = stripped.slice(1)
+    return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`
+  }
+  if (stripped.length === 10) {
+    return `(${stripped.slice(0, 3)}) ${stripped.slice(3, 6)}-${stripped.slice(6)}`
+  }
+  return phone
+}
+
+/** Title-case a string: "c-suite" → "C-Suite", "united states" → "United States" */
+function titleCase(str: string): string {
+  return str.replace(/\b\w/g, c => c.toUpperCase())
+}
+
+interface EducationEntry {
+  degrees?: string[]
+  school?: { name?: string }
+  start_date?: string
+  end_date?: string
+  majors?: string[]
+}
+
+function parseEducation(raw: unknown): EducationEntry[] {
+  try {
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+    return Array.isArray(parsed) ? parsed : []
+  } catch { return [] }
+}
+
+function formatEducationLine(e: EducationEntry): string {
+  const degree = e.degrees?.join(', ').toUpperCase() || ''
+  const school = e.school?.name ? titleCase(e.school.name) : ''
+  const years = (e.start_date || e.end_date) ? ` (${[e.start_date, e.end_date].filter(Boolean).join('–')})` : ''
+  return `${degree}${school ? ` from ${school}` : ''}${years}`
+}
+
+// ---------------------------------------------------------------------------
 // Research & Intelligence Collapsible Section
 // ---------------------------------------------------------------------------
 
@@ -895,32 +940,23 @@ function ResearchIntelSection({ enrichmentData, companyId, contacts }: { enrichm
         '',
         ...enrichedContacts.flatMap(contact => {
           const ed = contact.enrichment_data!
-          let eduLines: string[] = []
-          if (ed.profile_education) {
-            try {
-              const parsed = typeof ed.profile_education === 'string' ? JSON.parse(ed.profile_education) : ed.profile_education
-              if (Array.isArray(parsed)) {
-                eduLines = parsed.map((e: { degrees?: string[]; school?: { name?: string }; start_date?: string; end_date?: string }) =>
-                  `${e.degrees?.join(', ').toUpperCase() || ''}${e.school?.name ? ` from ${e.school.name}` : ''}${(e.start_date || e.end_date) ? ` (${[e.start_date, e.end_date].filter(Boolean).join('–')})` : ''}`
-                )
-              }
-            } catch { /* ignore */ }
-          }
+          const eduEntries = parseEducation(ed.profile_education)
+          const eduStr = eduEntries.length > 0 ? eduEntries.map(formatEducationLine).join('; ') : '—'
           return [
             `### ${contact.name}`,
+            ed.profile_job_title ? `*${ed.profile_job_title}*` : '',
             '',
             '| Field | Value |',
             '|-------|-------|',
             `| Email | ${contact.email || '—'} |`,
-            `| Phone | ${contact.phone || '—'} |`,
-            ...(ed.profile_job_title ? [`| Title | ${ed.profile_job_title} |`] : []),
-            ...(ed.profile_job_level_main ? [`| Level | ${ed.profile_job_level_main} |`] : []),
-            ...(ed.profile_job_seniority_level ? [`| Seniority | ${ed.profile_job_seniority_level} |`] : []),
-            ...(ed.profile_age_group ? [`| Age Group | ${ed.profile_age_group} |`] : []),
-            ...(ed.profile_country_name ? [`| Country | ${ed.profile_country_name} |`] : []),
-            ...(ed.profile_company_website ? [`| Company Website | ${ed.profile_company_website} |`] : []),
-            ...(ed.profile_company_linkedin ? [`| LinkedIn | ${ed.profile_company_linkedin} |`] : []),
-            ...(eduLines.length > 0 ? [`| Education | ${eduLines.join('; ')} |`] : []),
+            `| Phone | ${displayPhone(contact.phone)} |`,
+            `| Level | ${ed.profile_job_level_main ? titleCase(ed.profile_job_level_main) : '—'} |`,
+            `| Seniority | ${ed.profile_job_seniority_level ? ed.profile_job_seniority_level.toUpperCase() : '—'} |`,
+            `| Country | ${ed.profile_country_name ? titleCase(ed.profile_country_name) : '—'} |`,
+            `| Age Group | ${ed.profile_age_group || '—'} |`,
+            `| Company Website | ${ed.profile_company_website || '—'} |`,
+            `| LinkedIn | ${ed.profile_company_linkedin || '—'} |`,
+            `| Education | ${eduStr} |`,
             '',
           ]
         }),
@@ -1057,96 +1093,79 @@ function ResearchIntelSection({ enrichmentData, companyId, contacts }: { enrichm
                     </span>
                   </div>
                   <p className="text-[10px] text-gray-warm mb-2">{enrichedContacts.length} of {contacts.length} contacts enriched</p>
-                  <div className="space-y-2 max-h-72 overflow-y-auto">
+                  <div className="space-y-2.5 max-h-80 overflow-y-auto">
                     {enrichedContacts.map(contact => {
                       const ed = contact.enrichment_data!
-                      const DISPLAY_KEYS: { key: string; label: string }[] = [
-                        { key: 'profile_job_title', label: 'Title' },
-                        { key: 'profile_job_level_main', label: 'Level' },
-                        { key: 'profile_job_seniority_level', label: 'Seniority' },
-                      ]
-                      const fields = DISPLAY_KEYS.filter(dk => ed[dk.key])
-
-                      // Parse education JSON
-                      let educationEntries: { degrees?: string[]; school?: { name?: string }; start_date?: string; end_date?: string; majors?: string[] }[] = []
-                      if (ed.profile_education) {
-                        try {
-                          const parsed = typeof ed.profile_education === 'string' ? JSON.parse(ed.profile_education) : ed.profile_education
-                          if (Array.isArray(parsed)) educationEntries = parsed
-                        } catch { /* ignore */ }
-                      }
-
+                      const eduEntries = parseEducation(ed.profile_education)
                       return (
-                        <div key={contact.id} className="bg-ivory/50 border border-gray-light rounded p-2.5">
-                          <p className="text-xs font-semibold text-charcoal mb-1">{contact.name}</p>
-                          {ed.profile_job_title && (
-                            <p className="text-[11px] text-gray-warm mb-1.5">{ed.profile_job_title}</p>
-                          )}
-                          <table className="w-full text-[11px]">
-                            <tbody>
-                              <tr>
-                                <td className="pr-2 py-0.5 text-gray-warm whitespace-nowrap align-top">Email</td>
-                                <td className="py-0.5 text-charcoal/80 break-words">
-                                  {contact.email
-                                    ? <a href={`mailto:${contact.email}`} className="text-teal hover:underline">{contact.email}</a>
-                                    : '—'}
-                                </td>
-                              </tr>
-                              <tr>
-                                <td className="pr-2 py-0.5 text-gray-warm whitespace-nowrap align-top">Phone</td>
-                                <td className="py-0.5 text-charcoal/80 break-words">{contact.phone || '—'}</td>
-                              </tr>
-                              {fields.map(({ key, label }) => (
-                                <tr key={key}>
-                                  <td className="pr-2 py-0.5 text-gray-warm whitespace-nowrap align-top">{label}</td>
-                                  <td className="py-0.5 text-charcoal/80 break-words">
-                                    <span className="capitalize">{String(ed[key])}</span>
-                                  </td>
-                                </tr>
-                              ))}
-                              {ed.profile_age_group && (
-                                <tr>
-                                  <td className="pr-2 py-0.5 text-gray-warm whitespace-nowrap align-top">Age Group</td>
-                                  <td className="py-0.5 text-charcoal/80">{ed.profile_age_group}</td>
-                                </tr>
+                        <div key={contact.id} className="border border-gray-light rounded-lg p-3 bg-white">
+                          {/* Header */}
+                          <div className="mb-2.5 pb-2 border-b border-gray-light">
+                            <p className="text-sm font-semibold text-charcoal">{contact.name}</p>
+                            <p className="text-xs text-gray-warm mt-0.5">{ed.profile_job_title || '—'}</p>
+                          </div>
+                          {/* Two-column grid */}
+                          <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]">
+                            <div>
+                              <p className="text-gray-warm">Email</p>
+                              <p className="text-charcoal font-medium truncate">
+                                {contact.email
+                                  ? <a href={`mailto:${contact.email}`} className="text-teal hover:underline">{contact.email}</a>
+                                  : '—'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-gray-warm">Phone</p>
+                              <p className="text-charcoal font-medium">{displayPhone(contact.phone)}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-warm">Level</p>
+                              <p className="text-charcoal font-medium">{ed.profile_job_level_main ? titleCase(ed.profile_job_level_main) : '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-warm">Seniority</p>
+                              <p className="text-charcoal font-medium">{ed.profile_job_seniority_level ? ed.profile_job_seniority_level.toUpperCase() : '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-warm">Country</p>
+                              <p className="text-charcoal font-medium">{ed.profile_country_name ? titleCase(ed.profile_country_name) : '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-warm">Age Group</p>
+                              <p className="text-charcoal font-medium">{ed.profile_age_group || '—'}</p>
+                            </div>
+                          </div>
+                          {/* Full-width fields */}
+                          <div className="mt-1.5 space-y-1.5 text-[11px]">
+                            <div>
+                              <p className="text-gray-warm">Company Website</p>
+                              <p className="text-charcoal font-medium truncate">
+                                {ed.profile_company_website
+                                  ? <a href={String(ed.profile_company_website)} target="_blank" rel="noopener noreferrer" className="text-teal hover:underline">{String(ed.profile_company_website).replace(/^https?:\/\//, '')}</a>
+                                  : '—'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-gray-warm">LinkedIn</p>
+                              <p className="text-charcoal font-medium truncate">
+                                {ed.profile_company_linkedin
+                                  ? <a href={String(ed.profile_company_linkedin)} target="_blank" rel="noopener noreferrer" className="text-teal hover:underline">{String(ed.profile_company_linkedin).replace(/^https?:\/\//, '')}</a>
+                                  : '—'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-gray-warm">Education</p>
+                              {eduEntries.length > 0 ? (
+                                <div className="text-charcoal font-medium">
+                                  {eduEntries.map((e, i) => (
+                                    <p key={i}>{formatEducationLine(e)}</p>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-charcoal font-medium">—</p>
                               )}
-                              {ed.profile_country_name && (
-                                <tr>
-                                  <td className="pr-2 py-0.5 text-gray-warm whitespace-nowrap align-top">Country</td>
-                                  <td className="py-0.5 text-charcoal/80 capitalize">{ed.profile_country_name}</td>
-                                </tr>
-                              )}
-                              {ed.profile_company_website && (
-                                <tr>
-                                  <td className="pr-2 py-0.5 text-gray-warm whitespace-nowrap align-top">Company Website</td>
-                                  <td className="py-0.5 break-words">
-                                    <a href={String(ed.profile_company_website)} target="_blank" rel="noopener noreferrer" className="text-teal hover:underline">{String(ed.profile_company_website).replace(/^https?:\/\//, '')}</a>
-                                  </td>
-                                </tr>
-                              )}
-                              {ed.profile_company_linkedin && (
-                                <tr>
-                                  <td className="pr-2 py-0.5 text-gray-warm whitespace-nowrap align-top">LinkedIn</td>
-                                  <td className="py-0.5 break-words">
-                                    <a href={String(ed.profile_company_linkedin)} target="_blank" rel="noopener noreferrer" className="text-teal hover:underline">{String(ed.profile_company_linkedin).replace(/^https?:\/\//, '')}</a>
-                                  </td>
-                                </tr>
-                              )}
-                              {educationEntries.length > 0 && (
-                                <tr>
-                                  <td className="pr-2 py-0.5 text-gray-warm whitespace-nowrap align-top">Education</td>
-                                  <td className="py-0.5 text-charcoal/80">
-                                    {educationEntries.map((e, i) => (
-                                      <p key={i}>
-                                        {e.degrees?.join(', ').toUpperCase()}{e.school?.name ? ` from ${e.school.name}` : ''}
-                                        {(e.start_date || e.end_date) ? ` (${[e.start_date, e.end_date].filter(Boolean).join('–')})` : ''}
-                                      </p>
-                                    ))}
-                                  </td>
-                                </tr>
-                              )}
-                            </tbody>
-                          </table>
+                            </div>
+                          </div>
                         </div>
                       )
                     })}
