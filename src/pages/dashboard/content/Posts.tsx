@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { apiGet, apiPatch } from '../../../lib/api'
+import { apiGet, apiPatch, apiPost } from '../../../lib/api'
 import MarkdownContent from '../../../components/MarkdownContent'
 
 interface UnsplashResult {
@@ -303,6 +303,7 @@ export default function Posts() {
                           onClick={() => {
                             setPosts(prev => prev.map(p => p.id === selected.id ? { ...p, featured_image_url: img.url } : p))
                             patchStatus(selected.id, { featured_image_url: img.url })
+                            apiPost('/api/content/image-download-trigger', { download_url: img.download_url }).catch(() => {})
                           }}
                           className={`flex-shrink-0 rounded-lg overflow-hidden transition-all ${
                             selected.featured_image_url === img.url

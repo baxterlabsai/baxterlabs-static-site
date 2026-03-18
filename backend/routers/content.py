@@ -763,3 +763,27 @@ async def image_search(
         })
 
     return {"results": results, "total": data.get("total", 0)}
+
+
+class DownloadTrigger(BaseModel):
+    download_url: str
+
+
+@router.post("/content/image-download-trigger")
+async def image_download_trigger(
+    payload: DownloadTrigger,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Trigger Unsplash download tracking per API guidelines."""
+    access_key = os.getenv("UNSPLASH_ACCESS_KEY")
+    if not access_key:
+        return {"ok": True}
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            await client.get(
+                payload.download_url,
+                params={"client_id": access_key},
+            )
+    except Exception:
+        pass
+    return {"ok": True}
