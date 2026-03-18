@@ -989,7 +989,7 @@ function QuickAddModal({
   const [engagementSummaries, setEngagementSummaries] = useState<EngagementSummary[]>([])
 
   useEffect(() => {
-    if (source === 'Referral' && engagementSummaries.length === 0) {
+    if (source === 'referral' && engagementSummaries.length === 0) {
       apiGet<{ engagements: EngagementSummary[] }>('/api/engagements/summary')
         .then(data => setEngagementSummaries(data.engagements))
         .catch(() => {})
@@ -1028,8 +1028,8 @@ function QuickAddModal({
       estimated_close_date: estimatedCloseDate || undefined,
       assigned_to: assignedTo || undefined,
       notes: oppNotes || undefined,
-      referred_by_engagement_id: source === 'Referral' && referralEngagementId ? referralEngagementId : undefined,
-      referred_by_contact_name: source === 'Referral' && referralContactName ? referralContactName : undefined,
+      referred_by_engagement_id: source === 'referral' && referralEngagementId ? referralEngagementId : undefined,
+      referred_by_contact_name: source === 'referral' && referralContactName ? referralContactName : undefined,
       company_type: typeFilter !== 'all' ? typeFilter : undefined,
     })
     setSubmitting(false)
@@ -1205,18 +1205,18 @@ function QuickAddModal({
               onChange={e => setSource(e.target.value)}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
             >
-              <option value="">Select...</option>
-              <option value="Cold Outreach">Cold Outreach</option>
-              <option value="LinkedIn">LinkedIn</option>
-              <option value="Warm Network">Warm Network</option>
-              <option value="Referral">Referral</option>
-              <option value="Event">Event</option>
-              <option value="Other">Other</option>
+              <option value="">Select source...</option>
+              <option value="referral">Referral</option>
+              <option value="website">Website</option>
+              <option value="linkedin">LinkedIn</option>
+              <option value="conference">Conference</option>
+              <option value="cold_outreach">Cold Outreach</option>
+              <option value="inbound">Inbound</option>
             </select>
           </div>
 
           {/* Referral fields (conditional) */}
-          {source === 'Referral' && (
+          {source === 'referral' && (
             <div className="space-y-3 pl-3 border-l-2 border-gold/30">
               <div>
                 <label className="block text-sm font-semibold text-charcoal mb-1.5">Referring Engagement</label>
