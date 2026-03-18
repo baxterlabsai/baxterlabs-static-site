@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react'
-import { apiGet, apiPatch } from '../../../lib/api'
+import { apiGet, apiPut } from '../../../lib/api'
 
 interface NewsItem {
   id: string
   headline: string
-  summary: string
-  source_url: string | null
-  source_name: string | null
-  industry_tags: string[]
-  post_candidate: boolean
+  excerpt: string | null
+  full_text: string | null
+  source_publication: string | null
+  article_url: string | null
+  relevance_score: number | null
+  relevance_reason: string | null
+  alert_topic: string | null
+  status: string
   fetched_at: string
 }
 
@@ -31,7 +34,7 @@ export default function News() {
   const [flagging, setFlagging] = useState<string | null>(null)
 
   useEffect(() => {
-    apiGet<NewsItem[]>('/api/content/news')
+    apiGet<NewsItem[]>('/api/content-news')
       .then(setItems)
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -40,8 +43,8 @@ export default function News() {
   async function flagAsCandidate(id: string) {
     setFlagging(id)
     try {
-      await apiPatch(`/api/content/news/${id}/flag`)
-      setItems(prev => prev.map(n => n.id === id ? { ...n, post_candidate: true } : n))
+      await apiPut(`/api/content-news/${id}`, { status: 'queued' })
+      setItems(prev => prev.map(n => n.id === id ? { ...n, status: 'queued' } : n))
     } catch { /* ignore */ }
     setFlagging(null)
   }
@@ -79,31 +82,31 @@ export default function News() {
 
                   {/* Source + time */}
                   <p className="text-[11px] text-charcoal/40 mb-2">
-                    {item.source_name && <span>{item.source_name} · </span>}
+                    {item.source_publication && <span>{item.source_publication} · </span>}
                     {timeAgo(item.fetched_at)}
                   </p>
 
-                  {/* Summary (2-line clamp) */}
-                  <p className="text-sm text-charcoal/70 line-clamp-2 mb-2">{item.summary}</p>
+                  {/* Excerpt (2-line clamp) */}
+                  {item.excerpt && (
+                    <p className="text-sm text-charcoal/70 line-clamp-2 mb-2">{item.excerpt}</p>
+                  )}
 
-                  {/* Industry tags */}
-                  {item.industry_tags && item.industry_tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {item.industry_tags.map(tag => (
-                        <span
-                          key={tag}
-                          className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-teal/8 text-teal"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
+                  {/* Alert topic as badge */}
+                  {item.alert_topic && (
+                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-teal/8 text-teal">
+                      {item.alert_topic}
+                    </span>
                   )}
                 </div>
 
                 {/* Action column */}
-                <div className="flex-shrink-0">
-                  {item.post_candidate ? (
+                <div className="flex-shrink-0 flex flex-col items-end gap-2">
+                  {item.relevance_score != null && (
+                    <span className="text-[10px] font-medium text-charcoal/40">
+                      Score: {item.relevance_score}
+                    </span>
+                  )}
+                  {item.status === 'queued' ? (
                     <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-green/10 text-green">
                       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />

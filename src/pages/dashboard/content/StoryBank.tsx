@@ -4,34 +4,32 @@ import { apiGet } from '../../../lib/api'
 interface StoryEntry {
   id: string
   category: string
-  finding: string
-  diagnostic_signal: string | null
-  financial_impact_range: string | null
-  industry: string | null
-  firm_size_range: string | null
-  used_in_post_ids: string[]
+  raw_note: string
+  hook_draft: string | null
+  dollar_connection: string | null
+  slay_outline: { S?: string; L?: string; A?: string; Y?: string } | null
+  used_in_post: boolean
+  used_in_post_id: string | null
   created_at: string
 }
 
 const CATEGORIES = [
   'All',
-  'Billing',
-  'WIP',
-  'Pricing',
-  'Capacity',
-  'Staffing',
-  'Reporting',
-  'General',
+  'Founder Journey',
+  'Operational Observation',
+  'Client Pattern',
+  'Industry Data',
+  'Personal Lesson',
+  'Surprising Finding',
 ]
 
 const CATEGORY_COLORS: Record<string, string> = {
-  Billing: 'bg-[#378ADD]/10 text-[#378ADD]',
-  WIP: 'bg-[#BA7517]/10 text-[#BA7517]',
-  Pricing: 'bg-[#66151C]/10 text-[#66151C]',
-  Capacity: 'bg-[#005454]/10 text-[#005454]',
-  Staffing: 'bg-purple-100 text-purple-700',
-  Reporting: 'bg-[#C9A84C]/10 text-[#C9A84C]',
-  General: 'bg-gray-100 text-gray-600',
+  'Founder Journey': 'bg-[#005454]/10 text-[#005454]',
+  'Operational Observation': 'bg-[#C9A84C]/10 text-[#C9A84C]',
+  'Client Pattern': 'bg-[#66151C]/10 text-[#66151C]',
+  'Industry Data': 'bg-[#378ADD]/10 text-[#378ADD]',
+  'Personal Lesson': 'bg-purple-100 text-purple-700',
+  'Surprising Finding': 'bg-emerald-100 text-emerald-700',
 }
 
 export default function StoryBank() {
@@ -42,7 +40,7 @@ export default function StoryBank() {
 
   useEffect(() => {
     const params = categoryFilter !== 'All' ? `?category=${encodeURIComponent(categoryFilter)}` : ''
-    apiGet<StoryEntry[]>(`/api/content/story-bank${params}`)
+    apiGet<StoryEntry[]>(`/api/story-bank${params}`)
       .then(setStories)
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -96,39 +94,30 @@ export default function StoryBank() {
                 <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${CATEGORY_COLORS[s.category] || 'bg-gray-100 text-gray-600'}`}>
                   {s.category}
                 </span>
-                {s.used_in_post_ids && s.used_in_post_ids.length > 0 && (
-                  <span className="text-[10px] font-medium text-charcoal/40">
-                    Used {s.used_in_post_ids.length} time{s.used_in_post_ids.length !== 1 ? 's' : ''}
-                  </span>
+                {s.used_in_post && (
+                  <span className="text-[10px] font-medium text-emerald-600">Used</span>
                 )}
               </div>
 
-              {/* Finding text — 3-line clamp, expand on click */}
+              {/* Hook draft as title if present */}
+              {s.hook_draft && (
+                <p className="text-sm font-semibold text-charcoal leading-snug font-display">{s.hook_draft}</p>
+              )}
+
+              {/* Raw note — 3-line clamp, expand on click */}
               <p
                 className={`text-sm text-charcoal/80 leading-relaxed cursor-pointer ${expandedId !== s.id ? 'line-clamp-3' : ''}`}
                 onClick={() => setExpandedId(expandedId === s.id ? null : s.id)}
               >
-                {s.finding}
+                {s.raw_note}
               </p>
 
-              {/* Optional fields */}
-              <div className="space-y-1.5 mt-auto">
-                {s.diagnostic_signal && (
-                  <p className="text-xs text-charcoal/50">
-                    <span className="font-medium text-charcoal/60">Signal:</span> {s.diagnostic_signal}
-                  </p>
-                )}
-                {s.financial_impact_range && (
-                  <p className="text-xs text-charcoal/50">
-                    <span className="font-medium text-charcoal/60">Impact:</span> {s.financial_impact_range}
-                  </p>
-                )}
-                {s.firm_size_range && (
-                  <p className="text-xs text-charcoal/50">
-                    <span className="font-medium text-charcoal/60">Firm size:</span> {s.firm_size_range}
-                  </p>
-                )}
-              </div>
+              {/* Dollar connection */}
+              {s.dollar_connection && (
+                <p className="text-sm text-teal font-medium leading-relaxed border-l-2 border-teal/30 pl-3">
+                  {s.dollar_connection}
+                </p>
+              )}
             </div>
           ))}
         </div>
