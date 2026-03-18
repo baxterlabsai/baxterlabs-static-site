@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { apiGet } from '../../lib/api'
 import SEO from '../../components/SEO'
 
@@ -125,8 +126,12 @@ function EmptyState({ hasSearch }: { hasSearch: boolean }) {
 // --- Engagement row inside expanded client ---
 
 function EngagementRow({ eng }: { eng: Engagement }) {
+  const navigate = useNavigate()
   return (
-    <div className="flex flex-wrap items-center gap-3 py-2 px-4 text-sm border-b border-gray-light/50 last:border-0">
+    <div
+      onClick={() => navigate(`/dashboard/engagement/${eng.id}`)}
+      className="flex flex-wrap items-center gap-3 py-2 px-4 text-sm border-b border-gray-light/50 last:border-0 cursor-pointer hover:bg-stone-100 transition-colors"
+    >
       <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${statusBadgeClass(eng.status)}`}>
         {statusLabel(eng.status)}
       </span>
