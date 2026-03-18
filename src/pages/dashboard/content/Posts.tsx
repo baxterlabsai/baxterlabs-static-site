@@ -2,6 +2,14 @@ import { useEffect, useState } from 'react'
 import { apiGet, apiPatch } from '../../../lib/api'
 import MarkdownContent from '../../../components/MarkdownContent'
 
+interface ImageCandidate {
+  imageUrl: string
+  thumbnailUrl: string
+  title: string
+  origin: string
+  contentUrl: string
+}
+
 interface Post {
   id: string
   type: string
@@ -12,6 +20,8 @@ interface Post {
   source_id: string | null
   scheduled_date: string | null
   published_date: string | null
+  featured_image_url: string | null
+  image_candidates: ImageCandidate[] | null
   created_at: string
 }
 
@@ -59,7 +69,7 @@ export default function Posts() {
 
   const selected = posts.find(p => p.id === selectedId) ?? null
 
-  async function patchStatus(id: string, body: Record<string, string>) {
+  async function patchStatus(id: string, body: Record<string, string | null>) {
     setPatching(true)
     try {
       const updated = await apiPatch<Post>(`/api/content/posts/${id}`, body)
@@ -211,6 +221,51 @@ export default function Posts() {
                     Scheduled: {new Date(selected.scheduled_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                   </p>
                 )}
+
+                {/* Image candidates */}
+                {selected.image_candidates && selected.image_candidates.length > 0 ? (
+                  <div className="mb-4">
+                    <p className="text-xs font-medium text-charcoal/60 mb-2">Image candidates</p>
+                    <div className="flex gap-2">
+                      {selected.image_candidates.slice(0, 3).map(img => (
+                        <button
+                          key={img.imageUrl}
+                          onClick={() => {
+                            setPosts(prev => prev.map(p => p.id === selected.id ? { ...p, featured_image_url: img.imageUrl } : p))
+                            patchStatus(selected.id, { featured_image_url: img.imageUrl })
+                          }}
+                          className={`flex-shrink-0 rounded-lg overflow-hidden transition-all ${
+                            selected.featured_image_url === img.imageUrl
+                              ? 'ring-2 ring-teal ring-offset-1'
+                              : 'ring-1 ring-gray-200 hover:ring-gray-300'
+                          }`}
+                        >
+                          <img
+                            src={img.thumbnailUrl}
+                            alt={img.title}
+                            className="w-[120px] h-auto object-cover"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : selected.featured_image_url ? (
+                  <div className="mb-4">
+                    <p className="text-xs font-medium text-charcoal/60 mb-2">Image candidates</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-charcoal/50 font-mono truncate flex-1">{selected.featured_image_url}</p>
+                      <button
+                        onClick={() => {
+                          setPosts(prev => prev.map(p => p.id === selected.id ? { ...p, featured_image_url: null } : p))
+                          patchStatus(selected.id, { featured_image_url: null })
+                        }}
+                        className="text-[10px] font-medium text-red-soft hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 transition-colors flex-shrink-0"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
 
                 {/* Action buttons */}
                 <div className="border-t border-gray-100 pt-3">

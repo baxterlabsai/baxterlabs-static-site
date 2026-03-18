@@ -590,6 +590,7 @@ class ContentPostUpdate(BaseModel):
     body: Optional[str] = None
     status: Optional[str] = None
     scheduled_for: Optional[str] = None
+    featured_image_url: Optional[str] = None
 
 
 @router.get("/content/posts")
