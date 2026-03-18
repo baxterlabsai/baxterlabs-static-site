@@ -72,19 +72,21 @@ def infer_seniority(title: str) -> int:
     if not title:
         return 99
     t = title.lower()
-    if any(x in t for x in ['founder', 'owner', 'chief', 'ceo', 'coo', 'cfo', 'cto', 'president']):
+    if any(k in t for k in ['founder', 'owner', 'chief', 'president']):
         return 1
-    if any(x in t for x in ['executive managing director', 'executive director']):
+    if re.search(r'\b(ceo|coo|cfo|cto)\b', t):
+        return 1
+    if any(k in t for k in ['executive managing director', 'executive director']):
         return 2
     if 'managing director' in t:
         return 3
-    if any(x in t for x in ['head of', 'head,', 'vice president', 'vp ']):
+    if any(k in t for k in ['head of', 'head,', 'vice president', 'vp ']):
         return 4
     if 'senior director' in t:
         return 5
     if 'director' in t:
         return 6
-    if any(x in t for x in ['senior manager', 'senior']):
+    if any(k in t for k in ['senior manager', 'senior']):
         return 7
     if 'manager' in t:
         return 8
