@@ -567,3 +567,146 @@ async def public_get_blog_post(slug: str):
     if not result.data:
         raise HTTPException(404, "Blog post not found")
     return result.data[0]
+
+
+# ==========================================================================
+# Content Posts (v2 — /api/content/posts)
+# ==========================================================================
+
+class ContentPostCreate(BaseModel):
+    post_type: Optional[str] = "linkedin"
+    title: Optional[str] = None
+    body: str
+    source_type: Optional[str] = None
+    source_id: Optional[str] = None
+    voice_notes: Optional[str] = None
+    status: Optional[str] = "draft"
+    scheduled_for: Optional[str] = None
+    engagement_data: Optional[dict] = None
+    plugin_version: Optional[str] = None
+
+
+class ContentPostUpdate(BaseModel):
+    body: Optional[str] = None
+    status: Optional[str] = None
+    scheduled_for: Optional[str] = None
+
+
+@router.get("/content/posts")
+async def list_content_posts(
+    status: Optional[str] = Query(None),
+    user: dict = Depends(verify_partner_auth),
+):
+    """List content_posts ordered by created_at DESC, optional ?status= filter."""
+    sb = get_supabase()
+    query = sb.table("content_posts").select("*").order("created_at", desc=True)
+    if status:
+        query = query.eq("status", status)
+    result = query.execute()
+    return result.data
+
+
+@router.post("/content/posts")
+async def create_content_post(
+    payload: ContentPostCreate,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Insert a new content_post row."""
+    sb = get_supabase()
+    data = payload.model_dump(exclude_none=True)
+    result = sb.table("content_posts").insert(data).execute()
+    return result.data[0]
+
+
+@router.patch("/content/posts/{post_id}")
+async def patch_content_post(
+    post_id: str,
+    payload: ContentPostUpdate,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Update status, scheduled_for, or body on a content_post."""
+    sb = get_supabase()
+    data = payload.model_dump(exclude_none=True)
+    if not data:
+        raise HTTPException(400, "No fields to update")
+    data["updated_at"] = datetime.utcnow().isoformat()
+    result = sb.table("content_posts").update(data).eq("id", post_id).execute()
+    if not result.data:
+        raise HTTPException(404, "Post not found")
+    return result.data[0]
+
+
+# ==========================================================================
+# Story Bank (v2 — /api/content/story-bank)
+# ==========================================================================
+
+class StoryBankCreate(BaseModel):
+    category: str
+    finding: str
+    engagement_id: Optional[str] = None
+    diagnostic_signal: Optional[str] = None
+    financial_impact_range: Optional[str] = None
+    industry: Optional[str] = None
+    firm_size_range: Optional[str] = None
+
+
+@router.get("/content/story-bank")
+async def list_story_bank(
+    category: Optional[str] = Query(None),
+    user: dict = Depends(verify_partner_auth),
+):
+    """List story_bank rows ordered by created_at DESC, optional ?category= filter."""
+    sb = get_supabase()
+    query = sb.table("story_bank").select("*").order("created_at", desc=True)
+    if category:
+        query = query.eq("category", category)
+    result = query.execute()
+    return result.data
+
+
+@router.post("/content/story-bank")
+async def create_story_bank_entry(
+    payload: StoryBankCreate,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Insert a new story_bank row."""
+    sb = get_supabase()
+    data = payload.model_dump(exclude_none=True)
+    result = sb.table("story_bank").insert(data).execute()
+    return result.data[0]
+
+
+# ==========================================================================
+# News Items (v2 — /api/content/news)
+# ==========================================================================
+
+@router.get("/content/news")
+async def list_news_items(
+    candidate: Optional[bool] = Query(None),
+    user: dict = Depends(verify_partner_auth),
+):
+    """List news_items ordered by fetched_at DESC, optional ?candidate=true filter."""
+    sb = get_supabase()
+    query = sb.table("news_items").select("*").order("fetched_at", desc=True)
+    if candidate is True:
+        query = query.eq("post_candidate", True)
+    result = query.execute()
+    return result.data
+
+
+@router.patch("/content/news/{news_id}/flag")
+async def flag_news_item(
+    news_id: str,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Set post_candidate = true on a news_item."""
+    sb = get_supabase()
+    result = (
+        sb.table("news_items")
+        .update({"post_candidate": True})
+        .eq("id", news_id)
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(404, "News item not found")
+    return result.data[0]
