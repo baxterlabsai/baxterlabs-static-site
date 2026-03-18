@@ -23,7 +23,7 @@ VALID_POST_TYPES = {"linkedin", "blog"}
 VALID_POST_STATUSES = {"idea", "draft", "review", "scheduled", "published", "archived"}
 VALID_POST_PLATFORMS = {"linkedin", "blog", "both"}
 VALID_IDEA_STATUSES = {"unused", "assigned", "used"}
-VALID_NEWS_STATUSES = {"unreviewed", "queued", "used", "dismissed"}
+VALID_NEWS_STATUSES = {"unreviewed", "queued", "used", "dismissed", "candidate"}
 
 
 # ── Pydantic Models ─────────────────────────────────────────────────────
@@ -642,12 +642,12 @@ async def patch_content_post(
 
 class StoryBankCreate(BaseModel):
     category: str
-    finding: str
-    engagement_id: Optional[str] = None
-    diagnostic_signal: Optional[str] = None
-    financial_impact_range: Optional[str] = None
-    industry: Optional[str] = None
-    firm_size_range: Optional[str] = None
+    raw_note: str
+    hook_draft: Optional[str] = None
+    dollar_connection: Optional[str] = None
+    slay_outline: Optional[dict] = None
+    used_in_post: Optional[bool] = False
+    used_in_post_id: Optional[str] = None
 
 
 @router.get("/content/story-bank")
@@ -685,11 +685,14 @@ async def list_news_items(
     candidate: Optional[bool] = Query(None),
     user: dict = Depends(verify_partner_auth),
 ):
-    """List news_items ordered by fetched_at DESC, optional ?candidate=true filter."""
+    """List content_news ordered by fetched_at DESC, optional ?candidate=true filter."""
     sb = get_supabase()
-    query = sb.table("news_items").select("*").order("fetched_at", desc=True)
+    query = sb.table("content_news").select("*")
     if candidate is True:
-        query = query.eq("post_candidate", True)
+        query = query.eq("status", "candidate")
+    else:
+        query = query.neq("status", "dismissed")
+    query = query.order("relevance_score", desc=True).order("created_at", desc=True)
     result = query.execute()
     return result.data
 
@@ -699,11 +702,11 @@ async def flag_news_item(
     news_id: str,
     user: dict = Depends(verify_partner_auth),
 ):
-    """Set post_candidate = true on a news_item."""
+    """Set status = 'candidate' on a content_news item."""
     sb = get_supabase()
     result = (
-        sb.table("news_items")
-        .update({"post_candidate": True})
+        sb.table("content_news")
+        .update({"status": "candidate"})
         .eq("id", news_id)
         .execute()
     )
