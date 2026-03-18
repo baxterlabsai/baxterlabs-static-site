@@ -125,7 +125,7 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
         onClose={() => setPrepModalOpen(false)}
       />
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
-      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-white shadow-xl flex flex-col">
+      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-3xl bg-white shadow-xl flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-light">
           <div className="min-w-0">
@@ -205,7 +205,7 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
                   </div>
                   {researchOpen && (
                     <div className="px-4 py-3 bg-white">
-                      <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-60 overflow-y-auto">
+                      <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-[500px] overflow-y-auto">
                         <MarkdownContent content={research.content || JSON.stringify(research, null, 2)} />
                       </div>
                     </div>
@@ -239,7 +239,7 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
                   </div>
                   {prepOpen && (
                     <div className="px-4 py-3 bg-white">
-                      <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-60 overflow-y-auto">
+                      <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-[500px] overflow-y-auto">
                         <MarkdownContent content={callPrep.content || JSON.stringify(callPrep, null, 2)} />
                       </div>
                     </div>

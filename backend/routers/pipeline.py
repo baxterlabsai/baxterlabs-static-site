@@ -67,6 +67,30 @@ VALID_OUTREACH_CHANNELS = {"email", "linkedin", "phone", "other"}
 PLUGIN_WRITE_TYPES = {"call_prep", "outreach_draft", "research"}
 
 
+def infer_seniority(title: str) -> int:
+    """Return a numeric seniority tier from a job title (lower = more senior)."""
+    if not title:
+        return 99
+    t = title.lower()
+    if any(x in t for x in ['founder', 'owner', 'chief', 'ceo', 'coo', 'cfo', 'cto', 'president']):
+        return 1
+    if any(x in t for x in ['executive managing director', 'executive director']):
+        return 2
+    if 'managing director' in t:
+        return 3
+    if any(x in t for x in ['head of', 'head,', 'vice president', 'vp ']):
+        return 4
+    if 'senior director' in t:
+        return 5
+    if 'director' in t:
+        return 6
+    if any(x in t for x in ['senior manager', 'senior']):
+        return 7
+    if 'manager' in t:
+        return 8
+    return 9
+
+
 def _write_validation_error(field: str, reason: str, received_length: int, minimum_length: int):
     """Return a 422 JSONResponse with structured validation error for Cowork."""
     return JSONResponse(
@@ -125,7 +149,8 @@ async def get_company(company_id: str, user: dict = Depends(verify_partner_auth)
     if not company.data:
         raise HTTPException(status_code=404, detail="Company not found")
 
-    contacts = sb.table("pipeline_contacts").select("*").eq("company_id", company_id).eq("is_deleted", False).order("created_at", desc=True).execute()
+    contacts = sb.table("pipeline_contacts").select("*").eq("company_id", company_id).eq("is_deleted", False).execute()
+    contacts_data = sorted(contacts.data, key=lambda c: infer_seniority(c.get("title", "")))
     opportunities = sb.table("pipeline_opportunities").select("*").eq("company_id", company_id).eq("is_deleted", False).order("created_at", desc=True).execute()
     activities = sb.table("pipeline_activities").select("*, pipeline_contacts(id, name, email), pipeline_companies(id, name), pipeline_opportunities(id, title)").eq("company_id", company_id).eq("is_deleted", False).order("occurred_at", desc=True).limit(50).execute()
 
@@ -144,7 +169,7 @@ async def get_company(company_id: str, user: dict = Depends(verify_partner_auth)
 
     return {
         **company.data[0],
-        "contacts": contacts.data,
+        "contacts": contacts_data,
         "opportunities": opportunities.data,
         "activities": activities.data,
         "last_enrichment_at": last_enrichment_at,

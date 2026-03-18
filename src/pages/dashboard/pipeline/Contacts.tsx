@@ -716,7 +716,7 @@ function ContactSlideOver({
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
-      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-white shadow-xl flex flex-col">
+      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-3xl bg-white shadow-xl flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-light flex-shrink-0">
           <h2 className="font-display text-lg font-bold text-charcoal truncate">Contact Detail</h2>
