@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import Optional, List
 from datetime import datetime
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from middleware.auth import verify_partner_auth
@@ -714,3 +716,50 @@ async def flag_news_item(
     if not result.data:
         raise HTTPException(404, "News item not found")
     return result.data[0]
+
+
+# ==========================================================================
+# Unsplash Image Search
+# ==========================================================================
+
+@router.get("/content/image-search")
+async def image_search(
+    q: str = Query(..., min_length=1),
+    limit: int = Query(3, ge=1, le=10),
+    user: dict = Depends(verify_partner_auth),
+):
+    """Search Unsplash for landscape photos matching a query."""
+    access_key = os.getenv("UNSPLASH_ACCESS_KEY")
+    if not access_key:
+        raise HTTPException(503, "Unsplash API key not configured")
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                "https://api.unsplash.com/search/photos",
+                params={
+                    "query": q,
+                    "per_page": limit,
+                    "orientation": "landscape",
+                    "client_id": access_key,
+                },
+            )
+            resp.raise_for_status()
+            data = resp.json()
+    except Exception:
+        logger.warning("Unsplash API request failed for query=%s", q)
+        return {"results": [], "total": 0}
+
+    results = []
+    for item in data.get("results", []):
+        results.append({
+            "id": item["id"],
+            "url": item["urls"]["regular"],
+            "thumb": item["urls"]["thumb"],
+            "description": item.get("alt_description"),
+            "photographer": item["user"]["name"],
+            "photographer_url": item["user"]["links"]["html"],
+            "download_url": item["links"]["download_location"],
+        })
+
+    return {"results": results, "total": data.get("total", 0)}

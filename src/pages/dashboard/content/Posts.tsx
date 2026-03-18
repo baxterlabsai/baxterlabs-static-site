@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react'
 import { apiGet, apiPatch } from '../../../lib/api'
 import MarkdownContent from '../../../components/MarkdownContent'
 
-interface ImageCandidate {
-  imageUrl: string
-  thumbnailUrl: string
-  title: string
-  origin: string
-  contentUrl: string
+interface UnsplashResult {
+  id: string
+  url: string
+  thumb: string
+  description: string | null
+  photographer: string
+  photographer_url: string
+  download_url: string
 }
 
 interface Post {
@@ -21,7 +23,6 @@ interface Post {
   scheduled_date: string | null
   published_date: string | null
   featured_image_url: string | null
-  image_candidates: ImageCandidate[] | null
   created_at: string
 }
 
@@ -55,6 +56,9 @@ export default function Posts() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [scheduleDate, setScheduleDate] = useState('')
   const [patching, setPatching] = useState(false)
+  const [imageQuery, setImageQuery] = useState('')
+  const [imageResults, setImageResults] = useState<UnsplashResult[]>([])
+  const [imageSearching, setImageSearching] = useState(false)
 
   useEffect(() => {
     apiGet<Post[]>('/api/content/posts')
@@ -68,6 +72,31 @@ export default function Posts() {
     : posts.filter(p => p.status === activeTab)
 
   const selected = posts.find(p => p.id === selectedId) ?? null
+
+  function defaultImageQuery(post: Post): string {
+    if (post.source_type === 'story_bank') return 'professional services office'
+    if (post.source_type === 'content_news') return 'business finance'
+    return 'professional services'
+  }
+
+  function handleSelectPost(id: string) {
+    setSelectedId(id)
+    setImageResults([])
+    const post = posts.find(p => p.id === id)
+    setImageQuery(post ? defaultImageQuery(post) : 'professional services')
+  }
+
+  async function searchImages() {
+    if (!imageQuery.trim()) return
+    setImageSearching(true)
+    try {
+      const data = await apiGet<{ results: UnsplashResult[]; total: number }>(
+        `/api/content/image-search?q=${encodeURIComponent(imageQuery.trim())}&limit=3`
+      )
+      setImageResults(data.results)
+    } catch { /* ignore */ }
+    setImageSearching(false)
+  }
 
   async function patchStatus(id: string, body: Record<string, string | null>) {
     setPatching(true)
@@ -137,7 +166,7 @@ export default function Posts() {
               filtered.map(post => (
                 <button
                   key={post.id}
-                  onClick={() => setSelectedId(post.id)}
+                  onClick={() => handleSelectPost(post.id)}
                   className={`w-full text-left bg-white rounded-lg border p-4 transition-colors ${
                     selectedId === post.id
                       ? 'border-teal ring-1 ring-teal/30'
@@ -222,50 +251,78 @@ export default function Posts() {
                   </p>
                 )}
 
-                {/* Image candidates */}
-                {selected.image_candidates && selected.image_candidates.length > 0 ? (
-                  <div className="mb-4">
-                    <p className="text-xs font-medium text-charcoal/60 mb-2">Image candidates</p>
-                    <div className="flex gap-2">
-                      {selected.image_candidates.slice(0, 3).map(img => (
-                        <button
-                          key={img.imageUrl}
-                          onClick={() => {
-                            setPosts(prev => prev.map(p => p.id === selected.id ? { ...p, featured_image_url: img.imageUrl } : p))
-                            patchStatus(selected.id, { featured_image_url: img.imageUrl })
-                          }}
-                          className={`flex-shrink-0 rounded-lg overflow-hidden transition-all ${
-                            selected.featured_image_url === img.imageUrl
-                              ? 'ring-2 ring-teal ring-offset-1'
-                              : 'ring-1 ring-gray-200 hover:ring-gray-300'
-                          }`}
-                        >
-                          <img
-                            src={img.thumbnailUrl}
-                            alt={img.title}
-                            className="w-[120px] h-auto object-cover"
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : selected.featured_image_url ? (
-                  <div className="mb-4">
-                    <p className="text-xs font-medium text-charcoal/60 mb-2">Image candidates</p>
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs text-charcoal/50 font-mono truncate flex-1">{selected.featured_image_url}</p>
+                {/* Image */}
+                <div className="mb-4">
+                  <p className="text-xs font-medium text-charcoal/60 mb-2">Image</p>
+
+                  {/* Selected image display */}
+                  {selected.featured_image_url && (
+                    <div className="mb-2">
+                      <img
+                        src={selected.featured_image_url}
+                        alt="Selected"
+                        className="w-full h-24 object-cover rounded-lg mb-1"
+                      />
                       <button
                         onClick={() => {
                           setPosts(prev => prev.map(p => p.id === selected.id ? { ...p, featured_image_url: null } : p))
                           patchStatus(selected.id, { featured_image_url: null })
                         }}
-                        className="text-[10px] font-medium text-red-soft hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 transition-colors flex-shrink-0"
+                        className="text-[10px] font-medium text-red-soft hover:text-red-600 transition-colors"
                       >
-                        Clear
+                        Remove
                       </button>
                     </div>
+                  )}
+
+                  {/* Search input */}
+                  <div className="flex gap-1.5">
+                    <input
+                      type="text"
+                      value={imageQuery}
+                      onChange={e => setImageQuery(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && searchImages()}
+                      placeholder="Search images..."
+                      className="flex-1 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-charcoal"
+                    />
+                    <button
+                      onClick={searchImages}
+                      disabled={imageSearching || !imageQuery.trim()}
+                      className="px-3 py-1.5 text-xs font-medium rounded-lg bg-teal text-white hover:bg-teal/90 transition-colors disabled:opacity-50"
+                    >
+                      {imageSearching ? '...' : 'Search'}
+                    </button>
                   </div>
-                ) : null}
+
+                  {/* Search results */}
+                  {imageResults.length > 0 && (
+                    <div className="flex gap-2 mt-2">
+                      {imageResults.map(img => (
+                        <button
+                          key={img.id}
+                          onClick={() => {
+                            setPosts(prev => prev.map(p => p.id === selected.id ? { ...p, featured_image_url: img.url } : p))
+                            patchStatus(selected.id, { featured_image_url: img.url })
+                          }}
+                          className={`flex-shrink-0 rounded-lg overflow-hidden transition-all ${
+                            selected.featured_image_url === img.url
+                              ? 'ring-2 ring-teal ring-offset-1'
+                              : 'ring-1 ring-gray-200 hover:ring-gray-300'
+                          }`}
+                        >
+                          <img
+                            src={img.thumb}
+                            alt={img.description || 'Unsplash photo'}
+                            className="w-[120px] h-auto object-cover"
+                          />
+                          <p className="text-[9px] text-charcoal/40 px-1 py-0.5 truncate w-[120px]">
+                            {img.photographer}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 {/* Action buttons */}
                 <div className="border-t border-gray-100 pt-3">
