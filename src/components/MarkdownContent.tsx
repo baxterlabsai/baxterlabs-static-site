@@ -33,11 +33,16 @@ function fixMarkdownTables(text: string): string {
 
     result.push(lines[i])
 
-    // Insert missing separator: current line is a pipe row, next line is
-    // also a pipe row but neither is a separator row
-    if (
+    // Insert missing separator only after the header (first pipe row in a
+    // table block). Once we insert one, skip until the table block ends.
+    const prevTrimmed = i > 0 ? lines[i - 1].trim() : ''
+    const isFirstPipeRow =
       trimmed.startsWith('|') &&
       trimmed.endsWith('|') &&
+      (!prevTrimmed.startsWith('|') || !prevTrimmed.endsWith('|'))
+
+    if (
+      isFirstPipeRow &&
       !trimmed.includes('---') &&
       i + 1 < lines.length
     ) {
