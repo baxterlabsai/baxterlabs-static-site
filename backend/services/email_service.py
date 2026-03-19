@@ -19,6 +19,28 @@ GOLD = "#C9A84C"
 CHARCOAL = "#2D3436"
 IVORY = "#FAF8F2"
 
+SIGNATURE_HTML = """
+<table cellpadding="0" cellspacing="0" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#111111;margin-top:24px;">
+<tr>
+<td style="padding-right:14px;">
+<a href="https://baxterlabs.ai">
+<img src="https://baxterlabs.ai/images/baxterlabs-logo.png"
+width="100"
+style="display:block;border:0;">
+</a>
+</td>
+<td style="border-left:1px solid #e3e3e3;padding-left:14px;">
+<div style="font-size:16px;font-weight:600;">George DeVries</div>
+<div style="font-size:13px;color:#66151C;">Co-Founder &amp; Managing Partner</div>
+<div style="font-size:13px;color:#444444;">(415) 846-4557</div>
+<div style="font-size:13px;">
+<a href="https://www.linkedin.com/in/georgejdevries/" style="color:#444444;text-decoration:none;">LinkedIn Profile</a>
+</div>
+</td>
+</tr>
+</table>
+"""
+
 # Three-tier sender addresses
 EMAIL_ACCOUNTING = "accounting@baxterlabs.ai"
 EMAIL_INFO = "info@baxterlabs.ai"
@@ -147,8 +169,10 @@ class EmailService:
         cc_email: Optional[str] = None,
     ) -> dict:
         """Core send method using Gmail SMTP."""
-        full_html = self._wrap_html(html_body)
         sender_email = from_email or self.from_email
+        if sender_email not in (EMAIL_ACCOUNTING, EMAIL_INFO):
+            html_body = html_body + SIGNATURE_HTML
+        full_html = self._wrap_html(html_body)
         sender_name = from_name or self.from_name
 
         if self.development_mode:
