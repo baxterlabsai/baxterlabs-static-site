@@ -7,40 +7,61 @@ interface MarkdownContentProps {
 }
 
 /**
- * Detect single-line collapsed markdown tables (all rows on one line separated
- * by `| |`) and split them into proper multi-line tables so remarkGfm can parse
- * them.  Also inserts a separator row (`| --- | --- |`) after the header when
- * one is missing.
+ * Fix markdown tables that remarkGfm can't parse:
+ * 1. Collapsed tables (all rows on one line separated by `| |`)
+ * 2. Tables missing the `| --- |` separator row after the header
  */
-function fixCollapsedTables(text: string): string {
-  return text
-    .split('\n')
-    .map((line) => {
-      const trimmed = line.trim()
-      if (!trimmed.startsWith('|')) return line
-      const collapseCount = (trimmed.match(/\| \|/g) || []).length
-      if (collapseCount < 2) return line
+function fixMarkdownTables(text: string): string {
+  const lines = text.split('\n')
+  const result: string[] = []
 
-      // Split collapsed rows
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim()
+
+    // Handle collapsed tables (all rows on one line)
+    if (trimmed.startsWith('|') && (trimmed.match(/\| \|/g) || []).length >= 2) {
       const rows = trimmed.replace(/\| \|/g, '|\n|').split('\n')
-
-      // Insert separator row after header if missing
       if (rows.length >= 2 && !rows[1].includes('---')) {
         const colCount = (rows[0].match(/\|/g) || []).length - 1
         if (colCount > 0) {
-          const sep = '| ' + Array(colCount).fill('---').join(' | ') + ' |'
-          rows.splice(1, 0, sep)
+          rows.splice(1, 0, '| ' + Array(colCount).fill('---').join(' | ') + ' |')
         }
       }
-      return rows.join('\n')
-    })
-    .join('\n')
+      result.push(rows.join('\n'))
+      continue
+    }
+
+    result.push(lines[i])
+
+    // Insert missing separator: current line is a pipe row, next line is
+    // also a pipe row but neither is a separator row
+    if (
+      trimmed.startsWith('|') &&
+      trimmed.endsWith('|') &&
+      !trimmed.includes('---') &&
+      i + 1 < lines.length
+    ) {
+      const nextTrimmed = lines[i + 1].trim()
+      if (
+        nextTrimmed.startsWith('|') &&
+        nextTrimmed.endsWith('|') &&
+        !nextTrimmed.includes('---')
+      ) {
+        const colCount = (trimmed.match(/\|/g) || []).length - 1
+        if (colCount > 0) {
+          result.push('| ' + Array(colCount).fill('---').join(' | ') + ' |')
+        }
+      }
+    }
+  }
+
+  return result.join('\n')
 }
 
 export default function MarkdownContent({ content, className = '' }: MarkdownContentProps) {
   return (
     <div className={`prose-bl ${className}`}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{fixCollapsedTables(content)}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{fixMarkdownTables(content)}</ReactMarkdown>
     </div>
   )
 }
