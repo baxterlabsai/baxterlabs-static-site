@@ -162,7 +162,7 @@ const PHASE_NAMES: Record<number, string> = {
   2: 'Leadership Interviews',
   3: 'Profit Leak Quantification',
   4: 'Optimization Analysis',
-  5: 'Report Assembly + Retainer',
+  5: 'Report Assembly & Retainer Proposal',
   6: 'Quality Control',
   7: 'Engagement Close & Archive',
 }
@@ -280,6 +280,12 @@ export default function EngagementDetail() {
   const [resendingInterviewId, setResendingInterviewId] = useState<string | null>(null)
   const [resendConfirmContact, setResendConfirmContact] = useState<{ id: string; name: string; email: string } | null>(null)
 
+  // Delivery command inputs
+  const [contactResearchName, setContactResearchName] = useState('')
+  const [interviewPrepName, setInterviewPrepName] = useState('')
+  const [editDeliverableInstructions, setEditDeliverableInstructions] = useState('')
+  const [copiedDeliveryCmd, setCopiedDeliveryCmd] = useState<string | null>(null)
+
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null)
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -331,6 +337,12 @@ export default function EngagementDetail() {
     apiGet<EngagementData>(`/api/engagements/${id}`)
       .then(async (d) => {
         setData(d)
+        // Pre-populate delivery command contact names
+        if (d.interview_contacts?.length > 0) {
+          const firstName = d.interview_contacts[0].name
+          setContactResearchName(prev => prev || firstName)
+          setInterviewPrepName(prev => prev || firstName)
+        }
         // Auto-seed phase outputs if empty
         if (!d.phase_outputs || d.phase_outputs.length === 0) {
           try {
@@ -396,10 +408,7 @@ export default function EngagementDetail() {
 
   const getPhaseCommand = (phase: number) => {
     if (!data) return ''
-    const rawName = data.clients.company_name
-    const slug = rawName.replace(/,?\s*(Inc\.?|LLC|Corp\.?|Ltd\.?)$/i, '').replace(/[^a-zA-Z0-9]/g, '')
-    const year = data.start_date ? new Date(data.start_date).getFullYear() : new Date().getFullYear()
-    return `/baxterlabs-advisory:run-phase ${phase} ${slug}_${year}`
+    return `/baxterlabs-delivery:run-phase ${data.clients.company_name} ${phase}`
   }
 
   const copyPhaseCommand = async (phase: number) => {
@@ -595,16 +604,10 @@ export default function EngagementDetail() {
     } catch {}
   }
 
-  const getEngagementSlug = () => {
-    if (!data) return ''
-    const rawName = data.clients.company_name
-    const slug = rawName.replace(/,?\s*(Inc\.?|LLC|Corp\.?|Ltd\.?)$/i, '').replace(/[^a-zA-Z0-9]/g, '')
-    const year = data.start_date ? new Date(data.start_date).getFullYear() : new Date().getFullYear()
-    return `${slug}_${year}`
-  }
+
 
   const copyEditCommand = (outputName: string) => {
-    const cmd = `/baxterlabs-advisory:edit-deliverable ${outputName} ${getEngagementSlug()} "${editInstruction}"`
+    const cmd = `/baxterlabs-delivery:edit-deliverable ${id} ${editInstruction}`
     navigator.clipboard.writeText(cmd).catch(() => {
       const ta = document.createElement('textarea')
       ta.value = cmd
@@ -631,8 +634,22 @@ export default function EngagementDetail() {
     setApproveConfirmId(null)
   }
 
+  const copyDeliveryCommand = (key: string, cmd: string) => {
+    navigator.clipboard.writeText(cmd).catch(() => {
+      const ta = document.createElement('textarea')
+      ta.value = cmd
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    })
+    setCopiedDeliveryCmd(key)
+    toast(`Copied: ${cmd}`)
+    setTimeout(() => setCopiedDeliveryCmd(null), 2000)
+  }
+
   const copySendDeliverablesCommand = () => {
-    const cmd = `/baxterlabs-advisory:send-deliverables ${getEngagementSlug()}`
+    const cmd = `/baxterlabs-delivery:send-deliverables ${id}`
     navigator.clipboard.writeText(cmd).catch(() => {
       const ta = document.createElement('textarea')
       ta.value = cmd
@@ -953,6 +970,123 @@ export default function EngagementDetail() {
                 </div>
               )
             })}
+          </div>
+        </section>
+      )}
+
+      {/* Delivery Commands */}
+      {(isInPhases || data.status === 'phases_complete') && (
+        <section className="bg-white rounded-lg border border-gray-light p-5 mb-6">
+          <div className="mb-4">
+            <h3 className="font-display text-lg font-bold text-teal">Delivery Commands</h3>
+            <p className="text-xs text-gray-warm mt-0.5">Copy commands with parameters for Cowork</p>
+          </div>
+          <div className="space-y-3">
+            {/* Contact Research */}
+            <div className="flex items-center gap-2 border border-gray-light rounded-lg p-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-charcoal mb-1.5">Contact Research</p>
+                <input
+                  type="text"
+                  value={contactResearchName}
+                  onChange={e => setContactResearchName(e.target.value)}
+                  placeholder="Contact name"
+                  className="w-full text-sm border border-gray-light rounded px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-teal"
+                />
+              </div>
+              <button
+                onClick={() => copyDeliveryCommand('contact-research', `/baxterlabs-delivery:contact-research ${contactResearchName}`)}
+                disabled={!contactResearchName.trim()}
+                className={`flex-shrink-0 inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded font-semibold transition-colors ${
+                  copiedDeliveryCmd === 'contact-research' ? 'bg-teal/10 text-teal' : 'bg-ivory text-teal hover:bg-teal/10'
+                } disabled:opacity-40`}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                </svg>
+                {copiedDeliveryCmd === 'contact-research' ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+
+            {/* Interview Prep */}
+            <div className="flex items-center gap-2 border border-gray-light rounded-lg p-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-charcoal mb-1.5">Interview Prep</p>
+                <input
+                  type="text"
+                  value={interviewPrepName}
+                  onChange={e => setInterviewPrepName(e.target.value)}
+                  placeholder="Contact name"
+                  className="w-full text-sm border border-gray-light rounded px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-teal"
+                />
+              </div>
+              <button
+                onClick={() => copyDeliveryCommand('interview-prep', `/baxterlabs-delivery:interview-prep ${interviewPrepName}`)}
+                disabled={!interviewPrepName.trim()}
+                className={`flex-shrink-0 inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded font-semibold transition-colors ${
+                  copiedDeliveryCmd === 'interview-prep' ? 'bg-teal/10 text-teal' : 'bg-ivory text-teal hover:bg-teal/10'
+                } disabled:opacity-40`}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                </svg>
+                {copiedDeliveryCmd === 'interview-prep' ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+
+            {/* Edit Deliverable */}
+            <div className="flex items-center gap-2 border border-gray-light rounded-lg p-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-charcoal mb-1.5">Edit Deliverable</p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={id || ''}
+                    readOnly
+                    className="w-32 text-xs text-gray-warm bg-gray-light/50 border border-gray-light rounded px-2 py-1.5 font-mono"
+                    title="Engagement ID"
+                  />
+                  <input
+                    type="text"
+                    value={editDeliverableInstructions}
+                    onChange={e => setEditDeliverableInstructions(e.target.value)}
+                    placeholder="Edit instructions..."
+                    className="flex-1 text-sm border border-gray-light rounded px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-teal"
+                  />
+                </div>
+              </div>
+              <button
+                onClick={() => copyDeliveryCommand('edit-deliverable', `/baxterlabs-delivery:edit-deliverable ${id} ${editDeliverableInstructions}`)}
+                disabled={!editDeliverableInstructions.trim()}
+                className={`flex-shrink-0 inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded font-semibold transition-colors ${
+                  copiedDeliveryCmd === 'edit-deliverable' ? 'bg-teal/10 text-teal' : 'bg-ivory text-teal hover:bg-teal/10'
+                } disabled:opacity-40`}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                </svg>
+                {copiedDeliveryCmd === 'edit-deliverable' ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+
+            {/* Send Deliverables */}
+            <div className="flex items-center gap-2 border border-gray-light rounded-lg p-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-charcoal">Send Deliverables</p>
+                <p className="text-xs text-gray-warm mt-0.5 font-mono">{id}</p>
+              </div>
+              <button
+                onClick={() => copyDeliveryCommand('send-deliverables', `/baxterlabs-delivery:send-deliverables ${id}`)}
+                className={`flex-shrink-0 inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded font-semibold transition-colors ${
+                  copiedDeliveryCmd === 'send-deliverables' ? 'bg-teal/10 text-teal' : 'bg-ivory text-teal hover:bg-teal/10'
+                }`}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                </svg>
+                {copiedDeliveryCmd === 'send-deliverables' ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
           </div>
         </section>
       )}

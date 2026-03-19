@@ -169,6 +169,10 @@ export default function PipelineActivities() {
   const [expandedBody, setExpandedBody] = useState<Set<string>>(new Set())
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set())
 
+  // Gmail draft creation
+  const [draftCreating, setDraftCreating] = useState<string | null>(null)
+  const [draftResult, setDraftResult] = useState<Record<string, 'success' | 'error'>>({})
+
   useEffect(() => {
     Promise.all([
       apiGet<{ activities: Activity[] }>('/api/pipeline/activities'),
@@ -527,6 +531,35 @@ export default function PipelineActivities() {
                       <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-gray-warm">
                         <span>{timeAgo(act.occurred_at)}</span>
                         {act.duration_minutes && <span>{act.duration_minutes} min</span>}
+
+                        {/* Create Gmail Draft for email activities */}
+                        {act.type === 'email' && act.contact_id && (
+                          <button
+                            onClick={async () => {
+                              setDraftCreating(act.id)
+                              try {
+                                await apiPost(`/api/pipeline/activities/${act.id}/create-draft`)
+                                setDraftResult(prev => ({ ...prev, [act.id]: 'success' }))
+                                setTimeout(() => setDraftResult(prev => { const n = { ...prev }; delete n[act.id]; return n }), 3000)
+                              } catch {
+                                setDraftResult(prev => ({ ...prev, [act.id]: 'error' }))
+                                setTimeout(() => setDraftResult(prev => { const n = { ...prev }; delete n[act.id]; return n }), 4000)
+                              }
+                              setDraftCreating(null)
+                            }}
+                            disabled={draftCreating === act.id}
+                            className={`font-semibold transition-colors ${
+                              draftResult[act.id] === 'success' ? 'text-teal' :
+                              draftResult[act.id] === 'error' ? 'text-red-soft' :
+                              'text-teal hover:underline'
+                            }`}
+                          >
+                            {draftCreating === act.id ? '...' :
+                             draftResult[act.id] === 'success' ? 'Draft created \u2713' :
+                             draftResult[act.id] === 'error' ? 'Failed \u2014 check Gmail auth' :
+                             'Create Draft'}
+                          </button>
+                        )}
 
                         {/* Gemini notes indicator */}
                         {act.gemini_raw_notes && (

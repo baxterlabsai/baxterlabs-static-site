@@ -1391,6 +1391,84 @@ async def update_activity(activity_id: str, body: ActivityUpdate, user: dict = D
     return result.data[0]
 
 
+@router.post("/activities/{activity_id}/create-draft")
+async def create_activity_gmail_draft(
+    activity_id: str,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Create a Gmail draft from an activity's subject/body and contact info."""
+    from services.gmail_service import create_gmail_draft
+
+    sb = get_supabase()
+
+    # 1. Load the activity
+    act_result = (
+        sb.table("pipeline_activities")
+        .select("*")
+        .eq("id", activity_id)
+        .eq("is_deleted", False)
+        .execute()
+    )
+    if not act_result.data:
+        raise HTTPException(status_code=404, detail="Activity not found")
+    activity = act_result.data[0]
+
+    # 2. Load the associated company
+    company_id = activity.get("company_id")
+    if not company_id:
+        raise HTTPException(status_code=400, detail="Activity has no associated company")
+    comp_result = (
+        sb.table("pipeline_companies")
+        .select("*")
+        .eq("id", company_id)
+        .execute()
+    )
+    if not comp_result.data:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    # 3. Load the primary contact
+    contact_id = activity.get("contact_id")
+    if not contact_id:
+        raise HTTPException(status_code=400, detail="Activity has no associated contact")
+    contact_result = (
+        sb.table("pipeline_contacts")
+        .select("*")
+        .eq("id", contact_id)
+        .execute()
+    )
+    if not contact_result.data:
+        raise HTTPException(status_code=404, detail="Contact not found")
+    contact = contact_result.data[0]
+
+    # 4. Get contact email and name
+    to_email = contact.get("email")
+    to_name = contact.get("name", "")
+    if not to_email:
+        raise HTTPException(status_code=400, detail="Contact has no email address")
+
+    # 5-6. Get subject and body from activity
+    subject = activity.get("subject", "")
+    body = activity.get("body", "")
+    if not subject:
+        raise HTTPException(status_code=400, detail="Activity has no subject")
+
+    # 7. Create the Gmail draft
+    try:
+        draft_id = create_gmail_draft(
+            to_email=to_email,
+            to_name=to_name,
+            subject=subject,
+            body_html=body,
+        )
+        return {"success": True, "draft_id": draft_id}
+    except Exception as e:
+        logger.error("Failed to create Gmail draft for activity %s: %s", activity_id, e)
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": str(e)},
+        )
+
+
 # ==========================================================================
 # Tasks
 # ==========================================================================

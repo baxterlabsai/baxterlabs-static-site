@@ -1261,6 +1261,8 @@ function CompanySlideOver({
   const [editingCallNotesOppId, setEditingCallNotesOppId] = useState<string | null>(null)
   const [callNotesUrl, setCallNotesUrl] = useState('')
   const [transcriptUploading, setTranscriptUploading] = useState(false)
+  const [draftCreating, setDraftCreating] = useState<string | null>(null)
+  const [draftResult, setDraftResult] = useState<Record<string, 'success' | 'error'>>({})
 
   // Edit form state
   const [editName, setEditName] = useState('')
@@ -1750,7 +1752,36 @@ function CompanySlideOver({
                                     </div>
                                   )}
                                 </div>
-                                <span className="text-gray-warm flex-shrink-0">{timeAgo(act.occurred_at)}</span>
+                                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                                  <span className="text-gray-warm">{timeAgo(act.occurred_at)}</span>
+                                  {act.type === 'email' && act.contact_id && (
+                                    <button
+                                      onClick={async () => {
+                                        setDraftCreating(act.id)
+                                        try {
+                                          await apiPost(`/api/pipeline/activities/${act.id}/create-draft`)
+                                          setDraftResult(prev => ({ ...prev, [act.id]: 'success' }))
+                                          setTimeout(() => setDraftResult(prev => { const n = { ...prev }; delete n[act.id]; return n }), 3000)
+                                        } catch {
+                                          setDraftResult(prev => ({ ...prev, [act.id]: 'error' }))
+                                          setTimeout(() => setDraftResult(prev => { const n = { ...prev }; delete n[act.id]; return n }), 4000)
+                                        }
+                                        setDraftCreating(null)
+                                      }}
+                                      disabled={draftCreating === act.id}
+                                      className={`text-[10px] font-semibold px-2 py-0.5 rounded transition-colors ${
+                                        draftResult[act.id] === 'success' ? 'bg-teal/10 text-teal' :
+                                        draftResult[act.id] === 'error' ? 'bg-red-soft/10 text-red-soft' :
+                                        'bg-ivory text-teal hover:bg-teal/10'
+                                      }`}
+                                    >
+                                      {draftCreating === act.id ? '...' :
+                                       draftResult[act.id] === 'success' ? 'Draft created \u2713' :
+                                       draftResult[act.id] === 'error' ? 'Failed \u2014 check Gmail auth' :
+                                       'Create Draft'}
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           )
