@@ -920,7 +920,7 @@ export default function EngagementDetail() {
       )}
 
       {/* Phase Execution */}
-      {(isInPhases || data.status === 'phases_complete') && (
+      {!isClosed && (
         <section className="bg-white rounded-lg border border-gray-light p-5 mb-6">
           <div className="mb-4">
             <h3 className="font-display text-lg font-bold text-teal">Phase Execution</h3>
@@ -975,7 +975,7 @@ export default function EngagementDetail() {
       )}
 
       {/* Delivery Commands */}
-      {(isInPhases || data.status === 'phases_complete') && (
+      {!isClosed && (
         <section className="bg-white rounded-lg border border-gray-light p-5 mb-6">
           <div className="mb-4">
             <h3 className="font-display text-lg font-bold text-teal">Delivery Commands</h3>
