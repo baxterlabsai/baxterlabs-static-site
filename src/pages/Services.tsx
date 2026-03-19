@@ -106,6 +106,62 @@ export default function Services() {
         </div>
       </section>
 
+      {/* What We'll Need From You */}
+      <section className="bg-white py-16 md:py-20">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <p className="text-sm font-semibold text-teal uppercase tracking-wide mb-4">What We'll Need From You</p>
+          <h2 className="font-display text-3xl md:text-4xl font-bold text-crimson mb-8">
+            Prepared Clients Get Better Results.
+          </h2>
+          <p className="text-charcoal text-base md:text-lg mb-10">
+            Our 14-day timeline depends on having your financials ready on day one. Once your engagement agreement is signed, we designate a document contact at your firm — typically your CFO, Controller, or office manager — who receives a link to a secure upload portal. Here's what we'll ask for.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-ivory rounded-lg p-5">
+              <p className="font-semibold text-teal mb-1">Profit & Loss Statement</p>
+              <p className="text-charcoal text-base">Two to three years. The primary lens for identifying revenue leakage, margin compression, and cost drift over time.</p>
+            </div>
+            <div className="bg-ivory rounded-lg p-5">
+              <p className="font-semibold text-teal mb-1">Balance Sheet</p>
+              <p className="text-charcoal text-base">Current year. We use this to assess working capital position and structural issues that don't appear in the P&L.</p>
+            </div>
+            <div className="bg-ivory rounded-lg p-5">
+              <p className="font-semibold text-teal mb-1">Payroll Summary Report</p>
+              <p className="text-charcoal text-base">By department or cost center. Staffing is typically the largest cost line in a service firm — we look at structure, not individual salaries.</p>
+            </div>
+            <div className="bg-ivory rounded-lg p-5">
+              <p className="font-semibold text-teal mb-1">Org Chart</p>
+              <p className="text-charcoal text-base">Current structure. Helps us understand reporting relationships and spans of control that drive overhead.</p>
+            </div>
+            <div className="bg-ivory rounded-lg p-5">
+              <p className="font-semibold text-teal mb-1">Vendor List with Spend</p>
+              <p className="text-charcoal text-base">Annual spend by vendor. Vendor proliferation and contract drift are among the most common sources of recoverable cost in service firms.</p>
+            </div>
+            <div className="bg-ivory rounded-lg p-5">
+              <p className="font-semibold text-teal mb-1">Software Subscriptions</p>
+              <p className="text-charcoal text-base">Active SaaS and software licenses with monthly or annual cost. Unused and duplicated subscriptions are a consistent finding.</p>
+            </div>
+            <div className="bg-ivory rounded-lg p-5">
+              <p className="font-semibold text-teal mb-1">Revenue by Customer / Account</p>
+              <p className="text-charcoal text-base">Top accounts ranked by revenue. We look at concentration risk and margin by account type.</p>
+            </div>
+            <div className="bg-ivory rounded-lg p-5">
+              <p className="font-semibold text-teal mb-1">Invoicing & Billing Records</p>
+              <p className="text-charcoal text-base">Three to six months of invoices. We use these to identify billing gaps, delays, and write-off patterns.</p>
+            </div>
+            <div className="bg-ivory rounded-lg p-5">
+              <p className="font-semibold text-teal mb-1">Accounts Receivable Aging</p>
+              <p className="text-charcoal text-base">Current AR aging report. Slow collections are a direct cash flow leak and often signal underlying billing or relationship issues.</p>
+            </div>
+          </div>
+
+          <p className="text-sm text-gray-warm text-center mt-8">
+            All documents are handled under strict confidentiality per your Engagement Agreement.
+          </p>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="bg-crimson py-16 md:py-20">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
