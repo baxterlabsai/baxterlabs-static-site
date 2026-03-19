@@ -127,6 +127,10 @@ export default function Services() {
               <p className="text-charcoal text-base">Current year. We use this to assess working capital position and structural issues that don't appear in the P&L.</p>
             </div>
             <div className="bg-ivory rounded-lg p-5">
+              <p className="font-semibold text-teal mb-1">Trial Balance</p>
+              <p className="text-charcoal text-base">A summary of all accounts with ending balances. Standard one-click export in any accounting system. Helps us see the full chart of accounts and identify any that warrant a closer look.</p>
+            </div>
+            <div className="bg-ivory rounded-lg p-5">
               <p className="font-semibold text-teal mb-1">Payroll Summary Report</p>
               <p className="text-charcoal text-base">By department or cost center. Staffing is typically the largest cost line in a service firm — we look at structure, not individual salaries.</p>
             </div>
@@ -153,6 +157,10 @@ export default function Services() {
             <div className="bg-ivory rounded-lg p-5">
               <p className="font-semibold text-teal mb-1">Accounts Receivable Aging</p>
               <p className="text-charcoal text-base">Current AR aging report. Slow collections are a direct cash flow leak and often signal underlying billing or relationship issues.</p>
+            </div>
+            <div className="bg-ivory rounded-lg p-5">
+              <p className="font-semibold text-teal mb-1">Accounts Payable Aging</p>
+              <p className="text-charcoal text-base">Current payables by vendor and aging bucket. Alongside AR aging, this gives us a complete picture of cash flow discipline and surfaces duplicate or stale payables.</p>
             </div>
           </div>
 
