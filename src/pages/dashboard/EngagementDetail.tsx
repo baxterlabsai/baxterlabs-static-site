@@ -280,10 +280,7 @@ export default function EngagementDetail() {
   const [resendingInterviewId, setResendingInterviewId] = useState<string | null>(null)
   const [resendConfirmContact, setResendConfirmContact] = useState<{ id: string; name: string; email: string } | null>(null)
 
-  // Delivery command inputs
-  const [contactResearchName, setContactResearchName] = useState('')
-  const [interviewPrepName, setInterviewPrepName] = useState('')
-  const [editDeliverableInstructions, setEditDeliverableInstructions] = useState('')
+  // Delivery command copy state
   const [copiedDeliveryCmd, setCopiedDeliveryCmd] = useState<string | null>(null)
 
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null)
@@ -337,12 +334,6 @@ export default function EngagementDetail() {
     apiGet<EngagementData>(`/api/engagements/${id}`)
       .then(async (d) => {
         setData(d)
-        // Pre-populate delivery command contact names
-        if (d.interview_contacts?.length > 0) {
-          const firstName = d.interview_contacts[0].name
-          setContactResearchName(prev => prev || firstName)
-          setInterviewPrepName(prev => prev || firstName)
-        }
         // Auto-seed phase outputs if empty
         if (!d.phase_outputs || d.phase_outputs.length === 0) {
           try {
@@ -751,6 +742,17 @@ export default function EngagementDetail() {
           <p className="text-gray-warm text-sm">{client.primary_contact_name} · {statusLabel(data.status)}</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          {!isClosed && (
+            <button
+              onClick={copySendDeliverablesCommand}
+              className={`inline-flex items-center gap-1.5 px-4 py-2.5 border text-sm font-semibold rounded-lg transition-colors ${
+                copiedSendDeliverables ? 'border-teal bg-teal/10 text-teal' : 'border-teal text-teal hover:bg-teal/5'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+              {copiedSendDeliverables ? 'Copied \u2713' : 'Send Deliverables'}
+            </button>
+          )}
           {!isClosed && data.status === 'discovery_done' && (
             <Link to={`/dashboard/engagement/${id}/start`} className="px-5 py-2.5 bg-crimson text-white font-semibold rounded-lg hover:bg-crimson/90 text-sm">
               Start Engagement &rarr;
@@ -927,7 +929,7 @@ export default function EngagementDetail() {
             <p className="text-xs text-gray-warm mt-0.5">Copy commands to run in Cowork</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {PHASE_INFO.map(({ num, name }) => {
+            {PHASE_INFO.filter(p => p.num > 0).map(({ num, name }) => {
               const status = data.phase > num ? 'complete' : data.phase === num && data.status !== 'phases_complete' ? 'in_progress' : data.status === 'phases_complete' ? 'complete' : 'not_started'
               return (
                 <div key={num} className={`border rounded-lg p-3 flex items-start gap-3 ${
@@ -970,123 +972,6 @@ export default function EngagementDetail() {
                 </div>
               )
             })}
-          </div>
-        </section>
-      )}
-
-      {/* Delivery Commands */}
-      {!isClosed && (
-        <section className="bg-white rounded-lg border border-gray-light p-5 mb-6">
-          <div className="mb-4">
-            <h3 className="font-display text-lg font-bold text-teal">Delivery Commands</h3>
-            <p className="text-xs text-gray-warm mt-0.5">Copy commands with parameters for Cowork</p>
-          </div>
-          <div className="space-y-3">
-            {/* Contact Research */}
-            <div className="flex items-center gap-2 border border-gray-light rounded-lg p-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-charcoal mb-1.5">Contact Research</p>
-                <input
-                  type="text"
-                  value={contactResearchName}
-                  onChange={e => setContactResearchName(e.target.value)}
-                  placeholder="Contact name"
-                  className="w-full text-sm border border-gray-light rounded px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-teal"
-                />
-              </div>
-              <button
-                onClick={() => copyDeliveryCommand('contact-research', `/baxterlabs-delivery:contact-research ${contactResearchName}`)}
-                disabled={!contactResearchName.trim()}
-                className={`flex-shrink-0 inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded font-semibold transition-colors ${
-                  copiedDeliveryCmd === 'contact-research' ? 'bg-teal/10 text-teal' : 'bg-ivory text-teal hover:bg-teal/10'
-                } disabled:opacity-40`}
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                </svg>
-                {copiedDeliveryCmd === 'contact-research' ? 'Copied!' : 'Copy'}
-              </button>
-            </div>
-
-            {/* Interview Prep */}
-            <div className="flex items-center gap-2 border border-gray-light rounded-lg p-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-charcoal mb-1.5">Interview Prep</p>
-                <input
-                  type="text"
-                  value={interviewPrepName}
-                  onChange={e => setInterviewPrepName(e.target.value)}
-                  placeholder="Contact name"
-                  className="w-full text-sm border border-gray-light rounded px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-teal"
-                />
-              </div>
-              <button
-                onClick={() => copyDeliveryCommand('interview-prep', `/baxterlabs-delivery:interview-prep ${interviewPrepName}`)}
-                disabled={!interviewPrepName.trim()}
-                className={`flex-shrink-0 inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded font-semibold transition-colors ${
-                  copiedDeliveryCmd === 'interview-prep' ? 'bg-teal/10 text-teal' : 'bg-ivory text-teal hover:bg-teal/10'
-                } disabled:opacity-40`}
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                </svg>
-                {copiedDeliveryCmd === 'interview-prep' ? 'Copied!' : 'Copy'}
-              </button>
-            </div>
-
-            {/* Edit Deliverable */}
-            <div className="flex items-center gap-2 border border-gray-light rounded-lg p-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-charcoal mb-1.5">Edit Deliverable</p>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={id || ''}
-                    readOnly
-                    className="w-32 text-xs text-gray-warm bg-gray-light/50 border border-gray-light rounded px-2 py-1.5 font-mono"
-                    title="Engagement ID"
-                  />
-                  <input
-                    type="text"
-                    value={editDeliverableInstructions}
-                    onChange={e => setEditDeliverableInstructions(e.target.value)}
-                    placeholder="Edit instructions..."
-                    className="flex-1 text-sm border border-gray-light rounded px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-teal"
-                  />
-                </div>
-              </div>
-              <button
-                onClick={() => copyDeliveryCommand('edit-deliverable', `/baxterlabs-delivery:edit-deliverable ${id} ${editDeliverableInstructions}`)}
-                disabled={!editDeliverableInstructions.trim()}
-                className={`flex-shrink-0 inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded font-semibold transition-colors ${
-                  copiedDeliveryCmd === 'edit-deliverable' ? 'bg-teal/10 text-teal' : 'bg-ivory text-teal hover:bg-teal/10'
-                } disabled:opacity-40`}
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                </svg>
-                {copiedDeliveryCmd === 'edit-deliverable' ? 'Copied!' : 'Copy'}
-              </button>
-            </div>
-
-            {/* Send Deliverables */}
-            <div className="flex items-center gap-2 border border-gray-light rounded-lg p-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-charcoal">Send Deliverables</p>
-                <p className="text-xs text-gray-warm mt-0.5 font-mono">{id}</p>
-              </div>
-              <button
-                onClick={() => copyDeliveryCommand('send-deliverables', `/baxterlabs-delivery:send-deliverables ${id}`)}
-                className={`flex-shrink-0 inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded font-semibold transition-colors ${
-                  copiedDeliveryCmd === 'send-deliverables' ? 'bg-teal/10 text-teal' : 'bg-ivory text-teal hover:bg-teal/10'
-                }`}
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                </svg>
-                {copiedDeliveryCmd === 'send-deliverables' ? 'Copied!' : 'Copy'}
-              </button>
-            </div>
           </div>
         </section>
       )}
@@ -1298,8 +1183,8 @@ export default function EngagementDetail() {
                                   </div>
                                 )}
 
-                                {/* Phase 5 edit interface */}
-                                {isPhase5Deliverable && output.status === 'draft' && (
+                                {/* Edit deliverable interface */}
+                                {(output.status === 'draft' || output.status === 'approved') && (
                                   <div className="mt-3">
                                     {isEditing ? (
                                       <div className="border border-gray-light rounded-lg p-3 bg-ivory/30">
@@ -1749,6 +1634,27 @@ export default function EngagementDetail() {
                         Resend Interview Email
                       </button>
                     )}
+                  </div>
+                  {/* Cowork command buttons */}
+                  <div className="mt-2 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                    <button
+                      onClick={() => copyDeliveryCommand(`research-${c.id}`, `/baxterlabs-delivery:contact-research ${c.name}`)}
+                      className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded border font-semibold transition-colors ${
+                        copiedDeliveryCmd === `research-${c.id}` ? 'border-teal bg-teal/10 text-teal' : 'border-gray-light text-teal hover:bg-teal/5'
+                      }`}
+                    >
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                      {copiedDeliveryCmd === `research-${c.id}` ? 'Copied \u2713' : 'Contact Research'}
+                    </button>
+                    <button
+                      onClick={() => copyDeliveryCommand(`prep-${c.id}`, `/baxterlabs-delivery:interview-prep ${c.name}`)}
+                      className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded border font-semibold transition-colors ${
+                        copiedDeliveryCmd === `prep-${c.id}` ? 'border-teal bg-teal/10 text-teal' : 'border-gray-light text-teal hover:bg-teal/5'
+                      }`}
+                    >
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                      {copiedDeliveryCmd === `prep-${c.id}` ? 'Copied \u2713' : 'Interview Prep'}
+                    </button>
                   </div>
                 </div>
               ))}
