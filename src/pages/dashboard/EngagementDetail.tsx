@@ -198,27 +198,26 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 const CATEGORY_ORDER = ['financial', 'payroll', 'vendor', 'revenue', 'operations', 'legal']
 
-// The 12 required item keys (must match backend checklist)
+// The 11 required item keys (must match backend checklist)
 const REQUIRED_ITEM_KEYS = new Set([
-  'pnl_statement', 'balance_sheet', 'trial_balance', 'general_ledger',
+  'pnl_statement', 'balance_sheet', 'trial_balance',
   'payroll_summary', 'org_chart',
-  'vendor_list', 'software_subscriptions',
-  'revenue_by_customer', 'invoicing_billing', 'ar_aging', 'ap_aging',
+  'ap_aging', 'vendor_list', 'software_subscriptions',
+  'revenue_by_customer', 'invoicing_billing', 'ar_aging',
 ])
 
 const REQUIRED_ITEM_NAMES: Record<string, string> = {
   pnl_statement: 'Profit & Loss Statement',
   balance_sheet: 'Balance Sheet',
   trial_balance: 'Trial Balance',
-  general_ledger: 'General Ledger Export',
   payroll_summary: 'Payroll Summary Report',
   org_chart: 'Org Chart',
+  ap_aging: 'Accounts Payable Aging',
   vendor_list: 'Vendor List with Spend',
   software_subscriptions: 'Software Subscriptions',
   revenue_by_customer: 'Revenue by Customer / Account',
   invoicing_billing: 'Invoicing & Billing Records',
   ar_aging: 'Accounts Receivable Aging',
-  ap_aging: 'Accounts Payable Aging',
 }
 
 function statusLabel(s: string) { return s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) }
