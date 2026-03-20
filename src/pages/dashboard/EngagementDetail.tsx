@@ -257,6 +257,7 @@ export default function EngagementDetail() {
   const [debriefLoading, setDebriefLoading] = useState(false)
   const [ensuringDeliverables, setEnsuringDeliverables] = useState(false)
   const [archiveDialog, setArchiveDialog] = useState(false)
+  const [activityLogOpen, setActivityLogOpen] = useState(false)
   const [archiving, setArchiving] = useState(false)
   const [deleteDialog, setDeleteDialog] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -765,7 +766,7 @@ export default function EngagementDetail() {
               disabled={beginLoading}
               className="px-5 py-2.5 bg-crimson text-white font-semibold rounded-lg hover:bg-crimson/90 text-sm disabled:opacity-50"
             >
-              {beginLoading ? 'Starting...' : 'Begin Phase 0'}
+              {beginLoading ? 'Starting...' : 'Begin Phase 1'}
             </button>
           )}
           {['phases_complete', 'debrief', 'wave_1_released', 'wave_2_released'].includes(data.status) && (
@@ -923,7 +924,7 @@ export default function EngagementDetail() {
       )}
 
       {/* Phase Execution */}
-      {!isClosed && (
+      {!isClosed && phaseOutputContent.length > 0 && (
         <section className="bg-white rounded-lg border border-gray-light p-5 mb-6">
           <div className="mb-4">
             <h3 className="font-display text-lg font-bold text-teal">Phase Execution</h3>
@@ -978,7 +979,7 @@ export default function EngagementDetail() {
       )}
 
       {/* Phase Outputs — Dynamic Cowork-synced viewer */}
-      {data && (() => {
+      {data && phaseOutputContent.length > 0 && (() => {
         const PHASE_TIMING: Record<number, string> = {
           0: 'Pre-Engagement', 1: 'Days 1–3', 2: 'Days 4–6', 3: 'Days 7–9',
           4: 'Days 10–11', 5: 'Days 12–13', 6: 'Pre-Delivery', 7: 'Post-Debrief',
@@ -989,14 +990,6 @@ export default function EngagementDetail() {
         for (const o of phaseOutputContent) {
           if (!pocByPhase[o.phase_number]) pocByPhase[o.phase_number] = []
           pocByPhase[o.phase_number].push(o)
-        }
-
-        // Also keep old phase_outputs for phases that haven't been synced yet
-        const oldOutputs = data.phase_outputs || []
-        const oldByPhase: Record<number, PhaseOutput[]> = {}
-        for (const o of oldOutputs) {
-          if (!oldByPhase[o.phase]) oldByPhase[o.phase] = []
-          oldByPhase[o.phase].push(o)
         }
 
         const activePhase = data.phase ?? 0
@@ -1015,12 +1008,11 @@ export default function EngagementDetail() {
             </div>
 
             <div className="space-y-2">
-              {[0, 1, 2, 3, 4, 5, 6, 7].map(phase => {
+              {[1, 2, 3, 4, 5, 6, 7].map(phase => {
                 const pocOutputs = pocByPhase[phase] || []
-                const oldPhaseOutputs = oldByPhase[phase] || []
 
-                // Skip phases with no content at all
-                if (pocOutputs.length === 0 && oldPhaseOutputs.length === 0) return null
+                // Skip phases with no content
+                if (pocOutputs.length === 0) return null
 
                 const isGate = REVIEW_GATE_PHASES.has(phase)
                 const isActive = phase === activePhase
@@ -1267,42 +1259,7 @@ export default function EngagementDetail() {
                               )
                             })}
                           </div>
-                        ) : oldPhaseOutputs.length > 0 ? (
-                          /* Fallback: show old phase_outputs tracking records */
-                          <div className="divide-y divide-gray-light">
-                            {oldPhaseOutputs.map(output => (
-                              <div key={output.id} className="px-4 py-3 flex items-center gap-3">
-                                <span className="w-8 h-8 rounded bg-ivory flex items-center justify-center text-xs font-bold text-gray-warm flex-shrink-0">
-                                  {FILE_TYPE_ICONS[output.file_type || ''] || '?'}
-                                </span>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-semibold text-charcoal">{output.name}</p>
-                                  <p className="text-xs text-gray-warm">
-                                    .{output.file_type} &rarr; {output.destination_folder}/
-                                    {output.file_size ? ` · ${formatFileSize(output.file_size)}` : ''}
-                                    {output.accepted_at ? ` · Accepted ${formatDate(output.accepted_at)}` : ''}
-                                  </p>
-                                </div>
-                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${
-                                  output.status === 'accepted' ? 'bg-green/10 text-green' :
-                                  output.status === 'uploaded' ? 'bg-amber/10 text-amber' :
-                                  'bg-gray-light text-gray-warm'
-                                }`}>
-                                  {output.status === 'accepted' ? 'Accepted' : output.status === 'uploaded' ? 'Awaiting review' : 'Pending'}
-                                </span>
-                                {output.download_url && (
-                                  <a href={output.download_url} target="_blank" rel="noreferrer" className="text-xs text-teal font-semibold hover:underline">
-                                    Download
-                                  </a>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="px-4 py-6 text-center text-gray-warm text-sm">
-                            No outputs for this phase yet. Run the phase in Cowork to generate outputs.
-                          </div>
-                        )}
+                        ) : null}
                       </div>
                     )}
                   </div>
@@ -2154,20 +2111,34 @@ export default function EngagementDetail() {
       )}
 
       {/* Activity Log */}
-      <section className="bg-white rounded-lg border border-gray-light p-5 mt-6">
-        <h3 className="font-display text-lg font-bold text-teal mb-4">Activity Log</h3>
-        {data.activity_log.length === 0 ? (
-          <p className="text-gray-warm text-sm">No activity yet.</p>
-        ) : (
-          <div className="space-y-2">
-            {data.activity_log.map((log, i) => (
-              <div key={i} className="flex items-start gap-3 text-sm py-2 border-b border-gray-light last:border-0">
-                <span className="text-gray-warm text-xs whitespace-nowrap mt-0.5">{formatTime(log.created_at)}</span>
-                <span className="text-charcoal">
-                  <span className="font-semibold">{log.actor}</span> — {statusLabel(log.action)}
-                </span>
+      <section className="bg-white rounded-lg border border-gray-light mt-6">
+        <button
+          onClick={() => setActivityLogOpen(prev => !prev)}
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-ivory/50 transition-colors cursor-pointer"
+        >
+          <h3 className="font-display text-lg font-bold text-teal">
+            Activity Log{data.activity_log.length > 0 ? ` (${data.activity_log.length})` : ''}
+          </h3>
+          <svg className={`w-4 h-4 text-gray-warm transition-transform ${activityLogOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        {activityLogOpen && (
+          <div className="px-5 pb-5">
+            {data.activity_log.length === 0 ? (
+              <p className="text-gray-warm text-sm">No activity yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {data.activity_log.map((log, i) => (
+                  <div key={i} className="flex items-start gap-3 text-sm py-2 border-b border-gray-light last:border-0">
+                    <span className="text-gray-warm text-xs whitespace-nowrap mt-0.5">{formatTime(log.created_at)}</span>
+                    <span className="text-charcoal">
+                      <span className="font-semibold">{log.actor}</span> — {statusLabel(log.action)}
+                    </span>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         )}
       </section>

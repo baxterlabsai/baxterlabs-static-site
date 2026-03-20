@@ -167,24 +167,26 @@ async def submit_onboarding(token: str, body: OnboardSubmission):
     try:
         _email_svc = get_email_service()
         partner_lead = engagement.get("partner_lead", "George DeVries")
+        sent_contacts = []
         for i, contact in enumerate(body.contacts):
             if not contact.email:
                 continue
-            if i > 0:
+            if sent_contacts:
                 time.sleep(1)
-            sched_result = _email_svc.send_interview_scheduling_email(
+            _email_svc.send_interview_scheduling_email(
                 contact_name=contact.name,
                 contact_email=contact.email,
                 client_company_name=company_name,
                 partner_lead=partner_lead,
             )
-            log_activity(engagement_id, "system", "interview_scheduling_email_sent", {
-                "to": contact.email,
-                "contact_name": contact.name,
-                "result": sched_result,
+            sent_contacts.append(contact.name)
+        if sent_contacts:
+            log_activity(engagement_id, "system", "interview_scheduling_emails_sent", {
+                "count": len(sent_contacts),
+                "contacts": sent_contacts,
             })
         logger.info(
-            f"Interview scheduling emails sent to {len(body.contacts)} contacts "
+            f"Interview scheduling emails sent to {len(sent_contacts)} contacts "
             f"for engagement {engagement_id}"
         )
     except Exception as e:
