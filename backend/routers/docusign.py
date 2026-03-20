@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import date
 from fastapi import APIRouter, Request, HTTPException, Response, BackgroundTasks
 from models.schemas import DocuSignSendRequest, DocuSignResponse
 from services.docusign_service import get_docusign_service
@@ -453,6 +454,47 @@ async def _auto_convert_pipeline_opportunity(opp_id: str) -> None:
     except Exception as e:
         logger.error(f"Google Drive archiving failed — auto-conversion unaffected: {e}")
     # --- end Google Drive archiving ---
+
+    # --- Google Drive engagement folder creation (non-blocking) ---
+    try:
+        from services.google_drive_engagement import create_client_engagement_folder
+
+        # Retrieve signed_pdf_path from the legal_documents record just created
+        _signed_pdf_path = None
+        if envelope_id:
+            _ld = sb.table("legal_documents").select("signed_pdf_path").eq(
+                "engagement_id", new_engagement_id,
+            ).eq("docusign_envelope_id", envelope_id).execute()
+            if _ld.data and _ld.data[0].get("signed_pdf_path"):
+                _signed_pdf_path = _ld.data[0]["signed_pdf_path"]
+
+        _drive_result = await create_client_engagement_folder(
+            engagement_id=new_engagement_id,
+            client_name=company["name"],
+            engagement_date=date.today(),
+            signed_pdf_path=_signed_pdf_path,
+            envelope_id=envelope_id,
+            supabase_client=sb,
+        )
+
+        if _drive_result:
+            sb.table("engagements").update({
+                "drive_folder_id": _drive_result["folder_id"],
+                "drive_folder_url": _drive_result["folder_url"],
+            }).eq("id", new_engagement_id).execute()
+            logger.info(f"Auto-convert: Drive folder created — {_drive_result['folder_url']}")
+        else:
+            log_activity(new_engagement_id, "system", "drive_folder_creation_failed", {
+                "error": "See server logs for details",
+            })
+            logger.warning(f"Auto-convert: Drive folder creation returned None for engagement {new_engagement_id}")
+
+    except Exception as e:
+        logger.error(f"Google Drive folder creation failed — auto-conversion unaffected: {e}")
+        log_activity(new_engagement_id, "system", "drive_folder_creation_failed", {
+            "error": str(e)[:500],
+        })
+    # --- end Google Drive engagement folder creation ---
 
     logger.info(
         f"Auto-convert complete: opp {opp_id} → client {new_client_id}, "
