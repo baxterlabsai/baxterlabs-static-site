@@ -29,10 +29,10 @@ export default function About() {
           </h2>
           <div className="space-y-5 text-charcoal text-base md:text-lg">
             <p>
-              Businesses cross $5M in revenue and something shifts. The growth is real — revenue climbs, headcount grows, the client list expands. But margins don't keep pace. Sometimes they compress. The owner feels it before the numbers confirm it: something is leaking, but there's no time to stop and figure out exactly what or how much.
+              Businesses cross $5M in revenue and something shifts. The growth is real: revenue climbs, headcount grows, the client list expands. But margins don't keep pace. Sometimes they compress. The owner feels it before the numbers confirm it: something is leaking, but there's no time to stop and figure out exactly what or how much.
             </p>
             <p>
-              We built BaxterLabs Advisory because the existing options for these businesses don't work. Big 4 firms won't take a $12,500 engagement. Freelance consultants lack the analytical infrastructure to deliver institutional-quality findings. And most advisory firms sell hours, not outcomes — so the meter runs while the answers stay vague.
+              We built BaxterLabs Advisory because the existing options for these businesses don't work. Big 4 firms won't take a $12,500 engagement. Freelance consultants lack the analytical infrastructure to deliver institutional-quality findings. And most advisory firms sell hours, not outcomes, so the meter runs while the answers stay vague.
             </p>
             <p>
               We built something different. A tightly scoped, fixed-fee diagnostic that delivers quantified answers in two weeks. Every finding tied to a dollar amount. Every recommendation prioritized for impact. A deliverable package your leadership team can act on the day we present it.
@@ -52,7 +52,7 @@ export default function About() {
               The team behind BaxterLabs brings decades of senior finance leadership across healthcare, enterprise analytics, capital markets, food technology, and professional services. Our collective experience includes managing finance operations spanning hundreds of staff across multiple states, supporting more than $350M in capital formation, building institutional-grade financial infrastructure, and delivering the kind of analytical depth that boards and investors expect.
             </p>
             <p>
-              We've sat in the seats our clients sit in — managing P&Ls, negotiating vendor contracts, building forecasts, closing underperforming operations, restructuring cost centers. That's not consulting theory. It's pattern recognition earned through direct operational experience across dozens of complex organizations.
+              We've sat in the seats our clients sit in, managing P&Ls, negotiating vendor contracts, building forecasts, closing underperforming operations, restructuring cost centers. That's not consulting theory. It's pattern recognition earned through direct operational experience across dozens of complex organizations.
             </p>
           </div>
         </div>
@@ -88,7 +88,7 @@ export default function About() {
                   I've spent 25 years inside the finance function of companies that were growing faster than their infrastructure. Venture-backed startups closing $100M+ rounds. Healthcare services organizations managing 600 people across six states. Food technology companies in the middle of $175M Series C. At every stage, the same pattern: the money was there, but nobody had built the systems to see where it was going.
                 </p>
                 <p>
-                  I've generated over $8M in annual cost savings at a single organization. I've cut month-end close by five days. I've watched companies lose $200K+ a year to billing gaps they didn't know existed. What I've learned is that margin erosion rarely comes from one big mistake — it comes from a dozen small systems that nobody owns.
+                  I've generated over $8M in annual cost savings at a single organization. I've cut month-end close by five days. I've watched companies lose $200K+ a year to billing gaps they didn't know existed. What I've learned is that margin erosion rarely comes from one big mistake. It comes from a dozen small systems that nobody owns.
                 </p>
                 <p>
                   That's why I built BaxterLabs. Not to sell another advisory retainer, but to give firms a clean answer in two weeks: here's exactly what's leaking, here's what it's worth, here's where to start.
@@ -111,10 +111,10 @@ export default function About() {
               </p>
               <div className="space-y-4 text-charcoal text-base leading-relaxed">
                 <p>
-                  For 16 years at Moody's Analytics, I ran the finance function for businesses generating over $3 billion in annual recurring revenue. That means I've seen what scale actually looks like from the inside — the forecasting breakdowns, the pricing models that quietly underperform, the transition points where a business outgrows its financial infrastructure before anyone realizes it.
+                  For 16 years at Moody's Analytics, I ran the finance function for businesses generating over $3 billion in annual recurring revenue. That means I've seen what scale actually looks like from the inside: the forecasting breakdowns, the pricing models that quietly underperform, the transition points where a business outgrows its financial infrastructure before anyone realizes it.
                 </p>
                 <p>
-                  I led the finance work for a $400M line of business through a full shift from on-premise to SaaS. I built the pricing framework that drove 12% revenue growth and got adopted company-wide. Before that, at Bayer and Abbott, I managed financial consolidations across multiple countries and currencies. What you learn doing that work is how to find signal in complex data — and how quickly things drift when nobody's built the right monitoring in.
+                  I led the finance work for a $400M line of business through a full shift from on-premise to SaaS. I built the pricing framework that drove 12% revenue growth and got adopted company-wide. Before that, at Bayer and Abbott, I managed financial consolidations across multiple countries and currencies. What you learn doing that work is how to find signal in complex data, and how quickly things drift when nobody's built the right monitoring in.
                 </p>
                 <p>
                   What drew me to BaxterLabs is the specificity of the model. We're not selling a strategy engagement or a roadmap. We're telling you, in two weeks, exactly where margin is leaving your business and what it's worth to get it back.
@@ -144,11 +144,11 @@ export default function About() {
               },
               {
                 title: 'Every finding is quantified.',
-                body: 'We don\'t hand you a list of observations. Every identified inefficiency is tied to a dollar amount — so you can see the ROI before deciding what to act on first.',
+                body: 'We don\'t hand you a list of observations. Every identified inefficiency is tied to a dollar amount, so you can see the ROI before deciding what to act on first.',
               },
               {
                 title: 'Built for the gap between Big 4 and freelance.',
-                body: 'Growth-stage firms generating $5M–$50M deserve the same analytical rigor that enterprise companies get. They just don\'t need a six-month engagement and a seven-figure invoice to get it.',
+                body: 'Growth-stage firms generating $5M to $50M deserve the same analytical rigor that enterprise companies get. They just don\'t need a six-month engagement and a seven-figure invoice to get it.',
               },
             ].map((card) => (
               <div

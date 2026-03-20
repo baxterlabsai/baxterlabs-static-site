@@ -16,7 +16,7 @@ export default function Home() {
             Get Back in Control of Your Margins.
           </h1>
           <p className="text-lg md:text-xl text-charcoal max-w-3xl mx-auto mb-10">
-            BaxterLabs Advisory delivers a 14-day fixed-fee diagnostic that pinpoints exactly where your business is losing margin — and shows you how to get it back.
+            BaxterLabs Advisory delivers a 14-day fixed-fee diagnostic that pinpoints exactly where your business is losing margin, and shows you how to get it back.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
@@ -66,10 +66,10 @@ export default function Home() {
           </h2>
           <div className="space-y-5 text-charcoal text-base md:text-lg">
             <p>
-              Most growth-stage businesses hit a wall somewhere between $5M and $50M. Revenue climbs. Headcount grows. But margins don't move — or worse, they compress. The culprit is almost always the same: profit leaking quietly through overspend, inefficiency, billing lag, and operational drag that nobody has had the time to quantify.
+              Most growth-stage businesses hit a wall somewhere between $5M and $50M. Revenue climbs. Headcount grows. But margins don't move. Or worse, they compress. The culprit is almost always the same: profit leaking quietly through overspend, inefficiency, billing lag, and operational drag that nobody has had the time to quantify.
             </p>
             <p>
-              Most owners know something is wrong. They just don't know exactly where — or how much.
+              Most owners know something is wrong. They just don't know exactly where, or how much.
             </p>
             <p className="font-semibold text-teal text-lg md:text-xl">
               That's what we fix.
@@ -155,7 +155,7 @@ export default function Home() {
             Built for Growth-Stage Mid-Market Businesses.
           </h2>
           <p className="text-charcoal text-base md:text-lg mb-6 text-center max-w-3xl mx-auto">
-            BaxterLabs Advisory is purpose-built for professional services firms — accounting, legal, staffing, consulting, and advisory businesses generating $5M–$50M in annual revenue. These firms share a common set of structural profit-leak patterns: utilization drag, billing inefficiencies, project margin erosion, and cost structures that haven't kept pace with growth.
+            BaxterLabs Advisory is purpose-built for professional services firms: accounting, legal, staffing, consulting, and advisory businesses generating $5M to $50M in annual revenue. These firms share a common set of structural profit-leak patterns: utilization drag, billing inefficiencies, project margin erosion, and cost structures that haven't kept pace with growth.
           </p>
           <p className="text-charcoal/70 text-sm md:text-base text-center max-w-3xl mx-auto">
             We also work with growth-stage businesses in healthcare and specialty services, technology, and other founder-led industries facing similar margin compression challenges.

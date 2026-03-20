@@ -9,16 +9,16 @@ export default function Services() {
         description="14-day fixed-fee profit leak diagnostic ($12,500) and optional implementation retainer. Enterprise-level analytical rigor for mid-market businesses."
       />
 
-      {/* Phase 1 — The 14-Day Diagnostic */}
+      {/* Phase 1: The 14-Day Diagnostic */}
       <section className="bg-white py-16 md:py-20">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-sm font-semibold text-teal uppercase tracking-wide mb-4">Phase 1 — The 14-Day Diagnostic</p>
+          <p className="text-sm font-semibold text-teal uppercase tracking-wide mb-4">Phase 1: The 14-Day Diagnostic</p>
           <h1 className="font-display text-4xl md:text-5xl font-bold text-crimson mb-8">
             Stop Guessing. Start Knowing.
           </h1>
           <div className="space-y-5 text-charcoal text-base md:text-lg">
             <p>
-              Our flagship engagement is a fixed-scope, fixed-fee diagnostic that identifies, quantifies, and prioritizes the operational and financial inefficiencies costing your business margin. We collect your financials, interview your leadership, map your workflows, and deliver a complete findings package in 14 days — including a board-ready report and a 90-day implementation roadmap.
+              Our flagship engagement is a fixed-scope, fixed-fee diagnostic that identifies, quantifies, and prioritizes the operational and financial inefficiencies costing your business margin. We collect your financials, interview your leadership, map your workflows, and deliver a complete findings package in 14 days, including a board-ready report and a 90-day implementation roadmap.
             </p>
           </div>
           <div className="mt-8 bg-ivory border-l-4 border-l-crimson rounded-lg p-6">
@@ -63,16 +63,16 @@ export default function Services() {
         </div>
       </section>
 
-      {/* Phase 2 — Implementation Retainer */}
+      {/* Phase 2: Implementation Retainer */}
       <section className="bg-ivory py-16 md:py-20">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-sm font-semibold text-teal uppercase tracking-wide mb-4">Phase 2 — Implementation Retainer</p>
+          <p className="text-sm font-semibold text-teal uppercase tracking-wide mb-4">Phase 2: Implementation Retainer</p>
           <h2 className="font-display text-3xl md:text-4xl font-bold text-crimson mb-8">
             The Roadmap Only Works If You Work It.
           </h2>
           <div className="space-y-5 text-charcoal text-base md:text-lg">
             <p>
-              After the diagnostic debrief, we offer an optional Implementation Retainer for firms that want partner-level support executing the roadmap. Engagements are month-to-month with no long-term contract — you stay because it's working, not because you're locked in.
+              After the diagnostic debrief, we offer an optional Implementation Retainer for firms that want partner-level support executing the roadmap. Engagements are month-to-month with no long-term contract. You stay because it's working, not because you're locked in.
             </p>
           </div>
 
@@ -100,7 +100,7 @@ export default function Services() {
 
           <div className="mt-8 bg-white border-l-4 border-l-crimson rounded-lg p-6">
             <p className="text-teal font-semibold text-lg">
-              $5,000–$10,000/month | Month-to-month | No long-term contract
+              $5,000 to $10,000/month | Month-to-month | No long-term contract
             </p>
           </div>
         </div>
@@ -114,7 +114,7 @@ export default function Services() {
             Prepared Clients Get Better Results.
           </h2>
           <p className="text-charcoal text-base md:text-lg mb-10">
-            Our 14-day timeline depends on having your financials ready on day one. Once your engagement agreement is signed, we designate a document contact at your firm — typically your CFO, Controller, or office manager — who receives a link to a secure upload portal. Here's what we'll ask for.
+            Our 14-day timeline depends on having your financials ready on day one. Once your engagement agreement is signed, we designate a document contact at your firm (typically your CFO, Controller, or office manager) who receives a link to a secure upload portal. Here's what we'll ask for.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -132,7 +132,7 @@ export default function Services() {
             </div>
             <div className="bg-ivory rounded-lg p-5">
               <p className="font-semibold text-teal mb-1">Payroll Summary Report</p>
-              <p className="text-charcoal text-base">By department or cost center. Staffing is typically the largest cost line in a service firm — we look at structure, not individual salaries.</p>
+              <p className="text-charcoal text-base">By department or cost center. Staffing is typically the largest cost line in a service firm. We look at structure, not individual salaries.</p>
             </div>
             <div className="bg-ivory rounded-lg p-5">
               <p className="font-semibold text-teal mb-1">Org Chart</p>
