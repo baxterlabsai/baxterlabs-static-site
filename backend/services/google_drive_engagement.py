@@ -6,7 +6,7 @@ import io
 import os
 import logging
 from datetime import date
-from typing import Optional
+from typing import List, Optional
 
 from googleapiclient.http import MediaIoBaseUpload
 
@@ -38,7 +38,7 @@ async def create_client_engagement_folder(
     """Create an engagement folder with 6 subfolders on the shared drive.
 
     Uploads the signed agreement PDF to 00_Engagement_Info/.
-    Returns {"folder_id": ..., "folder_url": ...} on success, None on failure.
+    Returns folder IDs dict on success, None on failure.
     Never raises — all exceptions are caught and logged.
     """
     try:
@@ -57,16 +57,16 @@ async def create_client_engagement_folder(
         root_folder_id = _create_folder(service, root_name, active_folder_id)
         logger.info(f"Created root folder '{root_name}' — ID={root_folder_id}")
 
-        # 4. Create 6 subfolders
-        engagement_info_folder_id = None
+        # 4. Create 6 subfolders and capture IDs
+        subfolder_ids: dict = {}
         for folder_name in SUBFOLDERS:
             folder_id = _create_folder(service, folder_name, root_folder_id)
-            if folder_name == "00_Engagement_Info":
-                engagement_info_folder_id = folder_id
+            subfolder_ids[folder_name] = folder_id
 
         logger.info(f"Created {len(SUBFOLDERS)} subfolders for engagement {engagement_id}")
 
         # 5. Upload signed PDF to 00_Engagement_Info/
+        engagement_info_folder_id = subfolder_ids.get("00_Engagement_Info")
         if signed_pdf_path and envelope_id and engagement_info_folder_id:
             try:
                 pdf_bytes = supabase_client.storage.from_("engagements").download(signed_pdf_path)
@@ -97,6 +97,11 @@ async def create_client_engagement_folder(
         return {
             "folder_id": root_folder_id,
             "folder_url": folder_url,
+            "inbox_folder_id": subfolder_ids.get("01_Inbox"),
+            "interviews_folder_id": subfolder_ids.get("02_Interviews"),
+            "working_papers_folder_id": subfolder_ids.get("03_Working_Papers"),
+            "deliverables_folder_id": subfolder_ids.get("04_Deliverables"),
+            "qc_folder_id": subfolder_ids.get("05_QC"),
         }
 
     except Exception as e:
@@ -157,3 +162,132 @@ def _create_folder(service, name: str, parent_id: str) -> str:
         supportsAllDrives=True,
     ).execute()
     return folder["id"]
+
+
+async def upload_file_to_drive_folder(
+    folder_id: str,
+    filename: str,
+    file_bytes: bytes,
+    mimetype: str,
+) -> Optional[str]:
+    """Upload a file to a specific Drive folder. Returns file ID or None on failure.
+
+    Never raises — all exceptions are caught and logged.
+    """
+    try:
+        service = _get_drive_service()
+        media = MediaIoBaseUpload(
+            io.BytesIO(file_bytes),
+            mimetype=mimetype,
+            resumable=False,
+        )
+        result = service.files().create(
+            body={"name": filename, "parents": [folder_id]},
+            media_body=media,
+            fields="id",
+            supportsAllDrives=True,
+        ).execute()
+        file_id = result["id"]
+        logger.info(f"Uploaded '{filename}' to Drive folder {folder_id} — fileId={file_id}")
+        return file_id
+    except Exception as e:
+        logger.error(f"Drive upload failed for '{filename}' to folder {folder_id}: {e}")
+        return None
+
+
+async def delete_drive_file(file_id: str) -> bool:
+    """Delete a file from Drive by file ID. Returns True on success, False on failure.
+
+    Never raises — all exceptions are caught and logged.
+    """
+    try:
+        service = _get_drive_service()
+        service.files().delete(
+            fileId=file_id,
+            supportsAllDrives=True,
+        ).execute()
+        logger.info(f"Deleted Drive file {file_id}")
+        return True
+    except Exception as e:
+        logger.error(f"Drive delete failed for file {file_id}: {e}")
+        return False
+
+
+async def download_all_files_from_folder(
+    folder_id: str,
+) -> List[dict]:
+    """Recursively download all files from a Drive folder.
+
+    Returns list of {"name": str, "path": str, "bytes": bytes} dicts.
+    Skips Google Docs native formats (mimeType starting with application/vnd.google-apps).
+    Returns empty list on failure, never raises.
+    """
+    try:
+        service = _get_drive_service()
+        return _walk_and_download(service, folder_id, "")
+    except Exception as e:
+        logger.error(f"Drive folder download failed for {folder_id}: {e}")
+        return []
+
+
+def _walk_and_download(service, folder_id: str, prefix: str) -> List[dict]:
+    """Recursively walk a Drive folder and download all files."""
+    results: List[dict] = []
+    page_token = None
+
+    while True:
+        resp = service.files().list(
+            q=f"'{folder_id}' in parents and trashed = false",
+            fields="nextPageToken, files(id, name, mimeType)",
+            includeItemsFromAllDrives=True,
+            supportsAllDrives=True,
+            pageToken=page_token,
+        ).execute()
+
+        for item in resp.get("files", []):
+            name = item["name"]
+            mime = item.get("mimeType", "")
+            rel_path = f"{prefix}/{name}" if prefix else name
+
+            if mime == FOLDER_MIME:
+                results.extend(_walk_and_download(service, item["id"], rel_path))
+            elif mime.startswith("application/vnd.google-apps"):
+                logger.debug(f"Skipping native Google format: {rel_path} ({mime})")
+                continue
+            else:
+                try:
+                    content = service.files().get_media(
+                        fileId=item["id"],
+                        supportsAllDrives=True,
+                    ).execute()
+                    results.append({
+                        "name": name,
+                        "path": rel_path,
+                        "bytes": content,
+                    })
+                except Exception as e:
+                    logger.warning(f"Failed to download Drive file {rel_path}: {e}")
+
+        page_token = resp.get("nextPageToken")
+        if not page_token:
+            break
+
+    return results
+
+
+async def delete_drive_folder(folder_id: str) -> bool:
+    """Delete a Drive folder and all its contents. Returns True on success.
+
+    Never raises — all exceptions are caught and logged.
+    """
+    try:
+        service = _get_drive_service()
+        service.files().delete(
+            fileId=folder_id,
+            supportsAllDrives=True,
+        ).execute()
+        logger.info(f"Deleted Drive folder {folder_id}")
+        return True
+    except Exception as e:
+        logger.error(f"Drive folder delete failed for {folder_id}: {e}")
+        return False

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import io
 import json
 import logging
+import re as _re
 from datetime import datetime, timezone
 from typing import List, Optional
 
@@ -331,10 +333,64 @@ async def archive_engagement(
             detail="Engagement must have status 'phases_complete' or later to archive",
         )
 
+    sb = get_supabase()
+
+    # ------------------------------------------------------------------
+    # 1b. Download Drive folder → ZIP → archive bucket, then delete Drive folder
+    # ------------------------------------------------------------------
+    drive_folder_id = engagement.get("drive_folder_id")
+    if drive_folder_id:
+        try:
+            from services.google_drive_engagement import download_all_files_from_folder, delete_drive_folder
+
+            drive_files = await download_all_files_from_folder(drive_folder_id)
+
+            if drive_files:
+                import zipfile
+
+                zip_buffer = io.BytesIO()
+                with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
+                    for f in drive_files:
+                        zf.writestr(f["path"], f["bytes"])
+                zip_buffer.seek(0)
+                zip_bytes = zip_buffer.getvalue()
+
+                client = engagement.get("clients", {})
+                company_slug = _re.sub(r'[^a-z0-9]+', '_', (client.get("company_name") or "unknown").lower()).strip('_')
+                zip_date = datetime.now(timezone.utc).strftime("%Y-%m")
+                zip_path = f"{engagement_id}/{company_slug}_{zip_date}.zip"
+
+                sb.storage.from_("archive").upload(
+                    zip_path, zip_bytes, {"content-type": "application/zip"},
+                )
+                logger.info(
+                    "Archived %d Drive files (%d bytes) to archive/%s",
+                    len(drive_files), len(zip_bytes), zip_path,
+                )
+                log_activity(engagement_id, "system", "drive_files_archived", {
+                    "file_count": len(drive_files),
+                    "zip_path": zip_path,
+                    "zip_size": len(zip_bytes),
+                })
+
+            deleted = await delete_drive_folder(drive_folder_id)
+            if deleted:
+                logger.info("Deleted Drive folder %s for engagement %s", drive_folder_id, engagement_id)
+                log_activity(engagement_id, "system", "drive_folder_deleted", {
+                    "drive_folder_id": drive_folder_id,
+                })
+            else:
+                logger.warning("Failed to delete Drive folder %s for engagement %s", drive_folder_id, engagement_id)
+
+        except Exception as exc:
+            logger.error(
+                "Drive archive failed for engagement %s (non-blocking): %s",
+                engagement_id, exc,
+            )
+
     # ------------------------------------------------------------------
     # 2. Move files from engagements → archive bucket
     # ------------------------------------------------------------------
-    sb = get_supabase()
     files_moved_count = 0
 
     try:

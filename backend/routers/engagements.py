@@ -15,6 +15,7 @@ from services.email_service import get_email_service
 from services.docusign_service import get_docusign_service
 from services.research_service import research_contacts
 from services.transcript_service import extract_text, analyze_transcript, get_transcript_intelligence
+from services.google_drive_engagement import upload_file_to_drive_folder, delete_drive_file
 
 logger = logging.getLogger("baxterlabs.engagements")
 
@@ -498,31 +499,59 @@ async def upload_interview_transcript(
     # Delete old transcript if replacing
     old_doc_id = contact.get("transcript_document_id")
     if old_doc_id:
-        old_doc = sb.table("documents").select("storage_path").eq("id", old_doc_id).execute()
+        old_doc = sb.table("documents").select("storage_path, storage_backend").eq("id", old_doc_id).execute()
         if old_doc.data:
             try:
-                sb.storage.from_("engagements").remove([old_doc.data[0]["storage_path"]])
+                if old_doc.data[0].get("storage_backend") == "drive":
+                    await delete_drive_file(old_doc.data[0]["storage_path"])
+                else:
+                    sb.storage.from_("engagements").remove([old_doc.data[0]["storage_path"]])
             except Exception as e:
                 logger.warning(f"Failed to delete old transcript file: {e}")
             sb.table("documents").delete().eq("id", old_doc_id).execute()
 
-    # Upload to storage
-    sb.storage.from_("engagements").upload(
-        storage_path, content, {"content-type": file.content_type or "application/octet-stream"}
-    )
+    # Upload to Drive or Supabase Storage
+    drive_interviews_folder_id = engagement.get("drive_interviews_folder_id")
+    mimetype = file.content_type or "application/octet-stream"
 
-    # Create documents record
-    doc_result = sb.table("documents").insert({
-        "engagement_id": engagement_id,
-        "category": "transcript",
-        "filename": filename,
-        "storage_path": storage_path,
-        "file_size": len(content),
-        "document_type": "interview_transcript",
-        "uploaded_by": "analyst",
-        "storage_bucket": "engagements",
-        "status": "uploaded",
-    }).execute()
+    if drive_interviews_folder_id:
+        drive_file_id = await upload_file_to_drive_folder(
+            folder_id=drive_interviews_folder_id,
+            filename=f"{name_slug}_{timestamp}{ext}",
+            file_bytes=content,
+            mimetype=mimetype,
+        )
+        if not drive_file_id:
+            raise HTTPException(status_code=502, detail="Failed to upload transcript to Google Drive.")
+
+        doc_result = sb.table("documents").insert({
+            "engagement_id": engagement_id,
+            "category": "transcript",
+            "filename": filename,
+            "storage_path": drive_file_id,
+            "file_size": len(content),
+            "document_type": "interview_transcript",
+            "uploaded_by": "analyst",
+            "storage_backend": "drive",
+            "status": "uploaded",
+        }).execute()
+    else:
+        sb.storage.from_("engagements").upload(
+            storage_path, content, {"content-type": mimetype}
+        )
+
+        doc_result = sb.table("documents").insert({
+            "engagement_id": engagement_id,
+            "category": "transcript",
+            "filename": filename,
+            "storage_path": storage_path,
+            "file_size": len(content),
+            "document_type": "interview_transcript",
+            "uploaded_by": "analyst",
+            "storage_bucket": "engagements",
+            "storage_backend": "supabase",
+            "status": "uploaded",
+        }).execute()
 
     doc_id = doc_result.data[0]["id"]
 

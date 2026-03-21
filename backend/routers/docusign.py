@@ -481,6 +481,11 @@ async def _auto_convert_pipeline_opportunity(opp_id: str) -> None:
             sb.table("engagements").update({
                 "drive_folder_id": _drive_result["folder_id"],
                 "drive_folder_url": _drive_result["folder_url"],
+                "drive_inbox_folder_id": _drive_result.get("inbox_folder_id"),
+                "drive_interviews_folder_id": _drive_result.get("interviews_folder_id"),
+                "drive_working_papers_folder_id": _drive_result.get("working_papers_folder_id"),
+                "drive_deliverables_folder_id": _drive_result.get("deliverables_folder_id"),
+                "drive_qc_folder_id": _drive_result.get("qc_folder_id"),
             }).eq("id", new_engagement_id).execute()
             logger.info(f"Auto-convert: Drive folder created — {_drive_result['folder_url']}")
         else:

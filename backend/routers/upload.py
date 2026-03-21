@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from middleware.auth import verify_upload_token
 from services.supabase_client import get_supabase, get_engagement_by_id, log_activity, update_engagement_status
 from services.email_service import get_email_service
+from services.google_drive_engagement import upload_file_to_drive_folder, delete_drive_file
 from config.upload_checklist import (
     UPLOAD_CHECKLIST,
     CHECKLIST_BY_KEY,
@@ -235,7 +236,7 @@ async def upload_file(
     # Replace logic: check for existing doc with same item_name
     existing = (
         sb.table("documents")
-        .select("id, storage_path")
+        .select("id, storage_path, storage_backend")
         .eq("engagement_id", engagement_id)
         .eq("item_name", item_key)
         .execute()
@@ -245,28 +246,56 @@ async def upload_file(
         old_doc = existing.data[0]
         # Delete old storage file (ignore errors if file already gone)
         try:
-            sb.storage.from_("engagements").remove([old_doc["storage_path"]])
+            if old_doc.get("storage_backend") == "drive":
+                await delete_drive_file(old_doc["storage_path"])
+            else:
+                sb.storage.from_("engagements").remove([old_doc["storage_path"]])
         except Exception as e:
             logger.warning(f"Failed to delete old storage file: {e}")
         # Delete old DB record
         sb.table("documents").delete().eq("id", old_doc["id"]).execute()
 
-    # Upload to Supabase Storage
-    sb.storage.from_("engagements").upload(storage_path, content, {
-        "content-type": file.content_type or "application/octet-stream",
-    })
+    # Upload to Drive or Supabase Storage
+    drive_inbox_folder_id = engagement.get("drive_inbox_folder_id")
+    mimetype = file.content_type or "application/octet-stream"
 
-    # Create document record
-    sb.table("documents").insert({
-        "engagement_id": engagement_id,
-        "category": category,
-        "filename": filename,
-        "storage_path": storage_path,
-        "file_size": len(content),
-        "document_type": "client_upload",
-        "item_name": item_key,
-        "uploaded_by": "client",
-    }).execute()
+    if drive_inbox_folder_id:
+        drive_file_id = await upload_file_to_drive_folder(
+            folder_id=drive_inbox_folder_id,
+            filename=f"{item_key}_{filename}",
+            file_bytes=content,
+            mimetype=mimetype,
+        )
+        if not drive_file_id:
+            raise HTTPException(status_code=502, detail="Failed to upload file to Google Drive.")
+
+        sb.table("documents").insert({
+            "engagement_id": engagement_id,
+            "category": category,
+            "filename": filename,
+            "storage_path": drive_file_id,
+            "file_size": len(content),
+            "document_type": "client_upload",
+            "item_name": item_key,
+            "uploaded_by": "client",
+            "storage_backend": "drive",
+        }).execute()
+    else:
+        sb.storage.from_("engagements").upload(storage_path, content, {
+            "content-type": mimetype,
+        })
+
+        sb.table("documents").insert({
+            "engagement_id": engagement_id,
+            "category": category,
+            "filename": filename,
+            "storage_path": storage_path,
+            "file_size": len(content),
+            "document_type": "client_upload",
+            "item_name": item_key,
+            "uploaded_by": "client",
+            "storage_backend": "supabase",
+        }).execute()
 
     # Batch uploads: add to session instead of per-file email/log
     with _sessions_lock:
