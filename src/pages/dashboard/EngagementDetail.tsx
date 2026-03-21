@@ -141,12 +141,11 @@ interface EngagementData {
 const ALL_STATUSES = [
   'intake', 'discovery_done', 'agreement_pending', 'agreement_signed',
   'documents_pending', 'documents_received',
-  'phase_0', 'phase_1', 'phase_2', 'phase_3', 'phase_4', 'phase_5', 'phase_6', 'phase_7', 'phases_complete',
+  'phase_1', 'phase_2', 'phase_3', 'phase_4', 'phase_5', 'phase_6', 'phase_7', 'phases_complete',
   'debrief', 'wave_1_released', 'wave_2_released', 'closed',
 ]
 
 const PHASE_INFO = [
-  { num: 0, name: 'Proposal & Setup', short: 'Setup' },
   { num: 1, name: 'Data Intake & Baseline', short: 'Intake', reviewGate: true },
   { num: 2, name: 'Leadership Interviews', short: 'Interviews' },
   { num: 3, name: 'Profit Leak Quantification', short: 'Quantify', reviewGate: true },
