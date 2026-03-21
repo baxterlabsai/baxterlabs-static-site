@@ -112,7 +112,7 @@ export default function EngagementOutputs() {
 
   return (
     <>
-      <SEO title={`${companyName} Outputs — BaxterLabs`} />
+      <SEO title={`${companyName} Outputs — BaxterLabs`} description="Engagement deliverable outputs" />
 
       <div className="max-w-5xl mx-auto">
         {/* Breadcrumb */}

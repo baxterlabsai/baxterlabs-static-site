@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../../../lib/supabase'
 import SEO from '../../../components/SEO'
 
@@ -17,7 +17,6 @@ interface OutputRow {
 
 export default function MdEditor() {
   const { engagementId, outputId } = useParams<{ engagementId: string; outputId: string }>()
-  const navigate = useNavigate()
   const [output, setOutput] = useState<OutputRow | null>(null)
   const [content, setContent] = useState('')
   const [originalContent, setOriginalContent] = useState('')
@@ -115,7 +114,7 @@ export default function MdEditor() {
 
   return (
     <>
-      <SEO title={`${output.output_name} — Edit`} />
+      <SEO title={`${output.output_name} — Edit`} description="Edit deliverable content" />
 
       <div className="max-w-5xl mx-auto">
         {/* Breadcrumb */}

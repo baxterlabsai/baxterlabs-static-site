@@ -110,7 +110,7 @@ export default function DeliveryView() {
 
   return (
     <>
-      <SEO title={`${companyName} — Delivery`} />
+      <SEO title={`${companyName} — Delivery`} description="Approved deliverables ready for client" />
 
       <div className="max-w-5xl mx-auto">
         {/* Breadcrumb */}
@@ -222,9 +222,9 @@ export default function DeliveryView() {
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-charcoal">
                       {act.action.replace(/_/g, ' ')}
-                      {act.details?.output_name && (
+                      {act.details?.output_name ? (
                         <span className="text-gray-warm"> — {String(act.details.output_name)}</span>
-                      )}
+                      ) : null}
                     </p>
                   </div>
                   <span className="text-xs text-gray-warm flex-shrink-0">

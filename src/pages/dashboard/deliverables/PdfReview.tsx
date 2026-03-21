@@ -122,7 +122,7 @@ export default function PdfReview() {
 
   return (
     <>
-      <SEO title={`${output.output_name} — Format Review`} />
+      <SEO title={`${output.output_name} — Format Review`} description="Review document formatting" />
 
       <div className="max-w-6xl mx-auto">
         {/* Breadcrumb */}

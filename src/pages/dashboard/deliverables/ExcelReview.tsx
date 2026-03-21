@@ -78,7 +78,7 @@ export default function ExcelReview() {
 
   return (
     <>
-      <SEO title={`${output.output_name} — Excel Review`} />
+      <SEO title={`${output.output_name} — Excel Review`} description="Review Excel workbook" />
 
       <div className="max-w-3xl mx-auto">
         {/* Breadcrumb */}
