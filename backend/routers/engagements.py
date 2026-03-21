@@ -439,6 +439,8 @@ async def send_upload_link(engagement_id: str, user: dict = Depends(verify_partn
 class InterviewContactUpdate(BaseModel):
     enrichment_data: Optional[dict] = None
     call_notes_doc_url: Optional[str] = None
+    transcript_gdrive_url: Optional[str] = None
+    prep_source_phase_output_id: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------

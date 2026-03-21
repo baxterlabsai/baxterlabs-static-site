@@ -18,6 +18,8 @@ interface ContactDetail {
   enrichment_data: Record<string, any> | null
   call_notes_doc_url: string | null
   transcript_document_id: string | null
+  transcript_gdrive_url: string | null
+  prep_source_phase_output_id: string | null
   created_at: string
   updated_at: string
 }
@@ -340,7 +342,11 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
                         `/api/engagements/${engagementId}/contacts/${contactId}/transcript-gdoc`,
                         { gdoc_url: gdocUrl }
                       )
-                      setContact(updated)
+                      // Persist the Google Drive URL on the contact record
+                      await apiPatch(`/api/engagements/${engagementId}/contacts/${contactId}`, {
+                        transcript_gdrive_url: gdocUrl,
+                      })
+                      setContact({ ...updated, transcript_gdrive_url: gdocUrl })
                       setAnalyzing(true)
                       const poll = setInterval(() => {
                         apiGet<{ contacts: TranscriptIntelContact[] }>(`/api/engagements/${engagementId}/transcript-intelligence`)
@@ -457,7 +463,7 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
                 <h4 className="text-sm font-semibold text-charcoal mb-2">Quick Actions</h4>
                 <div className="flex flex-wrap gap-2">
                   <button
-                    onClick={() => copyToClipboard(`/baxterlabs-advisory:contact-research ${contact.name} at ${companyName}`)}
+                    onClick={() => copyToClipboard(`/baxterlabs-delivery:contact-research ${contact.name} at ${companyName}`)}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-purple-200 text-xs font-medium text-charcoal bg-purple-50 hover:bg-purple-100 transition-colors"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -466,7 +472,7 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
                     Research
                   </button>
                   <button
-                    onClick={() => copyToClipboard(`/baxterlabs-advisory:interview-prep ${contact.name} at ${companyName}`)}
+                    onClick={() => copyToClipboard(`/baxterlabs-delivery:interview-prep ${engagementId} ${contact.id}`)}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-200 text-xs font-medium text-charcoal bg-amber-50 hover:bg-amber-100 transition-colors"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -474,6 +480,17 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
                     </svg>
                     Interview Prep
                   </button>
+                  {contact.transcript_gdrive_url && (
+                    <button
+                      onClick={() => copyToClipboard(`/baxterlabs-delivery:process-transcript ${engagementId} ${contact.id}`)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-200 text-xs font-medium text-charcoal bg-emerald-50 hover:bg-emerald-100 transition-colors"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                      </svg>
+                      Process Transcript
+                    </button>
+                  )}
                   {contact.email && (
                     <a
                       href={`https://calendly.com/george-baxterlabs/leadership-interview?name=${encodeURIComponent(contact.name)}&email=${encodeURIComponent(contact.email)}`}
