@@ -156,7 +156,6 @@ const PHASE_INFO = [
 ]
 
 const PHASE_NAMES: Record<number, string> = {
-  0: 'Proposal & Engagement Setup',
   1: 'Data Intake & Financial Baseline',
   2: 'Leadership Interviews',
   3: 'Profit Leak Quantification',
@@ -246,9 +245,6 @@ export default function EngagementDetail() {
   const [expandedBrief, setExpandedBrief] = useState<string | null>(null)
   const [downloadingDocId, setDownloadingDocId] = useState<string | null>(null)
   const [copiedCommand, setCopiedCommand] = useState<number | null>(null)
-  const [advanceLoading, setAdvanceLoading] = useState(false)
-  const [advanceDialog, setAdvanceDialog] = useState<'none' | 'simple' | 'review'>('none')
-  const [advanceNotes, setAdvanceNotes] = useState('')
   const [beginLoading, setBeginLoading] = useState(false)
   const [uploadingDeliverableId, setUploadingDeliverableId] = useState<string | null>(null)
   const [approvingDeliverableId, setApprovingDeliverableId] = useState<string | null>(null)
@@ -268,6 +264,18 @@ export default function EngagementDetail() {
 
   // Phase output content (Cowork-synced)
   const [phaseOutputContent, setPhaseOutputContent] = useState<PhaseOutputContent[]>([])
+
+  // Phases that have at least one phase_output_content row
+  const completedPhases: number[] = [...new Set(phaseOutputContent.map(p => p.phase_number))].sort((a, b) => a - b)
+
+  // Next phase to run (1–7). If all 7 complete, returns null.
+  const nextPhase: number | null = (() => {
+    for (let i = 1; i <= 7; i++) {
+      if (!completedPhases.includes(i)) return i
+    }
+    return null
+  })()
+
   const [pocExpandedPhases, setPocExpandedPhases] = useState<Set<number>>(new Set())
   const [editingOutputId, setEditingOutputId] = useState<string | null>(null)
   const [editInstruction, setEditInstruction] = useState('')
@@ -420,28 +428,6 @@ export default function EngagementDetail() {
     setTimeout(() => setCopiedCommand(null), 2000)
   }
 
-  const handleAdvanceClick = () => {
-    if (!data) return
-    const isReviewGate = [1, 3, 6].includes(data.phase)
-    setAdvanceDialog(isReviewGate ? 'review' : 'simple')
-  }
-
-  const doAdvance = async (reviewConfirmed: boolean) => {
-    if (!id) return
-    setAdvanceLoading(true)
-    try {
-      await apiPost(`/api/engagements/${id}/advance-phase`, {
-        notes: advanceNotes || null,
-        review_confirmed: reviewConfirmed,
-      })
-      // Reload engagement
-      const d = await apiGet<EngagementData>(`/api/engagements/${id}`)
-      setData(d)
-      setAdvanceDialog('none')
-      setAdvanceNotes('')
-    } catch {}
-    setAdvanceLoading(false)
-  }
 
   const beginPhases = async () => {
     if (!id) return
@@ -740,7 +726,7 @@ export default function EngagementDetail() {
               </Link>
             )}
           </div>
-          <p className="text-gray-warm text-sm">{client.primary_contact_name} · {statusLabel(data.status)}</p>
+          <p className="text-gray-warm text-sm">{client.primary_contact_name} · {nextPhase ? `Phase ${nextPhase} in Progress` : 'Phases Complete'}</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           {!isClosed && (
@@ -864,19 +850,11 @@ export default function EngagementDetail() {
         <section className="bg-white rounded-lg border border-gray-light p-5 mb-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xs font-semibold text-gray-warm uppercase tracking-wider">Phase Progress</h3>
-            {isInPhases && (
-              <button
-                onClick={handleAdvanceClick}
-                className="px-4 py-2 bg-crimson text-white text-sm font-semibold rounded-lg hover:bg-crimson/90 transition-colors"
-              >
-                Advance Phase
-              </button>
-            )}
           </div>
           <div className="flex items-center gap-0 overflow-x-auto pb-2">
             {PHASE_INFO.map((p, i) => {
-              const completed = data.phase > p.num || data.status === 'phases_complete' || ALL_STATUSES.indexOf(data.status) > ALL_STATUSES.indexOf('phase_7')
-              const current = data.phase === p.num && isInPhases
+              const completed = completedPhases.includes(p.num)
+              const current = p.num === nextPhase
               return (
                 <div key={p.num} className="flex items-center flex-shrink-0">
                   <div className="flex flex-col items-center gap-1">
@@ -911,66 +889,45 @@ export default function EngagementDetail() {
               )
             })}
           </div>
-          {isInPhases && (
-            <p className="mt-3 text-sm font-semibold text-charcoal">
-              Current: Phase {data.phase} — {PHASE_INFO[data.phase]?.name}
-            </p>
-          )}
-          {data.status === 'phases_complete' && (
+          {nextPhase === null && (
             <p className="mt-3 text-sm font-semibold text-teal">All phases complete</p>
           )}
         </section>
       )}
 
-      {/* Phase Execution */}
-      {!isClosed && phaseOutputContent.length > 0 && (
+      {/* Phase Commands */}
+      {!isClosed && (
         <section className="bg-white rounded-lg border border-gray-light p-5 mb-6">
           <div className="mb-4">
-            <h3 className="font-display text-lg font-bold text-teal">Phase Execution</h3>
+            <h3 className="font-display text-lg font-bold text-teal">Phase Commands</h3>
             <p className="text-xs text-gray-warm mt-0.5">Copy commands to run in Cowork</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {PHASE_INFO.filter(p => p.num > 0).map(({ num, name }) => {
-              const status = data.phase > num ? 'complete' : data.phase === num && data.status !== 'phases_complete' ? 'in_progress' : data.status === 'phases_complete' ? 'complete' : 'not_started'
+          <div className="flex flex-wrap gap-2">
+            {PHASE_INFO.map(({ num }) => {
+              const done = completedPhases.includes(num)
+              const isNext = num === nextPhase
               return (
-                <div key={num} className={`border rounded-lg p-3 flex items-start gap-3 ${
-                  status === 'in_progress' ? 'border-teal bg-teal/5' :
-                  status === 'complete' ? 'border-green/30' : 'border-gray-light'
-                }`}>
-                  <span className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                    status === 'complete' ? 'bg-teal text-white' :
-                    status === 'in_progress' ? 'bg-crimson text-white' :
-                    'bg-gray-light text-gray-warm'
-                  }`}>
-                    {status === 'complete' ? (
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                    ) : num}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-charcoal">{name}</p>
-                    <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full mt-1 ${
-                      status === 'complete' ? 'bg-green/10 text-green' :
-                      status === 'in_progress' ? 'bg-teal/10 text-teal' :
-                      'bg-gray-light text-gray-warm'
-                    }`}>
-                      {status === 'complete' ? 'Complete' : status === 'in_progress' ? 'In Progress' : 'Not Started'}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => copyPhaseCommand(num)}
-                    className={`flex-shrink-0 inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded font-semibold transition-colors ${
-                      copiedCommand === num
-                        ? 'bg-teal/10 text-teal'
-                        : 'bg-ivory text-teal hover:bg-teal/10'
-                    }`}
-                    title={getPhaseCommand(num)}
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                    </svg>
-                    {copiedCommand === num ? 'Copied!' : 'Copy'}
-                  </button>
-                </div>
+                <button
+                  key={num}
+                  onClick={() => !done && copyPhaseCommand(num)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    copiedCommand === num
+                      ? 'bg-teal/10 text-teal border border-teal'
+                      : done
+                      ? 'bg-gray-light text-gray-warm opacity-40 cursor-default border border-transparent'
+                      : isNext
+                      ? 'bg-teal text-white border border-teal hover:bg-teal/90'
+                      : 'bg-ivory text-teal border border-gray-light opacity-60 hover:opacity-100 hover:bg-teal/5'
+                  }`}
+                  title={done ? `Phase ${num} complete` : getPhaseCommand(num)}
+                >
+                  {done ? (
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  ) : (
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                  )}
+                  {copiedCommand === num ? 'Copied!' : `Phase ${num}`}
+                </button>
               )
             })}
           </div>
@@ -980,7 +937,7 @@ export default function EngagementDetail() {
       {/* Phase Outputs — Dynamic Cowork-synced viewer */}
       {data && phaseOutputContent.length > 0 && (() => {
         const PHASE_TIMING: Record<number, string> = {
-          0: 'Pre-Engagement', 1: 'Days 1–3', 2: 'Days 4–6', 3: 'Days 7–9',
+          1: 'Days 1–3', 2: 'Days 4–6', 3: 'Days 7–9',
           4: 'Days 10–11', 5: 'Days 12–13', 6: 'Pre-Delivery', 7: 'Post-Debrief',
         }
 
@@ -991,7 +948,7 @@ export default function EngagementDetail() {
           pocByPhase[o.phase_number].push(o)
         }
 
-        const activePhase = data.phase ?? 0
+        const activePhase = nextPhase ?? 8
 
         return (
           <section className="bg-white rounded-lg border border-gray-light p-5 mb-6">
@@ -1026,11 +983,11 @@ export default function EngagementDetail() {
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <span className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                          data.phase > phase ? 'bg-teal text-white' :
+                          completedPhases.includes(phase) ? 'bg-teal text-white' :
                           isActive ? 'bg-crimson text-white' :
                           'bg-gray-light text-gray-warm'
                         }`}>
-                          {data.phase > phase ? (
+                          {completedPhases.includes(phase) ? (
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                           ) : phase}
                         </span>
@@ -2236,76 +2193,6 @@ export default function EngagementDetail() {
         </div>
       )}
 
-      {/* Advance Phase Dialog */}
-      {advanceDialog !== 'none' && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            {advanceDialog === 'review' ? (
-              <>
-                <div className="flex items-center gap-2 mb-3">
-                  <svg className="w-5 h-5 text-amber" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                  </svg>
-                  <h3 className="font-display text-lg font-bold text-charcoal">Review Gate</h3>
-                </div>
-                <p className="text-sm text-charcoal mb-4">
-                  Phase {data?.phase} ({PHASE_INFO[data?.phase ?? 0]?.name}) is a review gate.
-                  Have you reviewed all outputs and confirmed quality? This cannot be undone.
-                </p>
-                <textarea
-                  value={advanceNotes}
-                  onChange={e => setAdvanceNotes(e.target.value)}
-                  placeholder="Optional review notes..."
-                  className="w-full border border-gray-light rounded-lg p-3 text-sm mb-4 resize-none h-20 focus:outline-none focus:ring-2 focus:ring-teal"
-                />
-                <div className="flex gap-3 justify-end">
-                  <button
-                    onClick={() => { setAdvanceDialog('none'); setAdvanceNotes('') }}
-                    className="px-4 py-2 text-sm font-semibold text-gray-warm hover:text-charcoal"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => doAdvance(true)}
-                    disabled={advanceLoading}
-                    className="px-4 py-2 bg-crimson text-white text-sm font-semibold rounded-lg hover:bg-crimson/90 disabled:opacity-50"
-                  >
-                    {advanceLoading ? 'Advancing...' : 'Yes, Advance'}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <h3 className="font-display text-lg font-bold text-charcoal mb-3">Advance Phase</h3>
-                <p className="text-sm text-charcoal mb-4">
-                  Advance from Phase {data?.phase} to Phase {(data?.phase ?? 0) + 1}?
-                </p>
-                <textarea
-                  value={advanceNotes}
-                  onChange={e => setAdvanceNotes(e.target.value)}
-                  placeholder="Optional notes..."
-                  className="w-full border border-gray-light rounded-lg p-3 text-sm mb-4 resize-none h-20 focus:outline-none focus:ring-2 focus:ring-teal"
-                />
-                <div className="flex gap-3 justify-end">
-                  <button
-                    onClick={() => { setAdvanceDialog('none'); setAdvanceNotes('') }}
-                    className="px-4 py-2 text-sm font-semibold text-gray-warm hover:text-charcoal"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => doAdvance(false)}
-                    disabled={advanceLoading}
-                    className="px-4 py-2 bg-crimson text-white text-sm font-semibold rounded-lg hover:bg-crimson/90 disabled:opacity-50"
-                  >
-                    {advanceLoading ? 'Advancing...' : 'Advance'}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Fullscreen Research Modals */}
       <ResearchModal
