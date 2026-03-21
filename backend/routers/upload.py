@@ -104,6 +104,10 @@ def _parse_created_at(created_at_str: str) -> datetime:
     else:
         import re
         clean = re.sub(r'[+-]\d{2}(:\d{2})?$', '', created_at_str.replace('Z', ''))
+        # Python 3.9 fromisoformat only accepts 0, 3, or 6 fractional digits
+        m = re.match(r'(.+\.)(\d+)$', clean)
+        if m:
+            clean = m.group(1) + m.group(2).ljust(6, '0')[:6]
         dt = datetime.fromisoformat(clean)
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
