@@ -94,12 +94,17 @@ UPLOAD_ALLOWED_STATUSES = {
 
 
 def _parse_created_at(created_at_str: str) -> datetime:
-    """Parse engagement created_at to a timezone-aware datetime."""
+    """Parse engagement created_at to a timezone-aware datetime.
+
+    Python 3.9's fromisoformat() doesn't support timezone offsets like +00:00,
+    so we strip the tz suffix and treat everything as UTC.
+    """
     if isinstance(created_at_str, datetime):
         dt = created_at_str
     else:
-        # Handle ISO format from Supabase (with or without timezone)
-        dt = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
+        import re
+        clean = re.sub(r'[+-]\d{2}(:\d{2})?$', '', created_at_str.replace('Z', ''))
+        dt = datetime.fromisoformat(clean)
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt

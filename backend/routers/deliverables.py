@@ -60,10 +60,10 @@ async def get_deliverables_by_token(token: str):
     # Check token expiry — 30 days from engagement creation
     created_at_str = engagement.get("created_at", "")
     try:
-        # Parse ISO 8601 timestamp; handle both +00:00 and Z suffixes
-        if created_at_str.endswith("Z"):
-            created_at_str = created_at_str[:-1] + "+00:00"
-        created_at = datetime.fromisoformat(created_at_str)
+        # Parse ISO 8601 timestamp; strip tz suffix for Python 3.9 compat
+        import re
+        clean = re.sub(r'[+-]\d{2}(:\d{2})?$', '', created_at_str.replace('Z', ''))
+        created_at = datetime.fromisoformat(clean)
         if created_at.tzinfo is None:
             created_at = created_at.replace(tzinfo=timezone.utc)
         if datetime.now(timezone.utc) - created_at > timedelta(days=30):
