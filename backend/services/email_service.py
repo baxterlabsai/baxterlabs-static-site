@@ -618,8 +618,10 @@ class EmailService:
         """Send client a reminder to upload outstanding documents."""
         client = engagement.get("clients", {})
         company = client.get("company_name", "Unknown")
-        contact_name = client.get("primary_contact_name", "there")
-        contact_email = client.get("primary_contact_email")
+        # Send to the document contact (the person who received the original upload link),
+        # falling back to the primary contact if no document contact is set
+        contact_name = engagement.get("document_contact_name") or client.get("primary_contact_name", "there")
+        contact_email = engagement.get("document_contact_email") or client.get("primary_contact_email")
         upload_token = engagement.get("upload_token")
         remaining = total_required - uploaded_count
         body = f"""
