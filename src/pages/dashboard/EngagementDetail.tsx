@@ -263,6 +263,11 @@ export default function EngagementDetail() {
   const [ensuringDeliverables, setEnsuringDeliverables] = useState(false)
   const [archiveDialog, setArchiveDialog] = useState(false)
   const [activityLogOpen, setActivityLogOpen] = useState(false)
+  const [dossierOpen, setDossierOpen] = useState(false)
+  const [briefsOpen, setBriefsOpen] = useState(false)
+  const [docsOpen, setDocsOpen] = useState(false)
+  const [invoicesOpen, setInvoicesOpen] = useState(false)
+  const [followUpsOpen, setFollowUpsOpen] = useState(false)
   const [archiving, setArchiving] = useState(false)
   const [deleteDialog, setDeleteDialog] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -1818,13 +1823,18 @@ export default function EngagementDetail() {
       </div>
 
       {/* Research Dossier */}
-      <section className="bg-white rounded-lg border border-gray-light p-5 mt-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-display text-lg font-bold text-teal">Research Dossier</h3>
+      <section className="bg-white rounded-lg border border-gray-light mt-6">
+        <button
+          onClick={() => setDossierOpen(prev => !prev)}
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-ivory/50 transition-colors cursor-pointer"
+        >
+          <h3 className="font-display text-lg font-bold text-teal">
+            Research Dossier{dossier ? '' : ' (empty)'}
+          </h3>
           <div className="flex items-center gap-2">
             {dossier && (
               <button
-                onClick={() => setDossierModalOpen(true)}
+                onClick={e => { e.stopPropagation(); setDossierModalOpen(true) }}
                 className="text-gray-warm hover:text-teal p-1 rounded hover:bg-ivory transition-colors"
                 aria-label="Expand Research Dossier"
                 title="View fullscreen"
@@ -1835,35 +1845,54 @@ export default function EngagementDetail() {
               </button>
             )}
             <button
-              onClick={() => triggerResearch('discovery')}
+              onClick={e => { e.stopPropagation(); triggerResearch('discovery') }}
               disabled={researchLoading === 'discovery'}
               className="text-xs text-teal font-semibold hover:underline disabled:opacity-50"
             >
               {researchLoading === 'discovery' ? 'Enriching...' : 'Enrich Research'}
             </button>
+            <svg className={`w-4 h-4 text-gray-warm transition-transform ${dossierOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
           </div>
-        </div>
-        {dossier ? (
-          <div className="text-sm text-charcoal leading-relaxed">
-            <MarkdownContent content={dossier.content} />
+        </button>
+        {dossierOpen && (
+          <div className="px-5 pb-5">
+            {dossier ? (
+              <div className="text-sm text-charcoal leading-relaxed">
+                <MarkdownContent content={dossier.content} />
+              </div>
+            ) : (
+              <p className="text-gray-warm text-sm">Research pending — click "Enrich Research" to generate the company dossier.</p>
+            )}
           </div>
-        ) : (
-          <p className="text-gray-warm text-sm">Research pending — click "Enrich Research" to generate the company dossier.</p>
         )}
       </section>
 
       {/* Interview Briefs */}
-      <section className="bg-white rounded-lg border border-gray-light p-5 mt-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-display text-lg font-bold text-teal">Interview Briefs</h3>
-          <button
-            onClick={() => triggerResearch('interviews')}
-            disabled={researchLoading === 'interviews'}
-            className="text-xs text-teal font-semibold hover:underline disabled:opacity-50"
-          >
-            {researchLoading === 'interviews' ? 'Running...' : 'Re-run Interview Research'}
-          </button>
-        </div>
+      <section className="bg-white rounded-lg border border-gray-light mt-6">
+        <button
+          onClick={() => setBriefsOpen(prev => !prev)}
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-ivory/50 transition-colors cursor-pointer"
+        >
+          <h3 className="font-display text-lg font-bold text-teal">
+            Interview Briefs{briefs.length > 0 ? ` (${briefs.length})` : ''}
+          </h3>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={e => { e.stopPropagation(); triggerResearch('interviews') }}
+              disabled={researchLoading === 'interviews'}
+              className="text-xs text-teal font-semibold hover:underline disabled:opacity-50"
+            >
+              {researchLoading === 'interviews' ? 'Running...' : 'Re-run Interview Research'}
+            </button>
+            <svg className={`w-4 h-4 text-gray-warm transition-transform ${briefsOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </button>
+        {briefsOpen && (
+          <div className="px-5 pb-5">
         {briefs.length > 0 ? (
           <div className="space-y-3">
             {briefs.map((brief, i) => (
@@ -1934,6 +1963,8 @@ export default function EngagementDetail() {
         ) : (
           <p className="text-gray-warm text-sm">Interview briefs are generated after running Research & Call Prep for each contact in their individual modal.</p>
         )}
+          </div>
+        )}
       </section>
 
       {/* Legal Documents */}
@@ -1945,13 +1976,25 @@ export default function EngagementDetail() {
       </section>
 
       {/* Document Inventory — Enhanced */}
-      <section className="bg-white rounded-lg border border-gray-light p-5 mt-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-display text-lg font-bold text-teal">Document Inventory</h3>
-          <span className="text-sm text-gray-warm">
-            <span className="font-bold text-teal">{requiredUploaded}</span> of {REQUIRED_ITEM_KEYS.size} required
-          </span>
-        </div>
+      <section className="bg-white rounded-lg border border-gray-light mt-6">
+        <button
+          onClick={() => setDocsOpen(prev => !prev)}
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-ivory/50 transition-colors cursor-pointer"
+        >
+          <h3 className="font-display text-lg font-bold text-teal">
+            Document Inventory
+          </h3>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-warm">
+              <span className="font-bold text-teal">{requiredUploaded}</span> of {REQUIRED_ITEM_KEYS.size} required
+            </span>
+            <svg className={`w-4 h-4 text-gray-warm transition-transform ${docsOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </button>
+        {docsOpen && (
+          <div className="px-5 pb-5">
 
         {/* Progress bar */}
         <div className="w-full h-2 bg-gray-light rounded-full overflow-hidden mb-5">
@@ -2019,6 +2062,8 @@ export default function EngagementDetail() {
             </div>
           </div>
         )}
+          </div>
+        )}
       </section>
 
       {/* Referrals Generated */}
@@ -2057,14 +2102,25 @@ export default function EngagementDetail() {
       )}
 
       {/* Invoices */}
-      <section className="bg-white rounded-lg border border-gray-light p-5 mt-6">
-        <div className="flex items-center justify-between mb-4">
+      <section className="bg-white rounded-lg border border-gray-light mt-6">
+        <button
+          onClick={() => setInvoicesOpen(prev => !prev)}
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-ivory/50 transition-colors cursor-pointer"
+        >
           <h3 className="font-display text-lg font-bold text-teal flex items-center gap-2">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
             </svg>
-            Invoices
+            Invoices{invoices.length > 0 ? ` (${invoices.length})` : ''}
           </h3>
+          <svg className={`w-4 h-4 text-gray-warm transition-transform ${invoicesOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        {invoicesOpen && (
+          <div className="px-5 pb-5">
+        <div className="flex items-center justify-between mb-4">
+          <span />
           {!isClosed && (
             <div className="flex gap-2">
               {!invoices.some(inv => inv.type === 'deposit' && inv.status !== 'void') && (
@@ -2209,18 +2265,29 @@ export default function EngagementDetail() {
             })}
           </div>
         )}
+          </div>
+        )}
       </section>
 
       {/* Follow-Up Sequence */}
       {followUps.length > 0 && (
-        <section className="bg-white rounded-lg border border-gray-light p-5 mt-6">
-          <h3 className="font-display text-lg font-bold text-teal flex items-center gap-2 mb-4">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+        <section className="bg-white rounded-lg border border-gray-light mt-6">
+          <button
+            onClick={() => setFollowUpsOpen(prev => !prev)}
+            className="w-full flex items-center justify-between px-5 py-4 hover:bg-ivory/50 transition-colors cursor-pointer"
+          >
+            <h3 className="font-display text-lg font-bold text-teal flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+              </svg>
+              Post-Engagement Follow-Ups ({followUps.length})
+            </h3>
+            <svg className={`w-4 h-4 text-gray-warm transition-transform ${followUpsOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
             </svg>
-            Post-Engagement Follow-Ups
-          </h3>
-          <div className="space-y-2">
+          </button>
+          {followUpsOpen && (
+          <div className="px-5 pb-5 space-y-2">
             {followUps.map(fu => {
               const touchpointLabels: Record<string, string> = { '30_day': '30-Day Check-In', '60_day': '60-Day Pulse Check', '90_day': '90-Day Review Offer' }
               const statusColors: Record<string, string> = {
@@ -2263,6 +2330,7 @@ export default function EngagementDetail() {
               )
             })}
           </div>
+          )}
         </section>
       )}
 
