@@ -42,6 +42,12 @@ import ResetPassword from './pages/ResetPassword'
 import HelpManual from './pages/dashboard/help/Manual'
 import HelpVideos from './pages/dashboard/help/Videos'
 import HelpReleases from './pages/dashboard/help/Releases'
+import DeliverablesDashboard from './pages/dashboard/deliverables/DeliverablesDashboard'
+import EngagementOutputs from './pages/dashboard/deliverables/EngagementOutputs'
+import MdEditor from './pages/dashboard/deliverables/MdEditor'
+import PdfReview from './pages/dashboard/deliverables/PdfReview'
+import ExcelReview from './pages/dashboard/deliverables/ExcelReview'
+import DeliveryView from './pages/dashboard/deliverables/DeliveryView'
 import NotFound from './pages/NotFound'
 
 function ScrollToTop() {
@@ -109,6 +115,12 @@ export default function App() {
             <Route path="/dashboard/pipeline/tasks" element={<PipelineTasks />} />
             <Route path="/dashboard/pipeline/import" element={<BulkImport />} />
             <Route path="/dashboard/pipeline/convert/:opportunityId" element={<ConversionReview />} />
+            <Route path="/dashboard/deliverables" element={<DeliverablesDashboard />} />
+            <Route path="/dashboard/deliverables/:engagementId" element={<EngagementOutputs />} />
+            <Route path="/dashboard/deliverables/:engagementId/edit/:outputId" element={<MdEditor />} />
+            <Route path="/dashboard/deliverables/:engagementId/pdf/:outputId" element={<PdfReview />} />
+            <Route path="/dashboard/deliverables/:engagementId/excel/:outputId" element={<ExcelReview />} />
+            <Route path="/dashboard/deliverables/:engagementId/delivery" element={<DeliveryView />} />
             <Route path="/dashboard/help/manual" element={<HelpManual />} />
             <Route path="/dashboard/help/videos" element={<HelpVideos />} />
             <Route path="/dashboard/help/releases" element={<HelpReleases />} />

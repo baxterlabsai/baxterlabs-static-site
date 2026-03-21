@@ -31,6 +31,11 @@ class UpsertMdBody(BaseModel):
     content_md: str
 
 
+class PatchOutputBody(BaseModel):
+    pdf_approved: Optional[bool] = None
+    status: Optional[str] = None
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -198,14 +203,34 @@ async def list_outputs(
         key = (row["phase_number"], row["output_name"])
         if key not in seen:
             seen.add(key)
-            # Generate download URLs for binary files
+            # Supabase storage paths — always sign
             for path_field in ("storage_path", "pdf_storage_path"):
-                if row.get(path_field):
+                val = row.get(path_field)
+                if val:
                     try:
-                        signed = sb.storage.from_("engagements").create_signed_url(row[path_field], 3600)
+                        signed = sb.storage.from_("engagements").create_signed_url(val, 3600)
                         row[f"{path_field}_url"] = signed.get("signedURL") or signed.get("signedUrl")
                     except Exception:
                         row[f"{path_field}_url"] = None
+                else:
+                    row[f"{path_field}_url"] = None
+
+            # Drive paths — pass through URLs, construct from file IDs, fallback to signing
+            for path_field in ("docx_pdf_preview_path", "pdf_preview_path", "pptx_path"):
+                val = row.get(path_field)
+                if val:
+                    if val.startswith("http://") or val.startswith("https://"):
+                        row[f"{path_field}_url"] = val
+                    elif "/" not in val and "." not in val:
+                        # Bare Drive file ID
+                        row[f"{path_field}_url"] = f"https://drive.google.com/file/d/{val}/preview"
+                    else:
+                        # Looks like a Supabase storage path — sign it
+                        try:
+                            signed = sb.storage.from_("engagements").create_signed_url(val, 3600)
+                            row[f"{path_field}_url"] = signed.get("signedURL") or signed.get("signedUrl")
+                        except Exception:
+                            row[f"{path_field}_url"] = None
                 else:
                     row[f"{path_field}_url"] = None
             latest.append(row)
@@ -347,3 +372,41 @@ async def approve_output(
     })
 
     return {"success": True, "status": "approved", "pdf_storage_path": pdf_path}
+
+
+@router.patch("/phase-output-content/{output_id}")
+async def patch_output(
+    output_id: str,
+    body: PatchOutputBody,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Partial update of a phase output — supports pdf_approved and status."""
+    sb = get_supabase()
+    existing = sb.table("phase_output_content").select("id, engagement_id, output_name, phase_number, version").eq("id", output_id).execute()
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Output not found")
+
+    rec = existing.data[0]
+    update_data: dict = {"updated_at": datetime.now(timezone.utc).isoformat()}
+
+    if body.pdf_approved is not None:
+        update_data["pdf_approved"] = body.pdf_approved
+    if body.status is not None:
+        if body.status not in ("draft", "in_review", "approved", "delivered"):
+            raise HTTPException(status_code=400, detail=f"Invalid status: {body.status}")
+        update_data["status"] = body.status
+
+    if len(update_data) == 1:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    sb.table("phase_output_content").update(update_data).eq("id", output_id).execute()
+
+    action = "phase_output_format_approved" if body.pdf_approved else "phase_output_updated"
+    log_activity(rec["engagement_id"], "partner", action, {
+        "output_id": output_id,
+        "output_name": rec["output_name"],
+        "phase_number": rec["phase_number"],
+        "updates": {k: v for k, v in update_data.items() if k != "updated_at"},
+    })
+
+    return {"success": True, "id": output_id, "updated": update_data}

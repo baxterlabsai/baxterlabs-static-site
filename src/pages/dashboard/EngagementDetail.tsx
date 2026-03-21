@@ -43,6 +43,16 @@ interface PhaseOutputContent {
   status: string
   created_at: string
   updated_at: string
+  docx_path: string | null
+  docx_pdf_preview_path: string | null
+  docx_pdf_preview_path_url: string | null
+  pdf_preview_path: string | null
+  pdf_preview_path_url: string | null
+  pdf_approved: boolean
+  pptx_path: string | null
+  pptx_path_url: string | null
+  xlsx_path: string | null
+  xlsx_link: string | null
 }
 
 interface DocumentRecord {
@@ -291,6 +301,12 @@ export default function EngagementDetail() {
 
   // Delivery command copy state
   const [copiedDeliveryCmd, setCopiedDeliveryCmd] = useState<string | null>(null)
+
+  // Format review state (docx/pptx tracks)
+  const [formatFixOutputId, setFormatFixOutputId] = useState<string | null>(null)
+  const [formatFixInstruction, setFormatFixInstruction] = useState('')
+  const [copiedFormatFix, setCopiedFormatFix] = useState<string | null>(null)
+  const [approvingFormatId, setApprovingFormatId] = useState<string | null>(null)
 
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null)
   const navigate = useNavigate()
@@ -597,6 +613,36 @@ export default function EngagementDetail() {
     setCopiedEdit(outputName)
     toast(`Copied edit command`)
     setTimeout(() => setCopiedEdit(null), 2000)
+  }
+
+  const approveFormat = async (outputId: string) => {
+    setApprovingFormatId(outputId)
+    try {
+      await apiPatch(`/api/phase-output-content/${outputId}`, { pdf_approved: true })
+      await refreshPhaseOutputContent()
+      toast('Format approved', 'success')
+    } catch {
+      toast('Approval failed', 'error')
+    }
+    setApprovingFormatId(null)
+  }
+
+  const copyFormatFixCommand = (output: PhaseOutputContent) => {
+    const skill = output.output_type === 'pptx' ? 'render-pptx' : 'render-docx'
+    const cmd = `/baxterlabs-delivery:${skill} ${output.id} fix:"${formatFixInstruction}"`
+    navigator.clipboard.writeText(cmd).catch(() => {
+      const ta = document.createElement('textarea')
+      ta.value = cmd
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    })
+    setCopiedFormatFix(output.id)
+    toast(`Copied: ${cmd}`)
+    setFormatFixInstruction('')
+    setFormatFixOutputId(null)
+    setTimeout(() => setCopiedFormatFix(null), 2000)
   }
 
   const approveOutput = async (outputId: string) => {
@@ -1114,26 +1160,180 @@ export default function EngagementDetail() {
                                   </div>
                                 )}
 
-                                {/* Render markdown content inline */}
+                                {/* Render markdown content inline (md outputs) */}
                                 {output.output_type === 'md' && output.content_md && (
                                   <div className="mt-3 border border-gray-light rounded-lg p-4 bg-ivory/30 max-h-[600px] overflow-y-auto">
                                     <MarkdownContent content={output.content_md} />
                                   </div>
                                 )}
 
-                                {/* Render PDF embed for binary files */}
-                                {output.output_type !== 'md' && output.pdf_storage_path_url && (
-                                  <div className="mt-3 border border-gray-light rounded-lg overflow-hidden">
-                                    <embed
-                                      src={output.pdf_storage_path_url}
-                                      type="application/pdf"
-                                      className="w-full h-[600px]"
-                                    />
+                                {/* === DOCX TRACK === */}
+                                {output.output_type === 'docx' && (() => {
+                                  const previewUrl = output.docx_pdf_preview_path_url || output.pdf_storage_path_url
+                                  return (
+                                    <>
+                                      {/* Format Preview PDF embed */}
+                                      {previewUrl && (
+                                        <div className="mt-3">
+                                          <p className="text-xs font-semibold text-gray-warm uppercase tracking-wider mb-1">Format Preview</p>
+                                          <div className="border border-gray-light rounded-lg overflow-hidden">
+                                            <embed src={previewUrl} type="application/pdf" className="w-full h-[600px]" />
+                                          </div>
+                                        </div>
+                                      )}
+                                      {/* Format review controls */}
+                                      {previewUrl && !output.pdf_approved && (
+                                        <div className="mt-3 border border-gray-light rounded-lg p-3 bg-ivory/30">
+                                          <div className="flex items-center gap-2 mb-2">
+                                            <input
+                                              type="text"
+                                              value={formatFixOutputId === output.id ? formatFixInstruction : ''}
+                                              onFocus={() => setFormatFixOutputId(output.id)}
+                                              onChange={e => { setFormatFixOutputId(output.id); setFormatFixInstruction(e.target.value) }}
+                                              onKeyDown={e => { if (e.key === 'Enter' && formatFixInstruction.trim()) copyFormatFixCommand(output) }}
+                                              placeholder="Describe formatting fix — e.g. 'title running on to two lines, fix line 45'"
+                                              className="flex-1 border border-gray-light rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+                                            />
+                                            <button
+                                              onClick={() => copyFormatFixCommand(output)}
+                                              disabled={formatFixOutputId !== output.id || !formatFixInstruction.trim()}
+                                              className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-semibold transition-colors flex-shrink-0 ${
+                                                copiedFormatFix === output.id ? 'bg-teal/10 text-teal' :
+                                                (formatFixOutputId === output.id && formatFixInstruction.trim()) ? 'bg-gold text-white hover:bg-gold/90' : 'bg-gray-light text-gray-warm cursor-not-allowed'
+                                              }`}
+                                            >
+                                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                                              {copiedFormatFix === output.id ? 'Copied!' : 'Apply Fix'}
+                                            </button>
+                                          </div>
+                                          <button
+                                            onClick={() => approveFormat(output.id)}
+                                            disabled={approvingFormatId === output.id}
+                                            className="text-xs bg-green text-white px-3 py-1.5 rounded font-semibold hover:bg-green/90 disabled:opacity-50"
+                                          >
+                                            {approvingFormatId === output.id ? 'Approving...' : 'Approve Format'}
+                                          </button>
+                                        </div>
+                                      )}
+                                      {/* Format approved badge */}
+                                      {output.pdf_approved && (
+                                        <div className="mt-3 flex items-center gap-1.5">
+                                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-green bg-green/10 px-2.5 py-1 rounded-full">
+                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                            Format Approved
+                                          </span>
+                                        </div>
+                                      )}
+                                    </>
+                                  )
+                                })()}
+
+                                {/* === PPTX TRACK === */}
+                                {output.output_type === 'pptx' && (() => {
+                                  const slidePreviewUrl = output.pdf_preview_path_url || output.pdf_storage_path_url
+                                  return (
+                                    <>
+                                      {/* Stage 1: Slide Preview + fix input + approve */}
+                                      {!output.pdf_approved && (
+                                        <>
+                                          {slidePreviewUrl && (
+                                            <div className="mt-3">
+                                              <p className="text-xs font-semibold text-gray-warm uppercase tracking-wider mb-1">Slide Preview</p>
+                                              <div className="border border-gray-light rounded-lg overflow-hidden">
+                                                <embed src={slidePreviewUrl} type="application/pdf" className="w-full h-[600px]" />
+                                              </div>
+                                            </div>
+                                          )}
+                                          {slidePreviewUrl && (
+                                            <div className="mt-3 border border-gray-light rounded-lg p-3 bg-ivory/30">
+                                              <div className="flex items-center gap-2 mb-2">
+                                                <input
+                                                  type="text"
+                                                  value={formatFixOutputId === output.id ? formatFixInstruction : ''}
+                                                  onFocus={() => setFormatFixOutputId(output.id)}
+                                                  onChange={e => { setFormatFixOutputId(output.id); setFormatFixInstruction(e.target.value) }}
+                                                  onKeyDown={e => { if (e.key === 'Enter' && formatFixInstruction.trim()) copyFormatFixCommand(output) }}
+                                                  placeholder="Describe layout fix — e.g. 'move chart on slide 3 below the bullet points'"
+                                                  className="flex-1 border border-gray-light rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
+                                                />
+                                                <button
+                                                  onClick={() => copyFormatFixCommand(output)}
+                                                  disabled={formatFixOutputId !== output.id || !formatFixInstruction.trim()}
+                                                  className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-semibold transition-colors flex-shrink-0 ${
+                                                    copiedFormatFix === output.id ? 'bg-teal/10 text-teal' :
+                                                    (formatFixOutputId === output.id && formatFixInstruction.trim()) ? 'bg-gold text-white hover:bg-gold/90' : 'bg-gray-light text-gray-warm cursor-not-allowed'
+                                                  }`}
+                                                >
+                                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                                                  {copiedFormatFix === output.id ? 'Copied!' : 'Apply Fix'}
+                                                </button>
+                                              </div>
+                                              <button
+                                                onClick={() => approveFormat(output.id)}
+                                                disabled={approvingFormatId === output.id}
+                                                className="text-xs bg-green text-white px-3 py-1.5 rounded font-semibold hover:bg-green/90 disabled:opacity-50"
+                                              >
+                                                {approvingFormatId === output.id ? 'Approving...' : 'Approve Layout'}
+                                              </button>
+                                            </div>
+                                          )}
+                                        </>
+                                      )}
+                                      {/* Stage 2: Layout approved */}
+                                      {output.pdf_approved && (
+                                        <div className="mt-3 flex items-center gap-3 flex-wrap">
+                                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-green bg-green/10 px-2.5 py-1 rounded-full">
+                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                            Layout Approved
+                                          </span>
+                                          {output.pptx_path_url && (
+                                            <a href={output.pptx_path_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-teal font-semibold hover:underline">
+                                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                                              Download .pptx
+                                            </a>
+                                          )}
+                                          {slidePreviewUrl && (
+                                            <a href={slidePreviewUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-gray-warm font-semibold hover:underline hover:text-teal">
+                                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                                              View PDF
+                                            </a>
+                                          )}
+                                        </div>
+                                      )}
+                                    </>
+                                  )
+                                })()}
+
+                                {/* === XLSX TRACK === */}
+                                {output.output_type === 'xlsx' && (
+                                  <div className="mt-3">
+                                    {output.xlsx_link ? (
+                                      <a
+                                        href={output.xlsx_link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-teal text-white text-sm font-semibold rounded-lg hover:bg-teal/90 transition-colors"
+                                      >
+                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                                        </svg>
+                                        Open in Excel
+                                      </a>
+                                    ) : (
+                                      <p className="text-xs text-gray-warm italic">Workbook generating&hellip;</p>
+                                    )}
                                   </div>
                                 )}
 
-                                {/* Edit deliverable interface */}
-                                {(output.status === 'draft' || output.status === 'approved') && (
+                                {/* Fallback PDF embed for other binary types */}
+                                {output.output_type !== 'md' && output.output_type !== 'docx' && output.output_type !== 'pptx' && output.output_type !== 'xlsx' && output.pdf_storage_path_url && (
+                                  <div className="mt-3 border border-gray-light rounded-lg overflow-hidden">
+                                    <embed src={output.pdf_storage_path_url} type="application/pdf" className="w-full h-[600px]" />
+                                  </div>
+                                )}
+
+                                {/* Edit deliverable interface (content edits — applies to md/docx/pptx, not xlsx) */}
+                                {output.output_type !== 'xlsx' && (output.status === 'draft' || output.status === 'approved') && (
                                   <div className="mt-3">
                                     {isEditing ? (
                                       <div className="border border-gray-light rounded-lg p-3 bg-ivory/30">
