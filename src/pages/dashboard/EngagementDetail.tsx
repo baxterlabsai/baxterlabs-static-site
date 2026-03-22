@@ -252,7 +252,6 @@ export default function EngagementDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [researchLoading, setResearchLoading] = useState('')
-  const [expandedBrief, setExpandedBrief] = useState<string | null>(null)
   const [downloadingDocId, setDownloadingDocId] = useState<string | null>(null)
   const [copiedCommand, setCopiedCommand] = useState<number | null>(null)
   const [beginLoading, setBeginLoading] = useState(false)
@@ -264,7 +263,6 @@ export default function EngagementDetail() {
   const [archiveDialog, setArchiveDialog] = useState(false)
   const [activityLogOpen, setActivityLogOpen] = useState(false)
   const [dossierOpen, setDossierOpen] = useState(false)
-  const [briefsOpen, setBriefsOpen] = useState(false)
   const [docsOpen, setDocsOpen] = useState(false)
   const [invoicesOpen, setInvoicesOpen] = useState(false)
   const [followUpsOpen, setFollowUpsOpen] = useState(false)
@@ -275,7 +273,6 @@ export default function EngagementDetail() {
   const [lastReminders, setLastReminders] = useState<{ agreement: string; documents: string }>({ agreement: '', documents: '' })
   const [transcriptIntel, setTranscriptIntel] = useState<Array<{ contact_name: string; contact_title: string | null; analysis: { summary: string; key_findings: string[]; financial_indicators: string[]; notable_quotes: Array<{ quote: string; context: string }> } | null; citation: string; analyzed: boolean }>>([])
   const [dossierModalOpen, setDossierModalOpen] = useState(false)
-  const [briefModalContent, setBriefModalContent] = useState<{ name: string; content: string } | null>(null)
 
   // Phase output content (Cowork-synced)
   const [phaseOutputContent, setPhaseOutputContent] = useState<PhaseOutputContent[]>([])
@@ -737,7 +734,6 @@ export default function EngagementDetail() {
   const client = data.clients
   const agreement = data.legal_documents.find(d => d.type === 'agreement')
   const dossier = data.research_documents.find(d => d.type === 'company_dossier')
-  const briefs = data.research_documents.filter(d => d.type === 'interview_brief')
   const currentIdx = ALL_STATUSES.indexOf(data.status)
 
   // Documents analysis
@@ -1124,28 +1120,26 @@ export default function EngagementDetail() {
                                       )}
                                     </div>
                                   )}
-                                  {/* Phase 5 deliverable actions: Approve + Version history */}
-                                  {isPhase5Deliverable && (
-                                    <div className="flex items-center gap-2 flex-shrink-0">
-                                      {output.version > 1 && (
-                                        <button
-                                          onClick={() => loadVersionHistory(output.id)}
-                                          className="text-xs text-gray-warm hover:text-teal font-semibold"
-                                        >
-                                          {viewingVersionsId === output.id ? 'Hide versions' : `v${output.version}`}
-                                        </button>
-                                      )}
-                                      {output.status === 'draft' && (
-                                        <button
-                                          onClick={() => setApproveConfirmId(output.id)}
-                                          disabled={approvingOutputId === output.id}
-                                          className="text-xs bg-green text-white px-3 py-1 rounded font-semibold hover:bg-green/90 disabled:opacity-50"
-                                        >
-                                          {approvingOutputId === output.id ? '...' : 'Approve'}
-                                        </button>
-                                      )}
-                                    </div>
-                                  )}
+                                  {/* Output actions: Approve + Version history */}
+                                  <div className="flex items-center gap-2 flex-shrink-0">
+                                    {output.version > 1 && (
+                                      <button
+                                        onClick={() => loadVersionHistory(output.id)}
+                                        className="text-xs text-gray-warm hover:text-teal font-semibold"
+                                      >
+                                        {viewingVersionsId === output.id ? 'Hide versions' : `v${output.version}`}
+                                      </button>
+                                    )}
+                                    {output.status === 'draft' && (
+                                      <button
+                                        onClick={() => setApproveConfirmId(output.id)}
+                                        disabled={approvingOutputId === output.id}
+                                        className="text-xs bg-green text-white px-3 py-1 rounded font-semibold hover:bg-green/90 disabled:opacity-50"
+                                      >
+                                        {approvingOutputId === output.id ? '...' : 'Approve'}
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
 
                                 {/* Approve confirmation dialog */}
@@ -1869,104 +1863,6 @@ export default function EngagementDetail() {
         )}
       </section>
 
-      {/* Interview Briefs */}
-      <section className="bg-white rounded-lg border border-gray-light mt-6">
-        <button
-          onClick={() => setBriefsOpen(prev => !prev)}
-          className="w-full flex items-center justify-between px-5 py-4 hover:bg-ivory/50 transition-colors cursor-pointer"
-        >
-          <h3 className="font-display text-lg font-bold text-teal">
-            Interview Briefs{briefs.length > 0 ? ` (${briefs.length})` : ''}
-          </h3>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={e => { e.stopPropagation(); triggerResearch('interviews') }}
-              disabled={researchLoading === 'interviews'}
-              className="text-xs text-teal font-semibold hover:underline disabled:opacity-50"
-            >
-              {researchLoading === 'interviews' ? 'Running...' : 'Re-run Interview Research'}
-            </button>
-            <svg className={`w-4 h-4 text-gray-warm transition-transform ${briefsOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
-        </button>
-        {briefsOpen && (
-          <div className="px-5 pb-5">
-        {briefs.length > 0 ? (
-          <div className="space-y-3">
-            {briefs.map((brief, i) => (
-              <div key={i} className="border border-gray-light rounded-lg overflow-hidden">
-                <div className="flex items-center">
-                  <button
-                    onClick={() => setExpandedBrief(expandedBrief === brief.contact_name ? null : brief.contact_name)}
-                    className="flex-1 px-4 py-3 flex items-center justify-between text-left hover:bg-ivory/50"
-                  >
-                    <span className="font-semibold text-charcoal text-sm">{brief.contact_name || `Brief ${i + 1}`}</span>
-                    <svg className={`w-4 h-4 text-gray-warm transition-transform ${expandedBrief === brief.contact_name ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => setBriefModalContent({ name: brief.contact_name || `Brief ${i + 1}`, content: brief.content })}
-                    className="text-gray-warm hover:text-teal p-1 mr-2 rounded hover:bg-ivory transition-colors"
-                    aria-label={`Expand ${brief.contact_name || 'brief'}`}
-                    title="View fullscreen"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9m11.25-5.25v4.5m0-4.5h-4.5m4.5 0L15 9m-11.25 11.25v-4.5m0 4.5h4.5m-4.5 0L9 15m11.25 5.25v-4.5m0 4.5h-4.5m4.5 0L15 15" />
-                    </svg>
-                  </button>
-                </div>
-                {expandedBrief === brief.contact_name && (
-                  <div className="px-4 pb-4 text-sm text-charcoal leading-relaxed border-t border-gray-light pt-3">
-                    <MarkdownContent content={brief.content} />
-                    {(() => {
-                      const intel = transcriptIntel.find(t => t.contact_name === brief.contact_name && t.analyzed && t.analysis)
-                      if (!intel?.analysis) return null
-                      return (
-                        <div className="mt-4 pt-3 border-t border-emerald-200">
-                          <p className="text-xs font-semibold text-emerald-700 mb-2">Transcript Analysis</p>
-                          <p className="text-[11px] text-gray-warm font-mono mb-2">{intel.citation}</p>
-                          {intel.analysis.key_findings?.length > 0 && (
-                            <div className="mb-2">
-                              <p className="text-xs font-semibold text-charcoal mb-1">Key Findings</p>
-                              <ul className="space-y-0.5">
-                                {intel.analysis.key_findings.map((f, fi) => (
-                                  <li key={fi} className="text-xs text-charcoal flex gap-1.5">
-                                    <span className="flex-shrink-0">&#8226;</span>
-                                    <MarkdownContent content={f} className="inline-prose" />
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                          {intel.analysis.notable_quotes?.length > 0 && (
-                            <div>
-                              <p className="text-xs font-semibold text-charcoal mb-1">Notable Quotes</p>
-                              {intel.analysis.notable_quotes.map((q, qi) => (
-                                <div key={qi} className="pl-3 border-l-2 border-emerald-300 mb-1.5">
-                                  <p className="text-xs text-charcoal italic">&ldquo;{q.quote}&rdquo;</p>
-                                  {q.context && <p className="text-[11px] text-gray-warm"><MarkdownContent content={q.context} className="inline-prose" /></p>}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })()}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-gray-warm text-sm">Interview briefs are generated after running Research & Call Prep for each contact in their individual modal.</p>
-        )}
-          </div>
-        )}
-      </section>
-
       {/* Legal Documents */}
       <section className="bg-white rounded-lg border border-gray-light p-5 mt-6">
         <h3 className="font-display text-lg font-bold text-teal mb-4">Legal Documents</h3>
@@ -2468,12 +2364,6 @@ export default function EngagementDetail() {
         content={dossier?.content || ''}
         isOpen={dossierModalOpen}
         onClose={() => setDossierModalOpen(false)}
-      />
-      <ResearchModal
-        title={briefModalContent?.name ? `Interview Brief — ${briefModalContent.name}` : 'Interview Brief'}
-        content={briefModalContent?.content || ''}
-        isOpen={briefModalContent !== null}
-        onClose={() => setBriefModalContent(null)}
       />
     </div>
   )

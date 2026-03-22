@@ -20,8 +20,19 @@ interface ContactDetail {
   transcript_document_id: string | null
   transcript_gdrive_url: string | null
   prep_source_phase_output_id: string | null
+  prep_notes: string | null
   created_at: string
   updated_at: string
+}
+
+interface ContactResearchDoc {
+  id: string
+  type: string
+  contact_name: string
+  title: string | null
+  content: string | null
+  source: string | null
+  created_at: string
 }
 
 interface TranscriptAnalysis {
@@ -53,8 +64,6 @@ interface Props {
 export default function EngagementContactSlideOver({ contactId, engagementId, companyName, onClose }: Props) {
   const [contact, setContact] = useState<ContactDetail | null>(null)
   const [loading, setLoading] = useState(true)
-  const [researchOpen, setResearchOpen] = useState(false)
-  const [prepOpen, setPrepOpen] = useState(false)
   const [editingCallNotes, setEditingCallNotes] = useState(false)
   const [callNotesUrl, setCallNotesUrl] = useState('')
   const [toast, setToast] = useState('')
@@ -62,8 +71,13 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
   const [transcriptIntel, setTranscriptIntel] = useState<TranscriptIntelContact | null>(null)
   const [analysisOpen, setAnalysisOpen] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
-  const [researchModalOpen, setResearchModalOpen] = useState(false)
-  const [prepModalOpen, setPrepModalOpen] = useState(false)
+  const [fullscreenModalOpen, setFullscreenModalOpen] = useState(false)
+
+  // Research & Intelligence tabbed panel
+  const [intelTab, setIntelTab] = useState<'research' | 'prep'>('research')
+  const [contactResearch, setContactResearch] = useState<ContactResearchDoc | null>(null)
+
+  const prepNotes = contact?.prep_notes
 
   const fetchIntel = () => {
     apiGet<{ contacts: TranscriptIntelContact[] }>(`/api/engagements/${engagementId}/transcript-intelligence`)
@@ -81,6 +95,12 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
       .then(data => {
         setContact(data)
         setCallNotesUrl(data.call_notes_doc_url || '')
+        // Fetch contact research
+        apiGet<{ document: ContactResearchDoc | null }>(
+          `/api/engagements/${engagementId}/contact-research?contact_name=${encodeURIComponent(data.name)}`
+        )
+          .then(res => setContactResearch(res.document))
+          .catch(() => {})
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -109,22 +129,21 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
     setEditingCallNotes(false)
   }
 
-  const research = contact?.enrichment_data?.research
-  const callPrep = contact?.enrichment_data?.call_prep
+  // Fullscreen modal content based on active tab
+  const fullscreenContent = intelTab === 'research'
+    ? contactResearch?.content || ''
+    : prepNotes || ''
+  const fullscreenTitle = intelTab === 'research'
+    ? `Contact Research — ${contact?.name || ''}`
+    : `Interview Prep — ${contact?.name || ''}`
 
   return (
     <>
       <ResearchModal
-        title={`Research & Intelligence — ${contact?.name || ''}`}
-        content={research?.content || (research ? JSON.stringify(research, null, 2) : '')}
-        isOpen={researchModalOpen}
-        onClose={() => setResearchModalOpen(false)}
-      />
-      <ResearchModal
-        title={`Interview Prep — ${contact?.name || ''}`}
-        content={callPrep?.content || (callPrep ? JSON.stringify(callPrep, null, 2) : '')}
-        isOpen={prepModalOpen}
-        onClose={() => setPrepModalOpen(false)}
+        title={fullscreenTitle}
+        content={fullscreenContent}
+        isOpen={fullscreenModalOpen}
+        onClose={() => setFullscreenModalOpen(false)}
       />
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
       <div className="fixed inset-y-0 right-0 z-50 w-1/2 min-w-[600px] bg-white shadow-xl flex flex-col">
@@ -184,70 +203,75 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
                 )}
               </div>
 
-              {/* Research & Intelligence */}
-              {research && (
-                <div className="border border-purple-200 rounded-lg overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-2.5 bg-purple-50">
+              {/* Research & Intelligence — Tabbed Panel */}
+              <div className="border border-teal/20 rounded-lg overflow-hidden">
+                {/* Panel header */}
+                <div className="flex items-center justify-between px-4 py-2.5 bg-teal/5 border-b border-teal/10">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-teal" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                    </svg>
+                    <span className="text-sm font-semibold text-teal">Research & Intelligence</span>
+                  </div>
+                  {((intelTab === 'research' && contactResearch?.content) || (intelTab === 'prep' && prepNotes)) && (
                     <button
-                      onClick={() => setResearchOpen(!researchOpen)}
-                      className="flex-1 flex items-center justify-between hover:bg-purple-100 transition-colors -mx-4 -my-2.5 px-4 py-2.5"
-                    >
-                      <span className="text-sm font-semibold text-purple-800">Research & Intelligence</span>
-                      <svg className={`w-4 h-4 text-purple-600 transition-transform ${researchOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setResearchModalOpen(true) }}
-                      className="ml-2 p-1 text-purple-500 hover:text-purple-700 hover:bg-purple-100 rounded transition-colors flex-shrink-0"
+                      onClick={() => setFullscreenModalOpen(true)}
+                      className="p-1 text-teal/60 hover:text-teal hover:bg-teal/10 rounded transition-colors flex-shrink-0"
                       title="Open fullscreen"
                     >
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9m11.25-5.25v4.5m0-4.5h-4.5m4.5 0L15 9m-11.25 11.25v-4.5m0 4.5h4.5m-4.5 0L9 15m11.25 5.25v-4.5m0 4.5h-4.5m4.5 0L15 15" /></svg>
                     </button>
-                  </div>
-                  {researchOpen && (
-                    <div className="px-4 py-3 bg-white">
-                      <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-[500px] overflow-y-auto">
-                        <MarkdownContent content={research.content || JSON.stringify(research, null, 2)} />
-                      </div>
-                    </div>
                   )}
                 </div>
-              )}
 
-              {/* Interview Prep */}
-              {callPrep && (
-                <div className="border border-amber-200 rounded-lg overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-2.5 bg-amber-50">
-                    <button
-                      onClick={() => setPrepOpen(!prepOpen)}
-                      className="flex-1 flex items-center justify-between hover:bg-amber-100 transition-colors -mx-4 -my-2.5 px-4 py-2.5"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-amber-800">Interview Prep</span>
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700">Prep</span>
-                      </div>
-                      <svg className={`w-4 h-4 text-amber-600 transition-transform ${prepOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setPrepModalOpen(true) }}
-                      className="ml-2 p-1 text-amber-500 hover:text-amber-700 hover:bg-amber-100 rounded transition-colors flex-shrink-0"
-                      title="Open fullscreen"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9m11.25-5.25v4.5m0-4.5h-4.5m4.5 0L15 9m-11.25 11.25v-4.5m0 4.5h4.5m-4.5 0L9 15m11.25 5.25v-4.5m0 4.5h-4.5m4.5 0L15 15" /></svg>
-                    </button>
-                  </div>
-                  {prepOpen && (
-                    <div className="px-4 py-3 bg-white">
+                {/* Tab bar */}
+                <div className="flex border-b border-gray-light px-4 pt-1 bg-white">
+                  <button
+                    onClick={() => setIntelTab('research')}
+                    className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition-colors border-b-2 -mb-px ${
+                      intelTab === 'research'
+                        ? 'border-teal text-teal'
+                        : 'border-transparent text-gray-warm hover:text-charcoal'
+                    }`}
+                  >
+                    {contactResearch && <span className="w-1.5 h-1.5 rounded-full bg-teal" />}
+                    Research
+                  </button>
+                  <button
+                    onClick={() => setIntelTab('prep')}
+                    className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition-colors border-b-2 -mb-px ${
+                      intelTab === 'prep'
+                        ? 'border-teal text-teal'
+                        : 'border-transparent text-gray-warm hover:text-charcoal'
+                    }`}
+                  >
+                    {prepNotes && <span className="w-1.5 h-1.5 rounded-full bg-teal" />}
+                    Interview Prep
+                  </button>
+                </div>
+
+                {/* Tab content */}
+                <div className="px-4 py-3 bg-white">
+                  {intelTab === 'research' && (
+                    contactResearch?.content ? (
                       <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-[500px] overflow-y-auto">
-                        <MarkdownContent content={callPrep.content || JSON.stringify(callPrep, null, 2)} />
+                        <MarkdownContent content={contactResearch.content} />
                       </div>
-                    </div>
+                    ) : (
+                      <p className="text-sm text-gray-warm italic py-4">Run Contact Research to populate this section</p>
+                    )
+                  )}
+                  {intelTab === 'prep' && (
+                    prepNotes ? (
+                      <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-[500px] overflow-y-auto">
+                        <MarkdownContent content={prepNotes} />
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-warm italic py-4">Run Interview Prep to populate this section</p>
+                    )
                   )}
                 </div>
-              )}
+              </div>
 
               {/* Call Notes (Google Doc) */}
               <div>
@@ -315,7 +339,6 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
                       )
                       setContact(updated)
                       setAnalyzing(true)
-                      // Poll for analysis completion
                       const poll = setInterval(() => {
                         apiGet<{ contacts: TranscriptIntelContact[] }>(`/api/engagements/${engagementId}/transcript-intelligence`)
                           .then(res => {
@@ -329,7 +352,6 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
                           })
                           .catch(() => {})
                       }, 4000)
-                      // Stop polling after 2 minutes
                       setTimeout(() => { clearInterval(poll); setAnalyzing(false) }, 120000)
                     } finally {
                       setTranscriptUploading(false)
@@ -342,7 +364,6 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
                         `/api/engagements/${engagementId}/contacts/${contactId}/transcript-gdoc`,
                         { gdoc_url: gdocUrl }
                       )
-                      // Persist the Google Drive URL on the contact record
                       await apiPatch(`/api/engagements/${engagementId}/contacts/${contactId}`, {
                         transcript_gdrive_url: gdocUrl,
                       })
@@ -400,16 +421,11 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
                   </button>
                   {analysisOpen && transcriptIntel?.analysis && (
                     <div className="px-4 py-3 bg-white space-y-3">
-                      {/* Citation */}
                       <p className="text-[11px] text-gray-warm font-mono">{transcriptIntel.citation}</p>
-
-                      {/* Summary */}
                       <div>
                         <p className="text-xs font-semibold text-charcoal mb-1">Summary</p>
                         <div className="text-xs text-charcoal leading-relaxed"><MarkdownContent content={transcriptIntel.analysis.summary} /></div>
                       </div>
-
-                      {/* Key Findings */}
                       {transcriptIntel.analysis.key_findings?.length > 0 && (
                         <div>
                           <p className="text-xs font-semibold text-charcoal mb-1">Key Findings</p>
@@ -423,8 +439,6 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
                           </ul>
                         </div>
                       )}
-
-                      {/* Financial Indicators */}
                       {transcriptIntel.analysis.financial_indicators?.length > 0 && (
                         <div>
                           <p className="text-xs font-semibold text-charcoal mb-1">Financial Indicators</p>
@@ -438,8 +452,6 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
                           </ul>
                         </div>
                       )}
-
-                      {/* Notable Quotes */}
                       {transcriptIntel.analysis.notable_quotes?.length > 0 && (
                         <div>
                           <p className="text-xs font-semibold text-charcoal mb-1">Notable Quotes</p>

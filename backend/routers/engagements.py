@@ -935,6 +935,27 @@ async def get_interview_contact(
     return result.data[0]
 
 
+@router.get("/engagements/{engagement_id}/contact-research")
+async def get_contact_research(
+    engagement_id: str,
+    contact_name: str,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Get contact research document for a specific contact."""
+    sb = get_supabase()
+    result = (
+        sb.table("research_documents")
+        .select("id, type, contact_name, title, content, source, created_at")
+        .eq("engagement_id", engagement_id)
+        .eq("type", "contact_research")
+        .ilike("contact_name", f"%{contact_name}%")
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    return {"document": result.data[0] if result.data else None}
+
+
 @router.patch("/engagements/{engagement_id}/contacts/{contact_id}")
 async def update_interview_contact(
     engagement_id: str,
