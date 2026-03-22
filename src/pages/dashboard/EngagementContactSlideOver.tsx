@@ -8,9 +8,21 @@ function formatPrepNotes(raw: string): string {
   return raw.split('\n').map(line => {
     const trimmed = line.trim()
     if (!trimmed) return ''
-    // ALL CAPS lines (4+ chars, no lowercase) → ## heading
+    // Section/title headers → ## heading
+    if (/^(INTERVIEW PREP|SECTION \d|COVERAGE SUMMARY|CLOSING)/i.test(trimmed)) {
+      return `## ${trimmed}`
+    }
+    // Fully uppercase lines (4+ chars, no lowercase letters) → ## heading
     if (trimmed.length >= 4 && trimmed === trimmed.toUpperCase() && /[A-Z]/.test(trimmed)) {
       return `## ${trimmed}`
+    }
+    // Metadata lines → italic
+    if (/^(Prepared:|Question prefix:|Engagement )/.test(trimmed)) {
+      return `*${trimmed}*`
+    }
+    // Company + engagement ID line → italic
+    if (/\| Engagement [0-9a-f-]+/.test(trimmed)) {
+      return `*${trimmed}*`
     }
     // Question lines: Q1. Q2. etc → bold
     if (/^Q\d+[.)]\s/.test(trimmed)) {
