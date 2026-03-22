@@ -671,14 +671,14 @@ async def upload_interview_transcript_gdoc(
 
     contact = contact_result.data[0]
 
-    # Fetch Google Doc content
+    # Fetch Google Doc content via Drive API (OAuth credentials)
     try:
         extracted_text = fetch_google_doc_text(body.gdoc_url)
     except Exception as e:
         logger.error(f"Google Doc fetch failed for {body.gdoc_url}: {e}")
         raise HTTPException(
             status_code=422,
-            detail="Could not access this Google Doc. Make sure the document is shared with 'Anyone with the link can view' and try again.",
+            detail=f"Could not access this Google Doc: {e}",
         )
 
     if not extracted_text or not extracted_text.strip():
