@@ -76,7 +76,8 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
   const [intelTab, setIntelTab] = useState<'research' | 'prep'>('research')
   const [contactResearch, setContactResearch] = useState<ContactResearchDoc | null>(null)
 
-  const prepNotes = contact?.prep_notes
+  // Normalize single newlines to double so markdown paragraphs render correctly
+  const prepNotes = contact?.prep_notes?.replace(/(?<!\n)\n(?!\n)/g, '\n\n') ?? null
 
   const fetchIntel = () => {
     apiGet<{ contacts: TranscriptIntelContact[] }>(`/api/engagements/${engagementId}/transcript-intelligence`)
