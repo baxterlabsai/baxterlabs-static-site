@@ -1,8 +1,32 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { apiGet, apiPost, apiPatch, apiUpload } from '../../lib/api'
 import MarkdownContent from '../../components/MarkdownContent'
-import ResearchModal from '../../components/ResearchModal'
 import TranscriptUpload from '../../components/TranscriptUpload'
+
+/** Convert plain-text prep notes to markdown so headings/questions render properly. */
+function formatPrepNotes(raw: string): string {
+  return raw.split('\n').map(line => {
+    const trimmed = line.trim()
+    if (!trimmed) return ''
+    // ALL CAPS lines (4+ chars, no lowercase) → ## heading
+    if (trimmed.length >= 4 && trimmed === trimmed.toUpperCase() && /[A-Z]/.test(trimmed)) {
+      return `## ${trimmed}`
+    }
+    // Question lines: Q1. Q2. etc → bold
+    if (/^Q\d+[.)]\s/.test(trimmed)) {
+      return `**${trimmed}**`
+    }
+    // Arrow lines → italic
+    if (trimmed.startsWith('→')) {
+      return `*${trimmed}*`
+    }
+    // Gap closure tags [Schild-Q1] [Closes Gap 1] → bold
+    if (/^\[.+\]\s*\[.+\]/.test(trimmed)) {
+      return `**${trimmed}**`
+    }
+    return trimmed
+  }).join('\n\n')
+}
 
 interface ContactDetail {
   id: string
@@ -76,8 +100,7 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
   const [intelTab, setIntelTab] = useState<'research' | 'prep'>('research')
   const [contactResearch, setContactResearch] = useState<ContactResearchDoc | null>(null)
 
-  // Normalize single newlines to double so markdown paragraphs render correctly
-  const prepNotes = contact?.prep_notes?.replace(/(?<!\n)\n(?!\n)/g, '\n\n') ?? null
+  const prepNotes = contact?.prep_notes ? formatPrepNotes(contact.prep_notes) : null
 
   const fetchIntel = () => {
     apiGet<{ contacts: TranscriptIntelContact[] }>(`/api/engagements/${engagementId}/transcript-intelligence`)
@@ -119,22 +142,80 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
     setTimeout(() => setToast(''), 2000)
   }
 
-  // Fullscreen modal content based on active tab
-  const fullscreenContent = intelTab === 'research'
-    ? contactResearch?.content || ''
-    : prepNotes || ''
-  const fullscreenTitle = intelTab === 'research'
-    ? `Contact Research — ${contact?.name || ''}`
-    : `Interview Prep — ${contact?.name || ''}`
+  const fullscreenRef = useRef<HTMLDivElement>(null)
+
+  // Close fullscreen on Escape
+  useEffect(() => {
+    if (!fullscreenModalOpen) return
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setFullscreenModalOpen(false) }
+    document.addEventListener('keydown', handleKey)
+    fullscreenRef.current?.focus()
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [fullscreenModalOpen])
 
   return (
     <>
-      <ResearchModal
-        title={fullscreenTitle}
-        content={fullscreenContent}
-        isOpen={fullscreenModalOpen}
-        onClose={() => setFullscreenModalOpen(false)}
-      />
+      {/* Fullscreen Research & Intelligence overlay with tabs */}
+      {fullscreenModalOpen && (
+        <div
+          ref={fullscreenRef}
+          role="dialog"
+          aria-modal="true"
+          tabIndex={-1}
+          className="fixed inset-0 z-60 bg-white flex flex-col outline-none"
+        >
+          <div className="flex items-center justify-between px-8 py-4 border-b border-gray-light flex-shrink-0">
+            <h2 className="text-lg font-display font-bold text-charcoal">
+              Research & Intelligence — {contact?.name || ''}
+            </h2>
+            <button
+              onClick={() => setFullscreenModalOpen(false)}
+              className="text-gray-warm hover:text-charcoal p-1 rounded-lg hover:bg-ivory transition-colors"
+              aria-label="Close"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div className="flex border-b border-gray-light px-8 pt-2 flex-shrink-0">
+            <button
+              onClick={() => setIntelTab('research')}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px ${
+                intelTab === 'research' ? 'border-teal text-teal' : 'border-transparent text-gray-warm hover:text-charcoal'
+              }`}
+            >
+              {contactResearch && <span className="w-1.5 h-1.5 rounded-full bg-teal" />}
+              Research
+            </button>
+            <button
+              onClick={() => setIntelTab('prep')}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px ${
+                intelTab === 'prep' ? 'border-teal text-teal' : 'border-transparent text-gray-warm hover:text-charcoal'
+              }`}
+            >
+              {prepNotes && <span className="w-1.5 h-1.5 rounded-full bg-teal" />}
+              Interview Prep
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-8">
+            {intelTab === 'research' && (
+              contactResearch?.content ? (
+                <div className="prose-bl max-w-none"><MarkdownContent content={contactResearch.content} /></div>
+              ) : (
+                <p className="text-sm text-gray-warm italic py-4">Run Contact Research to populate this section</p>
+              )
+            )}
+            {intelTab === 'prep' && (
+              prepNotes ? (
+                <div className="prose-bl max-w-none"><MarkdownContent content={prepNotes} /></div>
+              ) : (
+                <p className="text-sm text-gray-warm italic py-4">Run Interview Prep to populate this section</p>
+              )
+            )}
+          </div>
+        </div>
+      )}
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
       <div className="fixed inset-y-0 right-0 z-50 w-1/2 min-w-[600px] bg-white shadow-xl flex flex-col">
         {/* Header */}
