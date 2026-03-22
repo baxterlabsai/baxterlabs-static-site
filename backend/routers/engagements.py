@@ -15,7 +15,7 @@ from services.email_service import get_email_service
 from services.docusign_service import get_docusign_service
 from services.research_service import research_contacts
 from services.transcript_service import extract_text, analyze_transcript, get_transcript_intelligence
-from services.google_drive_engagement import upload_file_to_drive_folder, delete_drive_file
+from services.google_drive_engagement import upload_file_to_drive_folder, delete_drive_file, move_file_to_folder
 
 logger = logging.getLogger("baxterlabs.engagements")
 
@@ -769,6 +769,20 @@ async def upload_interview_transcript_gdoc(
                 }).eq("id", co_id).execute()
     except Exception as e:
         logger.warning(f"Intelligence fold-back failed (non-blocking): {e}")
+
+    # Move GDoc into engagement's interviews folder on Drive (non-blocking)
+    drive_interviews_folder_id = engagement.get("drive_interviews_folder_id")
+    if drive_interviews_folder_id and doc_id_str != "unknown":
+        try:
+            moved = move_file_to_folder(doc_id_str, drive_interviews_folder_id)
+            if moved:
+                new_url = f"https://docs.google.com/document/d/{doc_id_str}/edit"
+                sb.table("interview_contacts").update({
+                    "transcript_gdrive_url": new_url,
+                }).eq("id", contact_id).execute()
+                logger.info(f"Moved GDoc {doc_id_str} into interviews folder and updated transcript_gdrive_url")
+        except Exception as e:
+            logger.warning(f"Failed to move GDoc into interviews folder (non-blocking): {e}")
 
     # Log activity
     log_activity(engagement_id, "analyst", "interview_transcript_uploaded", {

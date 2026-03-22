@@ -195,6 +195,35 @@ async def upload_file_to_drive_folder(
         return None
 
 
+def move_file_to_folder(file_id: str, target_folder_id: str) -> bool:
+    """Move an existing Drive file into target_folder_id.
+
+    Uses the files().update API to add the new parent and remove old parents.
+    Returns True on success, False on failure. Never raises.
+    """
+    try:
+        service = _get_drive_service()
+        # Get current parents
+        file_meta = service.files().get(
+            fileId=file_id,
+            fields="parents",
+            supportsAllDrives=True,
+        ).execute()
+        previous_parents = ",".join(file_meta.get("parents", []))
+        service.files().update(
+            fileId=file_id,
+            addParents=target_folder_id,
+            removeParents=previous_parents,
+            fields="id, parents",
+            supportsAllDrives=True,
+        ).execute()
+        logger.info(f"Moved Drive file {file_id} to folder {target_folder_id}")
+        return True
+    except Exception as e:
+        logger.error(f"Drive move failed for file {file_id} to folder {target_folder_id}: {e}")
+        return False
+
+
 async def delete_drive_file(file_id: str) -> bool:
     """Delete a file from Drive by file ID. Returns True on success, False on failure.
 
