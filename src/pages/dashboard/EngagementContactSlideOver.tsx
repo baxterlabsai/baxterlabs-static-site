@@ -64,8 +64,6 @@ interface Props {
 export default function EngagementContactSlideOver({ contactId, engagementId, companyName, onClose }: Props) {
   const [contact, setContact] = useState<ContactDetail | null>(null)
   const [loading, setLoading] = useState(true)
-  const [editingCallNotes, setEditingCallNotes] = useState(false)
-  const [callNotesUrl, setCallNotesUrl] = useState('')
   const [toast, setToast] = useState('')
   const [transcriptUploading, setTranscriptUploading] = useState(false)
   const [transcriptIntel, setTranscriptIntel] = useState<TranscriptIntelContact | null>(null)
@@ -74,6 +72,7 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
   const [fullscreenModalOpen, setFullscreenModalOpen] = useState(false)
 
   // Research & Intelligence tabbed panel
+  const [intelOpen, setIntelOpen] = useState(false)
   const [intelTab, setIntelTab] = useState<'research' | 'prep'>('research')
   const [contactResearch, setContactResearch] = useState<ContactResearchDoc | null>(null)
 
@@ -94,7 +93,6 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
     apiGet<ContactDetail>(`/api/engagements/${engagementId}/contacts/${contactId}`)
       .then(data => {
         setContact(data)
-        setCallNotesUrl(data.call_notes_doc_url || '')
         // Fetch contact research
         apiGet<{ document: ContactResearchDoc | null }>(
           `/api/engagements/${engagementId}/contact-research?contact_name=${encodeURIComponent(data.name)}`
@@ -118,15 +116,6 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
     })
     setToast(`Copied: ${text.slice(0, 40)}${text.length > 40 ? '...' : ''}`)
     setTimeout(() => setToast(''), 2000)
-  }
-
-  async function saveCallNotes() {
-    if (!contact) return
-    await apiPatch(`/api/engagements/${engagementId}/contacts/${contactId}`, {
-      call_notes_doc_url: callNotesUrl || null,
-    })
-    setContact({ ...contact, call_notes_doc_url: callNotesUrl || null })
-    setEditingCallNotes(false)
   }
 
   // Fullscreen modal content based on active tab
@@ -203,119 +192,134 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
                 )}
               </div>
 
-              {/* Research & Intelligence — Tabbed Panel */}
+              {/* Quick Actions */}
+              <div>
+                <h4 className="text-sm font-semibold text-charcoal mb-2">Quick Actions</h4>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => copyToClipboard(`/baxterlabs-delivery:contact-research ${contact.name} at ${companyName}`)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-purple-200 text-xs font-medium text-charcoal bg-purple-50 hover:bg-purple-100 transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                    </svg>
+                    Research
+                  </button>
+                  <button
+                    onClick={() => copyToClipboard(`/baxterlabs-delivery:interview-prep ${engagementId} ${contact.id}`)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-200 text-xs font-medium text-charcoal bg-amber-50 hover:bg-amber-100 transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+                    </svg>
+                    Interview Prep
+                  </button>
+                  {contact.transcript_gdrive_url && (
+                    <button
+                      onClick={() => copyToClipboard(`/baxterlabs-delivery:process-transcript ${engagementId} ${contact.id}`)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-200 text-xs font-medium text-charcoal bg-emerald-50 hover:bg-emerald-100 transition-colors"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                      </svg>
+                      Process Transcript
+                    </button>
+                  )}
+                  {contact.email && (
+                    <a
+                      href={`https://calendly.com/george-baxterlabs/leadership-interview?name=${encodeURIComponent(contact.name)}&email=${encodeURIComponent(contact.email)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-teal/30 text-xs font-medium text-charcoal bg-teal/5 hover:bg-teal/10 transition-colors"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                      </svg>
+                      Schedule Interview
+                    </a>
+                  )}
+                </div>
+                {toast && <p className="text-xs text-teal font-medium animate-pulse mt-2">{toast}</p>}
+              </div>
+
+              {/* Research & Intelligence — Collapsible Tabbed Panel */}
               <div className="border border-teal/20 rounded-lg overflow-hidden">
-                {/* Panel header */}
-                <div className="flex items-center justify-between px-4 py-2.5 bg-teal/5 border-b border-teal/10">
+                <button
+                  onClick={() => setIntelOpen(prev => !prev)}
+                  className="w-full flex items-center justify-between px-4 py-2.5 bg-teal/5 hover:bg-teal/10 transition-colors"
+                >
                   <div className="flex items-center gap-2">
                     <svg className="w-4 h-4 text-teal" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                     </svg>
                     <span className="text-sm font-semibold text-teal">Research & Intelligence</span>
                   </div>
-                  {((intelTab === 'research' && contactResearch?.content) || (intelTab === 'prep' && prepNotes)) && (
-                    <button
-                      onClick={() => setFullscreenModalOpen(true)}
-                      className="p-1 text-teal/60 hover:text-teal hover:bg-teal/10 rounded transition-colors flex-shrink-0"
-                      title="Open fullscreen"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9m11.25-5.25v4.5m0-4.5h-4.5m4.5 0L15 9m-11.25 11.25v-4.5m0 4.5h4.5m-4.5 0L9 15m11.25 5.25v-4.5m0 4.5h-4.5m4.5 0L15 15" /></svg>
-                    </button>
-                  )}
-                </div>
-
-                {/* Tab bar */}
-                <div className="flex border-b border-gray-light px-4 pt-1 bg-white">
-                  <button
-                    onClick={() => setIntelTab('research')}
-                    className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition-colors border-b-2 -mb-px ${
-                      intelTab === 'research'
-                        ? 'border-teal text-teal'
-                        : 'border-transparent text-gray-warm hover:text-charcoal'
-                    }`}
-                  >
-                    {contactResearch && <span className="w-1.5 h-1.5 rounded-full bg-teal" />}
-                    Research
-                  </button>
-                  <button
-                    onClick={() => setIntelTab('prep')}
-                    className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition-colors border-b-2 -mb-px ${
-                      intelTab === 'prep'
-                        ? 'border-teal text-teal'
-                        : 'border-transparent text-gray-warm hover:text-charcoal'
-                    }`}
-                  >
-                    {prepNotes && <span className="w-1.5 h-1.5 rounded-full bg-teal" />}
-                    Interview Prep
-                  </button>
-                </div>
-
-                {/* Tab content */}
-                <div className="px-4 py-3 bg-white">
-                  {intelTab === 'research' && (
-                    contactResearch?.content ? (
-                      <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-[500px] overflow-y-auto">
-                        <MarkdownContent content={contactResearch.content} />
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-warm italic py-4">Run Contact Research to populate this section</p>
-                    )
-                  )}
-                  {intelTab === 'prep' && (
-                    prepNotes ? (
-                      <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-[500px] overflow-y-auto">
-                        <MarkdownContent content={prepNotes} />
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-warm italic py-4">Run Interview Prep to populate this section</p>
-                    )
-                  )}
-                </div>
-              </div>
-
-              {/* Call Notes (Google Doc) */}
-              <div>
-                <h4 className="text-sm font-semibold text-charcoal mb-2">Call Notes</h4>
-                {editingCallNotes ? (
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="url"
-                      value={callNotesUrl}
-                      onChange={e => setCallNotesUrl(e.target.value)}
-                      placeholder="Paste Google Doc URL..."
-                      className="flex-1 text-xs border border-gray-light rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-teal"
-                      autoFocus
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') saveCallNotes()
-                        if (e.key === 'Escape') { setEditingCallNotes(false); setCallNotesUrl(contact.call_notes_doc_url || '') }
-                      }}
-                    />
-                    <button onClick={saveCallNotes} className="text-xs px-2 py-1.5 bg-teal text-white rounded hover:bg-teal/90">Save</button>
-                    <button onClick={() => { setEditingCallNotes(false); setCallNotesUrl(contact.call_notes_doc_url || '') }} className="text-xs px-2 py-1.5 text-gray-warm hover:text-charcoal">&times;</button>
-                  </div>
-                ) : contact.call_notes_doc_url ? (
                   <div className="flex items-center gap-2">
-                    <a
-                      href={contact.call_notes_doc_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-teal hover:underline inline-flex items-center gap-1"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
-                      Call Notes
-                    </a>
-                    <button onClick={() => setEditingCallNotes(true)} className="text-gray-warm hover:text-charcoal">
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z" /></svg>
-                    </button>
+                    {((intelTab === 'research' && contactResearch?.content) || (intelTab === 'prep' && prepNotes)) && (
+                      <button
+                        onClick={e => { e.stopPropagation(); setFullscreenModalOpen(true) }}
+                        className="p-1 text-teal/60 hover:text-teal hover:bg-teal/10 rounded transition-colors flex-shrink-0"
+                        title="Open fullscreen"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9m11.25-5.25v4.5m0-4.5h-4.5m4.5 0L15 9m-11.25 11.25v-4.5m0 4.5h4.5m-4.5 0L9 15m11.25 5.25v-4.5m0 4.5h-4.5m4.5 0L15 15" /></svg>
+                      </button>
+                    )}
+                    <svg className={`w-4 h-4 text-teal/60 transition-transform ${intelOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
                   </div>
-                ) : (
-                  <button
-                    onClick={() => setEditingCallNotes(true)}
-                    className="text-xs text-gray-warm hover:text-teal inline-flex items-center gap-1"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-                    Add Call Notes URL
-                  </button>
+                </button>
+
+                {intelOpen && (
+                  <>
+                    {/* Tab bar */}
+                    <div className="flex border-b border-gray-light px-4 pt-1 bg-white border-t border-teal/10">
+                      <button
+                        onClick={() => setIntelTab('research')}
+                        className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition-colors border-b-2 -mb-px ${
+                          intelTab === 'research'
+                            ? 'border-teal text-teal'
+                            : 'border-transparent text-gray-warm hover:text-charcoal'
+                        }`}
+                      >
+                        {contactResearch && <span className="w-1.5 h-1.5 rounded-full bg-teal" />}
+                        Research
+                      </button>
+                      <button
+                        onClick={() => setIntelTab('prep')}
+                        className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition-colors border-b-2 -mb-px ${
+                          intelTab === 'prep'
+                            ? 'border-teal text-teal'
+                            : 'border-transparent text-gray-warm hover:text-charcoal'
+                        }`}
+                      >
+                        {prepNotes && <span className="w-1.5 h-1.5 rounded-full bg-teal" />}
+                        Interview Prep
+                      </button>
+                    </div>
+
+                    {/* Tab content */}
+                    <div className="px-4 py-3 bg-white">
+                      {intelTab === 'research' && (
+                        contactResearch?.content ? (
+                          <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-[500px] overflow-y-auto">
+                            <MarkdownContent content={contactResearch.content} />
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-warm italic py-4">Run Contact Research to populate this section</p>
+                        )
+                      )}
+                      {intelTab === 'prep' && (
+                        prepNotes ? (
+                          <div className="bg-ivory/50 border border-gray-light rounded p-3 max-h-[500px] overflow-y-auto">
+                            <MarkdownContent content={prepNotes} />
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-warm italic py-4">Run Interview Prep to populate this section</p>
+                        )
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -470,55 +474,6 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
                 </div>
               )}
 
-              {/* Quick Actions */}
-              <div>
-                <h4 className="text-sm font-semibold text-charcoal mb-2">Quick Actions</h4>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => copyToClipboard(`/baxterlabs-delivery:contact-research ${contact.name} at ${companyName}`)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-purple-200 text-xs font-medium text-charcoal bg-purple-50 hover:bg-purple-100 transition-colors"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                    </svg>
-                    Research
-                  </button>
-                  <button
-                    onClick={() => copyToClipboard(`/baxterlabs-delivery:interview-prep ${engagementId} ${contact.id}`)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-200 text-xs font-medium text-charcoal bg-amber-50 hover:bg-amber-100 transition-colors"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
-                    </svg>
-                    Interview Prep
-                  </button>
-                  {contact.transcript_gdrive_url && (
-                    <button
-                      onClick={() => copyToClipboard(`/baxterlabs-delivery:process-transcript ${engagementId} ${contact.id}`)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-200 text-xs font-medium text-charcoal bg-emerald-50 hover:bg-emerald-100 transition-colors"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                      </svg>
-                      Process Transcript
-                    </button>
-                  )}
-                  {contact.email && (
-                    <a
-                      href={`https://calendly.com/george-baxterlabs/leadership-interview?name=${encodeURIComponent(contact.name)}&email=${encodeURIComponent(contact.email)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-teal/30 text-xs font-medium text-charcoal bg-teal/5 hover:bg-teal/10 transition-colors"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                      </svg>
-                      Schedule Interview
-                    </a>
-                  )}
-                </div>
-                {toast && <p className="text-xs text-teal font-medium animate-pulse mt-2">{toast}</p>}
-              </div>
             </>
           ) : (
             <p className="text-sm text-gray-warm text-center py-8">Contact not found.</p>
