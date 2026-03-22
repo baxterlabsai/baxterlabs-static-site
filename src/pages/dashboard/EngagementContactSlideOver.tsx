@@ -5,6 +5,8 @@ import TranscriptUpload from '../../components/TranscriptUpload'
 
 /** Convert plain-text prep notes to markdown so headings/questions render properly. */
 function formatPrepNotes(raw: string): string {
+  // If content already has markdown headings, it's pre-formatted — pass through
+  if (/^#{1,4}\s/m.test(raw)) return raw
   return raw.split('\n').map(line => {
     const trimmed = line.trim()
     if (!trimmed) return ''
