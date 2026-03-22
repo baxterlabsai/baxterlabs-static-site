@@ -1145,7 +1145,10 @@ export default function EngagementDetail() {
                                 {/* Approve confirmation dialog */}
                                 {approveConfirmId === output.id && (
                                   <div className="mt-2 mb-3 p-3 bg-amber/5 border border-amber/20 rounded-lg flex items-center justify-between">
-                                    <p className="text-sm text-charcoal">Approve <strong>{output.output_name}</strong> for client delivery? This will generate the final PDF.</p>
+                                    <p className="text-sm text-charcoal">{isPhase5Deliverable
+                                      ? <>Approve <strong>{output.output_name}</strong> for client delivery? This will generate the final PDF.</>
+                                      : <>Approve <strong>{output.output_name}</strong>? This marks the output as reviewed and ready for the next phase.</>
+                                    }</p>
                                     <div className="flex items-center gap-2 flex-shrink-0">
                                       <button onClick={() => setApproveConfirmId(null)} className="text-xs text-gray-warm font-semibold px-3 py-1 rounded hover:bg-gray-light">Cancel</button>
                                       <button
