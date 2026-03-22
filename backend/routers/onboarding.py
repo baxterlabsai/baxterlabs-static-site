@@ -102,6 +102,31 @@ async def submit_onboarding(token: str, body: OnboardSubmission):
 
     sb = get_supabase()
 
+    # Best-effort: look up LinkedIn URLs from pipeline_contacts
+    linkedin_map: dict = {}
+    try:
+        opp_result = (
+            sb.table("pipeline_opportunities")
+            .select("company_id")
+            .eq("converted_engagement_id", engagement_id)
+            .limit(1)
+            .execute()
+        )
+        if opp_result.data:
+            company_id = opp_result.data[0]["company_id"]
+            pc_result = (
+                sb.table("pipeline_contacts")
+                .select("name, linkedin_url")
+                .eq("company_id", company_id)
+                .eq("is_deleted", False)
+                .execute()
+            )
+            for pc in pc_result.data or []:
+                if pc.get("linkedin_url"):
+                    linkedin_map[pc["name"].strip().lower()] = pc["linkedin_url"]
+    except Exception:
+        pass  # Never block onboarding
+
     # Delete existing contacts for this engagement (in case of partial prior state)
     sb.table("interview_contacts").delete().eq("engagement_id", engagement_id).execute()
 
@@ -114,7 +139,7 @@ async def submit_onboarding(token: str, body: OnboardSubmission):
             "title": contact.title,
             "email": contact.email,
             "phone": contact.phone,
-            "linkedin_url": contact.linkedin_url,
+            "linkedin_url": contact.linkedin_url or linkedin_map.get(contact.name.strip().lower()),
             "context_notes": contact.context_notes,
         }).execute()
 
