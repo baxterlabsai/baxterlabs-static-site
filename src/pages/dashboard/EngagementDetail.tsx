@@ -618,7 +618,8 @@ export default function EngagementDetail() {
 
 
   const copyEditCommand = (outputName: string) => {
-    const cmd = `/baxterlabs-delivery:edit-deliverable ${id} ${editInstruction}`
+    const clientName = data?.clients?.company_name || id
+    const cmd = `/baxterlabs-delivery:edit-deliverable ${clientName}\n${editInstruction}`
     navigator.clipboard.writeText(cmd).catch(() => {
       const ta = document.createElement('textarea')
       ta.value = cmd
