@@ -749,7 +749,16 @@ export default function EngagementDetail() {
   const client = data.clients
   const agreement = data.legal_documents.find(d => d.type === 'agreement')
   const dossier = data.research_documents.find(d => d.type === 'company_dossier')
-  const currentIdx = ALL_STATUSES.indexOf(data.status)
+  const currentIdx = (() => {
+    const dbIdx = ALL_STATUSES.indexOf(data.status)
+    if (phaseOutputContent.length > 0) {
+      const phaseIdx = nextPhase !== null
+        ? ALL_STATUSES.indexOf(`phase_${nextPhase}`)
+        : ALL_STATUSES.indexOf('phases_complete')
+      return Math.max(dbIdx, phaseIdx)
+    }
+    return dbIdx
+  })()
 
   // Documents analysis
   const clientDocs = data.documents.filter(d => d.document_type === 'client_upload')
