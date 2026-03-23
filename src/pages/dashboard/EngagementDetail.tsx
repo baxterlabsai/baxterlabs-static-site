@@ -277,8 +277,18 @@ export default function EngagementDetail() {
   // Phase output content (Cowork-synced)
   const [phaseOutputContent, setPhaseOutputContent] = useState<PhaseOutputContent[]>([])
 
-  // Phases that have at least one phase_output_content row
-  const completedPhases: number[] = [...new Set(phaseOutputContent.map(p => p.phase_number))].sort((a, b) => a - b)
+  // Phases where ALL outputs are approved
+  const completedPhases: number[] = (() => {
+    const byPhase: Record<number, PhaseOutputContent[]> = {}
+    for (const p of phaseOutputContent) {
+      if (!byPhase[p.phase_number]) byPhase[p.phase_number] = []
+      byPhase[p.phase_number].push(p)
+    }
+    return Object.entries(byPhase)
+      .filter(([, outputs]) => outputs.every(o => o.status === 'approved'))
+      .map(([num]) => Number(num))
+      .sort((a, b) => a - b)
+  })()
 
   // Next phase to run (1–7). If all 7 complete, returns null.
   const nextPhase: number | null = (() => {
@@ -309,6 +319,11 @@ export default function EngagementDetail() {
   const [formatFixInstruction, setFormatFixInstruction] = useState('')
   const [copiedFormatFix, setCopiedFormatFix] = useState<string | null>(null)
   const [approvingFormatId, setApprovingFormatId] = useState<string | null>(null)
+
+  // Render deliverables state
+  const [renderingType, setRenderingType] = useState<string | null>(null)
+  const [renderStatus, setRenderStatus] = useState<Record<string, 'success' | 'error'>>({})
+  const [renderError, setRenderError] = useState<Record<string, string>>({})
 
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null)
   const navigate = useNavigate()
@@ -1419,6 +1434,97 @@ export default function EngagementDetail() {
                           </div>
                         ) : null}
                       </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )
+      })()}
+
+      {/* Render Deliverables Section — after Phase 6, before Phase 7 */}
+      {data && (() => {
+        const phase6Outputs = phaseOutputContent.filter(o => o.phase_number === 6)
+        if (phase6Outputs.length === 0) return null
+        const phase6AllApproved = phase6Outputs.every(o => o.status === 'approved')
+
+        const handleRender = async (type: 'docx' | 'pptx' | 'xlsx') => {
+          setRenderingType(type)
+          setRenderStatus(prev => { const n = {...prev}; delete n[type]; return n })
+          setRenderError(prev => { const n = {...prev}; delete n[type]; return n })
+          try {
+            await apiPost(`/api/engagements/${id}/render/${type}`)
+            setRenderStatus(prev => ({...prev, [type]: 'success'}))
+            toast('Render queued successfully', 'success')
+          } catch (e: any) {
+            setRenderStatus(prev => ({...prev, [type]: 'error'}))
+            setRenderError(prev => ({...prev, [type]: e?.message || 'Render failed'}))
+            toast('Render failed', 'error')
+          } finally {
+            setRenderingType(null)
+          }
+        }
+
+        const renderButtons: Array<{ type: 'docx' | 'pptx' | 'xlsx'; label: string; icon: string }> = [
+          { type: 'docx', label: 'Render Word Doc', icon: 'W' },
+          { type: 'pptx', label: 'Render Deck', icon: 'P' },
+          { type: 'xlsx', label: 'Render Workbook', icon: 'X' },
+        ]
+
+        return (
+          <section className="bg-white rounded-lg border border-gray-light p-5 mb-6">
+            <div className="mb-4">
+              <h3 className="font-display text-lg font-bold text-teal">Render Deliverables</h3>
+              <p className="text-xs text-gray-warm mt-0.5">
+                {phase6AllApproved
+                  ? 'Phase 6 approved — render final deliverables for client delivery'
+                  : 'Rendering available after all Phase 6 outputs are approved'}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              {renderButtons.map(({ type, label, icon }) => {
+                const isRendering = renderingType === type
+                const isOtherRendering = renderingType !== null && renderingType !== type
+                const status = renderStatus[type]
+                const error = renderError[type]
+                const disabled = !phase6AllApproved || isRendering || isOtherRendering
+
+                return (
+                  <div key={type} className="flex flex-col">
+                    <div className="relative group">
+                      <button
+                        onClick={() => handleRender(type)}
+                        disabled={disabled}
+                        className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold transition-colors ${
+                          disabled
+                            ? 'bg-gray-light text-gray-warm cursor-not-allowed'
+                            : 'bg-teal text-white hover:bg-teal/90'
+                        }`}
+                      >
+                        {isRendering ? (
+                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                        ) : status === 'success' ? (
+                          <svg className="w-4 h-4 text-green" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        ) : (
+                          <span className="w-5 h-5 rounded bg-white/20 flex items-center justify-center text-xs font-bold">{icon}</span>
+                        )}
+                        {label}
+                      </button>
+                      {!phase6AllApproved && (
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-charcoal text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                          Available after Phase 6 is approved
+                        </div>
+                      )}
+                    </div>
+                    {status === 'error' && error && (
+                      <p className="text-xs text-crimson mt-1.5">{error}</p>
                     )}
                   </div>
                 )

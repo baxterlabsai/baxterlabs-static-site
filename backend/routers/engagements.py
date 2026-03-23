@@ -1101,3 +1101,25 @@ async def resend_interview_email(
     })
 
     return {"status": "sent", "recipient": body.contact_email}
+
+
+@router.post("/engagements/{engagement_id}/render/{file_type}")
+async def render_deliverable(
+    engagement_id: str,
+    file_type: str,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Stub endpoint for triggering deliverable rendering via Cowork."""
+    if file_type not in ("docx", "pptx", "xlsx"):
+        raise HTTPException(status_code=400, detail=f"Unsupported file type: {file_type}")
+
+    engagement = get_engagement_by_id(engagement_id)
+    if not engagement:
+        raise HTTPException(status_code=404, detail="Engagement not found")
+
+    log_activity(engagement_id, "george", "render_requested", {"file_type": file_type})
+
+    return JSONResponse(
+        status_code=202,
+        content={"status": "queued", "message": f"Render {file_type} queued — will be wired to Cowork"},
+    )
