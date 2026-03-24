@@ -441,7 +441,7 @@ export default function EngagementDetail() {
 
   const getPhaseCommand = (phase: number) => {
     if (!data) return ''
-    return `/run-phase ${data.clients.company_name} ${phase}`
+    return `/baxterlabs-delivery:run-phase ${data.clients.company_name} ${phase}`
   }
 
   const copyPhaseCommand = async (phase: number) => {
@@ -619,7 +619,7 @@ export default function EngagementDetail() {
 
   const copyEditCommand = (outputName: string) => {
     const clientName = data?.clients?.company_name || id
-    const cmd = `/edit-deliverable ${clientName}\n${editInstruction}`
+    const cmd = `/baxterlabs-delivery:edit-deliverable ${clientName}\n${editInstruction}`
     navigator.clipboard.writeText(cmd).catch(() => {
       const ta = document.createElement('textarea')
       ta.value = cmd
@@ -647,7 +647,7 @@ export default function EngagementDetail() {
 
   const copyFormatFixCommand = (output: PhaseOutputContent) => {
     const skill = output.output_type === 'pptx' ? 'render-pptx' : 'render-docx'
-    const cmd = `/${skill} ${output.id} fix:"${formatFixInstruction}"`
+    const cmd = `/baxterlabs-delivery:${skill} ${output.id} fix:"${formatFixInstruction}"`
     navigator.clipboard.writeText(cmd).catch(() => {
       const ta = document.createElement('textarea')
       ta.value = cmd
@@ -691,7 +691,7 @@ export default function EngagementDetail() {
   }
 
   const copySendDeliverablesCommand = () => {
-    const cmd = `/send-deliverables ${id}`
+    const cmd = `/baxterlabs-delivery:send-deliverables ${id}`
     navigator.clipboard.writeText(cmd).catch(() => {
       const ta = document.createElement('textarea')
       ta.value = cmd
@@ -1870,7 +1870,7 @@ export default function EngagementDetail() {
                   {/* Cowork command buttons */}
                   <div className="mt-2 flex items-center gap-2" onClick={e => e.stopPropagation()}>
                     <button
-                      onClick={() => copyDeliveryCommand(`research-${c.id}`, `/contact-research ${c.name}`)}
+                      onClick={() => copyDeliveryCommand(`research-${c.id}`, `/baxterlabs-delivery:contact-research ${c.name}`)}
                       className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded border font-semibold transition-colors ${
                         copiedDeliveryCmd === `research-${c.id}` ? 'border-teal bg-teal/10 text-teal' : 'border-gray-light text-teal hover:bg-teal/5'
                       }`}
@@ -1879,7 +1879,7 @@ export default function EngagementDetail() {
                       {copiedDeliveryCmd === `research-${c.id}` ? 'Copied \u2713' : 'Contact Research'}
                     </button>
                     <button
-                      onClick={() => copyDeliveryCommand(`prep-${c.id}`, `/interview-prep ${c.name}`)}
+                      onClick={() => copyDeliveryCommand(`prep-${c.id}`, `/baxterlabs-delivery:interview-prep ${c.name}`)}
                       className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded border font-semibold transition-colors ${
                         copiedDeliveryCmd === `prep-${c.id}` ? 'border-teal bg-teal/10 text-teal' : 'border-gray-light text-teal hover:bg-teal/5'
                       }`}
