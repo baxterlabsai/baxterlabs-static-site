@@ -293,7 +293,7 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
                 <h4 className="text-sm font-semibold text-charcoal mb-2">Quick Actions</h4>
                 <div className="flex flex-wrap gap-2">
                   <button
-                    onClick={() => copyToClipboard(`/baxterlabs-delivery:contact-research ${contact.name} at ${companyName}`)}
+                    onClick={() => copyToClipboard(`/contact-research ${contact.name} at ${companyName}`)}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-purple-200 text-xs font-medium text-charcoal bg-purple-50 hover:bg-purple-100 transition-colors"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -302,7 +302,7 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
                     Research
                   </button>
                   <button
-                    onClick={() => copyToClipboard(`/baxterlabs-delivery:interview-prep ${engagementId} ${contact.id}`)}
+                    onClick={() => copyToClipboard(`/interview-prep ${engagementId} ${contact.id}`)}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-200 text-xs font-medium text-charcoal bg-amber-50 hover:bg-amber-100 transition-colors"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -312,7 +312,7 @@ export default function EngagementContactSlideOver({ contactId, engagementId, co
                   </button>
                   {contact.transcript_gdrive_url && (
                     <button
-                      onClick={() => copyToClipboard(`/baxterlabs-delivery:process-transcript ${engagementId} ${contact.id}`)}
+                      onClick={() => copyToClipboard(`/process-transcript ${engagementId} ${contact.id}`)}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-200 text-xs font-medium text-charcoal bg-emerald-50 hover:bg-emerald-100 transition-colors"
                     >
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
