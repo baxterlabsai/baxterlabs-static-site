@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { apiGet, apiPatch, apiPost } from '../../../lib/api'
 import MarkdownContent from '../../../components/MarkdownContent'
 
@@ -59,6 +59,7 @@ export default function Posts() {
   const [imageQuery, setImageQuery] = useState('')
   const [imageResults, setImageResults] = useState<UnsplashResult[]>([])
   const [imageSearching, setImageSearching] = useState(false)
+  const imageSuggestFired = useRef<string | null>(null)
 
   useEffect(() => {
     apiGet<Post[]>('/api/content/posts')
@@ -73,18 +74,38 @@ export default function Posts() {
 
   const selected = posts.find(p => p.id === selectedId) ?? null
 
-  function defaultImageQuery(post: Post): string {
-    if (post.source_type === 'story_bank') return 'professional services office'
-    if (post.source_type === 'content_news') return 'business finance'
-    return 'professional services'
-  }
-
   function handleSelectPost(id: string) {
     setSelectedId(id)
     setImageResults([])
-    const post = posts.find(p => p.id === id)
-    setImageQuery(post ? defaultImageQuery(post) : 'professional services')
+    setImageQuery('')
+    imageSuggestFired.current = null
   }
+
+  // AI-powered image search suggestion when post is selected
+  useEffect(() => {
+    if (!selected || !selected.title || !selected.body) return
+    if (imageSuggestFired.current === selected.id) return
+    imageSuggestFired.current = selected.id
+    apiPost<{ query: string }>('/api/content/suggest-image-query', {
+      title: selected.title,
+      body: selected.body.slice(0, 150),
+    }).then(data => {
+      if (data.query) {
+        setImageQuery(data.query)
+        setImageSearching(true)
+        apiGet<{ results: UnsplashResult[]; total: number }>(
+          `/api/content/image-search?q=${encodeURIComponent(data.query)}&limit=3`
+        ).then(r => setImageResults(r.results)).catch(() => {}).finally(() => setImageSearching(false))
+      }
+    }).catch(() => {
+      // Fallback to simple heuristic if AI fails
+      if (!selected) return
+      const fallback = selected.source_type === 'story_bank' ? 'professional services office'
+        : selected.source_type === 'content_news' ? 'business finance'
+        : 'professional services'
+      setImageQuery(fallback)
+    })
+  }, [selected?.id])
 
   async function searchImages() {
     if (!imageQuery.trim()) return

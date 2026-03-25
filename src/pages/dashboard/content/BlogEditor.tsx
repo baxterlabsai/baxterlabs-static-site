@@ -4,6 +4,16 @@ import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api'
 import { useToast } from '../../../components/Toast'
 import { supabase } from '../../../lib/supabase'
 
+interface UnsplashResult {
+  id: string
+  url: string
+  thumb: string
+  description: string | null
+  photographer: string
+  photographer_url: string
+  download_url: string
+}
+
 interface Post {
   id: string
   type: string
@@ -100,6 +110,10 @@ export default function BlogEditor() {
   const [publishedDate, setPublishedDate] = useState('')
   const [imageUploading, setImageUploading] = useState(false)
   const [imageError, setImageError] = useState('')
+  const [imageQuery, setImageQuery] = useState('')
+  const [imageResults, setImageResults] = useState<UnsplashResult[]>([])
+  const [imageSearching, setImageSearching] = useState(false)
+  const imageSuggestFired = useRef(false)
 
   const [linkedInPosts, setLinkedInPosts] = useState<LinkedInPost[]>([])
   const [loading, setLoading] = useState(!isNew)
@@ -275,6 +289,36 @@ export default function BlogEditor() {
       setImageUploading(false)
     }
   }
+
+  async function searchImages() {
+    if (!imageQuery.trim()) return
+    setImageSearching(true)
+    try {
+      const data = await apiGet<{ results: UnsplashResult[]; total: number }>(
+        `/api/content/image-search?q=${encodeURIComponent(imageQuery.trim())}&limit=3`
+      )
+      setImageResults(data.results)
+    } catch { /* ignore */ }
+    setImageSearching(false)
+  }
+
+  // AI-powered image search suggestion
+  useEffect(() => {
+    if (imageSuggestFired.current || !title || !body || featuredImageUrl) return
+    imageSuggestFired.current = true
+    apiPost<{ query: string }>('/api/content/suggest-image-query', {
+      title,
+      body: body.slice(0, 150),
+    }).then(data => {
+      if (data.query) {
+        setImageQuery(data.query)
+        setImageSearching(true)
+        apiGet<{ results: UnsplashResult[]; total: number }>(
+          `/api/content/image-search?q=${encodeURIComponent(data.query)}&limit=3`
+        ).then(r => setImageResults(r.results)).catch(() => {}).finally(() => setImageSearching(false))
+      }
+    }).catch(() => {})
+  }, [title, body, featuredImageUrl])
 
   // Toolbar actions
   const insertMarkdown = useCallback((before: string, after: string = '') => {
@@ -487,6 +531,51 @@ export default function BlogEditor() {
               </label>
               {imageError && (
                 <p className="text-xs text-[#C0392B] mb-1">{imageError}</p>
+              )}
+              {/* Image search */}
+              <div className="flex gap-1.5 mb-2">
+                <input
+                  type="text"
+                  value={imageQuery}
+                  onChange={e => setImageQuery(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && searchImages()}
+                  placeholder="Search stock images..."
+                  className="flex-1 border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-[#2D3436]"
+                />
+                <button
+                  onClick={searchImages}
+                  disabled={imageSearching || !imageQuery.trim()}
+                  className="px-3 py-1.5 text-xs font-medium rounded-lg bg-[#005454] text-white hover:bg-[#005454]/90 transition-colors disabled:opacity-50"
+                >
+                  {imageSearching ? '...' : 'Search'}
+                </button>
+              </div>
+              {imageResults.length > 0 && (
+                <div className="flex gap-2 mb-2">
+                  {imageResults.map(img => (
+                    <button
+                      key={img.id}
+                      onClick={() => {
+                        setFeaturedImageUrl(img.url)
+                        apiPost('/api/content/image-download-trigger', { download_url: img.download_url }).catch(() => {})
+                      }}
+                      className={`flex-shrink-0 rounded-lg overflow-hidden transition-all ${
+                        featuredImageUrl === img.url
+                          ? 'ring-2 ring-[#005454] ring-offset-1'
+                          : 'ring-1 ring-gray-200 hover:ring-gray-300'
+                      }`}
+                    >
+                      <img
+                        src={img.thumb}
+                        alt={img.description || 'Unsplash photo'}
+                        className="w-[80px] h-auto object-cover"
+                      />
+                      <p className="text-[9px] text-[#2D3436]/40 px-1 py-0.5 truncate w-[80px]">
+                        {img.photographer}
+                      </p>
+                    </button>
+                  ))}
+                </div>
               )}
               {/* URL field — manual entry or auto-populated */}
               <input

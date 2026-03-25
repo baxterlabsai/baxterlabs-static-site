@@ -787,3 +787,42 @@ async def image_download_trigger(
     except Exception:
         pass
     return {"ok": True}
+
+
+# ── Image Search Query Suggestion ─────────────────────────────────────────────
+
+class SuggestImageQueryPayload(BaseModel):
+    title: str
+    body: str
+
+
+@router.post("/content/suggest-image-query")
+async def suggest_image_query(
+    payload: SuggestImageQueryPayload,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Use Claude Haiku to suggest a concise image search query."""
+    import anthropic
+
+    api_key = os.getenv("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return {"query": ""}
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=20,
+            messages=[{
+                "role": "user",
+                "content": (
+                    "You are an image search assistant. Given this content, suggest exactly one "
+                    "concise image search query (3-5 words) that would find a relevant, professional "
+                    "stock photo. Reply with only the search query, nothing else.\n\n"
+                    f"Title: {payload.title}\nContent: {payload.body}"
+                ),
+            }],
+        )
+        query = msg.content[0].text.strip().strip('"').strip("'")
+        return {"query": query}
+    except Exception:
+        return {"query": ""}
