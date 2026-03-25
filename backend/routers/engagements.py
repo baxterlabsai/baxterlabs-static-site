@@ -1123,3 +1123,93 @@ async def render_deliverable(
         status_code=202,
         content={"status": "queued", "message": f"Render {file_type} queued — will be wired to Cowork"},
     )
+
+
+# ---------------------------------------------------------------------------
+# Engagement Graphics
+# ---------------------------------------------------------------------------
+
+
+@router.get("/engagements/{engagement_id}/graphics")
+async def get_engagement_graphics(
+    engagement_id: str,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Return all verified/generated graphics with signed URLs."""
+    sb = get_supabase()
+    result = sb.table("engagement_graphics") \
+        .select("*") \
+        .eq("engagement_id", engagement_id) \
+        .in_("status", ["verified", "generated"]) \
+        .execute()
+
+    graphics = []
+    for row in result.data:
+        signed_url = None
+        if row.get("storage_path"):
+            try:
+                url_result = sb.storage \
+                    .from_(row["storage_bucket"]) \
+                    .create_signed_url(
+                        row["storage_path"],
+                        expires_in=3600
+                    )
+                signed_url = url_result.get("signedURL") or url_result.get("signedUrl")
+            except Exception:
+                pass
+
+        graphics.append({
+            "id": row["id"],
+            "chart_type": row["chart_type"],
+            "storage_path": row["storage_path"],
+            "storage_bucket": row["storage_bucket"],
+            "status": row["status"],
+            "phase_number": row["phase_number"],
+            "signed_url": signed_url,
+        })
+
+    return {"graphics": graphics}
+
+
+@router.post("/engagements/{engagement_id}/graphics")
+async def upsert_engagement_graphic(
+    engagement_id: str,
+    payload: dict,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Create or update a graphic record after PNG upload."""
+    sb = get_supabase()
+    chart_type = payload.get("chart_type")
+    if not chart_type:
+        raise HTTPException(status_code=400, detail="chart_type is required")
+
+    existing = sb.table("engagement_graphics") \
+        .select("id") \
+        .eq("engagement_id", engagement_id) \
+        .eq("chart_type", chart_type) \
+        .execute()
+
+    record = {
+        "storage_path": payload.get("storage_path"),
+        "status": payload.get("status", "generated"),
+        "data_hash": payload.get("data_hash"),
+        "error_message": payload.get("error_message"),
+    }
+
+    if existing.data:
+        result = sb.table("engagement_graphics") \
+            .update(record) \
+            .eq("id", existing.data[0]["id"]) \
+            .execute()
+    else:
+        record.update({
+            "engagement_id": engagement_id,
+            "chart_type": chart_type,
+            "storage_bucket": "engagements",
+            "phase_number": payload.get("phase_number", 5),
+        })
+        result = sb.table("engagement_graphics") \
+            .insert(record) \
+            .execute()
+
+    return {"success": True, "id": result.data[0]["id"]}

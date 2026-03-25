@@ -26,6 +26,7 @@ master.env
 
 # Docs (internal, not deployed)
 docs/
+!backend/docs/
 
 # Claude Code
 .claude/worktrees/
