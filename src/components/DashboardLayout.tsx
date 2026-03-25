@@ -49,13 +49,6 @@ const MAIN_SECTIONS: NavSection[] = [
     ],
   },
   {
-    label: 'Deliverables',
-    dotColor: '#C9A84C',
-    items: [
-      { to: '/dashboard/deliverables', label: 'Review queue', end: true },
-    ],
-  },
-  {
     label: 'Content',
     dotColor: '#639922',
     items: [

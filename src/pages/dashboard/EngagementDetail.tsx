@@ -273,6 +273,7 @@ export default function EngagementDetail() {
   const [lastReminders, setLastReminders] = useState<{ agreement: string; documents: string }>({ agreement: '', documents: '' })
   const [transcriptIntel, setTranscriptIntel] = useState<Array<{ contact_name: string; contact_title: string | null; analysis: { summary: string; key_findings: string[]; financial_indicators: string[]; notable_quotes: Array<{ quote: string; context: string }> } | null; citation: string; analyzed: boolean }>>([])
   const [dossierModalOpen, setDossierModalOpen] = useState(false)
+  const [expandedOutput, setExpandedOutput] = useState<PhaseOutputContent | null>(null)
 
   // Phase output content (Cowork-synced)
   const [phaseOutputContent, setPhaseOutputContent] = useState<PhaseOutputContent[]>([])
@@ -1145,6 +1146,16 @@ export default function EngagementDetail() {
                                       )}
                                     </div>
                                   )}
+                                  {/* Expand/pop-out button */}
+                                  <button
+                                    onClick={() => setExpandedOutput(output)}
+                                    className="text-gray-warm hover:text-teal p-1 rounded hover:bg-ivory transition-colors flex-shrink-0"
+                                    title="View fullscreen"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9m11.25-5.25v4.5m0-4.5h-4.5m4.5 0L15 9m-11.25 11.25v-4.5m0 4.5h4.5m-4.5 0L9 15m11.25 5.25v-4.5m0 4.5h-4.5m4.5 0L15 15" />
+                                    </svg>
+                                  </button>
                                   {/* Output actions: Approve + Version history */}
                                   <div className="flex items-center gap-2 flex-shrink-0">
                                     {output.version > 1 && (
@@ -2476,6 +2487,41 @@ export default function EngagementDetail() {
         </div>
       )}
 
+
+      {/* Fullscreen Output Modal */}
+      {expandedOutput && (
+        <div className="fixed inset-0 z-60 bg-white flex flex-col outline-none">
+          <div className="flex items-center justify-between px-8 py-4 border-b border-gray-light flex-shrink-0">
+            <div>
+              <h2 className="text-lg font-display font-bold text-charcoal">{expandedOutput.output_name}</h2>
+              <p className="text-xs text-gray-warm">Phase {expandedOutput.phase_number} · .{expandedOutput.output_type} · Version {expandedOutput.version}</p>
+            </div>
+            <button
+              onClick={() => setExpandedOutput(null)}
+              className="text-gray-warm hover:text-charcoal p-1 rounded-lg hover:bg-ivory transition-colors"
+              aria-label="Close"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-8">
+            {expandedOutput.output_type === 'md' && expandedOutput.content_md ? (
+              <div className="prose prose-sm max-w-none text-charcoal">
+                <MarkdownContent content={expandedOutput.content_md} />
+              </div>
+            ) : (() => {
+              const previewUrl = expandedOutput.docx_pdf_preview_path_url || expandedOutput.pdf_preview_path_url || expandedOutput.pptx_path_url || expandedOutput.pdf_storage_path_url
+              return previewUrl ? (
+                <embed src={previewUrl} type="application/pdf" className="w-full h-full min-h-[calc(100vh-140px)]" />
+              ) : (
+                <p className="text-gray-warm text-center py-12">No preview available for this output.</p>
+              )
+            })()}
+          </div>
+        </div>
+      )}
 
       {/* Fullscreen Research Modals */}
       <ResearchModal
