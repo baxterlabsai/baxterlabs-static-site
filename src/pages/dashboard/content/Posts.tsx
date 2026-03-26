@@ -166,7 +166,7 @@ export default function Posts() {
           <div className="mb-4 bg-white border border-gray-200 rounded-lg px-4 py-3">
             <p className="text-xs text-charcoal/50 mb-1.5 font-medium">Create a new draft</p>
             <code className="text-xs bg-charcoal/5 text-charcoal/80 px-2 py-1 rounded font-mono">
-              /baxterlabs-content:content-draft &lt;topic or UUID&gt;
+              /content-draft &lt;topic or UUID&gt;
             </code>
           </div>
 
