@@ -32,6 +32,7 @@ interface PhaseOutputContent {
   id: string
   engagement_id: string
   phase_number: number
+  output_number: number
   output_name: string
   output_type: string
   content_md: string | null
@@ -689,7 +690,8 @@ export default function EngagementDetail() {
   }
 
   const copySendDeliverablesCommand = () => {
-    const cmd = `/send-deliverables ${id}`
+    const clientName = data?.clients?.company_name || id
+    const cmd = `/send-deliverables ${clientName}`
     navigator.clipboard.writeText(cmd).catch(() => {
       const ta = document.createElement('textarea')
       ta.value = cmd
@@ -1011,11 +1013,14 @@ export default function EngagementDetail() {
           4: 'Days 10–11', 5: 'Days 12–13', 6: 'Pre-Delivery', 7: 'Post-Debrief',
         }
 
-        // Group phase_output_content by phase
+        // Group phase_output_content by phase, sorted by output_number
         const pocByPhase: Record<number, PhaseOutputContent[]> = {}
         for (const o of phaseOutputContent) {
           if (!pocByPhase[o.phase_number]) pocByPhase[o.phase_number] = []
           pocByPhase[o.phase_number].push(o)
+        }
+        for (const phase of Object.keys(pocByPhase)) {
+          pocByPhase[Number(phase)].sort((a, b) => (a.output_number || 1) - (b.output_number || 1))
         }
 
         const activePhase = nextPhase ?? 8
@@ -1103,9 +1108,7 @@ export default function EngagementDetail() {
 
                         {/* Send to Client button for Phase 5 when all deliverables approved */}
                         {phase === 5 && pocOutputs.length > 0 && (() => {
-                          const PHASE5_DELIVERABLES = ['Executive Summary', 'Full Diagnostic Report', 'Presentation Deck', '90-Day Implementation Roadmap']
-                          const phase5Deliverables = pocOutputs.filter(o => PHASE5_DELIVERABLES.includes(o.output_name))
-                          const allApproved = phase5Deliverables.length === 4 && phase5Deliverables.every(o => o.status === 'approved')
+                          const allApproved = pocOutputs.every(o => o.status === 'approved')
                           if (!allApproved) return null
                           return (
                             <div className="px-4 py-3 bg-green/5 border-b border-green/20 flex items-center justify-between">
@@ -1126,9 +1129,10 @@ export default function EngagementDetail() {
                         {pocOutputs.length > 0 ? (
                           <div className="divide-y divide-gray-light">
                             {pocOutputs.map(output => {
-                              const PHASE5_DELIVERABLES = ['Executive Summary', 'Full Diagnostic Report', 'Presentation Deck', '90-Day Implementation Roadmap']
-                              const isPhase5Deliverable = phase === 5 && PHASE5_DELIVERABLES.includes(output.output_name)
+                              const isPhase5Deliverable = phase === 5
                               const isEditing = editingOutputId === output.id
+                              const renderSkill = output.output_type === 'pptx' ? 'render-pptx' : output.output_type === 'xlsx' ? 'render-xlsx' : 'render-docx'
+                              const clientName = data?.clients?.company_name || ''
 
                               return (
                               <div key={output.id} className="px-4 py-4">
@@ -1169,8 +1173,32 @@ export default function EngagementDetail() {
                                       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9m11.25-5.25v4.5m0-4.5h-4.5m4.5 0L15 9m-11.25 11.25v-4.5m0 4.5h4.5m-4.5 0L9 15m11.25 5.25v-4.5m0 4.5h-4.5m4.5 0L15 15" />
                                     </svg>
                                   </button>
-                                  {/* Output actions: Approve + Version history */}
+                                  {/* Output actions: Render + Approve + Version history */}
                                   <div className="flex items-center gap-2 flex-shrink-0">
+                                    {/* Render button — enabled when approved */}
+                                    {isPhase5Deliverable && (
+                                      <div className="relative group/render">
+                                        <button
+                                          onClick={() => output.status === 'approved' && copyDeliveryCommand(`render-${output.id}`, `/${renderSkill} ${clientName} "${output.output_name}"`)}
+                                          disabled={output.status !== 'approved'}
+                                          className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded font-semibold transition-colors ${
+                                            copiedDeliveryCmd === `render-${output.id}`
+                                              ? 'bg-teal/10 text-teal'
+                                              : output.status === 'approved'
+                                              ? 'bg-gold text-white hover:bg-gold/90'
+                                              : 'bg-gray-light text-gray-warm cursor-not-allowed'
+                                          }`}
+                                        >
+                                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                                          {copiedDeliveryCmd === `render-${output.id}` ? 'Copied!' : 'Render'}
+                                        </button>
+                                        {output.status !== 'approved' && (
+                                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-charcoal text-white text-xs rounded opacity-0 group-hover/render:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                                            Approve output first
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
                                     {output.version > 1 && (
                                       <button
                                         onClick={() => loadVersionHistory(output.id)}
@@ -1477,69 +1505,7 @@ export default function EngagementDetail() {
         )
       })()}
 
-      {/* Render Deliverables Section — after Phase 6, before Phase 7 */}
-      {data && (() => {
-        const phase6Outputs = phaseOutputContent.filter(o => o.phase_number === 6)
-        if (phase6Outputs.length === 0) return null
-        const phase6AllApproved = phase6Outputs.every(o => o.status === 'approved')
-        const clientName = data.clients?.company_name || ''
-
-        const renderButtons: Array<{ type: string; label: string; icon: string; cmd: string }> = [
-          { type: 'docx', label: 'Render Word Doc', icon: 'W', cmd: `/render-docx ${clientName}` },
-          { type: 'pptx', label: 'Render Deck', icon: 'P', cmd: `/render-pptx ${clientName}` },
-          { type: 'xlsx', label: 'Render Workbook', icon: 'X', cmd: `/render-xlsx ${clientName}` },
-        ]
-
-        return (
-          <section className="bg-white rounded-lg border border-gray-light p-5 mb-6">
-            <div className="mb-4">
-              <h3 className="font-display text-lg font-bold text-teal">Render Deliverables</h3>
-              <p className="text-xs text-gray-warm mt-0.5">
-                {phase6AllApproved
-                  ? 'Phase 6 approved — copy render commands for Cowork'
-                  : 'Rendering available after all Phase 6 outputs are approved'}
-              </p>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              {renderButtons.map(({ type, label, icon, cmd }) => {
-                const disabled = !phase6AllApproved
-                const copied = copiedDeliveryCmd === `render-${type}`
-
-                return (
-                  <div key={type} className="relative group">
-                    <button
-                      onClick={() => !disabled && copyDeliveryCommand(`render-${type}`, cmd)}
-                      disabled={disabled}
-                      className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-semibold transition-colors ${
-                        copied
-                          ? 'bg-teal/10 text-teal border border-teal'
-                          : disabled
-                          ? 'bg-gray-light text-gray-warm cursor-not-allowed'
-                          : 'bg-teal text-white hover:bg-teal/90'
-                      }`}
-                    >
-                      {copied ? (
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      ) : (
-                        <span className="w-5 h-5 rounded bg-white/20 flex items-center justify-center text-xs font-bold">{icon}</span>
-                      )}
-                      {copied ? 'Copied!' : label}
-                    </button>
-                    {!phase6AllApproved && (
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-charcoal text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                        Available after Phase 6 is approved
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </section>
-        )
-      })()}
+      {/* Old Render Deliverables section removed — render buttons now live on each Phase 5 output panel */}
 
       {/* Deliverables Section */}
       {data && DELIVERABLE_STATUSES_SHOWING.has(data.status) && (() => {
