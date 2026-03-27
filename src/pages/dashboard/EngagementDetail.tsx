@@ -302,6 +302,7 @@ export default function EngagementDetail() {
 
   const [pocExpandedPhases, setPocExpandedPhases] = useState<Set<number>>(new Set())
   const [editingOutputId, setEditingOutputId] = useState<string | null>(null)
+  const [showSourceContentIds, setShowSourceContentIds] = useState<Set<string>>(new Set())
   const [editInstruction, setEditInstruction] = useState('')
   const [approvingOutputId, setApprovingOutputId] = useState<string | null>(null)
   const [approveConfirmId, setApproveConfirmId] = useState<string | null>(null)
@@ -1239,29 +1240,46 @@ export default function EngagementDetail() {
                                   </div>
                                 )}
 
-                                {/* Render markdown content inline (md outputs) */}
-                                {output.output_type === 'md' && output.content_md && (
-                                  <div className="mt-3 border border-gray-light rounded-lg p-4 bg-ivory/30 max-h-[600px] overflow-y-auto">
-                                    <MarkdownContent content={output.content_md} />
-                                  </div>
-                                )}
+                                {/* === CONTENT VIEWER === */}
+                                {(() => {
+                                  const previewUrl = output.docx_pdf_preview_path_url || output.pdf_preview_path_url || output.pdf_storage_path_url
+                                  const hasContent = output.content_md && output.content_md.trim().length > 0
+                                  const hasPreview = !!previewUrl
+                                  const hasBoth = hasContent && hasPreview
+                                  const showingSource = showSourceContentIds.has(output.id)
+                                  const toggleSource = () => setShowSourceContentIds(prev => {
+                                    const next = new Set(prev)
+                                    if (next.has(output.id)) next.delete(output.id)
+                                    else next.add(output.id)
+                                    return next
+                                  })
 
-                                {/* === DOCX TRACK === */}
-                                {output.output_type === 'docx' && (() => {
-                                  const previewUrl = output.docx_pdf_preview_path_url || output.pdf_storage_path_url
                                   return (
                                     <>
-                                      {/* Format Preview PDF embed */}
-                                      {previewUrl && (
+                                      {/* Rendered file preview (PDF embed) — shown when a rendered file exists */}
+                                      {hasPreview && (
                                         <div className="mt-3">
-                                          <p className="text-xs font-semibold text-gray-warm uppercase tracking-wider mb-1">Format Preview</p>
+                                          <div className="flex items-center justify-between mb-1">
+                                            <p className="text-xs font-semibold text-gray-warm uppercase tracking-wider">
+                                              {output.output_type === 'pptx' ? 'Slide Preview' : 'Format Preview'}
+                                            </p>
+                                            {hasBoth && (
+                                              <button
+                                                onClick={toggleSource}
+                                                className="text-xs text-teal font-semibold hover:underline"
+                                              >
+                                                {showingSource ? 'Hide Source Content' : 'View Source Content'}
+                                              </button>
+                                            )}
+                                          </div>
                                           <div className="border border-gray-light rounded-lg overflow-hidden">
                                             <embed src={previewUrl} type="application/pdf" className="w-full h-[600px]" />
                                           </div>
                                         </div>
                                       )}
-                                      {/* Format review controls */}
-                                      {previewUrl && !output.pdf_approved && (
+
+                                      {/* Format review controls — shown when preview exists but not yet approved */}
+                                      {hasPreview && !output.pdf_approved && (
                                         <div className="mt-3 border border-gray-light rounded-lg p-3 bg-ivory/30">
                                           <div className="flex items-center gap-2 mb-2">
                                             <input
@@ -1270,7 +1288,9 @@ export default function EngagementDetail() {
                                               onFocus={() => setFormatFixOutputId(output.id)}
                                               onChange={e => { setFormatFixOutputId(output.id); setFormatFixInstruction(e.target.value) }}
                                               onKeyDown={e => { if (e.key === 'Enter' && formatFixInstruction.trim()) copyFormatFixCommand(output) }}
-                                              placeholder="Describe formatting fix — e.g. 'title running on to two lines, fix line 45'"
+                                              placeholder={output.output_type === 'pptx'
+                                                ? "Describe layout fix — e.g. 'move chart on slide 3 below the bullet points'"
+                                                : "Describe formatting fix — e.g. 'title running on to two lines, fix line 45'"}
                                               className="flex-1 border border-gray-light rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
                                             />
                                             <button
@@ -1290,80 +1310,17 @@ export default function EngagementDetail() {
                                             disabled={approvingFormatId === output.id}
                                             className="text-xs bg-green text-white px-3 py-1.5 rounded font-semibold hover:bg-green/90 disabled:opacity-50"
                                           >
-                                            {approvingFormatId === output.id ? 'Approving...' : 'Approve Format'}
+                                            {approvingFormatId === output.id ? 'Approving...' : output.output_type === 'pptx' ? 'Approve Layout' : 'Approve Format'}
                                           </button>
                                         </div>
                                       )}
-                                      {/* Format approved badge */}
-                                      {output.pdf_approved && (
-                                        <div className="mt-3 flex items-center gap-1.5">
-                                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-green bg-green/10 px-2.5 py-1 rounded-full">
-                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                                            Format Approved
-                                          </span>
-                                        </div>
-                                      )}
-                                    </>
-                                  )
-                                })()}
 
-                                {/* === PPTX TRACK === */}
-                                {output.output_type === 'pptx' && (() => {
-                                  const slidePreviewUrl = output.pdf_preview_path_url || output.pdf_storage_path_url
-                                  return (
-                                    <>
-                                      {/* Stage 1: Slide Preview + fix input + approve */}
-                                      {!output.pdf_approved && (
-                                        <>
-                                          {slidePreviewUrl && (
-                                            <div className="mt-3">
-                                              <p className="text-xs font-semibold text-gray-warm uppercase tracking-wider mb-1">Slide Preview</p>
-                                              <div className="border border-gray-light rounded-lg overflow-hidden">
-                                                <embed src={slidePreviewUrl} type="application/pdf" className="w-full h-[600px]" />
-                                              </div>
-                                            </div>
-                                          )}
-                                          {slidePreviewUrl && (
-                                            <div className="mt-3 border border-gray-light rounded-lg p-3 bg-ivory/30">
-                                              <div className="flex items-center gap-2 mb-2">
-                                                <input
-                                                  type="text"
-                                                  value={formatFixOutputId === output.id ? formatFixInstruction : ''}
-                                                  onFocus={() => setFormatFixOutputId(output.id)}
-                                                  onChange={e => { setFormatFixOutputId(output.id); setFormatFixInstruction(e.target.value) }}
-                                                  onKeyDown={e => { if (e.key === 'Enter' && formatFixInstruction.trim()) copyFormatFixCommand(output) }}
-                                                  placeholder="Describe layout fix — e.g. 'move chart on slide 3 below the bullet points'"
-                                                  className="flex-1 border border-gray-light rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
-                                                />
-                                                <button
-                                                  onClick={() => copyFormatFixCommand(output)}
-                                                  disabled={formatFixOutputId !== output.id || !formatFixInstruction.trim()}
-                                                  className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-semibold transition-colors flex-shrink-0 ${
-                                                    copiedFormatFix === output.id ? 'bg-teal/10 text-teal' :
-                                                    (formatFixOutputId === output.id && formatFixInstruction.trim()) ? 'bg-gold text-white hover:bg-gold/90' : 'bg-gray-light text-gray-warm cursor-not-allowed'
-                                                  }`}
-                                                >
-                                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
-                                                  {copiedFormatFix === output.id ? 'Copied!' : 'Apply Fix'}
-                                                </button>
-                                              </div>
-                                              <button
-                                                onClick={() => approveFormat(output.id)}
-                                                disabled={approvingFormatId === output.id}
-                                                className="text-xs bg-green text-white px-3 py-1.5 rounded font-semibold hover:bg-green/90 disabled:opacity-50"
-                                              >
-                                                {approvingFormatId === output.id ? 'Approving...' : 'Approve Layout'}
-                                              </button>
-                                            </div>
-                                          )}
-                                        </>
-                                      )}
-                                      {/* Stage 2: Layout approved */}
-                                      {output.pdf_approved && (
+                                      {/* Format/Layout approved badge + download links */}
+                                      {hasPreview && output.pdf_approved && (
                                         <div className="mt-3 flex items-center gap-3 flex-wrap">
                                           <span className="inline-flex items-center gap-1 text-xs font-semibold text-green bg-green/10 px-2.5 py-1 rounded-full">
                                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                                            Layout Approved
+                                            {output.output_type === 'pptx' ? 'Layout Approved' : 'Format Approved'}
                                           </span>
                                           {output.pptx_path_url && (
                                             <a href={output.pptx_path_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-teal font-semibold hover:underline">
@@ -1371,45 +1328,40 @@ export default function EngagementDetail() {
                                               Download .pptx
                                             </a>
                                           )}
-                                          {slidePreviewUrl && (
-                                            <a href={slidePreviewUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-gray-warm font-semibold hover:underline hover:text-teal">
-                                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
-                                              View PDF
+                                        </div>
+                                      )}
+
+                                      {/* Inline markdown content — shown when content_md exists and no rendered preview, OR via toggle */}
+                                      {hasContent && (!hasPreview || showingSource) && (
+                                        <div className={`mt-3 border border-gray-light rounded-lg p-4 bg-ivory/30 max-h-[600px] overflow-y-auto ${hasPreview ? 'border-teal/20' : ''}`}>
+                                          {hasPreview && <p className="text-xs font-semibold text-gray-warm uppercase tracking-wider mb-2">Source Content</p>}
+                                          <MarkdownContent content={output.content_md!} />
+                                        </div>
+                                      )}
+
+                                      {/* XLSX: Open in Excel link */}
+                                      {output.output_type === 'xlsx' && (
+                                        <div className="mt-3">
+                                          {output.xlsx_link ? (
+                                            <a
+                                              href={output.xlsx_link}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-teal text-white text-sm font-semibold rounded-lg hover:bg-teal/90 transition-colors"
+                                            >
+                                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                                              </svg>
+                                              Open in Excel
                                             </a>
+                                          ) : !hasContent && (
+                                            <p className="text-xs text-gray-warm italic">Workbook generating&hellip;</p>
                                           )}
                                         </div>
                                       )}
                                     </>
                                   )
                                 })()}
-
-                                {/* === XLSX TRACK === */}
-                                {output.output_type === 'xlsx' && (
-                                  <div className="mt-3">
-                                    {output.xlsx_link ? (
-                                      <a
-                                        href={output.xlsx_link}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-teal text-white text-sm font-semibold rounded-lg hover:bg-teal/90 transition-colors"
-                                      >
-                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                                        </svg>
-                                        Open in Excel
-                                      </a>
-                                    ) : (
-                                      <p className="text-xs text-gray-warm italic">Workbook generating&hellip;</p>
-                                    )}
-                                  </div>
-                                )}
-
-                                {/* Fallback PDF embed for other binary types */}
-                                {output.output_type !== 'md' && output.output_type !== 'docx' && output.output_type !== 'pptx' && output.output_type !== 'xlsx' && output.pdf_storage_path_url && (
-                                  <div className="mt-3 border border-gray-light rounded-lg overflow-hidden">
-                                    <embed src={output.pdf_storage_path_url} type="application/pdf" className="w-full h-[600px]" />
-                                  </div>
-                                )}
 
                                 {/* Edit deliverable interface (content edits — applies to md/docx/pptx, not xlsx) */}
                                 {output.output_type !== 'xlsx' && (output.status === 'draft' || output.status === 'approved') && (
