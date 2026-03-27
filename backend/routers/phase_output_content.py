@@ -339,7 +339,7 @@ async def approve_output(
     output_id: str,
     user: dict = Depends(verify_partner_auth),
 ):
-    """Approve a phase output. For Phase 5, runs financial QC against Phase 3 workbook first."""
+    """Approve a phase output. Triggers PDF generation for binary outputs."""
     sb = get_supabase()
     existing = sb.table("phase_output_content").select("*").eq("id", output_id).execute()
     if not existing.data:
@@ -356,11 +356,6 @@ async def approve_output(
             sb, rec["storage_path"], rec["engagement_id"], rec["output_name"], rec["version"],
         )
 
-    # --- QC check: only for Phase 5 outputs with markdown content ---
-    qc_result = None
-    if rec["phase_number"] == 5 and rec.get("content_md"):
-        qc_result = _run_financial_qc(sb, rec)
-
     now_iso = datetime.now(timezone.utc).isoformat()
     update_data = {
         "status": "approved",
@@ -369,32 +364,16 @@ async def approve_output(
     if pdf_path:
         update_data["pdf_storage_path"] = pdf_path
 
-    # If QC made corrections, write the corrected content and bump version
-    if qc_result and qc_result.get("status") == "corrected" and qc_result.get("corrected_md"):
-        update_data["content_md"] = qc_result["corrected_md"]
-        update_data["version"] = rec["version"] + 1
-
     sb.table("phase_output_content").update(update_data).eq("id", output_id).execute()
 
-    log_activity(rec["engagement_id"], "partner", "deliverable_approved", {
+    log_activity(rec["engagement_id"], "partner", "phase_output_approved", {
         "output_id": output_id,
         "output_name": rec["output_name"],
         "phase_number": rec["phase_number"],
-        "version": update_data.get("version", rec["version"]),
-        "qc_status": qc_result["status"] if qc_result else "skipped",
-        "qc_figures_checked": qc_result.get("figures_checked", 0) if qc_result else 0,
-        "qc_corrections_made": len(qc_result.get("corrections", [])) if qc_result else 0,
+        "version": rec["version"],
     })
 
-    response = {"success": True, "status": "approved", "pdf_storage_path": pdf_path}
-    if qc_result:
-        response["qc_result"] = {
-            "status": qc_result["status"],
-            "figures_checked": qc_result.get("figures_checked", 0),
-            "corrections_made": len(qc_result.get("corrections", [])),
-            "corrections": qc_result.get("corrections", []),
-        }
-    return response
+    return {"success": True, "status": "approved", "pdf_storage_path": pdf_path}
 
 
 def _run_financial_qc(sb, rec: dict) -> Optional[dict]:
@@ -431,15 +410,16 @@ def _run_financial_qc(sb, rec: dict) -> Optional[dict]:
             model="claude-sonnet-4-20250514",
             max_tokens=4000,
             messages=[{"role": "user", "content": (
-                "You are a financial QC auditor. Compare every financial figure in the OUTPUT "
-                "against the SOURCE OF TRUTH.\n\n"
+                "You are a financial QC auditor doing a final check on a client deliverable. "
+                "Compare every financial figure in the OUTPUT against the SOURCE OF TRUTH.\n\n"
                 f"SOURCE OF TRUTH (Phase 3 Profit Leak Workbook):\n{phase3_content_md}\n\n"
                 f"OUTPUT TO CHECK:\n{output_content_md}\n\n"
-                "Instructions:\n"
-                "1. Extract every dollar amount, percentage, headcount, and calculated figure from both documents\n"
-                "2. For each figure in the OUTPUT, find the corresponding figure in the SOURCE OF TRUTH\n"
-                "3. Flag any mismatches — wrong amounts, rounding differences, missing figures that should be present\n"
-                "4. For each mismatch, provide the correction\n\n"
+                "Focus on errors that document rendering could introduce:\n"
+                "- Numbers reformatted incorrectly (e.g., $1,697,246 became $1,697)\n"
+                "- Figures dropped during template placeholder replacement\n"
+                "- Dollar amounts that shifted or got truncated\n"
+                "- Percentages that changed precision\n"
+                "- Totals that no longer sum correctly\n\n"
                 "Respond in JSON only, no other text:\n"
                 '{\n'
                 '  "status": "clean" or "corrections_needed",\n'
@@ -449,7 +429,7 @@ def _run_financial_qc(sb, rec: dict) -> Optional[dict]:
                 '      "location": "description of where in the output",\n'
                 '      "output_value": "what the output says",\n'
                 '      "correct_value": "what it should say per Phase 3",\n'
-                '      "type": "wrong_amount | rounding | missing | extra"\n'
+                '      "type": "wrong_amount | rounding | missing | truncated"\n'
                 '    }\n'
                 '  ]\n'
                 '}'
@@ -494,7 +474,6 @@ def _run_financial_qc(sb, rec: dict) -> Optional[dict]:
         corrected_md = correction_response.content[0].text
     except Exception as exc:
         logger.warning("QC: Anthropic API error during correction: %s", exc)
-        # Comparison found issues but correction failed — report mismatches without correcting
         return {
             "status": "error",
             "figures_checked": figures_checked,
@@ -521,9 +500,14 @@ async def patch_output(
     body: PatchOutputBody,
     user: dict = Depends(verify_partner_auth),
 ):
-    """Partial update of a phase output — supports pdf_approved and status."""
+    """Partial update of a phase output — supports pdf_approved and status.
+
+    When pdf_approved=true on a Phase 5 output, runs financial QC against the
+    Phase 3 workbook before approving. If mismatches are found, content_md is
+    corrected, version bumped, and the caller is told to re-render.
+    """
     sb = get_supabase()
-    existing = sb.table("phase_output_content").select("id, engagement_id, output_name, phase_number, version").eq("id", output_id).execute()
+    existing = sb.table("phase_output_content").select("*").eq("id", output_id).execute()
     if not existing.data:
         raise HTTPException(status_code=404, detail="Output not found")
 
@@ -540,6 +524,16 @@ async def patch_output(
     if len(update_data) == 1:
         raise HTTPException(status_code=400, detail="No fields to update")
 
+    # --- Financial QC: Phase 5 format approval only ---
+    qc_result = None
+    re_render_needed = False
+    if body.pdf_approved and rec["phase_number"] == 5 and rec.get("content_md"):
+        qc_result = _run_financial_qc(sb, rec)
+        if qc_result and qc_result.get("status") == "corrected" and qc_result.get("corrected_md"):
+            update_data["content_md"] = qc_result["corrected_md"]
+            update_data["version"] = rec["version"] + 1
+            re_render_needed = True
+
     sb.table("phase_output_content").update(update_data).eq("id", output_id).execute()
 
     action = "phase_output_format_approved" if body.pdf_approved else "phase_output_updated"
@@ -547,7 +541,21 @@ async def patch_output(
         "output_id": output_id,
         "output_name": rec["output_name"],
         "phase_number": rec["phase_number"],
-        "updates": {k: v for k, v in update_data.items() if k != "updated_at"},
+        "updates": {k: v for k, v in update_data.items() if k not in ("updated_at", "content_md")},
+        "qc_status": qc_result["status"] if qc_result else "skipped",
+        "qc_figures_checked": qc_result.get("figures_checked", 0) if qc_result else 0,
+        "qc_corrections_made": len(qc_result.get("corrections", [])) if qc_result else 0,
     })
 
-    return {"success": True, "id": output_id, "updated": update_data}
+    response: dict = {"success": True, "id": output_id, "updated": {
+        k: v for k, v in update_data.items() if k not in ("content_md",)
+    }}
+    if qc_result:
+        response["qc_result"] = {
+            "status": qc_result["status"],
+            "figures_checked": qc_result.get("figures_checked", 0),
+            "corrections_made": len(qc_result.get("corrections", [])),
+            "corrections": qc_result.get("corrections", []),
+            "re_render_needed": re_render_needed,
+        }
+    return response

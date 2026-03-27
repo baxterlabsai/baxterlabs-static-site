@@ -306,7 +306,7 @@ export default function EngagementDetail() {
   const [editInstruction, setEditInstruction] = useState('')
   const [approvingOutputId, setApprovingOutputId] = useState<string | null>(null)
   const [approveConfirmId, setApproveConfirmId] = useState<string | null>(null)
-  const [qcResults, setQcResults] = useState<Record<string, { status: string; figures_checked: number; corrections_made: number; corrections: Array<{ location: string; was: string; now: string }> }>>({})
+  const [qcResults, setQcResults] = useState<Record<string, { status: string; figures_checked: number; corrections_made: number; corrections: Array<{ location: string; was: string; now: string }>; re_render_needed?: boolean }>>({})
   const [expandedQcId, setExpandedQcId] = useState<string | null>(null)
   const [copiedEdit, setCopiedEdit] = useState<string | null>(null)
   const [copiedSendDeliverables, setCopiedSendDeliverables] = useState(false)
@@ -635,12 +635,43 @@ export default function EngagementDetail() {
     setTimeout(() => setCopiedEdit(null), 2000)
   }
 
-  const approveFormat = async (outputId: string) => {
+  const approveFormat = async (outputId: string, phaseNumber: number) => {
     setApprovingFormatId(outputId)
     try {
-      await apiPatch(`/api/phase-output-content/${outputId}`, { pdf_approved: true })
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 60000)
+      let res: { success: boolean; qc_result?: { status: string; figures_checked: number; corrections_made: number; corrections: Array<{ location: string; was: string; now: string }>; re_render_needed: boolean } }
+      try {
+        res = await apiPatch(`/api/phase-output-content/${outputId}`, { pdf_approved: true })
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          toast('Format approved — QC check timed out, manual review recommended', 'info')
+          await refreshPhaseOutputContent()
+          setApprovingFormatId(null)
+          return
+        }
+        throw err
+      } finally {
+        clearTimeout(timeout)
+      }
+
       await refreshPhaseOutputContent()
-      toast('Format approved', 'success')
+
+      if (res.qc_result) {
+        setQcResults(prev => ({ ...prev, [outputId]: res.qc_result! }))
+        if (res.qc_result.status === 'corrected' && res.qc_result.corrections_made > 0) {
+          toast(`Content corrected — ${res.qc_result.corrections_made} figure${res.qc_result.corrections_made === 1 ? '' : 's'} fixed. Re-render needed.`, 'info')
+          setExpandedQcId(outputId)
+        } else if (res.qc_result.status === 'clean') {
+          toast(`Format approved — QC passed (${res.qc_result.figures_checked} figures verified)`, 'success')
+        } else if (res.qc_result.status === 'error') {
+          toast('Format approved — QC check could not run, manual review recommended', 'info')
+        } else {
+          toast('Format approved', 'success')
+        }
+      } else {
+        toast('Format approved', 'success')
+      }
     } catch {
       toast('Approval failed', 'error')
     }
@@ -668,42 +699,9 @@ export default function EngagementDetail() {
   const approveOutput = async (outputId: string) => {
     setApprovingOutputId(outputId)
     try {
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 60000)
-      let res: { success: boolean; qc_result?: { status: string; figures_checked: number; corrections_made: number; corrections: Array<{ location: string; was: string; now: string }> } }
-      try {
-        res = await apiPut(`/api/phase-output-content/${outputId}/approve`)
-      } catch (err) {
-        // If timeout or network error, try approving without QC feedback
-        if (err instanceof DOMException && err.name === 'AbortError') {
-          toast('Approved — QC check timed out, manual review recommended', 'info')
-          await refreshPhaseOutputContent()
-          setApprovingOutputId(null)
-          setApproveConfirmId(null)
-          return
-        }
-        throw err
-      } finally {
-        clearTimeout(timeout)
-      }
-
+      await apiPut(`/api/phase-output-content/${outputId}/approve`)
       await refreshPhaseOutputContent()
-
-      if (res.qc_result) {
-        setQcResults(prev => ({ ...prev, [outputId]: res.qc_result! }))
-        if (res.qc_result.status === 'corrected' && res.qc_result.corrections_made > 0) {
-          toast(`Approved with corrections — ${res.qc_result.corrections_made} figure${res.qc_result.corrections_made === 1 ? '' : 's'} fixed`, 'info')
-          setExpandedQcId(outputId)
-        } else if (res.qc_result.status === 'clean') {
-          toast(`Approved — QC passed (${res.qc_result.figures_checked} figures verified)`, 'success')
-        } else if (res.qc_result.status === 'error') {
-          toast('Approved — QC check could not run, manual review recommended', 'info')
-        } else {
-          toast('Deliverable approved', 'success')
-        }
-      } else {
-        toast('Deliverable approved', 'success')
-      }
+      toast('Deliverable approved', 'success')
     } catch {
       toast('Approval failed', 'error')
     }
@@ -1216,11 +1214,11 @@ export default function EngagementDetail() {
                                       <div className="relative group/render">
                                         <button
                                           onClick={() => output.status === 'approved' && copyDeliveryCommand(`render-${output.id}`, `/${renderSkill} ${clientName} "${output.output_name}"`)}
-                                          disabled={output.status !== 'approved' || !!approvingOutputId}
+                                          disabled={output.status !== 'approved'}
                                           className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded font-semibold transition-colors ${
                                             copiedDeliveryCmd === `render-${output.id}`
                                               ? 'bg-teal/10 text-teal'
-                                              : output.status === 'approved' && !approvingOutputId
+                                              : output.status === 'approved'
                                               ? 'bg-gold text-white hover:bg-gold/90'
                                               : 'bg-gray-light text-gray-warm cursor-not-allowed'
                                           }`}
@@ -1246,12 +1244,10 @@ export default function EngagementDetail() {
                                     {output.status === 'draft' && (
                                       <button
                                         onClick={() => setApproveConfirmId(output.id)}
-                                        disabled={!!approvingOutputId}
+                                        disabled={approvingOutputId === output.id}
                                         className="text-xs bg-green text-white px-3 py-1 rounded font-semibold hover:bg-green/90 disabled:opacity-50"
                                       >
-                                        {approvingOutputId === output.id
-                                          ? (isPhase5Deliverable ? 'Running QC...' : 'Approving...')
-                                          : 'Approve'}
+                                        {approvingOutputId === output.id ? '...' : 'Approve'}
                                       </button>
                                     )}
                                   </div>
@@ -1261,48 +1257,19 @@ export default function EngagementDetail() {
                                 {approveConfirmId === output.id && (
                                   <div className="mt-2 mb-3 p-3 bg-amber/5 border border-amber/20 rounded-lg flex items-center justify-between">
                                     <p className="text-sm text-charcoal">{isPhase5Deliverable
-                                      ? <>Approve <strong>{output.output_name}</strong> for client delivery?{' '}This will run a financial QC check and generate the final PDF.</>
+                                      ? <>Approve <strong>{output.output_name}</strong> for client delivery? This will generate the final PDF.</>
                                       : <>Approve <strong>{output.output_name}</strong>? This marks the output as reviewed and ready for the next phase.</>
                                     }</p>
                                     <div className="flex items-center gap-2 flex-shrink-0">
-                                      <button onClick={() => setApproveConfirmId(null)} disabled={!!approvingOutputId} className="text-xs text-gray-warm font-semibold px-3 py-1 rounded hover:bg-gray-light disabled:opacity-50">Cancel</button>
+                                      <button onClick={() => setApproveConfirmId(null)} className="text-xs text-gray-warm font-semibold px-3 py-1 rounded hover:bg-gray-light">Cancel</button>
                                       <button
                                         onClick={() => approveOutput(output.id)}
-                                        disabled={!!approvingOutputId}
+                                        disabled={approvingOutputId === output.id}
                                         className="text-xs bg-green text-white px-3 py-1 rounded font-semibold hover:bg-green/90 disabled:opacity-50"
                                       >
-                                        {approvingOutputId === output.id
-                                          ? (isPhase5Deliverable ? 'Running QC...' : 'Approving...')
-                                          : 'Confirm Approve'}
+                                        {approvingOutputId === output.id ? 'Approving...' : 'Confirm Approve'}
                                       </button>
                                     </div>
-                                  </div>
-                                )}
-
-                                {/* QC Corrections panel — shown after approve with corrections */}
-                                {qcResults[output.id] && qcResults[output.id].corrections_made > 0 && (
-                                  <div className="mt-2 mb-3 border border-gold/30 rounded-lg overflow-hidden">
-                                    <button
-                                      onClick={() => setExpandedQcId(expandedQcId === output.id ? null : output.id)}
-                                      className="w-full flex items-center justify-between px-3 py-2 bg-gold/5 hover:bg-gold/10 transition-colors"
-                                    >
-                                      <span className="text-xs font-semibold text-gold">
-                                        QC Corrections ({qcResults[output.id].corrections_made} figure{qcResults[output.id].corrections_made === 1 ? '' : 's'} fixed, {qcResults[output.id].figures_checked} checked)
-                                      </span>
-                                      <svg className={`w-4 h-4 text-gold transition-transform ${expandedQcId === output.id ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                                      </svg>
-                                    </button>
-                                    {expandedQcId === output.id && (
-                                      <div className="px-3 py-2 space-y-2">
-                                        {qcResults[output.id].corrections.map((c, i) => (
-                                          <div key={i} className="text-xs border-b border-gray-light/50 pb-2 last:border-0 last:pb-0">
-                                            <p className="text-gray-warm mb-1">{c.location}</p>
-                                            <p><span className="text-crimson line-through">{c.was}</span> <span className="text-green font-semibold">{c.now}</span></p>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
                                   </div>
                                 )}
 
@@ -1374,17 +1341,46 @@ export default function EngagementDetail() {
                                             </button>
                                           </div>
                                           <button
-                                            onClick={() => approveFormat(output.id)}
-                                            disabled={approvingFormatId === output.id}
+                                            onClick={() => approveFormat(output.id, output.phase_number)}
+                                            disabled={!!approvingFormatId}
                                             className="text-xs bg-green text-white px-3 py-1.5 rounded font-semibold hover:bg-green/90 disabled:opacity-50"
                                           >
-                                            {approvingFormatId === output.id ? 'Approving...' : output.output_type === 'pptx' ? 'Approve Layout' : 'Approve Format'}
+                                            {approvingFormatId === output.id
+                                              ? (output.phase_number === 5 ? 'Running final QC...' : 'Approving...')
+                                              : output.output_type === 'pptx' ? 'Approve Layout' : 'Approve Format'}
                                           </button>
                                         </div>
                                       )}
 
+                                      {/* QC Corrections panel — shown after format approve with corrections */}
+                                      {qcResults[output.id] && qcResults[output.id].corrections_made > 0 && (
+                                        <div className="mt-3 border border-gold/30 rounded-lg overflow-hidden">
+                                          <button
+                                            onClick={() => setExpandedQcId(expandedQcId === output.id ? null : output.id)}
+                                            className="w-full flex items-center justify-between px-3 py-2 bg-gold/5 hover:bg-gold/10 transition-colors"
+                                          >
+                                            <span className="text-xs font-semibold text-gold">
+                                              QC Corrections ({qcResults[output.id].corrections_made} figure{qcResults[output.id].corrections_made === 1 ? '' : 's'} fixed, {qcResults[output.id].figures_checked} checked) — re-render needed
+                                            </span>
+                                            <svg className={`w-4 h-4 text-gold transition-transform ${expandedQcId === output.id ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                                            </svg>
+                                          </button>
+                                          {expandedQcId === output.id && (
+                                            <div className="px-3 py-2 space-y-2">
+                                              {qcResults[output.id].corrections.map((c, i) => (
+                                                <div key={i} className="text-xs border-b border-gray-light/50 pb-2 last:border-0 last:pb-0">
+                                                  <p className="text-gray-warm mb-1">{c.location}</p>
+                                                  <p><span className="text-crimson line-through">{c.was}</span> <span className="text-green font-semibold">{c.now}</span></p>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+
                                       {/* Format/Layout approved badge + download links */}
-                                      {hasPreview && output.pdf_approved && (
+                                      {hasPreview && output.pdf_approved && !(qcResults[output.id]?.re_render_needed) && (
                                         <div className="mt-3 flex items-center gap-3 flex-wrap">
                                           <span className="inline-flex items-center gap-1 text-xs font-semibold text-green bg-green/10 px-2.5 py-1 rounded-full">
                                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
