@@ -1,11 +1,13 @@
 """Router for phase_output_content — Cowork-synced phase outputs with versioning."""
 from __future__ import annotations
 
+import json
 import logging
 import os
 from datetime import datetime, timezone
 from typing import Optional
 
+import anthropic
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 
@@ -337,7 +339,7 @@ async def approve_output(
     output_id: str,
     user: dict = Depends(verify_partner_auth),
 ):
-    """Approve a Phase 5 deliverable. Triggers PDF generation for binary outputs."""
+    """Approve a phase output. For Phase 5, runs financial QC against Phase 3 workbook first."""
     sb = get_supabase()
     existing = sb.table("phase_output_content").select("*").eq("id", output_id).execute()
     if not existing.data:
@@ -354,6 +356,11 @@ async def approve_output(
             sb, rec["storage_path"], rec["engagement_id"], rec["output_name"], rec["version"],
         )
 
+    # --- QC check: only for Phase 5 outputs with markdown content ---
+    qc_result = None
+    if rec["phase_number"] == 5 and rec.get("content_md"):
+        qc_result = _run_financial_qc(sb, rec)
+
     now_iso = datetime.now(timezone.utc).isoformat()
     update_data = {
         "status": "approved",
@@ -362,16 +369,150 @@ async def approve_output(
     if pdf_path:
         update_data["pdf_storage_path"] = pdf_path
 
+    # If QC made corrections, write the corrected content and bump version
+    if qc_result and qc_result.get("status") == "corrected" and qc_result.get("corrected_md"):
+        update_data["content_md"] = qc_result["corrected_md"]
+        update_data["version"] = rec["version"] + 1
+
     sb.table("phase_output_content").update(update_data).eq("id", output_id).execute()
 
-    log_activity(rec["engagement_id"], "partner", "phase_output_approved", {
+    log_activity(rec["engagement_id"], "partner", "deliverable_approved", {
         "output_id": output_id,
         "output_name": rec["output_name"],
         "phase_number": rec["phase_number"],
-        "version": rec["version"],
+        "version": update_data.get("version", rec["version"]),
+        "qc_status": qc_result["status"] if qc_result else "skipped",
+        "qc_figures_checked": qc_result.get("figures_checked", 0) if qc_result else 0,
+        "qc_corrections_made": len(qc_result.get("corrections", [])) if qc_result else 0,
     })
 
-    return {"success": True, "status": "approved", "pdf_storage_path": pdf_path}
+    response = {"success": True, "status": "approved", "pdf_storage_path": pdf_path}
+    if qc_result:
+        response["qc_result"] = {
+            "status": qc_result["status"],
+            "figures_checked": qc_result.get("figures_checked", 0),
+            "corrections_made": len(qc_result.get("corrections", [])),
+            "corrections": qc_result.get("corrections", []),
+        }
+    return response
+
+
+def _run_financial_qc(sb, rec: dict) -> Optional[dict]:
+    """Run financial QC against Phase 3 workbook. Returns None if QC cannot run."""
+    engagement_id = rec["engagement_id"]
+    output_content_md = rec["content_md"]
+
+    # Load Phase 3 approved workbook
+    try:
+        phase3_rows = (
+            sb.table("phase_output_content")
+            .select("content_md")
+            .eq("engagement_id", engagement_id)
+            .eq("phase_number", 3)
+            .eq("status", "approved")
+            .order("version", desc=True)
+            .limit(1)
+            .execute()
+        )
+    except Exception as exc:
+        logger.warning("QC: failed to load Phase 3 for engagement %s: %s", engagement_id, exc)
+        return None
+
+    if not phase3_rows.data or not phase3_rows.data[0].get("content_md"):
+        logger.info("QC: no approved Phase 3 workbook for engagement %s — skipping", engagement_id)
+        return None
+
+    phase3_content_md = phase3_rows.data[0]["content_md"]
+
+    # Step 1: Compare figures
+    try:
+        client = anthropic.Anthropic()
+        compare_response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=4000,
+            messages=[{"role": "user", "content": (
+                "You are a financial QC auditor. Compare every financial figure in the OUTPUT "
+                "against the SOURCE OF TRUTH.\n\n"
+                f"SOURCE OF TRUTH (Phase 3 Profit Leak Workbook):\n{phase3_content_md}\n\n"
+                f"OUTPUT TO CHECK:\n{output_content_md}\n\n"
+                "Instructions:\n"
+                "1. Extract every dollar amount, percentage, headcount, and calculated figure from both documents\n"
+                "2. For each figure in the OUTPUT, find the corresponding figure in the SOURCE OF TRUTH\n"
+                "3. Flag any mismatches — wrong amounts, rounding differences, missing figures that should be present\n"
+                "4. For each mismatch, provide the correction\n\n"
+                "Respond in JSON only, no other text:\n"
+                '{\n'
+                '  "status": "clean" or "corrections_needed",\n'
+                '  "figures_checked": <number>,\n'
+                '  "mismatches": [\n'
+                '    {\n'
+                '      "location": "description of where in the output",\n'
+                '      "output_value": "what the output says",\n'
+                '      "correct_value": "what it should say per Phase 3",\n'
+                '      "type": "wrong_amount | rounding | missing | extra"\n'
+                '    }\n'
+                '  ]\n'
+                '}'
+            )}],
+        )
+        compare_text = compare_response.content[0].text.strip()
+        # Strip markdown fences if present
+        if compare_text.startswith("```"):
+            compare_text = compare_text.split("\n", 1)[1] if "\n" in compare_text else compare_text[3:]
+            if compare_text.endswith("```"):
+                compare_text = compare_text[:-3].strip()
+        comparison = json.loads(compare_text)
+    except (json.JSONDecodeError, KeyError, IndexError) as exc:
+        logger.warning("QC: failed to parse comparison response: %s", exc)
+        return {"status": "error", "figures_checked": 0, "corrections": []}
+    except Exception as exc:
+        logger.warning("QC: Anthropic API error during comparison: %s", exc)
+        return {"status": "error", "figures_checked": 0, "corrections": []}
+
+    figures_checked = comparison.get("figures_checked", 0)
+
+    if comparison.get("status") == "clean" or not comparison.get("mismatches"):
+        return {"status": "clean", "figures_checked": figures_checked, "corrections": []}
+
+    # Step 2: Auto-correct
+    mismatches = comparison["mismatches"]
+    try:
+        correction_response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=16000,
+            messages=[{"role": "user", "content": (
+                "You are a financial editor. Apply these corrections to the document.\n"
+                "For each correction, find the exact text containing the wrong value and "
+                "replace it with the correct value.\n"
+                "Do not change anything else. Preserve all formatting, citations, and structure.\n\n"
+                f"CORRECTIONS TO APPLY:\n{json.dumps(mismatches)}\n\n"
+                f"DOCUMENT TO CORRECT:\n{output_content_md}\n\n"
+                "Return the complete corrected document. Nothing else — no preamble, "
+                "no explanation, just the full corrected document."
+            )}],
+        )
+        corrected_md = correction_response.content[0].text
+    except Exception as exc:
+        logger.warning("QC: Anthropic API error during correction: %s", exc)
+        # Comparison found issues but correction failed — report mismatches without correcting
+        return {
+            "status": "error",
+            "figures_checked": figures_checked,
+            "corrections": [
+                {"location": m["location"], "was": m["output_value"], "now": m["correct_value"]}
+                for m in mismatches
+            ],
+        }
+
+    return {
+        "status": "corrected",
+        "figures_checked": figures_checked,
+        "corrections": [
+            {"location": m["location"], "was": m["output_value"], "now": m["correct_value"]}
+            for m in mismatches
+        ],
+        "corrected_md": corrected_md,
+    }
 
 
 @router.patch("/phase-output-content/{output_id}")
