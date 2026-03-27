@@ -635,7 +635,7 @@ export default function EngagementDetail() {
     setTimeout(() => setCopiedEdit(null), 2000)
   }
 
-  const approveFormat = async (outputId: string, phaseNumber: number) => {
+  const approveFormat = async (outputId: string, _phaseNumber: number) => {
     setApprovingFormatId(outputId)
     try {
       const controller = new AbortController()
