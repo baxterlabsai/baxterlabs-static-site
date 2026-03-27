@@ -1243,7 +1243,9 @@ export default function EngagementDetail() {
                                 {/* === CONTENT VIEWER === */}
                                 {(() => {
                                   const previewUrl = output.docx_pdf_preview_path_url || output.pdf_preview_path_url || output.pdf_storage_path_url
-                                  const hasContent = output.content_md && output.content_md.trim().length > 0
+                                  const hasContent = !!(output.content_md && output.content_md.trim().length > 0)
+                                  // DEBUG: remove after confirming content_md arrives from API
+                                  if (phase === 5) console.log('[ContentViewer]', output.output_name, { output_type: output.output_type, content_md_type: typeof output.content_md, content_md_length: output.content_md?.length ?? 0, hasContent, hasPreview: !!previewUrl, previewUrl })
                                   const hasPreview = !!previewUrl
                                   const hasBoth = hasContent && hasPreview
                                   const showingSource = showSourceContentIds.has(output.id)
@@ -2411,17 +2413,20 @@ export default function EngagementDetail() {
             </button>
           </div>
           <div className="flex-1 overflow-y-auto p-8">
-            {expandedOutput.output_type === 'md' && expandedOutput.content_md ? (
-              <div className="prose prose-sm max-w-none text-charcoal">
-                <MarkdownContent content={expandedOutput.content_md} />
-              </div>
-            ) : (() => {
+            {(() => {
               const previewUrl = expandedOutput.docx_pdf_preview_path_url || expandedOutput.pdf_preview_path_url || expandedOutput.pptx_path_url || expandedOutput.pdf_storage_path_url
-              return previewUrl ? (
-                <embed src={previewUrl} type="application/pdf" className="w-full h-full min-h-[calc(100vh-140px)]" />
-              ) : (
-                <p className="text-gray-warm text-center py-12">No preview available for this output.</p>
-              )
+              const hasContent = !!(expandedOutput.content_md && expandedOutput.content_md.trim().length > 0)
+              if (previewUrl) {
+                return <embed src={previewUrl} type="application/pdf" className="w-full h-full min-h-[calc(100vh-140px)]" />
+              }
+              if (hasContent) {
+                return (
+                  <div className="prose prose-sm max-w-none text-charcoal">
+                    <MarkdownContent content={expandedOutput.content_md!} />
+                  </div>
+                )
+              }
+              return <p className="text-gray-warm text-center py-12">No preview available for this output.</p>
             })()}
           </div>
         </div>
