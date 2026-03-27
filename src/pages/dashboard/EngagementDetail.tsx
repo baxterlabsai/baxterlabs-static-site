@@ -676,7 +676,7 @@ export default function EngagementDetail() {
       } catch (err) {
         // If timeout or network error, try approving without QC feedback
         if (err instanceof DOMException && err.name === 'AbortError') {
-          toast('Approved — QC check timed out, manual review recommended', 'warning')
+          toast('Approved — QC check timed out, manual review recommended', 'info')
           await refreshPhaseOutputContent()
           setApprovingOutputId(null)
           setApproveConfirmId(null)
@@ -692,12 +692,12 @@ export default function EngagementDetail() {
       if (res.qc_result) {
         setQcResults(prev => ({ ...prev, [outputId]: res.qc_result! }))
         if (res.qc_result.status === 'corrected' && res.qc_result.corrections_made > 0) {
-          toast(`Approved with corrections — ${res.qc_result.corrections_made} figure${res.qc_result.corrections_made === 1 ? '' : 's'} fixed`, 'warning')
+          toast(`Approved with corrections — ${res.qc_result.corrections_made} figure${res.qc_result.corrections_made === 1 ? '' : 's'} fixed`, 'info')
           setExpandedQcId(outputId)
         } else if (res.qc_result.status === 'clean') {
           toast(`Approved — QC passed (${res.qc_result.figures_checked} figures verified)`, 'success')
         } else if (res.qc_result.status === 'error') {
-          toast('Approved — QC check could not run, manual review recommended', 'warning')
+          toast('Approved — QC check could not run, manual review recommended', 'info')
         } else {
           toast('Deliverable approved', 'success')
         }
