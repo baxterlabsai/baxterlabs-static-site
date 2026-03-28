@@ -1165,8 +1165,6 @@ export default function EngagementDetail() {
                             {pocOutputs.map(output => {
                               const isPhase5Deliverable = phase === 5
                               const isEditing = editingOutputId === output.id
-                              const renderSkill = output.output_type === 'pptx' ? 'render-pptx' : output.output_type === 'xlsx' ? 'render-xlsx' : 'render-docx'
-                              const clientName = data?.clients?.company_name || ''
 
                               return (
                               <div key={output.id} className="px-4 py-4">
@@ -1207,22 +1205,8 @@ export default function EngagementDetail() {
                                       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9m11.25-5.25v4.5m0-4.5h-4.5m4.5 0L15 9m-11.25 11.25v-4.5m0 4.5h4.5m-4.5 0L9 15m11.25 5.25v-4.5m0 4.5h-4.5m4.5 0L15 15" />
                                     </svg>
                                   </button>
-                                  {/* Output actions: Render + Approve + Version history */}
+                                  {/* Output actions: Approve + Version history */}
                                   <div className="flex items-center gap-2 flex-shrink-0">
-                                    {/* Render button — only visible after Phase 6 QC has started and output is approved */}
-                                    {isPhase5Deliverable && output.status === 'approved' && completedPhases.includes(6) && (
-                                      <button
-                                        onClick={() => copyDeliveryCommand(`render-${output.id}`, `/${renderSkill} ${clientName} "${output.output_name}"`)}
-                                        className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded font-semibold transition-colors ${
-                                          copiedDeliveryCmd === `render-${output.id}`
-                                            ? 'bg-teal/10 text-teal'
-                                            : 'bg-gold text-white hover:bg-gold/90'
-                                        }`}
-                                      >
-                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
-                                        {copiedDeliveryCmd === `render-${output.id}` ? 'Copied!' : 'Render'}
-                                      </button>
-                                    )}
                                     {output.version > 1 && (
                                       <button
                                         onClick={() => loadVersionHistory(output.id)}
@@ -1511,7 +1495,55 @@ export default function EngagementDetail() {
         )
       })()}
 
-      {/* Old Render Deliverables section removed — render buttons now live on each Phase 5 output panel */}
+      {/* Render Deliverables — appears after Phase 6 QC is complete */}
+      {data && completedPhases.includes(6) && (() => {
+        const phase5Outputs = phaseOutputContent
+          .filter(o => o.phase_number === 5 && o.status === 'approved')
+          .sort((a, b) => (a.output_number || 1) - (b.output_number || 1))
+        if (phase5Outputs.length === 0) return null
+        const clientName = data.clients?.company_name || ''
+        return (
+          <section className="bg-white rounded-lg border border-teal p-5 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-display text-lg font-bold text-teal">Render Deliverables</h3>
+                <p className="text-xs text-gray-warm mt-0.5">
+                  QC complete — render each deliverable to produce the final .docx / .pptx files
+                </p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {phase5Outputs.map(output => {
+                const renderSkill = output.output_type === 'pptx' ? 'render-pptx' : output.output_type === 'xlsx' ? 'render-xlsx' : 'render-docx'
+                return (
+                  <div key={output.id} className="flex items-center justify-between px-4 py-3 bg-ivory rounded-lg">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="w-8 h-8 rounded bg-white flex items-center justify-center text-xs font-bold text-gray-warm flex-shrink-0">
+                        {FILE_TYPE_ICONS[output.output_type] || '?'}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-charcoal truncate">{output.output_name}</p>
+                        <p className="text-xs text-gray-warm">.{output.output_type} · Version {output.version}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => copyDeliveryCommand(`render-${output.id}`, `/${renderSkill} ${clientName} "${output.output_name}"`)}
+                      className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-semibold transition-colors flex-shrink-0 ${
+                        copiedDeliveryCmd === `render-${output.id}`
+                          ? 'bg-teal/10 text-teal'
+                          : 'bg-gold text-white hover:bg-gold/90'
+                      }`}
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                      {copiedDeliveryCmd === `render-${output.id}` ? 'Copied!' : 'Render'}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )
+      })()}
 
       {/* Deliverables Section */}
       {data && DELIVERABLE_STATUSES_SHOWING.has(data.status) && (() => {
