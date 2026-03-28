@@ -1499,12 +1499,17 @@ export default function EngagementDetail() {
 
       {/* Render Deliverables — appears after Phase 6 QC is complete */}
       {data && completedPhases.includes(6) && (() => {
+        // Phase 5 narrative deliverables + Phase 3 workbook
         const phase5Outputs = phaseOutputContent
           .filter(o => o.phase_number === 5 && o.status === 'approved')
           .sort((a, b) => (a.output_number || 1) - (b.output_number || 1))
-        if (phase5Outputs.length === 0) return null
+        const phase3Workbook = phaseOutputContent.find(
+          o => o.phase_number === 3 && o.output_number === 1 && o.status === 'approved'
+        )
+        const renderOutputs = [...phase5Outputs, ...(phase3Workbook ? [phase3Workbook] : [])]
+        if (renderOutputs.length === 0) return null
         const clientName = data.clients?.company_name || ''
-        const allFormatApproved = phase5Outputs.length > 0 && phase5Outputs.every(o => o.pdf_approved)
+        const allFormatApproved = renderOutputs.length > 0 && renderOutputs.every(o => o.pdf_approved)
         return (
           <section className="bg-white rounded-lg border border-teal p-5 mb-6">
             <div className="flex items-center justify-between mb-4">
@@ -1518,13 +1523,17 @@ export default function EngagementDetail() {
               </div>
             </div>
             <div className="space-y-4">
-              {phase5Outputs.map(output => {
-                const renderSkill = output.output_type === 'pptx' ? 'render-pptx' : output.output_type === 'xlsx' ? 'render-xlsx' : 'render-docx'
-                const hasRenderedFile = !!(output.docx_path || output.pptx_path)
+              {renderOutputs.map(output => {
+                const isWorkbook = output.phase_number === 3
+                const renderSkill = isWorkbook ? 'render-xlsx' : output.output_type === 'pptx' ? 'render-pptx' : output.output_type === 'xlsx' ? 'render-xlsx' : 'render-docx'
+                const displayType = isWorkbook ? 'xlsx' : output.output_type
+                const displayName = isWorkbook ? 'Profit Leak Quantification Workbook' : output.output_name
+                const hasRenderedFile = !!(output.xlsx_path || output.docx_path || output.pptx_path)
                 const previewUrl = output.docx_pdf_preview_path_url
                 const hasPreview = !!previewUrl
                 const isApproved = output.pdf_approved
                 const isGenerating = generatingPreview === output.id
+                const previewQueryParam = isWorkbook ? '?phase_number=3' : ''
 
                 return (
                   <div key={output.id} className="rounded-lg border border-gray-light overflow-hidden">
@@ -1532,11 +1541,11 @@ export default function EngagementDetail() {
                     <div className="flex items-center justify-between px-4 py-3 bg-ivory">
                       <div className="flex items-center gap-3 min-w-0">
                         <span className="w-8 h-8 rounded bg-white flex items-center justify-center text-xs font-bold text-gray-warm flex-shrink-0">
-                          {FILE_TYPE_ICONS[output.output_type] || '?'}
+                          {FILE_TYPE_ICONS[displayType] || '?'}
                         </span>
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-charcoal truncate">{output.output_name}</p>
-                          <p className="text-xs text-gray-warm">.{output.output_type} · Version {output.version}</p>
+                          <p className="text-sm font-semibold text-charcoal truncate">{displayName}</p>
+                          <p className="text-xs text-gray-warm">.{displayType} · Version {output.version}</p>
                         </div>
                         {/* Status badges */}
                         {isApproved ? (
@@ -1549,7 +1558,7 @@ export default function EngagementDetail() {
                         {/* State 1: Not rendered — show Render button */}
                         {!hasRenderedFile && (
                           <button
-                            onClick={() => copyDeliveryCommand(`render-${output.id}`, `/${renderSkill} ${clientName} "${output.output_name}"`)}
+                            onClick={() => copyDeliveryCommand(`render-${output.id}`, `/${renderSkill} ${clientName} "${displayName}"`)}
                             className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-semibold transition-colors ${
                               copiedDeliveryCmd === `render-${output.id}`
                                 ? 'bg-teal/10 text-teal'
@@ -1568,10 +1577,9 @@ export default function EngagementDetail() {
                             onClick={async () => {
                               setGeneratingPreview(output.id)
                               try {
-                                const res = await apiPost<{ success: boolean; preview_url: string }>(`/api/engagements/${data.id}/outputs/${output.output_number}/generate-preview`)
+                                const res = await apiPost<{ success: boolean; preview_url: string }>(`/api/engagements/${data.id}/outputs/${output.output_number}/generate-preview${previewQueryParam}`)
                                 if (res.success) {
                                   toast('Preview generated', 'success')
-                                  // Refresh phase output content
                                   const fresh = await apiGet<{ outputs: PhaseOutputContent[] }>(`/api/engagements/${data.id}/phase-output-content`)
                                   setPhaseOutputContent(fresh.outputs)
                                 }
@@ -1604,7 +1612,7 @@ export default function EngagementDetail() {
                               onClick={async () => {
                                 setGeneratingPreview(output.id)
                                 try {
-                                  const res = await apiPost<{ success: boolean }>(`/api/engagements/${data.id}/outputs/${output.output_number}/generate-preview`)
+                                  const res = await apiPost<{ success: boolean }>(`/api/engagements/${data.id}/outputs/${output.output_number}/generate-preview${previewQueryParam}`)
                                   if (res.success) {
                                     toast('Preview regenerated', 'success')
                                     const fresh = await apiGet<{ outputs: PhaseOutputContent[] }>(`/api/engagements/${data.id}/phase-output-content`)
@@ -1662,7 +1670,7 @@ export default function EngagementDetail() {
                           src={previewUrl}
                           className="w-full bg-gray-50"
                           style={{ height: '600px' }}
-                          title={`Preview: ${output.output_name}`}
+                          title={`Preview: ${displayName}`}
                           allow="autoplay"
                         />
                       </div>

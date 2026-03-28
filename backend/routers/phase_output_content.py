@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import anthropic
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from pydantic import BaseModel
 
 from middleware.auth import verify_partner_auth
@@ -339,15 +339,17 @@ async def trigger_pdf_conversion(
 async def generate_preview(
     engagement_id: str,
     output_number: int,
+    phase_number: int = Query(5, description="Phase number (default 5)"),
     user: dict = Depends(verify_partner_auth),
 ):
-    """Download rendered docx/pptx from Google Drive, convert to PDF via
+    """Download rendered docx/pptx/xlsx from Google Drive, convert to PDF via
     LibreOffice, upload the PDF back to Drive, and store the Drive file ID
     on the phase_output_content row.
 
-    The rendered file path is read from ``docx_path`` (or ``pptx_path`` for
-    output 3).  The engagement's ``drive_deliverables_folder_id`` is used to
-    locate the source file by name and to upload the result.
+    The rendered file path is read from ``docx_path``, ``pptx_path``, or
+    ``xlsx_path`` depending on output type.  The engagement's
+    ``drive_deliverables_folder_id`` is used to locate the source file by
+    name and to upload the result.
     """
     eng = get_engagement_by_id(engagement_id)
     if not eng:
@@ -355,24 +357,24 @@ async def generate_preview(
 
     sb = get_supabase()
 
-    # Look up the latest Phase 5 output for this output_number
+    # Look up the latest output for this phase + output_number
     rows = (
         sb.table("phase_output_content")
         .select("*")
         .eq("engagement_id", engagement_id)
-        .eq("phase_number", 5)
+        .eq("phase_number", phase_number)
         .eq("output_number", output_number)
         .order("version", desc=True)
         .limit(1)
         .execute()
     )
     if not rows.data:
-        raise HTTPException(status_code=404, detail=f"No Phase 5 output #{output_number} found")
+        raise HTTPException(status_code=404, detail=f"No Phase {phase_number} output #{output_number} found")
 
     rec = rows.data[0]
 
-    # Determine source path (docx_path for most, pptx_path for decks)
-    source_path = rec.get("pptx_path") if rec.get("output_type") == "pptx" else rec.get("docx_path")
+    # Determine source path — check xlsx_path, pptx_path, docx_path in priority order
+    source_path = rec.get("xlsx_path") or rec.get("pptx_path") or rec.get("docx_path")
     if not source_path:
         raise HTTPException(
             status_code=400,
@@ -401,7 +403,7 @@ async def generate_preview(
     # 2. Convert to PDF via LibreOffice
     ext = os.path.splitext(source_filename)[1].lower()
     if not ext:
-        ext = ".pptx" if rec.get("output_type") == "pptx" else ".docx"
+        ext = ".xlsx" if rec.get("xlsx_path") else ".pptx" if rec.get("pptx_path") else ".docx"
 
     try:
         pdf_bytes = await convert_to_pdf(source_bytes, ext)
@@ -430,7 +432,7 @@ async def generate_preview(
     log_activity(engagement_id, "system", "phase_output_preview_generated", {
         "output_name": rec["output_name"],
         "output_number": output_number,
-        "phase_number": 5,
+        "phase_number": phase_number,
         "pdf_drive_file_id": pdf_file_id,
     })
 
