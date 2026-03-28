@@ -13,7 +13,8 @@ from pydantic import BaseModel
 
 from middleware.auth import verify_partner_auth
 from services.supabase_client import get_supabase, get_engagement_by_id, log_activity
-from services.pdf_converter import convert_phase_output_to_pdf
+from services.pdf_converter import convert_to_pdf, convert_phase_output_to_pdf, ConversionError
+from services.google_drive_engagement import download_file_by_name, upload_file_to_drive_folder
 
 logger = logging.getLogger("baxterlabs.phase_output_content")
 
@@ -332,6 +333,115 @@ async def trigger_pdf_conversion(
     }).eq("id", output_id).execute()
 
     return {"success": True, "pdf_storage_path": pdf_path}
+
+
+@router.post("/engagements/{engagement_id}/outputs/{output_number}/generate-preview")
+async def generate_preview(
+    engagement_id: str,
+    output_number: int,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Download rendered docx/pptx from Google Drive, convert to PDF via
+    LibreOffice, upload the PDF back to Drive, and store the Drive file ID
+    on the phase_output_content row.
+
+    The rendered file path is read from ``docx_path`` (or ``pptx_path`` for
+    output 3).  The engagement's ``drive_deliverables_folder_id`` is used to
+    locate the source file by name and to upload the result.
+    """
+    eng = get_engagement_by_id(engagement_id)
+    if not eng:
+        raise HTTPException(status_code=404, detail="Engagement not found")
+
+    sb = get_supabase()
+
+    # Look up the latest Phase 5 output for this output_number
+    rows = (
+        sb.table("phase_output_content")
+        .select("*")
+        .eq("engagement_id", engagement_id)
+        .eq("phase_number", 5)
+        .eq("output_number", output_number)
+        .order("version", desc=True)
+        .limit(1)
+        .execute()
+    )
+    if not rows.data:
+        raise HTTPException(status_code=404, detail=f"No Phase 5 output #{output_number} found")
+
+    rec = rows.data[0]
+
+    # Determine source path (docx_path for most, pptx_path for decks)
+    source_path = rec.get("pptx_path") if rec.get("output_type") == "pptx" else rec.get("docx_path")
+    if not source_path:
+        raise HTTPException(
+            status_code=400,
+            detail="Document not yet rendered — run the render command in Cowork first",
+        )
+
+    # Get the deliverables folder ID from the engagement
+    deliverables_folder_id = eng.get("drive_deliverables_folder_id")
+    if not deliverables_folder_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Engagement has no Google Drive deliverables folder configured",
+        )
+
+    # Extract the filename from the path (last segment)
+    source_filename = source_path.rsplit("/", 1)[-1] if "/" in source_path else source_path
+
+    # 1. Download the file from Google Drive
+    source_bytes = await download_file_by_name(deliverables_folder_id, source_filename)
+    if not source_bytes:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to download '{source_filename}' from Google Drive",
+        )
+
+    # 2. Convert to PDF via LibreOffice
+    ext = os.path.splitext(source_filename)[1].lower()
+    if not ext:
+        ext = ".pptx" if rec.get("output_type") == "pptx" else ".docx"
+
+    try:
+        pdf_bytes = await convert_to_pdf(source_bytes, ext)
+    except ConversionError as e:
+        raise HTTPException(status_code=500, detail=f"PDF conversion failed: {e}")
+
+    # 3. Upload the PDF back to the same Drive folder
+    pdf_filename = os.path.splitext(source_filename)[0] + ".pdf"
+    pdf_file_id = await upload_file_to_drive_folder(
+        deliverables_folder_id,
+        pdf_filename,
+        pdf_bytes,
+        "application/pdf",
+    )
+    if not pdf_file_id:
+        raise HTTPException(status_code=500, detail="Failed to upload PDF to Google Drive")
+
+    # 4. Write the Drive file ID to docx_pdf_preview_path and clear pdf_approved
+    now_iso = datetime.now(timezone.utc).isoformat()
+    sb.table("phase_output_content").update({
+        "docx_pdf_preview_path": pdf_file_id,
+        "pdf_approved": False,
+        "updated_at": now_iso,
+    }).eq("id", rec["id"]).execute()
+
+    log_activity(engagement_id, "system", "phase_output_preview_generated", {
+        "output_name": rec["output_name"],
+        "output_number": output_number,
+        "phase_number": 5,
+        "pdf_drive_file_id": pdf_file_id,
+    })
+
+    preview_url = f"https://drive.google.com/file/d/{pdf_file_id}/preview"
+
+    return {
+        "success": True,
+        "output_id": rec["id"],
+        "pdf_drive_file_id": pdf_file_id,
+        "preview_url": preview_url,
+    }
 
 
 @router.put("/phase-output-content/{output_id}/approve")

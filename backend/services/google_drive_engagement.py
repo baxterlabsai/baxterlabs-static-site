@@ -224,6 +224,42 @@ def move_file_to_folder(file_id: str, target_folder_id: str) -> bool:
         return False
 
 
+async def download_file_by_name(
+    folder_id: str,
+    filename: str,
+) -> Optional[bytes]:
+    """Download a single file from a Drive folder by filename.
+
+    Searches the given folder for a file with the exact name, then downloads
+    its content.  Returns the raw bytes, or None on failure.
+    Never raises — all exceptions are caught and logged.
+    """
+    try:
+        service = _get_drive_service()
+        escaped = filename.replace("'", "\\'")
+        result = service.files().list(
+            q=f"'{folder_id}' in parents and name = '{escaped}' and trashed = false",
+            fields="files(id, name)",
+            includeItemsFromAllDrives=True,
+            supportsAllDrives=True,
+        ).execute()
+        files = result.get("files", [])
+        if not files:
+            logger.warning(f"File '{filename}' not found in folder {folder_id}")
+            return None
+
+        file_id_found = files[0]["id"]
+        content = service.files().get_media(
+            fileId=file_id_found,
+            supportsAllDrives=True,
+        ).execute()
+        logger.info(f"Downloaded '{filename}' from folder {folder_id} ({len(content)} bytes)")
+        return content
+    except Exception as e:
+        logger.error(f"Drive download failed for '{filename}' in folder {folder_id}: {e}")
+        return None
+
+
 async def delete_drive_file(file_id: str) -> bool:
     """Delete a file from Drive by file ID. Returns True on success, False on failure.
 
