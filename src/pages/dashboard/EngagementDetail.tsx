@@ -1210,7 +1210,7 @@ export default function EngagementDetail() {
                                   {/* Output actions: Render + Approve + Version history */}
                                   <div className="flex items-center gap-2 flex-shrink-0">
                                     {/* Render button — only visible after Phase 6 QC has started and output is approved */}
-                                    {isPhase5Deliverable && output.status === 'approved' && data.current_phase >= 6 && (
+                                    {isPhase5Deliverable && output.status === 'approved' && data.phase >= 6 && (
                                       <button
                                         onClick={() => copyDeliveryCommand(`render-${output.id}`, `/${renderSkill} ${clientName} "${output.output_name}"`)}
                                         className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded font-semibold transition-colors ${
