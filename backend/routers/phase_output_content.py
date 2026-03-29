@@ -14,7 +14,8 @@ from pydantic import BaseModel
 from middleware.auth import verify_partner_auth
 from services.supabase_client import get_supabase, get_engagement_by_id, log_activity
 from services.pdf_converter import convert_to_pdf, convert_phase_output_to_pdf, ConversionError
-from services.google_drive_engagement import download_file_by_name, upload_file_to_drive_folder
+from fastapi.responses import Response
+from services.google_drive_engagement import download_file_by_id, download_file_by_name, upload_file_to_drive_folder
 
 logger = logging.getLogger("baxterlabs.phase_output_content")
 
@@ -218,15 +219,17 @@ async def list_outputs(
                 else:
                     row[f"{path_field}_url"] = None
 
-            # Drive paths — pass through URLs, construct from file IDs, fallback to signing
+            # Drive paths — proxy through backend for PDF previews, fallback to signing
             for path_field in ("docx_pdf_preview_path", "pdf_preview_path", "pptx_path"):
                 val = row.get(path_field)
                 if val:
                     if val.startswith("http://") or val.startswith("https://"):
                         row[f"{path_field}_url"] = val
                     elif "/" not in val and "." not in val:
-                        # Bare Drive file ID
-                        row[f"{path_field}_url"] = f"https://drive.google.com/file/d/{val}/preview"
+                        # Bare Drive file ID — proxy through our backend to avoid Drive auth wall
+                        phase_num = row.get("phase_number", 5)
+                        out_num = row.get("output_number", 1)
+                        row[f"{path_field}_url"] = f"/api/engagements/{engagement_id}/outputs/{out_num}/preview-pdf?phase_number={phase_num}"
                     else:
                         # Looks like a Supabase storage path — sign it
                         try:
@@ -436,7 +439,7 @@ async def generate_preview(
         "pdf_drive_file_id": pdf_file_id,
     })
 
-    preview_url = f"https://drive.google.com/file/d/{pdf_file_id}/preview"
+    preview_url = f"/api/engagements/{engagement_id}/outputs/{output_number}/preview-pdf?phase_number={phase_number}"
 
     return {
         "success": True,
@@ -444,6 +447,55 @@ async def generate_preview(
         "pdf_drive_file_id": pdf_file_id,
         "preview_url": preview_url,
     }
+
+
+@router.get("/engagements/{engagement_id}/outputs/{output_number}/preview-pdf")
+async def serve_preview_pdf(
+    engagement_id: str,
+    output_number: int,
+    phase_number: int = Query(5, description="Phase number (default 5)"),
+    user: dict = Depends(verify_partner_auth),
+):
+    """Proxy-serve a rendered PDF preview from Google Drive.
+
+    Downloads the PDF identified by ``docx_pdf_preview_path`` (a Drive file ID)
+    and streams it back as ``application/pdf``, avoiding the Google Drive
+    cookie/auth wall that blocks direct iframe embeds.
+    """
+    sb = get_supabase()
+
+    rows = (
+        sb.table("phase_output_content")
+        .select("id, docx_pdf_preview_path, pdf_preview_path, output_name")
+        .eq("engagement_id", engagement_id)
+        .eq("phase_number", phase_number)
+        .eq("output_number", output_number)
+        .order("version", desc=True)
+        .limit(1)
+        .execute()
+    )
+    if not rows.data:
+        raise HTTPException(status_code=404, detail=f"No Phase {phase_number} output #{output_number} found")
+
+    rec = rows.data[0]
+    file_id = rec.get("docx_pdf_preview_path") or rec.get("pdf_preview_path")
+
+    if not file_id:
+        raise HTTPException(status_code=404, detail="No PDF preview has been generated for this output")
+
+    # Skip if it looks like a URL or storage path rather than a bare Drive file ID
+    if file_id.startswith("http") or "/" in file_id or "." in file_id:
+        raise HTTPException(status_code=400, detail="Preview path is not a Drive file ID — cannot proxy")
+
+    pdf_bytes = await download_file_by_id(file_id)
+    if not pdf_bytes:
+        raise HTTPException(status_code=502, detail=f"Failed to download PDF from Google Drive (file ID: {file_id})")
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"inline; filename=\"{rec.get('output_name', 'preview')}.pdf\""},
+    )
 
 
 @router.put("/phase-output-content/{output_id}/approve")

@@ -260,6 +260,27 @@ async def download_file_by_name(
         return None
 
 
+async def download_file_by_id(
+    file_id: str,
+) -> Optional[bytes]:
+    """Download a single file from Drive by its file ID.
+
+    Returns the raw bytes, or None on failure.
+    Never raises — all exceptions are caught and logged.
+    """
+    try:
+        service = _get_drive_service()
+        content = service.files().get_media(
+            fileId=file_id,
+            supportsAllDrives=True,
+        ).execute()
+        logger.info(f"Downloaded Drive file {file_id} ({len(content)} bytes)")
+        return content
+    except Exception as e:
+        logger.error(f"Drive download failed for file {file_id}: {e}")
+        return None
+
+
 async def delete_drive_file(file_id: str) -> bool:
     """Delete a file from Drive by file ID. Returns True on success, False on failure.
 
