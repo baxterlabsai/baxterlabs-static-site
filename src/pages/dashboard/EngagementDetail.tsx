@@ -1,6 +1,6 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { apiGet, apiPost, apiPut, apiPatch, apiUpload, apiDelete } from '../../lib/api'
+import { apiGet, apiPost, apiPut, apiPatch, apiUpload, apiDelete, apiFetchBlob } from '../../lib/api'
 import { useToast } from '../../components/Toast'
 import SEO from '../../components/SEO'
 import ResearchModal from '../../components/ResearchModal'
@@ -328,6 +328,34 @@ export default function EngagementDetail() {
   // Render deliverables state
   const [generatingPreview, setGeneratingPreview] = useState<string | null>(null)
   const [approvingRenderFormat, setApprovingRenderFormat] = useState<string | null>(null)
+
+  // Blob URLs for PDF previews (iframes can't send Authorization headers)
+  const [pdfBlobUrls, setPdfBlobUrls] = useState<Record<string, string>>({})
+  const blobUrlsRef = useRef<Record<string, string>>({})
+  const fetchPdfBlob = useCallback(async (url: string, key: string) => {
+    if (blobUrlsRef.current[key]) return
+    try {
+      const blob = await apiFetchBlob(url)
+      const blobUrl = URL.createObjectURL(blob)
+      blobUrlsRef.current[key] = blobUrl
+      setPdfBlobUrls(prev => ({ ...prev, [key]: blobUrl }))
+    } catch (e) {
+      console.error('PDF blob fetch failed:', key, e)
+    }
+  }, [])
+  // Clean up blob URLs on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(blobUrlsRef.current).forEach(u => URL.revokeObjectURL(u))
+    }
+  }, [])
+  // Pre-fetch blob URLs for all outputs with preview URLs
+  useEffect(() => {
+    for (const output of phaseOutputContent) {
+      const url = output.docx_pdf_preview_path_url || output.pdf_preview_path_url || output.pdf_storage_path_url
+      if (url) fetchPdfBlob(url, output.id)
+    }
+  }, [phaseOutputContent, fetchPdfBlob])
 
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null)
   const navigate = useNavigate()
@@ -1284,7 +1312,13 @@ export default function EngagementDetail() {
                                             )}
                                           </div>
                                           <div className="border border-gray-light rounded-lg overflow-hidden">
-                                            <embed src={previewUrl} type="application/pdf" className="w-full h-[600px]" />
+                                            {pdfBlobUrls[output.id] ? (
+                                              <embed src={pdfBlobUrls[output.id]} type="application/pdf" className="w-full h-[600px]" />
+                                            ) : (
+                                              <div className="flex items-center justify-center h-[600px] text-gray-warm text-sm">
+                                                <span className="w-4 h-4 border-2 border-teal border-t-transparent rounded-full animate-spin mr-2" />Loading PDF…
+                                              </div>
+                                            )}
                                           </div>
                                         </div>
                                       )}
@@ -1666,13 +1700,20 @@ export default function EngagementDetail() {
                     {/* PDF preview embed */}
                     {hasPreview && (
                       <div className="border-t border-gray-light">
-                        <iframe
-                          src={previewUrl}
-                          className="w-full bg-gray-50"
-                          style={{ height: '600px' }}
-                          title={`Preview: ${displayName}`}
-                          allow="autoplay"
-                        />
+                        {pdfBlobUrls[output.id] ? (
+                          <iframe
+                            src={pdfBlobUrls[output.id]}
+                            className="w-full bg-gray-50"
+                            style={{ height: '600px' }}
+                            title={`Preview: ${displayName}`}
+                            allow="autoplay"
+                          />
+                        ) : (
+                          <div className="flex items-center justify-center bg-gray-50" style={{ height: '600px' }}>
+                            <span className="w-4 h-4 border-2 border-teal border-t-transparent rounded-full animate-spin mr-2" />
+                            <span className="text-gray-warm text-sm">Loading PDF…</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -2653,10 +2694,9 @@ export default function EngagementDetail() {
           </div>
           <div className="flex-1 overflow-y-auto p-8">
             {(() => {
-              const previewUrl = expandedOutput.docx_pdf_preview_path_url || expandedOutput.pdf_preview_path_url || expandedOutput.pptx_path_url || expandedOutput.pdf_storage_path_url
               const hasContent = !!(expandedOutput.content_md && expandedOutput.content_md.trim().length > 0)
-              if (previewUrl) {
-                return <embed src={previewUrl} type="application/pdf" className="w-full h-full min-h-[calc(100vh-140px)]" />
+              if (pdfBlobUrls[expandedOutput.id]) {
+                return <embed src={pdfBlobUrls[expandedOutput.id]} type="application/pdf" className="w-full h-full min-h-[calc(100vh-140px)]" />
               }
               if (hasContent) {
                 return (

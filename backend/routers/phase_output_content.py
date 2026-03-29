@@ -220,6 +220,7 @@ async def list_outputs(
                     row[f"{path_field}_url"] = None
 
             # Drive paths — proxy through backend for PDF previews, fallback to signing
+            api_base = os.environ.get("RENDER_EXTERNAL_URL", os.environ.get("API_BASE_URL", "https://api.baxterlabs.ai")).rstrip("/")
             for path_field in ("docx_pdf_preview_path", "pdf_preview_path", "pptx_path"):
                 val = row.get(path_field)
                 if val:
@@ -229,7 +230,7 @@ async def list_outputs(
                         # Bare Drive file ID — proxy through our backend to avoid Drive auth wall
                         phase_num = row.get("phase_number", 5)
                         out_num = row.get("output_number", 1)
-                        row[f"{path_field}_url"] = f"/api/engagements/{engagement_id}/outputs/{out_num}/preview-pdf?phase_number={phase_num}"
+                        row[f"{path_field}_url"] = f"{api_base}/api/engagements/{engagement_id}/outputs/{out_num}/preview-pdf?phase_number={phase_num}"
                     else:
                         # Looks like a Supabase storage path — sign it
                         try:

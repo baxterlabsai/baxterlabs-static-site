@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../../../lib/supabase'
+import { apiFetchBlob } from '../../../lib/api'
 import SEO from '../../../components/SEO'
 
 interface OutputRow {
@@ -51,13 +52,30 @@ export default function PdfReview() {
       // Resolve PDF URL — use docx_pdf_preview_path for Word track, pdf_preview_path for Deck track
       const path = outRes.data.docx_pdf_preview_path || outRes.data.pdf_preview_path
       if (path) {
-        // If it's already a full URL (Google Drive), use directly
         if (path.startsWith('http')) {
-          setPdfUrl(path)
-        } else {
-          // Otherwise treat as Supabase storage path
+          // Full URL — fetch via auth proxy to create blob URL
+          try {
+            const blob = await apiFetchBlob(path)
+            setPdfUrl(URL.createObjectURL(blob))
+          } catch {
+            setPdfUrl(null)
+          }
+        } else if (path.includes('/') || path.includes('.')) {
+          // Supabase storage path
           const { data } = supabase.storage.from('engagements').getPublicUrl(path)
           setPdfUrl(data?.publicUrl || null)
+        } else {
+          // Bare Drive file ID — build backend proxy URL and fetch via auth
+          const outNum = outRes.data.output_number || 1
+          const phaseNum = outRes.data.phase_number || 5
+          const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000')
+          const proxyUrl = `${apiUrl}/api/engagements/${outRes.data.engagement_id}/outputs/${outNum}/preview-pdf?phase_number=${phaseNum}`
+          try {
+            const blob = await apiFetchBlob(proxyUrl)
+            setPdfUrl(URL.createObjectURL(blob))
+          } catch {
+            setPdfUrl(null)
+          }
         }
       }
     }

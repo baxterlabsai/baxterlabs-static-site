@@ -4,7 +4,19 @@ FROM python:3.9-slim
 RUN apt-get update -qq && \
     apt-get install -y --no-install-recommends \
       libreoffice-writer libreoffice-calc libreoffice-impress \
-      fontconfig curl unzip && \
+      fontconfig curl unzip debconf && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install Microsoft core fonts (Arial, Georgia, Times New Roman, etc.) + Liberation fallbacks
+# Enable contrib repo for ttf-mscorefonts-installer
+RUN sed -i 's/^Components: main$/Components: main contrib/' /etc/apt/sources.list.d/debian.sources 2>/dev/null || \
+    echo "deb http://deb.debian.org/debian bookworm contrib" >> /etc/apt/sources.list && \
+    echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | debconf-set-selections && \
+    apt-get update -qq && \
+    apt-get install -y --no-install-recommends \
+      ttf-mscorefonts-installer \
+      fonts-liberation && \
+    fc-cache -f -v && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Google Fonts (Inter + Playfair Display) from GitHub releases

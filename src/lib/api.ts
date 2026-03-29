@@ -109,6 +109,22 @@ export async function apiDelete<T = unknown>(path: string): Promise<T> {
   return res.json()
 }
 
+export async function apiFetchBlob(url: string): Promise<Blob> {
+  const headers = await getAuthHeaders()
+  const res = await fetch(url, { headers })
+
+  if (res.status === 401) {
+    window.location.href = '/dashboard/login'
+    throw new Error('Unauthorized')
+  }
+
+  if (!res.ok) {
+    throw new Error(`Blob fetch failed (${res.status})`)
+  }
+
+  return res.blob()
+}
+
 export async function apiUpload<T = unknown>(path: string, formData: FormData): Promise<T> {
   const headers = await getAuthHeaders()
   const res = await fetch(`${API_URL}${path}`, {
