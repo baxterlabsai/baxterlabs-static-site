@@ -10,6 +10,45 @@ const deliverables = [
   { icon: 'handshake', label: 'Phase 2 Retainer Proposal' },
 ]
 
+const deliverableDetails = [
+  {
+    icon: 'analytics',
+    label: 'Executive Summary',
+    what: 'A board-ready overview of key findings, risk exposure, and high-priority recovery actions.',
+    why: 'Gives leadership a clear, defensible picture of where margin is leaking and what to address first — designed to drive decisions, not sit in a drawer.',
+  },
+  {
+    icon: 'fact_check',
+    label: 'Full Diagnostic Report',
+    what: 'Complete analysis of every identified profit leak with root cause identification and quantified P&L impact.',
+    why: 'Ensures your team fixes the actual problem behind each leak, not just the visible symptom.',
+  },
+  {
+    icon: 'architecture',
+    label: 'Implementation Roadmap',
+    what: 'A prioritized 90-day action plan sequenced by impact and tied directly to diagnostic findings.',
+    why: 'Turns analysis into execution your team can begin immediately, without outside dependencies.',
+  },
+  {
+    icon: 'calculate',
+    label: 'Profit Leak Quantification Workbook',
+    what: 'The underlying financial model showing exactly where margin is eroding and the recovery potential per category.',
+    why: 'Lets you prioritize fixes by actual dollar recovery value rather than intuition or guesswork.',
+  },
+  {
+    icon: 'present_to_all',
+    label: 'Executive Presentation Deck',
+    what: 'A structured slide deck summarizing findings, priorities, and recommended actions for stakeholder alignment.',
+    why: 'Provides a ready-made format for presenting the diagnostic to boards, partners, or leadership teams.',
+  },
+  {
+    icon: 'handshake',
+    label: 'Phase 2 Retainer Proposal',
+    what: 'A scoped proposal for ongoing advisory and implementation support, included optionally with every engagement.',
+    why: 'Provides a clear path forward for firms that want external governance during execution — with no obligation.',
+  },
+]
+
 export default function Services() {
   return (
     <>
@@ -32,21 +71,23 @@ export default function Services() {
               This is not an open-ended consulting engagement. It is a structured diagnostic process with defined inputs, timelines, and outputs.
             </p>
           </div>
-          {/* Deliverables summary box */}
+          {/* Deliverables snapshot */}
           <div className="bg-surface-container-lowest border border-outline-variant/20 rounded-sm shadow-lg lg:mt-4 overflow-hidden">
             <div className="bg-secondary px-10 py-5">
               <span className="font-label text-on-primary uppercase tracking-[0.3em] text-xs font-bold">What You Receive</span>
             </div>
-            <div className="px-10 py-8 space-y-0">
-              {deliverables.map((d, i) => (
-                <div key={d.label} className={`flex items-center gap-4 py-4 ${i < deliverables.length - 1 ? 'border-b border-surface-container' : ''}`}>
-                  <span className="material-symbols-outlined text-secondary text-xl shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>{d.icon}</span>
-                  <span className="text-on-surface font-medium text-sm">{d.label}</span>
-                </div>
-              ))}
+            <div className="px-10 py-8">
+              <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+                {deliverables.map((d) => (
+                  <div key={d.label} className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-secondary text-lg shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>{d.icon}</span>
+                    <span className="text-on-surface font-medium text-sm leading-tight">{d.label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="px-10 pb-8">
-              <div className="flex items-center gap-3 pt-4 border-t border-outline-variant/20">
+              <div className="flex items-center gap-3 pt-5 border-t border-outline-variant/20">
                 <span className="material-symbols-outlined text-secondary text-lg">schedule</span>
                 <p className="text-xs text-on-surface-variant font-label font-medium uppercase tracking-widest">Complete executive-ready package in 14 days</p>
               </div>
@@ -55,73 +96,25 @@ export default function Services() {
         </div>
       </section>
 
-      {/* Transition line */}
-      <div className="py-10 px-8 md:px-16 lg:px-24 bg-surface">
-        <p className="max-w-7xl mx-auto text-center text-on-surface-variant/60 text-sm tracking-wide italic">
-          Each deliverable is designed to move directly from insight to action.
-        </p>
-      </div>
-
-      {/* What Each Deliverable Means */}
+      {/* How the Diagnostic Translates Into Action */}
       <section className="bg-surface-container-low py-32 px-8 md:px-16 lg:px-24 border-y border-surface-container">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-16">
-            <span className="text-secondary font-semibold uppercase tracking-widest text-xs mb-4 block">The Detail</span>
-            <h2 className="text-4xl font-headline text-secondary mb-2">What Each Deliverable Means</h2>
-            <p className="text-on-surface-variant text-lg font-medium opacity-80">Why each component matters and the outcome it drives for your business.</p>
+        <div className="max-w-5xl mx-auto">
+          <div className="mb-20">
+            <span className="text-secondary font-semibold uppercase tracking-widest text-xs mb-4 block">Beyond the Package</span>
+            <h2 className="text-4xl font-headline text-secondary mb-4">How the Diagnostic Translates Into Action</h2>
+            <p className="text-on-surface-variant text-lg font-medium opacity-80">Each component of the diagnostic is designed to move from identification to quantified action.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
-            {/* Executive Summary */}
-            <div className="md:col-span-8 bg-surface-container-lowest p-12 rounded-sm shadow-[0_30px_60px_rgba(29,28,23,0.08)] flex flex-col justify-between group border-l-4 border-secondary transform scale-[1.02] z-10">
-              <div>
-                <span className="material-symbols-outlined text-secondary mb-8 text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>analytics</span>
-                <h3 className="text-3xl font-semibold mb-6 text-on-surface font-headline italic">Executive Summary</h3>
-                <p className="text-on-surface-variant text-lg leading-relaxed max-w-xl">
-                  Walk into your next board meeting with a clear, defensible picture of where margin is leaking and what to do first. Designed for leadership who need to act, not just read.
-                </p>
+          <div className="space-y-16">
+            {deliverableDetails.map((d) => (
+              <div key={d.label} className="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-x-8 gap-y-4 items-start">
+                <span className="material-symbols-outlined text-secondary text-3xl mt-1" style={{ fontVariationSettings: "'FILL' 1" }}>{d.icon}</span>
+                <div>
+                  <h3 className="text-xl font-semibold text-on-surface mb-3 font-headline italic">{d.label}</h3>
+                  <p className="text-on-surface-variant text-base leading-relaxed mb-2">{d.what}</p>
+                  <p className="text-secondary/80 text-sm leading-relaxed font-medium">{d.why}</p>
+                </div>
               </div>
-            </div>
-            {/* Quant Workbook */}
-            <div className="md:col-span-4 bg-secondary p-10 rounded-sm flex flex-col justify-between shadow-lg">
-              <div>
-                <span className="material-symbols-outlined mb-6 text-3xl text-on-primary/80" style={{ fontVariationSettings: "'FILL' 1" }}>calculate</span>
-                <h3 className="text-2xl font-semibold mb-4 font-headline italic text-on-primary/80">Profit Leak Quantification Workbook</h3>
-                <p className="text-on-primary/80 text-sm leading-relaxed">
-                  Puts a dollar figure on every identified leak so you can prioritize fixes by actual recovery value, not guesswork.
-                </p>
-              </div>
-            </div>
-            {/* Full Diagnostic */}
-            <div className="md:col-span-4 bg-surface-container-highest p-10 rounded-sm flex flex-col justify-between border border-outline-variant/10">
-              <div>
-                <span className="material-symbols-outlined text-secondary mb-6 text-3xl">fact_check</span>
-                <h3 className="text-xl font-semibold mb-4 text-on-surface">Full Diagnostic Report</h3>
-                <p className="text-on-surface-variant text-sm leading-relaxed">
-                  Gives your team the root cause behind each leak so fixes address the actual problem, not just the symptom.
-                </p>
-              </div>
-            </div>
-            {/* Roadmap */}
-            <div className="md:col-span-4 bg-surface-container-lowest p-10 rounded-sm border border-outline-variant/20 shadow-sm">
-              <div>
-                <span className="material-symbols-outlined text-secondary mb-6 text-3xl">architecture</span>
-                <h3 className="text-xl font-semibold mb-4 text-on-surface">Implementation Roadmap</h3>
-                <p className="text-on-surface-variant text-sm leading-relaxed">
-                  Turns findings into a sequenced 90-day action plan your team can execute immediately, without outside dependencies.
-                </p>
-              </div>
-            </div>
-            {/* Presentation & Retainer */}
-            <div className="md:col-span-4 flex flex-col gap-6">
-              <div className="bg-secondary text-on-primary p-8 rounded-sm flex-1 flex items-center gap-4 shadow-md">
-                <span className="material-symbols-outlined">present_to_all</span>
-                <span className="font-medium text-sm">Executive Presentation Deck</span>
-              </div>
-              <div className="bg-surface-container-highest p-8 rounded-sm flex-1 flex items-center gap-4 text-on-surface-variant border border-outline-variant/20">
-                <span className="material-symbols-outlined text-secondary">handshake</span>
-                <span className="font-medium text-sm">Phase 2 Retainer Proposal (Optional)</span>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
