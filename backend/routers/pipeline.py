@@ -804,33 +804,133 @@ async def delete_opportunity(opp_id: str, user: dict = Depends(verify_partner_au
 
 @router.post("/website-intake", response_model=WebsiteIntakeResponse)
 async def website_intake(req: WebsiteIntakeRequest):
-    """Public endpoint — website Get Started form creates pipeline records."""
+    """Public endpoint — website Get Started form creates pipeline records.
+
+    Performs duplicate detection on company (domain then name) and contact
+    (email) before creating records.  Places the opportunity into
+    ``discovery_scheduled`` and returns the ``schedule_token`` so the
+    frontend can redirect to the platform scheduling flow.
+    """
     sb = get_supabase()
 
-    # 1. Insert pipeline_companies
-    company_result = sb.table("pipeline_companies").insert({
-        "name": req.company_name,
-        "website": req.website_url,
-        "industry": req.industry,
-        "revenue_range": req.revenue_range,
-        "employee_count": req.employee_count,
-        "source": "Website — Inbound",
-    }).execute()
-    company_id = company_result.data[0]["id"]
+    # ------------------------------------------------------------------
+    # 1. Duplicate detection — Company
+    # ------------------------------------------------------------------
+    company_id: Optional[str] = None
+    req_domain = _extract_domain(req.website_url)
+    req_norm_name = _normalize_company(req.company_name)
 
-    # 2. Insert pipeline_contacts (primary contact)
-    contact_result = sb.table("pipeline_contacts").insert({
-        "company_id": company_id,
-        "name": req.primary_contact_name,
-        "email": req.primary_contact_email,
-        "phone": req.primary_contact_phone,
-        "title": "Decision Maker",
-        "is_decision_maker": True,
-        "source": "Website — Inbound",
-    }).execute()
-    contact_id = contact_result.data[0]["id"]
+    existing_companies = (
+        sb.table("pipeline_companies")
+        .select("id, name, website")
+        .eq("is_deleted", False)
+        .execute()
+    )
 
-    # 3. Build interview_contacts_json
+    # Prefer domain match, fall back to name match
+    for c in existing_companies.data:
+        if req_domain and _extract_domain(c.get("website")) == req_domain:
+            company_id = c["id"]
+            break
+    if not company_id:
+        for c in existing_companies.data:
+            if _normalize_company(c["name"]) == req_norm_name:
+                company_id = c["id"]
+                break
+
+    if company_id:
+        # Update existing company with latest form data
+        update_payload: dict = {}
+        if req.website_url:
+            update_payload["website"] = req.website_url
+        if req.revenue_range:
+            update_payload["revenue_range"] = req.revenue_range
+        if req.employee_count:
+            update_payload["employee_count"] = req.employee_count
+        if req.industry:
+            update_payload["industry"] = req.industry
+        if update_payload:
+            sb.table("pipeline_companies").update(update_payload).eq("id", company_id).execute()
+        logger.info(f"Website intake: reusing existing company {company_id}")
+    else:
+        company_result = sb.table("pipeline_companies").insert({
+            "name": req.company_name,
+            "website": req.website_url,
+            "industry": req.industry,
+            "revenue_range": req.revenue_range,
+            "employee_count": req.employee_count,
+            "source": "website",
+            "company_type": "prospect",
+        }).execute()
+        company_id = company_result.data[0]["id"]
+
+    # ------------------------------------------------------------------
+    # 2. Duplicate detection — Contact (by email)
+    # ------------------------------------------------------------------
+    contact_id: Optional[str] = None
+
+    if req.primary_contact_email:
+        existing_contact = (
+            sb.table("pipeline_contacts")
+            .select("id, company_id")
+            .eq("email", req.primary_contact_email)
+            .eq("is_deleted", False)
+            .limit(1)
+            .execute()
+        )
+        if existing_contact.data:
+            contact_id = existing_contact.data[0]["id"]
+            # Update with latest info
+            contact_update: dict = {"company_id": company_id}
+            if req.primary_contact_phone:
+                contact_update["phone"] = req.primary_contact_phone
+            sb.table("pipeline_contacts").update(contact_update).eq("id", contact_id).execute()
+            logger.info(f"Website intake: reusing existing contact {contact_id}")
+
+    if not contact_id:
+        contact_result = sb.table("pipeline_contacts").insert({
+            "company_id": company_id,
+            "name": req.primary_contact_name,
+            "email": req.primary_contact_email,
+            "phone": req.primary_contact_phone,
+            "title": "Decision Maker",
+            "is_decision_maker": True,
+            "source": "website",
+        }).execute()
+        contact_id = contact_result.data[0]["id"]
+
+    # ------------------------------------------------------------------
+    # 3. Check for existing active opportunity (avoid duplicates)
+    # ------------------------------------------------------------------
+    active_stages = {
+        "identified", "contacted", "discovery_scheduled",
+        "discovery_complete", "negotiation", "agreement_sent",
+    }
+    existing_opps = (
+        sb.table("pipeline_opportunities")
+        .select("id, stage")
+        .eq("company_id", company_id)
+        .eq("is_deleted", False)
+        .execute()
+    )
+    has_active_opp = any(o["stage"] in active_stages for o in existing_opps.data)
+
+    # ------------------------------------------------------------------
+    # 4. Build opportunity notes with full context
+    # ------------------------------------------------------------------
+    note_parts: List[str] = []
+    if req.pain_points:
+        note_parts.append(f"Diagnostic question: {req.pain_points}")
+    note_parts.append(f"Revenue: {req.revenue_range or '—'}")
+    note_parts.append(f"Employees: {req.employee_count or '—'}")
+    if req.website_url:
+        note_parts.append(f"Website: {req.website_url}")
+    note_parts.append("Source: Website submission")
+    opp_notes = "\n".join(note_parts)
+
+    # ------------------------------------------------------------------
+    # 5. Build interview_contacts_json (if provided)
+    # ------------------------------------------------------------------
     contacts_json = None
     if req.interview_contacts:
         contacts_json = [
@@ -844,31 +944,74 @@ async def website_intake(req: WebsiteIntakeRequest):
             for c in req.interview_contacts
         ]
 
-    # 4. Insert pipeline_opportunities
-    opp_result = sb.table("pipeline_opportunities").insert({
-        "company_id": company_id,
-        "primary_contact_id": contact_id,
-        "title": f"{req.company_name} — Diagnostic",
-        "stage": "discovery_scheduled",
-        "source": "Website — Inbound",
-        "notes": req.pain_points,
-        "interview_contacts_json": json.dumps(contacts_json) if contacts_json else None,
-        "assigned_to": "George DeVries",
-    }).execute()
-    opp = opp_result.data[0]
-    opp_id = opp["id"]
+    # ------------------------------------------------------------------
+    # 6. Create opportunity (or skip if active one already exists)
+    # ------------------------------------------------------------------
+    if has_active_opp:
+        # Reuse the most recent active opportunity
+        active_opp = next(o for o in existing_opps.data if o["stage"] in active_stages)
+        opp_id = active_opp["id"]
+        # Append new submission context to existing notes
+        sb.table("pipeline_opportunities").update({
+            "notes": opp_notes,
+        }).eq("id", opp_id).execute()
+        schedule_token_result = (
+            sb.table("pipeline_opportunities")
+            .select("schedule_token")
+            .eq("id", opp_id)
+            .execute()
+        )
+        schedule_token = schedule_token_result.data[0].get("schedule_token") if schedule_token_result.data else None
+        logger.info(f"Website intake: reusing active opportunity {opp_id}")
+    else:
+        opp_result = sb.table("pipeline_opportunities").insert({
+            "company_id": company_id,
+            "primary_contact_id": contact_id,
+            "title": f"{req.company_name} — Diagnostic Review",
+            "stage": "discovery_scheduled",
+            "source": "website",
+            "notes": opp_notes,
+            "interview_contacts_json": json.dumps(contacts_json) if contacts_json else None,
+            "assigned_to": "George DeVries",
+        }).execute()
+        opp = opp_result.data[0]
+        opp_id = opp["id"]
+        schedule_token = opp.get("schedule_token")
 
-    # 5. Log pipeline activity
+        # Log stage transition
+        sb.table("pipeline_stage_transitions").insert({
+            "opportunity_id": opp_id,
+            "from_stage": None,
+            "to_stage": "discovery_scheduled",
+        }).execute()
+
+    # ------------------------------------------------------------------
+    # 7. Log pipeline activity
+    # ------------------------------------------------------------------
+    activity_body_parts = [
+        f"New website submission received.",
+        f"Contact: {req.primary_contact_name} ({req.primary_contact_email})",
+        f"Revenue: {req.revenue_range or '—'}",
+        f"Employees: {req.employee_count or '—'}",
+    ]
+    if req.website_url:
+        activity_body_parts.append(f"Website: {req.website_url}")
+    if req.pain_points:
+        activity_body_parts.append(f"Diagnostic question: {req.pain_points}")
+    activity_body_parts.append("Awaiting discovery scheduling.")
+
     sb.table("pipeline_activities").insert({
         "opportunity_id": opp_id,
         "company_id": company_id,
         "contact_id": contact_id,
         "type": "note",
         "subject": "Website intake form submitted",
-        "body": f"Source: Website — Inbound. Industry: {req.industry or '—'}. Revenue: {req.revenue_range or '—'}.",
+        "body": "\n".join(activity_body_parts),
     }).execute()
 
-    # 6. Send partner notification (non-blocking)
+    # ------------------------------------------------------------------
+    # 8. Send partner notification (non-blocking)
+    # ------------------------------------------------------------------
     try:
         from services.email_service import get_email_service
         email_svc = get_email_service()
@@ -879,7 +1022,9 @@ async def website_intake(req: WebsiteIntakeRequest):
             industry=req.industry,
             revenue_range=req.revenue_range,
             pain_points=req.pain_points,
-            source="Website — Inbound",
+            source="website",
+            employee_count=req.employee_count,
+            website_url=req.website_url,
         )
     except Exception as e:
         logger.error(f"Website intake notification failed (non-blocking): {e}")
@@ -891,6 +1036,7 @@ async def website_intake(req: WebsiteIntakeRequest):
         company_id=company_id,
         contact_id=contact_id,
         opportunity_id=opp_id,
+        schedule_token=schedule_token,
     )
 
 

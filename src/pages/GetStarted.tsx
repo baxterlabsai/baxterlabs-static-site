@@ -122,10 +122,17 @@ export default function GetStarted() {
         throw new Error(data.detail || `Server error (${res.status})`)
       }
 
-      // Redirect to Calendly with pre-filled name and email
-      const name = encodeURIComponent(form.primary_contact_name)
-      const email = encodeURIComponent(form.primary_contact_email)
-      window.location.href = `${CALENDLY_URL}?name=${name}&email=${email}`
+      const data = await res.json()
+
+      // Redirect through platform scheduling flow if token available,
+      // otherwise fall back to direct Calendly with pre-filled fields
+      if (data.schedule_token) {
+        window.location.href = `/schedule/${data.schedule_token}`
+      } else {
+        const name = encodeURIComponent(form.primary_contact_name)
+        const email = encodeURIComponent(form.primary_contact_email)
+        window.location.href = `${CALENDLY_URL}?name=${name}&email=${email}`
+      }
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
       setSubmitting(false)

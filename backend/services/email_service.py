@@ -566,7 +566,9 @@ class EmailService:
         industry: Optional[str] = None,
         revenue_range: Optional[str] = None,
         pain_points: Optional[str] = None,
-        source: str = "Website — Inbound",
+        source: str = "website",
+        employee_count: Optional[str] = None,
+        website_url: Optional[str] = None,
     ) -> dict:
         """Notify partner of new inbound website lead."""
         body = f"""
@@ -577,13 +579,15 @@ class EmailService:
               <td style="padding:8px;border-bottom:1px solid #E5E7EB;">{company_name}</td></tr>
           <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;">Contact</td>
               <td style="padding:8px;border-bottom:1px solid #E5E7EB;">{contact_name} ({contact_email})</td></tr>
-          <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;">Industry</td>
-              <td style="padding:8px;border-bottom:1px solid #E5E7EB;">{industry or '—'}</td></tr>
+          <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;">Website</td>
+              <td style="padding:8px;border-bottom:1px solid #E5E7EB;">{website_url or '—'}</td></tr>
           <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;">Revenue</td>
               <td style="padding:8px;border-bottom:1px solid #E5E7EB;">{revenue_range or '—'}</td></tr>
+          <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;">Employees</td>
+              <td style="padding:8px;border-bottom:1px solid #E5E7EB;">{employee_count or '—'}</td></tr>
           <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;">Source</td>
               <td style="padding:8px;border-bottom:1px solid #E5E7EB;">{source}</td></tr>
-          <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;">Pain Points</td>
+          <tr><td style="padding:8px;border-bottom:1px solid #E5E7EB;font-weight:600;">Diagnostic Question</td>
               <td style="padding:8px;border-bottom:1px solid #E5E7EB;">{pain_points or '—'}</td></tr>
         </table>
         <p style="color:{TEAL};font-weight:600;">Pipeline opportunity created at discovery_scheduled stage.</p>

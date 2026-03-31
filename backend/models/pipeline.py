@@ -248,6 +248,7 @@ class WebsiteIntakeResponse(BaseModel):
     company_id: str
     contact_id: str
     opportunity_id: str
+    schedule_token: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
