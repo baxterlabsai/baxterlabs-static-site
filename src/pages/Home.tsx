@@ -44,7 +44,7 @@ export default function Home() {
             </div>
           </div>
           <p className="mt-10 text-sm text-on-surface-variant/70 max-w-xl mx-auto leading-relaxed">
-            Board-level financial diagnostics for companies where margin, cash flow, and operational discipline matter.
+            Each engagement is executed through a structured, proprietary diagnostic process designed for speed, accuracy, and confidentiality.
           </p>
         </div>
       </section>

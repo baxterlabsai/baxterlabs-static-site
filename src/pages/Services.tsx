@@ -25,8 +25,11 @@ export default function Services() {
             <h1 className="text-5xl md:text-7xl font-headline italic font-semibold text-primary leading-tight mb-12 tracking-tight">
               The 14-Day Executive <br />Profit Leak Diagnostic.
             </h1>
-            <p className="text-xl md:text-2xl text-on-surface-variant font-light leading-relaxed">
+            <p className="text-xl md:text-2xl text-on-surface-variant font-light leading-relaxed mb-6">
               A rigorous, structured diagnostic engineered for firms with <span className="text-on-surface font-medium">$5M–$50M in annual revenue</span>. We identify significant, recoverable cash flow lost to misaligned financial controls and operational friction.
+            </p>
+            <p className="text-on-surface-variant/70 text-sm leading-relaxed">
+              This is not an open-ended consulting engagement. It is a structured diagnostic process with defined inputs, timelines, and outputs.
             </p>
           </div>
           {/* Deliverables summary box */}
@@ -119,7 +122,10 @@ export default function Services() {
       {/* How the Diagnostic Works */}
       <section className="bg-secondary text-on-primary py-32 px-8 md:px-16 lg:px-24 relative overflow-hidden">
         <div className="max-w-7xl mx-auto relative z-10">
-          <h2 className="text-4xl md:text-5xl font-headline italic mb-24 text-center">How the Diagnostic Works</h2>
+          <h2 className="text-4xl md:text-5xl font-headline italic mb-6 text-center">How the Diagnostic Works</h2>
+          <p className="text-on-primary/60 text-sm text-center mb-24 max-w-xl mx-auto">
+            Each engagement begins with pre-call analysis using publicly available data and internal research models.
+          </p>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
             {[
               { num: '01', title: 'Data Collection', desc: 'Structured gathering and analysis of internal financial data and operational workflows.' },
@@ -193,7 +199,7 @@ export default function Services() {
           <div className="text-center mb-16">
             <span className="material-symbols-outlined text-secondary text-5xl mb-6" style={{ fontVariationSettings: "'FILL' 1" }}>shield</span>
             <h2 className="text-4xl font-headline text-secondary mb-4">Data Handling &amp; Confidentiality</h2>
-            <p className="text-on-surface-variant font-medium">As standard professional practice, we prioritize your firm's data integrity.</p>
+            <p className="text-on-surface-variant font-medium max-w-2xl mx-auto">All engagements operate under strict confidentiality protocols and are executed through a controlled, access-managed workflow designed for sensitive financial and operational data.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 text-left">
             {[

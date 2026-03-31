@@ -147,7 +147,9 @@ export default function GetStarted() {
           </h1>
           <p className="text-on-surface-variant text-base md:text-lg leading-relaxed max-w-xl mx-auto">
             Submit your details below to begin the diagnostic review process.
-            Each company is reviewed in advance using publicly available data and internal research models.
+          </p>
+          <p className="text-on-surface-variant/70 text-sm mt-3 max-w-lg mx-auto">
+            Designed for companies with $5M–$50M in revenue.
           </p>
         </div>
       </section>
@@ -156,6 +158,9 @@ export default function GetStarted() {
       <section className="bg-surface-container-low pb-20 px-6 md:px-12">
         <div className="max-w-2xl mx-auto">
           <div className="bg-surface-container-lowest rounded-sm shadow-sm border border-outline-variant/20 p-6 md:p-10">
+            <p className="text-on-surface-variant/60 text-xs mb-6 leading-relaxed">
+              Each submission is reviewed in advance using publicly available data and internal research models.
+            </p>
             <div className="space-y-5">
               {/* Full Name + Phone */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -202,7 +207,7 @@ export default function GetStarted() {
               </Field>
 
               {/* Company Website */}
-              <Field label="Company Website" required error={errors.website_url} hint="Required for pre-call analysis">
+              <Field label="Company Website (used for pre-call analysis)" required error={errors.website_url}>
                 <input
                   type="url"
                   value={form.website_url}
@@ -241,7 +246,7 @@ export default function GetStarted() {
               </div>
 
               {/* Pain Points */}
-              <Field label="Where do you suspect margin is slipping or performance is breaking down?">
+              <Field label="Where do you believe margin is leaking or performance is breaking down?">
                 <textarea
                   value={form.pain_points}
                   onChange={e => updateField('pain_points', e.target.value)}
@@ -282,7 +287,7 @@ export default function GetStarted() {
 
             {/* Trust line */}
             <p className="mt-4 text-center text-on-surface-variant/50 text-xs font-label">
-              All information is handled confidentially. Used only for pre-call diagnostic review.
+              Used only for pre-call diagnostic review. All information handled confidentially.
             </p>
           </div>
 
