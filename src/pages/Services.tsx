@@ -1,6 +1,15 @@
 import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
 
+const deliverables = [
+  { icon: 'analytics', label: 'Executive Summary' },
+  { icon: 'fact_check', label: 'Full Diagnostic Report' },
+  { icon: 'architecture', label: 'Implementation Roadmap' },
+  { icon: 'calculate', label: 'Profit Leak Quantification Workbook' },
+  { icon: 'present_to_all', label: 'Executive Presentation Deck' },
+  { icon: 'handshake', label: 'Phase 2 Retainer Proposal' },
+]
+
 export default function Services() {
   return (
     <>
@@ -11,18 +20,28 @@ export default function Services() {
 
       {/* Hero */}
       <section className="px-8 md:px-16 lg:px-24 py-24 md:py-32">
-        <div className="max-w-4xl">
-          <h1 className="text-5xl md:text-7xl font-headline italic font-semibold text-primary leading-tight mb-12 tracking-tight">
-            The 14-Day Executive <br />Profit Leak Diagnostic.
-          </h1>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            <div className="md:col-span-2">
-              <p className="text-xl md:text-2xl text-on-surface-variant font-light leading-relaxed">
-                A rigorous, structured diagnostic engineered for firms with <span className="text-on-surface font-medium">$5M–$50M in annual revenue</span>. We identify significant, recoverable cash flow lost to misaligned financial controls and operational friction.
-              </p>
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+          <div>
+            <h1 className="text-5xl md:text-7xl font-headline italic font-semibold text-primary leading-tight mb-12 tracking-tight">
+              The 14-Day Executive <br />Profit Leak Diagnostic.
+            </h1>
+            <p className="text-xl md:text-2xl text-on-surface-variant font-light leading-relaxed">
+              A rigorous, structured diagnostic engineered for firms with <span className="text-on-surface font-medium">$5M–$50M in annual revenue</span>. We identify significant, recoverable cash flow lost to misaligned financial controls and operational friction.
+            </p>
+          </div>
+          {/* Deliverables summary box */}
+          <div className="bg-surface-container-low border border-surface-container rounded-sm p-10 lg:mt-4">
+            <span className="font-label text-secondary uppercase tracking-[0.3em] text-xs font-bold block mb-6">The Diagnostic Package Includes</span>
+            <div className="space-y-5">
+              {deliverables.map((d) => (
+                <div key={d.label} className="flex items-center gap-4">
+                  <span className="material-symbols-outlined text-secondary text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>{d.icon}</span>
+                  <span className="text-on-surface font-medium text-sm">{d.label}</span>
+                </div>
+              ))}
             </div>
-            <div className="flex items-end">
-              <div className="h-px w-full bg-outline-variant/30 hidden md:block mb-4" />
+            <div className="mt-8 pt-6 border-t border-surface-container">
+              <p className="text-xs text-on-surface-variant/60 uppercase tracking-widest font-label">Complete executive-ready package delivered in 14 days</p>
             </div>
           </div>
         </div>
@@ -33,14 +52,14 @@ export default function Services() {
         <div className="max-w-7xl mx-auto">
           <div className="mb-16">
             <span className="text-secondary font-semibold uppercase tracking-widest text-xs mb-4 block">The Deliverables</span>
-            <h2 className="text-4xl font-headline text-on-surface mb-2">The Diagnostic Package</h2>
+            <h2 className="text-4xl font-headline text-secondary mb-2">The Diagnostic Package</h2>
             <p className="text-on-surface-variant text-lg font-medium opacity-80">Each engagement produces a complete, executive-ready diagnostic package.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
             {/* Executive Summary */}
-            <div className="md:col-span-8 bg-surface-container-lowest p-12 rounded-sm shadow-[0_30px_60px_rgba(29,28,23,0.08)] flex flex-col justify-between group border-l-4 border-primary transform scale-[1.02] z-10">
+            <div className="md:col-span-8 bg-surface-container-lowest p-12 rounded-sm shadow-[0_30px_60px_rgba(29,28,23,0.08)] flex flex-col justify-between group border-l-4 border-secondary transform scale-[1.02] z-10">
               <div>
-                <span className="material-symbols-outlined text-primary mb-8 text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>analytics</span>
+                <span className="material-symbols-outlined text-secondary mb-8 text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>analytics</span>
                 <h3 className="text-3xl font-semibold mb-6 text-on-surface font-headline italic">Executive Summary</h3>
                 <p className="text-on-surface-variant text-lg leading-relaxed max-w-xl">
                   A board-ready overview of key findings, risk exposure, and high-priority recovery actions distilled for immediate leadership review. This is the cornerstone of the diagnostic output.
@@ -60,7 +79,7 @@ export default function Services() {
             {/* Full Diagnostic */}
             <div className="md:col-span-4 bg-surface-container-highest p-10 rounded-sm flex flex-col justify-between border border-outline-variant/10">
               <div>
-                <span className="material-symbols-outlined text-primary mb-6 text-3xl">fact_check</span>
+                <span className="material-symbols-outlined text-secondary mb-6 text-3xl">fact_check</span>
                 <h3 className="text-xl font-semibold mb-4 text-on-surface">Full Diagnostic Report</h3>
                 <p className="text-on-surface-variant text-sm leading-relaxed">
                   Complete analysis of every identified profit leak with root cause identification and quantified P&amp;L impact.
@@ -79,12 +98,12 @@ export default function Services() {
             </div>
             {/* Presentation & Retainer */}
             <div className="md:col-span-4 flex flex-col gap-6">
-              <div className="bg-primary text-on-primary p-8 rounded-sm flex-1 flex items-center gap-4 shadow-md">
+              <div className="bg-secondary text-on-primary p-8 rounded-sm flex-1 flex items-center gap-4 shadow-md">
                 <span className="material-symbols-outlined">present_to_all</span>
                 <span className="font-medium text-sm">Executive Presentation Deck</span>
               </div>
               <div className="bg-surface-container-highest p-8 rounded-sm flex-1 flex items-center gap-4 text-on-surface-variant border border-outline-variant/20">
-                <span className="material-symbols-outlined">handshake</span>
+                <span className="material-symbols-outlined text-secondary">handshake</span>
                 <span className="font-medium text-sm">Phase 2 Retainer Proposal (Optional)</span>
               </div>
             </div>
@@ -93,7 +112,7 @@ export default function Services() {
       </section>
 
       {/* How the Diagnostic Works */}
-      <section className="bg-primary text-on-primary py-32 px-8 md:px-16 lg:px-24 relative overflow-hidden">
+      <section className="bg-secondary text-on-primary py-32 px-8 md:px-16 lg:px-24 relative overflow-hidden">
         <div className="max-w-7xl mx-auto relative z-10">
           <h2 className="text-4xl md:text-5xl font-headline italic mb-24 text-center">How the Diagnostic Works</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
@@ -117,17 +136,17 @@ export default function Services() {
       <section className="py-32 px-8 md:px-16 lg:px-24 bg-surface">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
           <div>
-            <h2 className="text-4xl font-headline text-on-surface mb-8">Delivery Model</h2>
+            <h2 className="text-4xl font-headline text-secondary mb-8">Delivery Model</h2>
             <p className="text-xl text-on-surface-variant leading-relaxed mb-8">
-              Findings are presented in an <span className="text-primary font-bold italic">executive debrief</span>, followed by delivery of the full diagnostic package.
+              Findings are presented in an <span className="text-secondary font-bold italic">executive debrief</span>, followed by delivery of the full diagnostic package.
             </p>
             <p className="text-on-surface-variant mb-12 text-lg">
               We prioritize intellectual clarity. The debrief ensures leadership fully understands the 'why' before being handed the 'how' within the comprehensive documentation.
             </p>
-            <div className="p-8 border-l-4 border-primary bg-surface-container-low shadow-sm">
+            <div className="p-8 border-l-4 border-secondary bg-surface-container-low shadow-sm">
               <span className="text-xs font-bold text-secondary uppercase tracking-[0.2em] mb-4 block">Primary Preview</span>
               <Link to="/get-started" className="flex flex-col text-left group">
-                <span className="flex items-center gap-3 text-2xl font-headline italic font-bold text-primary transition-colors group-hover:text-primary-container">
+                <span className="flex items-center gap-3 text-2xl font-headline italic font-bold text-secondary transition-colors group-hover:text-primary">
                   View Sample Executive Summary
                   <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
                 </span>
@@ -141,12 +160,12 @@ export default function Services() {
             <div className="aspect-[4/5] bg-surface-container-highest rounded-sm shadow-2xl p-1 relative overflow-hidden border border-outline-variant/10">
               <div className="absolute inset-0 bg-white/60 backdrop-blur-md flex items-center justify-center z-10">
                 <div className="text-center">
-                  <span className="material-symbols-outlined text-7xl text-primary/30 mb-4 block">lock</span>
+                  <span className="material-symbols-outlined text-7xl text-secondary/30 mb-4 block">lock</span>
                   <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant/40">Secured Document Preview</p>
                 </div>
               </div>
               <div className="p-12 space-y-8 opacity-40">
-                <div className="h-10 w-2/3 bg-primary/10" />
+                <div className="h-10 w-2/3 bg-secondary/10" />
                 <div className="space-y-3">
                   <div className="h-4 w-full bg-on-surface-variant/10" />
                   <div className="h-4 w-full bg-on-surface-variant/10" />
@@ -158,7 +177,7 @@ export default function Services() {
                 </div>
               </div>
             </div>
-            <div className="absolute -bottom-12 -right-12 w-64 h-64 bg-primary/5 rounded-full blur-[80px] -z-10" />
+            <div className="absolute -bottom-12 -right-12 w-64 h-64 bg-secondary/5 rounded-full blur-[80px] -z-10" />
           </div>
         </div>
       </section>
@@ -168,14 +187,14 @@ export default function Services() {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-16">
             <span className="material-symbols-outlined text-secondary text-5xl mb-6" style={{ fontVariationSettings: "'FILL' 1" }}>shield</span>
-            <h2 className="text-4xl font-headline text-on-surface mb-4">Data Handling &amp; Confidentiality</h2>
+            <h2 className="text-4xl font-headline text-secondary mb-4">Data Handling &amp; Confidentiality</h2>
             <p className="text-on-surface-variant font-medium">As standard professional practice, we prioritize your firm's data integrity.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 text-left">
             {[
               { icon: 'gavel', title: 'Mutual NDA', desc: 'Execution of a standard non-disclosure agreement prior to any data exchange.' },
-              { icon: 'encrypted', title: 'Controlled Access', desc: 'Financial data is handled within secure, isolated environments with zero external visibility.' },
-              { icon: 'block', title: 'No External Use', desc: 'Client data is never aggregated, anonymized for third parties, or used outside of the engagement.' },
+              { icon: 'encrypted', title: 'Encrypted & Access-Controlled', desc: 'All client data is encrypted in transit and at rest, with strict access controls limiting visibility to authorized engagement personnel only.' },
+              { icon: 'block', title: 'No External Use', desc: 'Client data is never aggregated, anonymized for third parties, or used outside of the engagement. Confidential handling of client information is non-negotiable.' },
               { icon: 'delete_forever', title: 'Destruction Protocol', desc: 'Option for full secure return or verified destruction of all datasets post-delivery.' },
             ].map((item) => (
               <div key={item.icon} className="flex gap-4 p-4 hover:bg-surface-container-lowest transition-colors rounded-sm">
@@ -194,9 +213,9 @@ export default function Services() {
       <section className="py-32 px-8 md:px-16 lg:px-24 bg-surface">
         <div className="max-w-4xl mx-auto text-center">
           <span className="text-secondary font-bold uppercase tracking-[0.3em] text-xs mb-8 block">Continuous Excellence</span>
-          <h2 className="text-5xl font-headline text-on-surface mb-8 italic">Strategic Post-Diagnostic Execution.</h2>
+          <h2 className="text-5xl font-headline text-secondary mb-8 italic">Strategic Post-Diagnostic Execution.</h2>
           <p className="text-on-surface-variant text-xl leading-relaxed mb-16">
-            While the diagnostic provides a standalone roadmap for internal execution, we offer a <span className="text-primary font-bold">Phase 2 Retainer</span> for firms requiring external governance and technical advisory during implementation.
+            While the diagnostic provides a standalone roadmap for internal execution, we offer a <span className="text-secondary font-bold">Phase 2 Retainer</span> for firms requiring external governance and technical advisory during implementation.
           </p>
           <div className="grid md:grid-cols-3 gap-8 mb-16 text-left">
             <div className="flex items-start gap-3">
@@ -212,7 +231,7 @@ export default function Services() {
               <span className="text-on-surface font-medium">Executive change management</span>
             </div>
           </div>
-          <Link to="/services" className="inline-block text-primary font-bold border-b-2 border-primary pb-1 hover:text-primary-container hover:border-primary-container transition-all">
+          <Link to="/services" className="inline-block text-secondary font-bold border-b-2 border-secondary pb-1 hover:text-primary hover:border-primary transition-all">
             Learn More About Implementation
           </Link>
         </div>

@@ -29,7 +29,7 @@ export default function About() {
       <section className="bg-surface-container-low py-32 px-6 md:px-12 border-y border-surface-container">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-20 items-start">
           <div>
-            <h2 className="font-display text-4xl text-primary mb-6">Why This Exists</h2>
+            <h2 className="font-display text-4xl text-secondary mb-6">Why This Exists</h2>
             <p className="text-on-surface-variant text-lg leading-relaxed mb-8">
               There is a systemic gap between high-level advisory and ground-level execution. Strategy often dies in the translation to the general ledger. BaxterLabs was founded to bridge this divide through structured diagnostics that focus on one singular metric: quantified profit leakage.
             </p>
@@ -50,13 +50,13 @@ export default function About() {
       {/* The Partners */}
       <section className="py-32 px-6 md:px-12 max-w-7xl mx-auto">
         <div className="text-center mb-20">
-          <p className="font-display italic text-2xl text-primary mb-4">"All engagements are led directly by partners. No junior teams. No handoffs."</p>
+          <p className="font-display italic text-2xl text-secondary mb-4">"All engagements are led directly by partners. No junior teams. No handoffs."</p>
           <h2 className="font-display text-4xl md:text-5xl text-secondary">The Partners</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-24">
           {/* George */}
           <div className="flex flex-col items-center group">
-            <div className="w-72 h-72 rounded-full overflow-hidden mb-8 border-4 border-surface-container-highest transition-transform duration-500 group-hover:scale-[1.02]">
+            <div className="w-72 h-72 rounded-full overflow-hidden mb-8 border-4 border-secondary/20 transition-transform duration-500 group-hover:scale-[1.02]">
               <img
                 alt="George DeVries"
                 className="w-full h-full object-cover object-top transition-all duration-700"
@@ -73,7 +73,7 @@ export default function About() {
           </div>
           {/* Alfonso */}
           <div className="flex flex-col items-center group">
-            <div className="w-72 h-72 rounded-full overflow-hidden mb-8 border-4 border-surface-container-highest transition-transform duration-500 group-hover:scale-[1.02]">
+            <div className="w-72 h-72 rounded-full overflow-hidden mb-8 border-4 border-secondary/20 transition-transform duration-500 group-hover:scale-[1.02]">
               <img
                 alt="Alfonso Cordon"
                 className="w-full h-full object-cover object-top transition-all duration-700"
@@ -96,7 +96,7 @@ export default function About() {
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-12">
             <div className="md:col-span-4">
-              <h2 className="font-display text-4xl text-primary">How We Work</h2>
+              <h2 className="font-display text-4xl text-secondary">How We Work</h2>
               <div className="mt-8 w-12 h-0.5 bg-secondary" />
             </div>
             <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-y-16 gap-x-12">
@@ -107,7 +107,7 @@ export default function About() {
                 { num: '04', title: 'Executive Decision-Making', desc: 'Our outputs are designed for Board and C-Suite review—concise, data-backed, and focused on immediate actionable levers.' },
               ].map((item) => (
                 <div key={item.num} className="flex flex-col gap-4">
-                  <span className="text-primary font-display italic text-3xl">{item.num}</span>
+                  <span className="text-secondary font-display italic text-3xl">{item.num}</span>
                   <h4 className="font-bold text-secondary uppercase tracking-tight font-label text-sm">{item.title}</h4>
                   <p className="text-on-surface-variant text-sm leading-relaxed">{item.desc}</p>
                 </div>
@@ -119,7 +119,7 @@ export default function About() {
 
       {/* Trust Reinforcement */}
       <section className="py-32 px-6 md:px-12 max-w-5xl mx-auto text-center">
-        <div className="bg-primary p-12 md:p-20 rounded-sm relative overflow-hidden text-on-primary">
+        <div className="bg-secondary p-12 md:p-20 rounded-sm relative overflow-hidden text-on-primary">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-bl-full" />
           <span className="material-symbols-outlined text-4xl text-surface-container-highest mb-6 block" style={{ fontVariationSettings: "'FILL' 1" }}>verified_user</span>
           <h2 className="font-display text-3xl md:text-4xl mb-8">Data Integrity &amp; Professional Standards.</h2>
@@ -132,8 +132,8 @@ export default function About() {
               <p className="text-on-primary/60 text-xs">Full legal non-disclosure binding on all project phases.</p>
             </div>
             <div className="p-4 border-x border-on-primary/10">
-              <p className="font-bold text-surface-container-highest uppercase text-[10px] tracking-widest mb-2">Controlled Handling</p>
-              <p className="text-on-primary/60 text-xs">Direct, encrypted transmission of sensitive ledger data.</p>
+              <p className="font-bold text-surface-container-highest uppercase text-[10px] tracking-widest mb-2">Encrypted & Controlled</p>
+              <p className="text-on-primary/60 text-xs">All data encrypted in transit and at rest with strict access controls.</p>
             </div>
             <div className="p-4">
               <p className="font-bold text-surface-container-highest uppercase text-[10px] tracking-widest mb-2">Zero External Use</p>

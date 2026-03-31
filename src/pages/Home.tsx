@@ -10,15 +10,15 @@ export default function Home() {
       />
 
       {/* Hero Section */}
-      <section className="relative px-6 md:px-12 py-24 md:py-48 overflow-hidden bg-surface">
+      <section className="relative px-6 md:px-12 py-24 md:py-44 overflow-hidden bg-surface">
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className="font-display italic text-5xl md:text-8xl text-primary leading-[1.05] mb-4">
+          <h1 className="font-display italic text-4xl md:text-7xl text-primary leading-[1.02] mb-4">
             Quantify and Recover Material Annualized Profit Leakage.
           </h1>
-          <p className="font-headline italic text-primary/70 text-2xl md:text-3xl mb-8">
+          <p className="font-headline italic text-secondary/80 text-xl md:text-2xl mb-8">
             Most firms don't know where profit is leaking. We make it visible.
           </p>
-          <p className="font-headline font-bold text-secondary text-2xl md:text-3xl mb-8 leading-snug">
+          <p className="font-headline font-bold text-secondary text-xl md:text-2xl mb-8 leading-snug">
             Most firms operate with significant, unidentified leakage—often losing 5–12% of EBITDA to operational friction they haven't yet quantified.
           </p>
           <p className="font-body text-on-surface-variant text-lg md:text-xl max-w-2xl mx-auto leading-relaxed mb-12">
@@ -34,7 +34,7 @@ export default function Home() {
             <div className="flex flex-col items-center">
               <Link
                 to="/get-started"
-                className="border-b border-on-surface text-on-surface px-6 py-3 font-label text-sm uppercase tracking-widest font-bold hover:text-primary hover:border-primary transition-all"
+                className="border-b border-secondary text-secondary px-6 py-3 font-label text-sm uppercase tracking-widest font-bold hover:text-primary hover:border-primary transition-all"
               >
                 View Sample Executive Summary
               </Link>
@@ -75,7 +75,7 @@ export default function Home() {
       <section className="bg-surface-container-lowest px-6 md:px-12 py-24">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="font-display text-4xl md:text-5xl text-primary mb-4">
+            <h2 className="font-display text-4xl md:text-5xl text-secondary mb-4">
               The 14-Day Executive Profit Leak Diagnostic
             </h2>
             <p className="text-secondary uppercase tracking-widest text-sm font-semibold">
@@ -98,7 +98,7 @@ export default function Home() {
               </div>
             </div>
             {/* Phase 2 */}
-            <div className="bg-primary p-10 rounded-sm flex flex-col justify-between text-on-primary shadow-xl">
+            <div className="bg-secondary p-10 rounded-sm flex flex-col justify-between text-on-primary shadow-xl">
               <div>
                 <span className="text-5xl font-display italic text-on-primary/30 mb-6 block">02</span>
                 <h3 className="font-headline text-2xl font-bold mb-4">Leakage Diagnostics &amp; Modeling</h3>
@@ -146,17 +146,18 @@ export default function Home() {
               <p className="text-sm font-label uppercase tracking-widest font-semibold">STRICT GOVERNANCE PROTOCOLS</p>
             </div>
           </div>
-          <div className="bg-surface-container-lowest/5 p-8 rounded-sm backdrop-blur-md border border-on-primary/10">
+          {/* Human Advantage — teal box */}
+          <div className="bg-secondary p-8 rounded-sm border border-on-primary/10">
             <div className="flex items-start gap-4 mb-6">
-              <span className="material-symbols-outlined text-primary-container bg-on-primary p-2 rounded-sm" style={{ fontVariationSettings: "'FILL' 1" }}>psychology</span>
+              <span className="material-symbols-outlined text-surface-container-highest bg-on-primary/20 p-2 rounded-sm" style={{ fontVariationSettings: "'FILL' 1" }}>psychology</span>
               <div>
-                <h4 className="font-bold text-xl mb-2">The Human Advantage</h4>
-                <p className="text-sm text-on-primary/70 italic">
+                <h4 className="font-bold text-xl mb-2 text-on-primary">The Human Advantage</h4>
+                <p className="text-sm text-on-primary/80 italic">
                   AI-enabled modeling is our tool, but experience is the artist. We use advanced analytics as a support system, ensuring every insight is triple-verified by senior human partners with real-world P&amp;L ownership.
                 </p>
               </div>
             </div>
-            <div className="text-xs uppercase tracking-tighter text-on-primary/40 text-right">Auditable &amp; Non-Generative Workflows</div>
+            <div className="text-xs uppercase tracking-tighter text-on-primary/50 text-right">Auditable &amp; Non-Generative Workflows</div>
           </div>
         </div>
       </section>
@@ -166,7 +167,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-end gap-8 mb-16">
             <div className="max-w-2xl">
-              <h2 className="font-display text-4xl text-primary mb-4">Quantified, Prioritized, and Repeatable Outcomes.</h2>
+              <h2 className="font-display text-4xl text-secondary mb-4">Quantified, Prioritized, and Repeatable Outcomes.</h2>
               <p className="text-on-surface-variant">
                 Every engagement produces a quantified, prioritized, and repeatable set of profit leaks for immediate recovery. Our methodology ensures consistent, auditable findings across every firm we analyze.
               </p>
@@ -178,28 +179,28 @@ export default function Home() {
               <p className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-6 leading-tight">
                 Quantified forensic analysis of immediate recovery targets.
               </p>
-              <h3 className="font-display text-4xl text-primary mb-2">$425,000</h3>
+              <h3 className="font-display text-4xl text-secondary mb-2">$425,000</h3>
               <p className="text-xs text-secondary font-bold uppercase">ANNUAL RECURRING RECOVERY</p>
             </div>
             <div className="bg-surface-container-lowest p-8 rounded-sm shadow-sm border-b-4 border-primary transition-transform hover:-translate-y-2">
               <p className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-6 leading-tight">
                 Every finding is backed by auditable data trails and repeatable methodology.
               </p>
-              <h3 className="font-display text-4xl text-primary mb-2">100%</h3>
+              <h3 className="font-display text-4xl text-secondary mb-2">100%</h3>
               <p className="text-xs text-secondary font-bold uppercase">AUDITABLE FINDINGS</p>
             </div>
             <div className="bg-surface-container-lowest p-8 rounded-sm shadow-sm border-b-4 border-secondary transition-transform hover:-translate-y-2">
               <p className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-6 leading-tight">
                 Time from data intake to full executive recovery roadmap.
               </p>
-              <h3 className="font-display text-4xl text-primary mb-2">14 Days</h3>
+              <h3 className="font-display text-4xl text-secondary mb-2">14 Days</h3>
               <p className="text-xs text-secondary font-bold uppercase">TOTAL DURATION</p>
             </div>
             <div className="bg-surface-container-lowest p-8 rounded-sm shadow-sm border-b-4 border-primary transition-transform hover:-translate-y-2">
               <p className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-6 leading-tight">
                 Median return on investment for the diagnostic engagement.
               </p>
-              <h3 className="font-display text-4xl text-primary mb-2">12.5x</h3>
+              <h3 className="font-display text-4xl text-secondary mb-2">12.5x</h3>
               <p className="text-xs text-secondary font-bold uppercase">ON ADVISORY FEE</p>
             </div>
           </div>
@@ -228,7 +229,7 @@ export default function Home() {
               <span className="text-on-surface font-medium">Executive change management</span>
             </div>
           </div>
-          <Link to="/services" className="inline-block text-primary font-bold border-b-2 border-primary pb-1 hover:text-primary-container hover:border-primary-container transition-all">
+          <Link to="/services" className="inline-block text-secondary font-bold border-b-2 border-secondary pb-1 hover:text-primary hover:border-primary transition-all">
             Learn More About Implementation
           </Link>
         </div>

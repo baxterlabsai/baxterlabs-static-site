@@ -57,17 +57,17 @@ export default function BlogIndex() {
     <>
       <SEO
         title="Insights | BaxterLabs Advisory"
-        description="Diagnostic thinking and financial analysis for professional service firm leaders. From the team at BaxterLabs Advisory."
+        description="Practical perspectives on financial performance, profit leakage, and operator-level decision making."
       />
 
-      <section className="bg-ivory py-16 md:py-20">
+      <section className="bg-surface py-16 md:py-20">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
           <div className="mb-12 text-center">
-            <h1 className="font-display text-4xl md:text-5xl font-bold text-crimson mb-3">
+            <h1 className="font-display text-4xl md:text-5xl font-bold text-primary mb-3">
               Insights
             </h1>
-            <p className="text-lg text-charcoal/70">
+            <p className="text-lg text-on-surface-variant">
               Practical perspectives on financial performance, profit leakage, and operator-level decision making.
             </p>
           </div>
@@ -76,16 +76,16 @@ export default function BlogIndex() {
           {loading && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {[0, 1, 2, 3].map(i => (
-                <div key={i} className="bg-white rounded-lg border border-gray-200 overflow-hidden animate-pulse">
-                  <div className="aspect-[16/9] bg-gray-200" />
+                <div key={i} className="bg-surface-container-lowest rounded-sm border border-outline-variant/20 overflow-hidden animate-pulse">
+                  <div className="aspect-[16/9] bg-surface-container" />
                   <div className="p-6">
-                    <div className="h-3 w-24 bg-gray-200 rounded mb-3" />
-                    <div className="h-5 w-3/4 bg-gray-200 rounded mb-2" />
-                    <div className="h-5 w-1/2 bg-gray-200 rounded mb-4" />
-                    <div className="h-3 w-full bg-gray-200 rounded mb-2" />
-                    <div className="h-3 w-full bg-gray-200 rounded mb-2" />
-                    <div className="h-3 w-2/3 bg-gray-200 rounded mb-4" />
-                    <div className="h-4 w-24 bg-gray-200 rounded" />
+                    <div className="h-3 w-24 bg-surface-container rounded mb-3" />
+                    <div className="h-5 w-3/4 bg-surface-container rounded mb-2" />
+                    <div className="h-5 w-1/2 bg-surface-container rounded mb-4" />
+                    <div className="h-3 w-full bg-surface-container rounded mb-2" />
+                    <div className="h-3 w-full bg-surface-container rounded mb-2" />
+                    <div className="h-3 w-2/3 bg-surface-container rounded mb-4" />
+                    <div className="h-4 w-24 bg-surface-container rounded" />
                   </div>
                 </div>
               ))}
@@ -95,7 +95,7 @@ export default function BlogIndex() {
           {/* Error */}
           {!loading && error && (
             <div className="text-center py-16">
-              <p className="text-charcoal/60 text-lg">
+              <p className="text-on-surface-variant/60 text-lg">
                 Unable to load posts right now. Please try again later.
               </p>
             </div>
@@ -104,7 +104,7 @@ export default function BlogIndex() {
           {/* Empty state */}
           {!loading && !error && posts.length === 0 && (
             <div className="text-center py-16">
-              <p className="text-charcoal/60 text-lg">
+              <p className="text-on-surface-variant/60 text-lg">
                 No posts yet. Check back soon.
               </p>
             </div>
@@ -117,10 +117,10 @@ export default function BlogIndex() {
                 <Link
                   key={post.id}
                   to={`/insights/${post.blog_slug}`}
-                  className="group bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow"
+                  className="group bg-surface-container-lowest rounded-sm border border-outline-variant/20 overflow-hidden hover:shadow-lg transition-shadow"
                 >
                   {/* Image */}
-                  <div className="aspect-[16/9] bg-gray-100 overflow-hidden">
+                  <div className="aspect-[16/9] bg-surface-container-low overflow-hidden">
                     {post.featured_image_url ? (
                       <img
                         src={post.featured_image_url}
@@ -129,7 +129,7 @@ export default function BlogIndex() {
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-charcoal/20">
+                      <div className="w-full h-full flex items-center justify-center text-on-surface-variant/20">
                         <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                         </svg>
@@ -140,19 +140,19 @@ export default function BlogIndex() {
                   {/* Content */}
                   <div className="p-6">
                     {post.published_date && (
-                      <p className="text-sm text-charcoal/50 mb-2">
+                      <p className="text-sm text-on-surface-variant/50 mb-2">
                         {formatDate(post.published_date)}
                       </p>
                     )}
-                    <h2 className="font-display text-xl font-semibold text-crimson mb-3 line-clamp-2 group-hover:underline">
+                    <h2 className="font-display text-xl font-semibold text-primary mb-3 line-clamp-2 group-hover:underline">
                       {post.title}
                     </h2>
                     {post.excerpt && (
-                      <p className="text-charcoal/70 text-sm leading-relaxed line-clamp-3 mb-4">
+                      <p className="text-on-surface-variant/70 text-sm leading-relaxed line-clamp-3 mb-4">
                         {post.excerpt}
                       </p>
                     )}
-                    <span className="text-teal font-medium text-sm group-hover:underline">
+                    <span className="text-secondary font-medium text-sm group-hover:underline">
                       Read More →
                     </span>
                   </div>

@@ -1,9 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
 
-interface FooterProps {
-  variant?: 'services'
-}
-
 const navLinks = [
   { to: '/', label: 'Home' },
   { to: '/services', label: 'Services' },
@@ -16,7 +12,7 @@ function isActive(pathname: string, to: string) {
   return pathname.startsWith(to)
 }
 
-export default function Footer({ variant }: FooterProps) {
+export default function Footer() {
   const { pathname } = useLocation()
 
   return (
@@ -39,8 +35,8 @@ export default function Footer({ variant }: FooterProps) {
               to={link.to}
               className={`font-label text-sm tracking-wide uppercase transition-opacity ${
                 isActive(pathname, link.to)
-                  ? 'text-on-surface-variant font-bold border-b border-primary'
-                  : 'text-on-surface-variant hover:text-primary'
+                  ? 'text-secondary font-bold border-b border-secondary'
+                  : 'text-on-surface-variant hover:text-secondary'
               }`}
             >
               {link.label}
@@ -57,29 +53,10 @@ export default function Footer({ variant }: FooterProps) {
         {/* Divider */}
         <div className="h-px w-full max-w-xs bg-outline-variant/30" />
 
-        {/* Copyright + optional tagline */}
+        {/* Copyright */}
         <div className="font-body text-xs text-on-surface-variant/60 uppercase tracking-widest text-center">
           &copy; {new Date().getFullYear()} BaxterLabs Advisory. All rights reserved.
-          {variant === 'services' && (
-            <>
-              <br />
-              Intellectual Authority in Global Finance.
-            </>
-          )}
         </div>
-
-        {/* Services variant: extra confidentiality row */}
-        {variant === 'services' && (
-          <div className="flex justify-between items-center w-full border-t border-outline-variant/10 pt-8 mt-4">
-            <span className="text-[10px] text-on-surface-variant uppercase tracking-[0.2em] font-medium opacity-50">
-              Confidentiality Assured
-            </span>
-            <div className="flex gap-6">
-              <span className="material-symbols-outlined text-on-surface-variant opacity-40 text-sm">lock</span>
-              <span className="material-symbols-outlined text-on-surface-variant opacity-40 text-sm">public</span>
-            </div>
-          </div>
-        )}
       </div>
     </footer>
   )
