@@ -35,7 +35,7 @@ export default function Services() {
           {/* Deliverables summary box */}
           <div className="bg-surface-container-lowest border border-outline-variant/20 rounded-sm shadow-lg lg:mt-4 overflow-hidden">
             <div className="bg-secondary px-10 py-5">
-              <span className="font-label text-on-primary uppercase tracking-[0.3em] text-xs font-bold">The Diagnostic Package Includes</span>
+              <span className="font-label text-on-primary uppercase tracking-[0.3em] text-xs font-bold">What You Receive</span>
             </div>
             <div className="px-10 py-8 space-y-0">
               {deliverables.map((d, i) => (
@@ -55,13 +55,20 @@ export default function Services() {
         </div>
       </section>
 
-      {/* What You Receive (Deliverables) */}
+      {/* Transition line */}
+      <div className="py-10 px-8 md:px-16 lg:px-24 bg-surface">
+        <p className="max-w-7xl mx-auto text-center text-on-surface-variant/60 text-sm tracking-wide italic">
+          Each deliverable is designed to move directly from insight to action.
+        </p>
+      </div>
+
+      {/* What Each Deliverable Means */}
       <section className="bg-surface-container-low py-32 px-8 md:px-16 lg:px-24 border-y border-surface-container">
         <div className="max-w-7xl mx-auto">
           <div className="mb-16">
-            <span className="text-secondary font-semibold uppercase tracking-widest text-xs mb-4 block">The Deliverables</span>
-            <h2 className="text-4xl font-headline text-secondary mb-2">The Diagnostic Package</h2>
-            <p className="text-on-surface-variant text-lg font-medium opacity-80">Each engagement produces a complete, executive-ready diagnostic package.</p>
+            <span className="text-secondary font-semibold uppercase tracking-widest text-xs mb-4 block">The Detail</span>
+            <h2 className="text-4xl font-headline text-secondary mb-2">What Each Deliverable Means</h2>
+            <p className="text-on-surface-variant text-lg font-medium opacity-80">Why each component matters and the outcome it drives for your business.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
             {/* Executive Summary */}
@@ -70,7 +77,7 @@ export default function Services() {
                 <span className="material-symbols-outlined text-secondary mb-8 text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>analytics</span>
                 <h3 className="text-3xl font-semibold mb-6 text-on-surface font-headline italic">Executive Summary</h3>
                 <p className="text-on-surface-variant text-lg leading-relaxed max-w-xl">
-                  A board-ready overview of key findings, risk exposure, and high-priority recovery actions distilled for immediate leadership review. This is the cornerstone of the diagnostic output.
+                  Walk into your next board meeting with a clear, defensible picture of where margin is leaking and what to do first. Designed for leadership who need to act, not just read.
                 </p>
               </div>
             </div>
@@ -80,7 +87,7 @@ export default function Services() {
                 <span className="material-symbols-outlined mb-6 text-3xl text-on-primary/80" style={{ fontVariationSettings: "'FILL' 1" }}>calculate</span>
                 <h3 className="text-2xl font-semibold mb-4 font-headline italic text-on-primary/80">Profit Leak Quantification Workbook</h3>
                 <p className="text-on-primary/80 text-sm leading-relaxed">
-                  The underlying financial model showing exactly where margin is eroding and the specific recovery potential per category.
+                  Puts a dollar figure on every identified leak so you can prioritize fixes by actual recovery value, not guesswork.
                 </p>
               </div>
             </div>
@@ -90,7 +97,7 @@ export default function Services() {
                 <span className="material-symbols-outlined text-secondary mb-6 text-3xl">fact_check</span>
                 <h3 className="text-xl font-semibold mb-4 text-on-surface">Full Diagnostic Report</h3>
                 <p className="text-on-surface-variant text-sm leading-relaxed">
-                  Complete analysis of every identified profit leak with root cause identification and quantified P&amp;L impact.
+                  Gives your team the root cause behind each leak so fixes address the actual problem, not just the symptom.
                 </p>
               </div>
             </div>
@@ -100,7 +107,7 @@ export default function Services() {
                 <span className="material-symbols-outlined text-secondary mb-6 text-3xl">architecture</span>
                 <h3 className="text-xl font-semibold mb-4 text-on-surface">Implementation Roadmap</h3>
                 <p className="text-on-surface-variant text-sm leading-relaxed">
-                  A prioritized 90-day action plan tied directly to diagnostic findings, designed for internal execution or supported growth.
+                  Turns findings into a sequenced 90-day action plan your team can execute immediately, without outside dependencies.
                 </p>
               </div>
             </div>
