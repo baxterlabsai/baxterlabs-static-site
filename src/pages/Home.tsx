@@ -43,6 +43,9 @@ export default function Home() {
               </p>
             </div>
           </div>
+          <p className="mt-10 text-sm text-on-surface-variant/70 max-w-xl mx-auto leading-relaxed">
+            Board-level financial diagnostics for companies where margin, cash flow, and operational discipline matter.
+          </p>
         </div>
       </section>
 
@@ -239,13 +242,13 @@ export default function Home() {
       <section className="bg-surface-container-highest px-6 md:px-12 py-24 border-t border-surface-container">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="font-display text-5xl md:text-6xl text-primary mb-8 leading-tight">Secure Your Diagnostic.</h2>
-          <p className="text-on-surface-variant text-xl mb-12">Stop the bleed. Quantify the recovery. Limited intake availability for Q1.</p>
+          <p className="text-on-surface-variant text-xl mb-12">Stop the bleed. Quantify the recovery. Selective client intake.</p>
           <div className="flex justify-center">
             <Link
               to="/get-started"
               className="bg-primary text-on-primary px-12 py-6 rounded-sm font-label text-sm uppercase tracking-[0.3em] font-bold shadow-xl hover:bg-primary-container transition-all"
             >
-              Request Diagnostic Review
+              Start Your Diagnostic
             </Link>
           </div>
           <p className="mt-8 text-sm text-on-surface-variant/60 font-medium">

@@ -30,18 +30,23 @@ export default function Services() {
             </p>
           </div>
           {/* Deliverables summary box */}
-          <div className="bg-surface-container-low border border-surface-container rounded-sm p-10 lg:mt-4">
-            <span className="font-label text-secondary uppercase tracking-[0.3em] text-xs font-bold block mb-6">The Diagnostic Package Includes</span>
-            <div className="space-y-5">
-              {deliverables.map((d) => (
-                <div key={d.label} className="flex items-center gap-4">
-                  <span className="material-symbols-outlined text-secondary text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>{d.icon}</span>
+          <div className="bg-surface-container-lowest border border-outline-variant/20 rounded-sm shadow-lg lg:mt-4 overflow-hidden">
+            <div className="bg-secondary px-10 py-5">
+              <span className="font-label text-on-primary uppercase tracking-[0.3em] text-xs font-bold">The Diagnostic Package Includes</span>
+            </div>
+            <div className="px-10 py-8 space-y-0">
+              {deliverables.map((d, i) => (
+                <div key={d.label} className={`flex items-center gap-4 py-4 ${i < deliverables.length - 1 ? 'border-b border-surface-container' : ''}`}>
+                  <span className="material-symbols-outlined text-secondary text-xl shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>{d.icon}</span>
                   <span className="text-on-surface font-medium text-sm">{d.label}</span>
                 </div>
               ))}
             </div>
-            <div className="mt-8 pt-6 border-t border-surface-container">
-              <p className="text-xs text-on-surface-variant/60 uppercase tracking-widest font-label">Complete executive-ready package delivered in 14 days</p>
+            <div className="px-10 pb-8">
+              <div className="flex items-center gap-3 pt-4 border-t border-outline-variant/20">
+                <span className="material-symbols-outlined text-secondary text-lg">schedule</span>
+                <p className="text-xs text-on-surface-variant font-label font-medium uppercase tracking-widest">Complete executive-ready package in 14 days</p>
+              </div>
             </div>
           </div>
         </div>
@@ -193,8 +198,8 @@ export default function Services() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 text-left">
             {[
               { icon: 'gavel', title: 'Mutual NDA', desc: 'Execution of a standard non-disclosure agreement prior to any data exchange.' },
-              { icon: 'encrypted', title: 'Encrypted & Access-Controlled', desc: 'All client data is encrypted in transit and at rest, with strict access controls limiting visibility to authorized engagement personnel only.' },
-              { icon: 'block', title: 'No External Use', desc: 'Client data is never aggregated, anonymized for third parties, or used outside of the engagement. Confidential handling of client information is non-negotiable.' },
+              { icon: 'encrypted', title: 'Encrypted & Access-Controlled', desc: 'All client data is encrypted in transit and at rest, with strict access controls and confidentiality protocols governing every engagement.' },
+              { icon: 'block', title: 'No External Use', desc: 'Client data is never aggregated, shared with third parties, or used outside the scope of the engagement. Confidential handling of client information is non-negotiable.' },
               { icon: 'delete_forever', title: 'Destruction Protocol', desc: 'Option for full secure return or verified destruction of all datasets post-delivery.' },
             ].map((item) => (
               <div key={item.icon} className="flex gap-4 p-4 hover:bg-surface-container-lowest transition-colors rounded-sm">
@@ -243,14 +248,14 @@ export default function Services() {
           <div className="absolute top-0 right-0 w-80 h-80 bg-secondary/5 rounded-full blur-[100px] -z-10 -mr-40 -mt-40" />
           <h2 className="text-5xl md:text-6xl font-headline text-primary mb-8 leading-tight italic">Start Your Diagnostic.</h2>
           <p className="text-on-surface-variant text-xl mb-16 max-w-2xl mx-auto leading-relaxed">
-            Stop the bleed. Quantify the recovery. Limited intake availability for Q1 engagements.
+            Stop the bleed. Quantify the recovery. Selective client intake.
           </p>
           <div className="flex flex-col items-center">
             <Link
               to="/get-started"
               className="bg-primary text-on-primary px-16 py-6 rounded-sm text-sm font-bold uppercase tracking-[0.3em] shadow-xl hover:bg-primary-container transition-all transform hover:scale-105"
             >
-              Request Diagnostic Review
+              Start Your Diagnostic
             </Link>
             <p className="mt-8 text-xs text-on-surface-variant/60 font-medium uppercase tracking-[0.2em]">Consultation for Revenue $5M - $50M</p>
           </div>

@@ -50,6 +50,7 @@ export default function About() {
       {/* The Partners */}
       <section className="py-32 px-6 md:px-12 max-w-7xl mx-auto">
         <div className="text-center mb-20">
+          <p className="font-body text-sm text-secondary uppercase tracking-[0.3em] font-bold mb-6">Led by operators with real-world experience inside growing companies — not career consultants.</p>
           <p className="font-display italic text-2xl text-secondary mb-4">"All engagements are led directly by partners. No junior teams. No handoffs."</p>
           <h2 className="font-display text-4xl md:text-5xl text-secondary">The Partners</h2>
         </div>

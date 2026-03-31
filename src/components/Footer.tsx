@@ -46,7 +46,7 @@ export default function Footer() {
             to="/get-started"
             className="font-label text-sm tracking-wide uppercase text-primary underline font-bold"
           >
-            Request Review
+            Start Your Diagnostic
           </Link>
         </div>
 
