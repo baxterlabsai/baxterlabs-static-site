@@ -1,64 +1,27 @@
 import { useState } from 'react'
 import SEO from '../components/SEO'
 
-interface InterviewContact {
-  name: string
-  title: string
-  email: string
-  phone: string
-  linkedin_url: string
-}
-
 interface FormData {
-  company_name: string
   primary_contact_name: string
   primary_contact_email: string
   primary_contact_phone: string
-  industry: string
+  company_name: string
+  website_url: string
   revenue_range: string
   employee_count: string
-  website_url: string
   pain_points: string
-  referral_source: string
-  preferred_start_date: string
-  interview_contacts: InterviewContact[]
 }
 
-const emptyContact = (): InterviewContact => ({
-  name: '',
-  title: '',
-  email: '',
-  phone: '',
-  linkedin_url: '',
-})
-
 const initialFormData: FormData = {
-  company_name: '',
   primary_contact_name: '',
   primary_contact_email: '',
   primary_contact_phone: '',
-  industry: '',
+  company_name: '',
+  website_url: '',
   revenue_range: '',
   employee_count: '',
-  website_url: '',
   pain_points: '',
-  referral_source: '',
-  preferred_start_date: '',
-  interview_contacts: [emptyContact()],
 }
-
-const INDUSTRY_OPTIONS = [
-  'Manufacturing',
-  'Distribution / Wholesale',
-  'Professional Services',
-  'Technology / SaaS',
-  'Healthcare',
-  'Construction',
-  'Retail / E-commerce',
-  'Financial Services',
-  'Real Estate',
-  'Other',
-]
 
 const REVENUE_OPTIONS = [
   '$1M – $5M',
@@ -77,23 +40,14 @@ const EMPLOYEE_OPTIONS = [
   '500+',
 ]
 
-const REFERRAL_OPTIONS = [
-  'Referral / Word of Mouth',
-  'Google Search',
-  'LinkedIn',
-  'Industry Event / Conference',
-  'Other',
-]
-
+const CALENDLY_URL = 'https://calendly.com/george-baxterlabs'
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 export default function GetStarted() {
   const [form, setForm] = useState<FormData>(initialFormData)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
   const [submitError, setSubmitError] = useState('')
-  const [currentStep, setCurrentStep] = useState(1)
 
   const formatPhone = (raw: string): string => {
     const digits = raw.replace(/\D/g, '').slice(0, 10)
@@ -115,128 +69,45 @@ export default function GetStarted() {
     }
   }
 
-  const updateContact = (index: number, field: keyof InterviewContact, value: string) => {
-    const formatted = field === 'phone' ? formatPhone(value) : value
-    setForm(prev => {
-      const contacts = [...prev.interview_contacts]
-      contacts[index] = { ...contacts[index], [field]: formatted }
-      return { ...prev, interview_contacts: contacts }
-    })
-    if (errors[`contact_${index}_${field}`]) {
-      setErrors(prev => {
-        const next = { ...prev }
-        delete next[`contact_${index}_${field}`]
-        return next
-      })
-    }
-  }
-
-  const addContact = () => {
-    if (form.interview_contacts.length < 3) {
-      setForm(prev => ({
-        ...prev,
-        interview_contacts: [...prev.interview_contacts, emptyContact()],
-      }))
-    }
-  }
-
-  const removeContact = (index: number) => {
-    if (form.interview_contacts.length > 1) {
-      setForm(prev => ({
-        ...prev,
-        interview_contacts: prev.interview_contacts.filter((_, i) => i !== index),
-      }))
-    }
-  }
-
-  const validateStep1 = (): boolean => {
+  const validate = (): boolean => {
     const errs: Record<string, string> = {}
-    if (!form.company_name.trim()) errs.company_name = 'Company name is required'
-    if (!form.primary_contact_name.trim()) errs.primary_contact_name = 'Your name is required'
+    if (!form.primary_contact_name.trim()) errs.primary_contact_name = 'Full name is required'
     if (!form.primary_contact_email.trim()) {
-      errs.primary_contact_email = 'Email is required'
+      errs.primary_contact_email = 'Work email is required'
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.primary_contact_email)) {
       errs.primary_contact_email = 'Please enter a valid email'
     }
+    if (!form.company_name.trim()) errs.company_name = 'Company name is required'
     if (!form.website_url.trim()) {
       errs.website_url = 'Company website is required'
     } else {
-      // Auto-prepend https:// if missing
       let url = form.website_url.trim()
       if (!/^https?:\/\//i.test(url)) {
         url = `https://${url}`
         setForm(prev => ({ ...prev, website_url: url }))
       }
     }
-    setErrors(errs)
-    return Object.keys(errs).length === 0
-  }
-
-  const validateStep2 = (): boolean => {
-    const errs: Record<string, string> = {}
-    if (!form.industry) errs.industry = 'Please select an industry'
     if (!form.revenue_range) errs.revenue_range = 'Please select a revenue range'
     if (!form.employee_count) errs.employee_count = 'Please select an employee range'
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
 
-  const nextStep = () => {
-    if (currentStep === 1 && validateStep1()) {
-      setCurrentStep(2)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    } else if (currentStep === 2 && validateStep2()) {
-      setCurrentStep(3)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    }
-  }
-
-  const prevStep = () => {
-    setErrors({})
-    setCurrentStep(prev => Math.max(1, prev - 1))
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
-  const validateStep3 = (): boolean => {
-    const errs: Record<string, string> = {}
-    // Contact 1 is required
-    const c1 = form.interview_contacts[0]
-    if (!c1 || !c1.name.trim()) errs.contact_0_name = 'Contact 1 name is required'
-    if (!c1 || !c1.title.trim()) errs.contact_0_title = 'Contact 1 title is required'
-    if (!c1 || !c1.email.trim()) {
-      errs.contact_0_email = 'Contact 1 email is required'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c1.email)) {
-      errs.contact_0_email = 'Please enter a valid email'
-    }
-    // Contacts 2-3: if name is provided, require title and email
-    for (let i = 1; i < form.interview_contacts.length; i++) {
-      const c = form.interview_contacts[i]
-      if (c.name.trim()) {
-        if (!c.title.trim()) errs[`contact_${i}_title`] = 'Title is required'
-        if (!c.email.trim()) {
-          errs[`contact_${i}_email`] = 'Email is required'
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)) {
-          errs[`contact_${i}_email`] = 'Please enter a valid email'
-        }
-      }
-    }
-    setErrors(errs)
-    return Object.keys(errs).length === 0
-  }
-
   const handleSubmit = async () => {
-    if (!validateStep3()) return
+    if (!validate()) return
 
     setSubmitting(true)
     setSubmitError('')
 
-    // Filter out empty contacts
-    const contacts = form.interview_contacts.filter(c => c.name.trim())
-
     const payload = {
-      ...form,
-      preferred_start_date: form.preferred_start_date || null,
-      interview_contacts: contacts,
+      company_name: form.company_name,
+      primary_contact_name: form.primary_contact_name,
+      primary_contact_email: form.primary_contact_email,
+      primary_contact_phone: form.primary_contact_phone || null,
+      website_url: form.website_url,
+      revenue_range: form.revenue_range,
+      employee_count: form.employee_count,
+      pain_points: form.pain_points || null,
     }
 
     try {
@@ -251,433 +122,179 @@ export default function GetStarted() {
         throw new Error(data.detail || `Server error (${res.status})`)
       }
 
-      await res.json()
-      setSubmitted(true)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      // Redirect to Calendly with pre-filled name and email
+      const name = encodeURIComponent(form.primary_contact_name)
+      const email = encodeURIComponent(form.primary_contact_email)
+      window.location.href = `${CALENDLY_URL}?name=${name}&email=${email}`
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
-    } finally {
       setSubmitting(false)
     }
   }
 
-  // ── Success State ──
-  if (submitted) {
-    return (
-      <>
-        <SEO
-          title="Thank You | BaxterLabs Advisory"
-          description="Your intake form has been submitted. We'll be in touch shortly."
-        />
-
-        <section className="bg-white py-16 md:py-20">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-green/10 rounded-full mb-6">
-              <svg className="w-8 h-8 text-green" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <h1 className="font-display text-3xl md:text-4xl font-bold text-crimson mb-4">
-              Thank You — We're on It.
-            </h1>
-            <p className="text-charcoal text-lg mb-3">
-              Your intake form has been received. A member of our team will reach out within one business day to schedule your discovery call.
-            </p>
-          </div>
-        </section>
-      </>
-    )
-  }
-
-  // ── Form State ──
   return (
     <>
       <SEO
-        title="Get Started | BaxterLabs Advisory"
-        description="Book a free 30-minute discovery call with BaxterLabs Advisory. We'll tell you honestly whether a profit leak diagnostic makes sense for your business."
+        title="Start Your Diagnostic | BaxterLabs Advisory"
+        description="Submit your details to begin the diagnostic review process. Each company is reviewed in advance using publicly available data and internal research models."
       />
 
       {/* Header */}
-      <section className="bg-white py-16 md:py-20">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="font-display text-4xl md:text-5xl font-bold text-crimson mb-6">
-            Let's Get Your Margins Back on Track.
+      <section className="bg-surface px-6 md:px-12 py-16 md:py-20">
+        <div className="max-w-2xl mx-auto text-center">
+          <h1 className="font-display text-4xl md:text-5xl text-primary mb-6">
+            Start Your Diagnostic
           </h1>
-          <p className="text-charcoal text-base md:text-lg max-w-2xl mx-auto">
-            Complete the form below to get started. A member of our team will reach out to schedule a free discovery call.
+          <p className="text-on-surface-variant text-base md:text-lg leading-relaxed max-w-xl mx-auto">
+            Submit your details below to begin the diagnostic review process.
+            Each company is reviewed in advance using publicly available data and internal research models.
           </p>
-        </div>
-      </section>
-
-      {/* Progress Steps */}
-      <section className="bg-ivory pt-10 pb-0">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-center gap-2 mb-0">
-            {[
-              { num: 1, label: 'Contact Info' },
-              { num: 2, label: 'Company Details' },
-              { num: 3, label: 'Interview Contacts' },
-            ].map(({ num, label }) => (
-              <div key={num} className="flex items-center">
-                <div className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm font-semibold transition-colors ${
-                  currentStep === num
-                    ? 'bg-crimson text-white'
-                    : currentStep > num
-                    ? 'bg-green/10 text-green'
-                    : 'bg-gray-light text-gray-warm'
-                }`}>
-                  {currentStep > num ? (
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : (
-                    <span className="w-5 h-5 flex items-center justify-center">{num}</span>
-                  )}
-                  <span className="hidden sm:inline">{label}</span>
-                </div>
-                {num < 3 && (
-                  <div className={`w-8 sm:w-12 h-0.5 mx-1 ${
-                    currentStep > num ? 'bg-green' : 'bg-gray-light'
-                  }`} />
-                )}
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
       {/* Form */}
-      <section className="bg-ivory py-10 md:py-16">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-light p-6 md:p-10">
+      <section className="bg-surface-container-low pb-20 px-6 md:px-12">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-surface-container-lowest rounded-sm shadow-sm border border-outline-variant/20 p-6 md:p-10">
+            <div className="space-y-5">
+              {/* Full Name + Phone */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <Field label="Full Name" required error={errors.primary_contact_name}>
+                  <input
+                    type="text"
+                    value={form.primary_contact_name}
+                    onChange={e => updateField('primary_contact_name', e.target.value)}
+                    placeholder="Jane Smith"
+                    className={inputClass(errors.primary_contact_name)}
+                  />
+                </Field>
+                <Field label="Phone Number">
+                  <input
+                    type="tel"
+                    value={form.primary_contact_phone}
+                    onChange={e => updateField('primary_contact_phone', e.target.value)}
+                    placeholder="(555) 123-4567"
+                    className={inputClass()}
+                  />
+                </Field>
+              </div>
 
-            {/* Step 1: Contact Info */}
-            {currentStep === 1 && (
-              <div>
-                <h2 className="font-display text-xl md:text-2xl font-bold text-teal mb-6">
-                  Your Contact Information
-                </h2>
+              {/* Work Email */}
+              <Field label="Work Email" required error={errors.primary_contact_email}>
+                <input
+                  type="email"
+                  value={form.primary_contact_email}
+                  onChange={e => updateField('primary_contact_email', e.target.value)}
+                  placeholder="jane@acmeindustries.com"
+                  className={inputClass(errors.primary_contact_email)}
+                />
+              </Field>
 
-                <div className="space-y-5">
-                  <Field
-                    label="Company Name"
-                    required
-                    error={errors.company_name}
+              {/* Company Name */}
+              <Field label="Company Name" required error={errors.company_name}>
+                <input
+                  type="text"
+                  value={form.company_name}
+                  onChange={e => updateField('company_name', e.target.value)}
+                  placeholder="Acme Industries"
+                  className={inputClass(errors.company_name)}
+                />
+              </Field>
+
+              {/* Company Website */}
+              <Field label="Company Website" required error={errors.website_url} hint="Required for pre-call analysis">
+                <input
+                  type="url"
+                  value={form.website_url}
+                  onChange={e => updateField('website_url', e.target.value)}
+                  placeholder="https://www.acmeindustries.com"
+                  className={inputClass(errors.website_url)}
+                />
+              </Field>
+
+              {/* Revenue + Employees */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <Field label="Annual Revenue" required error={errors.revenue_range}>
+                  <select
+                    value={form.revenue_range}
+                    onChange={e => updateField('revenue_range', e.target.value)}
+                    className={selectClass(errors.revenue_range)}
                   >
-                    <input
-                      type="text"
-                      value={form.company_name}
-                      onChange={e => updateField('company_name', e.target.value)}
-                      placeholder="Acme Industries"
-                      className={inputClass(errors.company_name)}
-                    />
-                  </Field>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <Field
-                      label="Your Full Name"
-                      required
-                      error={errors.primary_contact_name}
-                    >
-                      <input
-                        type="text"
-                        value={form.primary_contact_name}
-                        onChange={e => updateField('primary_contact_name', e.target.value)}
-                        placeholder="Jane Smith"
-                        className={inputClass(errors.primary_contact_name)}
-                      />
-                    </Field>
-
-                    <Field
-                      label="Phone Number"
-                    >
-                      <input
-                        type="tel"
-                        value={form.primary_contact_phone}
-                        onChange={e => updateField('primary_contact_phone', e.target.value)}
-                        placeholder="(555) 123-4567"
-                        className={inputClass()}
-                      />
-                    </Field>
-                  </div>
-
-                  <Field
-                    label="Email Address"
-                    required
-                    error={errors.primary_contact_email}
+                    <option value="">Select range...</option>
+                    {REVENUE_OPTIONS.map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Number of Employees" required error={errors.employee_count}>
+                  <select
+                    value={form.employee_count}
+                    onChange={e => updateField('employee_count', e.target.value)}
+                    className={selectClass(errors.employee_count)}
                   >
-                    <input
-                      type="email"
-                      value={form.primary_contact_email}
-                      onChange={e => updateField('primary_contact_email', e.target.value)}
-                      placeholder="jane@acmeindustries.com"
-                      className={inputClass(errors.primary_contact_email)}
-                    />
-                  </Field>
+                    <option value="">Select range...</option>
+                    {EMPLOYEE_OPTIONS.map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
 
-                  <Field label="Company Website" required error={errors.website_url}>
-                    <input
-                      type="url"
-                      value={form.website_url}
-                      onChange={e => updateField('website_url', e.target.value)}
-                      placeholder="https://www.acmeindustries.com"
-                      className={inputClass(errors.website_url)}
-                    />
-                  </Field>
-                </div>
+              {/* Pain Points */}
+              <Field label="Where do you suspect margin is slipping or performance is breaking down?">
+                <textarea
+                  value={form.pain_points}
+                  onChange={e => updateField('pain_points', e.target.value)}
+                  rows={3}
+                  placeholder="Vendor costs, payroll alignment, pricing gaps, operational friction — anything on your radar."
+                  className={inputClass()}
+                />
+              </Field>
+            </div>
 
-                <div className="mt-8 flex justify-end">
-                  <button
-                    onClick={nextStep}
-                    className="px-8 h-12 bg-crimson text-white font-semibold rounded-lg transition-colors hover:bg-crimson/90"
-                  >
-                    Next: Company Details
-                  </button>
-                </div>
+            {/* Error */}
+            {submitError && (
+              <div className="mt-6 p-4 bg-red-soft/10 border border-red-soft/30 rounded-sm">
+                <p className="text-red-soft text-sm font-medium">{submitError}</p>
               </div>
             )}
 
-            {/* Step 2: Company Details */}
-            {currentStep === 2 && (
-              <div>
-                <h2 className="font-display text-xl md:text-2xl font-bold text-teal mb-6">
-                  Company Details
-                </h2>
-
-                <div className="space-y-5">
-                  <Field
-                    label="Industry"
-                    required
-                    error={errors.industry}
-                  >
-                    <select
-                      value={form.industry}
-                      onChange={e => updateField('industry', e.target.value)}
-                      className={selectClass(errors.industry)}
-                    >
-                      <option value="">Select industry...</option>
-                      {INDUSTRY_OPTIONS.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                  </Field>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <Field
-                      label="Annual Revenue"
-                      required
-                      error={errors.revenue_range}
-                    >
-                      <select
-                        value={form.revenue_range}
-                        onChange={e => updateField('revenue_range', e.target.value)}
-                        className={selectClass(errors.revenue_range)}
-                      >
-                        <option value="">Select range...</option>
-                        {REVENUE_OPTIONS.map(opt => (
-                          <option key={opt} value={opt}>{opt}</option>
-                        ))}
-                      </select>
-                    </Field>
-
-                    <Field label="Number of Employees" required error={errors.employee_count}>
-                      <select
-                        value={form.employee_count}
-                        onChange={e => updateField('employee_count', e.target.value)}
-                        className={selectClass(errors.employee_count)}
-                      >
-                        <option value="">Select range...</option>
-                        {EMPLOYEE_OPTIONS.map(opt => (
-                          <option key={opt} value={opt}>{opt}</option>
-                        ))}
-                      </select>
-                    </Field>
-                  </div>
-
-                  <Field label="What's keeping you up at night?">
-                    <textarea
-                      value={form.pain_points}
-                      onChange={e => updateField('pain_points', e.target.value)}
-                      rows={4}
-                      placeholder="Tell us about the challenges or areas where you suspect margin is slipping — vendor costs, payroll bloat, pricing gaps, anything."
-                      className={inputClass()}
-                    />
-                  </Field>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <Field label="How did you hear about us?">
-                      <select
-                        value={form.referral_source}
-                        onChange={e => updateField('referral_source', e.target.value)}
-                        className={selectClass()}
-                      >
-                        <option value="">Select...</option>
-                        {REFERRAL_OPTIONS.map(opt => (
-                          <option key={opt} value={opt}>{opt}</option>
-                        ))}
-                      </select>
-                    </Field>
-
-                    <Field label="Preferred Start Date">
-                      <input
-                        type="date"
-                        value={form.preferred_start_date}
-                        onChange={e => updateField('preferred_start_date', e.target.value)}
-                        className={inputClass()}
-                      />
-                    </Field>
-                  </div>
-                </div>
-
-                <div className="mt-8 flex justify-between">
-                  <button
-                    onClick={prevStep}
-                    className="px-6 h-12 border border-gray-light text-charcoal font-semibold rounded-lg transition-colors hover:bg-gray-light/50"
-                  >
-                    Back
-                  </button>
-                  <button
-                    onClick={nextStep}
-                    className="px-8 h-12 bg-crimson text-white font-semibold rounded-lg transition-colors hover:bg-crimson/90"
-                  >
-                    Next: Interview Contacts
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Step 3: Interview Contacts + Submit */}
-            {currentStep === 3 && (
-              <div>
-                <h2 className="font-display text-xl md:text-2xl font-bold text-teal mb-2">
-                  Interview Contacts
-                </h2>
-                <p className="text-gray-warm text-sm mb-6">
-                  Provide up to 3 people we may interview during the diagnostic — department heads, controllers, operations leads, etc. <strong className="text-charcoal">At least one contact is required.</strong>
-                </p>
-
-                <div className="space-y-6">
-                  {form.interview_contacts.map((contact, idx) => (
-                    <div key={idx} className="p-4 bg-ivory rounded-lg border border-gray-light">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-sm font-semibold text-teal">Contact {idx + 1}</span>
-                        {form.interview_contacts.length > 1 && (
-                          <button
-                            onClick={() => removeContact(idx)}
-                            className="text-red-soft text-sm font-medium hover:underline"
-                          >
-                            Remove
-                          </button>
-                        )}
-                      </div>
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
-                            <input
-                              type="text"
-                              value={contact.name}
-                              onChange={e => updateContact(idx, 'name', e.target.value)}
-                              placeholder={idx === 0 ? 'Full name *' : 'Full name'}
-                              className={inputClass(errors[`contact_${idx}_name`])}
-                            />
-                            {errors[`contact_${idx}_name`] && <p className="mt-1 text-xs text-red-soft font-medium">{errors[`contact_${idx}_name`]}</p>}
-                          </div>
-                          <div>
-                            <input
-                              type="text"
-                              value={contact.title}
-                              onChange={e => updateContact(idx, 'title', e.target.value)}
-                              placeholder={idx === 0 ? 'Title (e.g., CFO) *' : 'Title (e.g., CFO)'}
-                              className={inputClass(errors[`contact_${idx}_title`])}
-                            />
-                            {errors[`contact_${idx}_title`] && <p className="mt-1 text-xs text-red-soft font-medium">{errors[`contact_${idx}_title`]}</p>}
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
-                            <input
-                              type="email"
-                              value={contact.email}
-                              onChange={e => updateContact(idx, 'email', e.target.value)}
-                              placeholder={idx === 0 ? 'Email *' : 'Email'}
-                              className={inputClass(errors[`contact_${idx}_email`])}
-                            />
-                            {errors[`contact_${idx}_email`] && <p className="mt-1 text-xs text-red-soft font-medium">{errors[`contact_${idx}_email`]}</p>}
-                          </div>
-                          <input
-                            type="tel"
-                            value={contact.phone}
-                            onChange={e => updateContact(idx, 'phone', e.target.value)}
-                            placeholder="Phone"
-                            className={inputClass()}
-                          />
-                        </div>
-                        <input
-                          type="url"
-                          value={contact.linkedin_url}
-                          onChange={e => updateContact(idx, 'linkedin_url', e.target.value)}
-                          placeholder="LinkedIn URL (optional)"
-                          className={inputClass()}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {form.interview_contacts.length < 3 && (
-                  <button
-                    onClick={addContact}
-                    className="mt-4 flex items-center gap-1.5 text-teal font-semibold text-sm hover:underline"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            {/* Submit */}
+            <div className="mt-8">
+              <button
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="w-full bg-primary text-on-primary py-4 rounded-sm font-label text-sm uppercase tracking-widest font-bold shadow-lg hover:bg-primary-container transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {submitting ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    Add Another Contact
-                  </button>
+                    Processing...
+                  </>
+                ) : (
+                  'Continue to Scheduling'
                 )}
+              </button>
+            </div>
 
-                {submitError && (
-                  <div className="mt-6 p-4 bg-red-soft/10 border border-red-soft/30 rounded-lg">
-                    <p className="text-red-soft text-sm font-medium">{submitError}</p>
-                  </div>
-                )}
-
-                <div className="mt-8 flex justify-between">
-                  <button
-                    onClick={prevStep}
-                    className="px-6 h-12 border border-gray-light text-charcoal font-semibold rounded-lg transition-colors hover:bg-gray-light/50"
-                  >
-                    Back
-                  </button>
-                  <button
-                    onClick={handleSubmit}
-                    disabled={submitting}
-                    className="px-8 h-12 bg-crimson text-white font-semibold rounded-lg transition-colors hover:bg-crimson/90 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    {submitting ? (
-                      <>
-                        <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                        Submitting...
-                      </>
-                    ) : (
-                      'Submit & Get Started'
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* Trust line */}
+            <p className="mt-4 text-center text-on-surface-variant/50 text-xs font-label">
+              All information is handled confidentially. Used only for pre-call diagnostic review.
+            </p>
           </div>
 
-          {/* Privacy Note */}
-          <p className="mt-6 text-center text-gray-warm text-xs">
-            Your information is kept strictly confidential.
-          </p>
+          {/* Process note */}
+          <div className="mt-8 flex items-start gap-3 px-2">
+            <span className="material-symbols-outlined text-secondary text-lg mt-0.5 shrink-0">info</span>
+            <p className="text-on-surface-variant text-xs leading-relaxed">
+              A structured onboarding process begins only after mutual fit is confirmed. No commitments at this stage.
+            </p>
+          </div>
         </div>
       </section>
-
     </>
   )
 }
@@ -688,18 +305,21 @@ function Field({
   label,
   required,
   error,
+  hint,
   children,
 }: {
   label: string
   required?: boolean
   error?: string
+  hint?: string
   children: React.ReactNode
 }) {
   return (
     <div>
-      <label className="block text-sm font-semibold text-charcoal mb-1.5">
+      <label className="block text-sm font-semibold text-on-surface mb-1.5">
         {label}
-        {required && <span className="text-crimson ml-0.5">*</span>}
+        {required && <span className="text-primary ml-0.5">*</span>}
+        {hint && <span className="text-on-surface-variant/50 font-normal text-xs ml-2">— {hint}</span>}
       </label>
       {children}
       {error && <p className="mt-1 text-xs text-red-soft font-medium">{error}</p>}
@@ -708,13 +328,13 @@ function Field({
 }
 
 function inputClass(error?: string): string {
-  return `w-full px-4 py-2.5 rounded-lg border ${
-    error ? 'border-red-soft' : 'border-gray-light'
-  } bg-white text-charcoal placeholder:text-gray-warm/60 focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal transition-colors text-sm`
+  return `w-full px-4 py-2.5 rounded-sm border ${
+    error ? 'border-red-soft' : 'border-outline-variant/40'
+  } bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-colors text-sm`
 }
 
 function selectClass(error?: string): string {
-  return `w-full px-4 py-2.5 rounded-lg border ${
-    error ? 'border-red-soft' : 'border-gray-light'
-  } bg-white text-charcoal focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal transition-colors text-sm`
+  return `w-full px-4 py-2.5 rounded-sm border ${
+    error ? 'border-red-soft' : 'border-outline-variant/40'
+  } bg-surface-container-lowest text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-colors text-sm`
 }
