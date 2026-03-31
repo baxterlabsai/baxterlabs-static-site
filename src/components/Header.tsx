@@ -1,54 +1,63 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
+const navLinks = [
+  { to: '/', label: 'Home' },
+  { to: '/services', label: 'Services' },
+  { to: '/about', label: 'About' },
+  { to: '/insights', label: 'Insights' },
+]
+
+function isActive(pathname: string, to: string) {
+  if (to === '/') return pathname === '/'
+  return pathname.startsWith(to)
+}
+
 export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const { pathname } = useLocation()
 
-  const navLinks = [
-    { to: '/', label: 'Home' },
-    { to: '/services', label: 'Services' },
-    { to: '/about', label: 'About' },
-    { to: '/blog', label: 'Insights' },
-  ]
-
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-gold">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-[72px]">
-          {/* Logo */}
-          <Link to="/" className="flex-shrink-0">
-            <img
-              src="/images/baxterlabs-logo.png"
-              alt="BaxterLabs Advisory"
-              className="h-[83px] w-auto"
-            />
-          </Link>
+    <nav className="fixed top-0 w-full z-50 glass-nav border-b border-surface-container">
+      <div className="flex justify-between items-center px-6 md:px-12 py-4 max-w-full mx-auto">
+        {/* Logo */}
+        <Link to="/" className="flex items-center">
+          <img
+            alt="BaxterLabs Logo"
+            className="h-[83px] w-auto object-contain"
+            src="/images/baxterlabs-logo.png"
+          />
+        </Link>
 
-          {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center gap-8">
-            {navLinks.map((link) => (
-              <Link
-                key={link.to}
-                to={link.to}
-                className={`text-base font-medium transition-colors hover:text-teal ${
-                  (link.to === '/' ? pathname === '/' : pathname.startsWith(link.to)) ? 'text-teal' : 'text-charcoal'
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
+        {/* Desktop Nav */}
+        <div className="hidden md:flex gap-10 items-center">
+          {navLinks.map((link) => (
             <Link
-              to="/get-started"
-              className="inline-flex items-center justify-center px-6 h-12 bg-crimson text-white font-semibold rounded-lg transition-colors hover:bg-crimson/90"
+              key={link.to}
+              to={link.to}
+              className={
+                isActive(pathname, link.to)
+                  ? 'text-primary font-bold border-b-2 border-primary transition-colors duration-300'
+                  : 'text-on-surface-variant font-medium hover:text-primary transition-colors duration-300'
+              }
             >
-              Get Started
+              {link.label}
             </Link>
-          </nav>
+          ))}
+        </div>
+
+        {/* CTA + Mobile Toggle */}
+        <div className="flex items-center gap-4">
+          <Link
+            to="/get-started"
+            className="hidden md:inline-block bg-gradient-to-br from-primary to-primary-container text-on-primary px-6 py-3 rounded-sm font-label text-sm uppercase tracking-wider font-bold shadow-sm active:scale-95 transition-all"
+          >
+            Start Your Diagnostic
+          </Link>
 
           {/* Mobile Hamburger */}
           <button
-            className="md:hidden p-2 text-charcoal"
+            className="md:hidden p-2 text-on-surface"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Toggle menu"
           >
@@ -67,15 +76,17 @@ export default function Header() {
 
       {/* Mobile Menu */}
       {mobileOpen && (
-        <div className="md:hidden bg-white border-t border-gray-light">
-          <div className="px-4 py-4 space-y-3">
+        <div className="md:hidden bg-surface border-t border-surface-container">
+          <div className="px-6 py-4 space-y-3">
             {navLinks.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
                 onClick={() => setMobileOpen(false)}
-                className={`block text-base font-medium py-2 transition-colors hover:text-teal ${
-                  pathname === link.to ? 'text-teal' : 'text-charcoal'
+                className={`block text-base font-medium py-2 transition-colors ${
+                  isActive(pathname, link.to)
+                    ? 'text-primary font-bold'
+                    : 'text-on-surface-variant hover:text-primary'
                 }`}
               >
                 {link.label}
@@ -84,13 +95,13 @@ export default function Header() {
             <Link
               to="/get-started"
               onClick={() => setMobileOpen(false)}
-              className="block text-center px-6 py-3 bg-crimson text-white font-semibold rounded-lg transition-colors hover:bg-crimson/90"
+              className="block text-center bg-gradient-to-br from-primary to-primary-container text-on-primary px-6 py-3 rounded-sm font-label text-sm uppercase tracking-wider font-bold"
             >
-              Get Started
+              Start Your Diagnostic
             </Link>
           </div>
         </div>
       )}
-    </header>
+    </nav>
   )
 }

@@ -68,7 +68,7 @@ export default function BlogIndex() {
               Insights
             </h1>
             <p className="text-lg text-charcoal/70">
-              Diagnostic thinking for professional service firm leaders.
+              Practical perspectives on financial performance, profit leakage, and operator-level decision making.
             </p>
           </div>
 
@@ -116,7 +116,7 @@ export default function BlogIndex() {
               {posts.map(post => (
                 <Link
                   key={post.id}
-                  to={`/blog/${post.blog_slug}`}
+                  to={`/insights/${post.blog_slug}`}
                   className="group bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow"
                 >
                   {/* Image */}

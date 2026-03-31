@@ -92,7 +92,7 @@ export default function BlogPost() {
             <p className="text-charcoal/60 mb-6">
               The post you're looking for doesn't exist or has been removed.
             </p>
-            <Link to="/blog" className="text-teal font-medium hover:underline">
+            <Link to="/insights" className="text-teal font-medium hover:underline">
               ← Back to Insights
             </Link>
           </div>
@@ -116,7 +116,7 @@ export default function BlogPost() {
         <div className="max-w-[680px] mx-auto px-4 sm:px-6">
           {/* Back link */}
           <Link
-            to="/blog"
+            to="/insights"
             className="inline-flex items-center text-teal font-medium text-sm hover:underline mb-8"
           >
             ← Back to Insights

@@ -6,178 +6,141 @@ export default function About() {
     <>
       <SEO
         title="About | BaxterLabs Advisory"
-        description="BaxterLabs Advisory was built for one purpose: helping growth-stage firms find and fix the margin erosion that comes with scaling. Senior finance leaders. 14-day diagnostic. Fixed fee."
+        description="Operator-led financial diagnostics. Built by finance operators who have owned financial outcomes. 25+ years of real-world P&L ownership."
       />
 
-      {/* Header */}
-      <section className="bg-white py-16 md:py-20">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="font-display text-4xl md:text-5xl font-bold text-crimson mb-4">
-            About BaxterLabs Advisory
-          </h1>
-          <p className="text-gray-warm text-lg">
-            Built for one purpose: helping growth-stage firms get back in control of their margins.
-          </p>
-        </div>
-      </section>
-
-      {/* Why We Exist */}
-      <section className="bg-ivory py-16 md:py-20">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-crimson mb-8 text-center">
-            We kept seeing the same pattern.
-          </h2>
-          <div className="space-y-5 text-charcoal text-base md:text-lg">
-            <p>
-              Businesses cross $5M in revenue and something shifts. The growth is real: revenue climbs, headcount grows, the client list expands. But margins don't keep pace. Sometimes they compress. The owner feels it before the numbers confirm it: something is leaking, but there's no time to stop and figure out exactly what or how much.
-            </p>
-            <p>
-              We built BaxterLabs Advisory because the existing options for these businesses don't work. Big 4 firms won't take a $12,500 engagement. Freelance consultants lack the analytical infrastructure to deliver institutional-quality findings. And most advisory firms sell hours, not outcomes, so the meter runs while the answers stay vague.
-            </p>
-            <p>
-              We built something different. A tightly scoped, fixed-fee diagnostic that delivers quantified answers in two weeks. Every finding tied to a dollar amount. Every recommendation prioritized for impact. A deliverable package your leadership team can act on the day we present it.
+      {/* Opening/Positioning */}
+      <section className="px-6 md:px-12 mb-32 max-w-7xl mx-auto pt-8">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-12">
+          <div className="md:col-span-8">
+            <span className="font-label text-secondary uppercase tracking-[0.3em] text-xs font-bold block mb-4">Our Foundation</span>
+            <h1 className="font-display italic text-5xl md:text-7xl text-primary leading-tight mb-8">
+              Operator-Led Financial Diagnostics
+            </h1>
+          </div>
+          <div className="md:col-span-4 self-end">
+            <p className="text-on-surface-variant text-lg leading-relaxed font-body">
+              The firm is built by finance operators who have owned financial outcomes. Unlike traditional advisory models staffed by theoretical analysts, we deliver diagnostics rooted in the reality of day-to-day fiscal management.
             </p>
           </div>
         </div>
       </section>
 
-      {/* What We Bring */}
-      <section className="bg-white py-16 md:py-20">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-crimson mb-8 text-center">
-            Enterprise rigor. Mid-market focus.
-          </h2>
-          <div className="space-y-5 text-charcoal text-base md:text-lg">
-            <p>
-              The team behind BaxterLabs brings decades of senior finance leadership across healthcare, enterprise analytics, capital markets, food technology, and professional services. Our collective experience includes managing finance operations spanning hundreds of staff across multiple states, supporting more than $350M in capital formation, building institutional-grade financial infrastructure, and delivering the kind of analytical depth that boards and investors expect.
+      {/* Why This Exists */}
+      <section className="bg-surface-container-low py-32 px-6 md:px-12 border-y border-surface-container">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-20 items-start">
+          <div>
+            <h2 className="font-display text-4xl text-primary mb-6">Why This Exists</h2>
+            <p className="text-on-surface-variant text-lg leading-relaxed mb-8">
+              There is a systemic gap between high-level advisory and ground-level execution. Strategy often dies in the translation to the general ledger. BaxterLabs was founded to bridge this divide through structured diagnostics that focus on one singular metric: quantified profit leakage.
             </p>
-            <p>
-              We've sat in the seats our clients sit in, managing P&Ls, negotiating vendor contracts, building forecasts, closing underperforming operations, restructuring cost centers. That's not consulting theory. It's pattern recognition earned through direct operational experience across dozens of complex organizations.
-            </p>
+          </div>
+          <div className="space-y-12">
+            <div className="border-l-2 border-secondary pl-8">
+              <h4 className="font-label text-secondary text-sm uppercase tracking-widest font-bold mb-2">The Execution Gap</h4>
+              <p className="text-on-surface-variant text-sm">Traditional firms stop at the 'what.' We identify the 'how' by mapping financial strategy directly to operational workflows.</p>
+            </div>
+            <div className="border-l-2 border-secondary pl-8">
+              <h4 className="font-label text-secondary text-sm uppercase tracking-widest font-bold mb-2">Quantified Impact</h4>
+              <p className="text-on-surface-variant text-sm">We don't offer generalities. Our process isolates specific nodes where capital is inefficiently deployed or leaked.</p>
+            </div>
           </div>
         </div>
       </section>
 
       {/* The Partners */}
-      <section className="py-20 md:py-28" style={{ backgroundColor: '#FAF8F2' }}>
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-crimson mb-4 text-center">
-            The Partners.
-          </h2>
-          <p className="text-center text-charcoal/60 text-base mb-16 max-w-xl mx-auto">
-            Senior operators who have run the finance function from the inside.
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-16">
-
-            {/* George DeVries */}
-            <div className="flex flex-col items-center text-center md:items-start md:text-left">
-              <div className="mb-6">
-                <img
-                  src="/images/George.png"
-                  alt="George DeVries"
-                  className="w-40 h-40 rounded-full object-cover object-top border-4 border-white shadow-lg"
-                />
-              </div>
-              <h3 className="text-xl font-bold text-charcoal">George DeVries</h3>
-              <p className="text-teal text-sm font-semibold tracking-wide uppercase mt-1 mb-5">
-                Managing Partner
-              </p>
-              <div className="space-y-4 text-charcoal text-base leading-relaxed">
-                <p>
-                  I've spent 25 years inside the finance function of companies that were growing faster than their infrastructure. Venture-backed startups closing $100M+ rounds. Healthcare services organizations managing 600 people across six states. Food technology companies in the middle of $175M Series C. At every stage, the same pattern: the money was there, but nobody had built the systems to see where it was going.
-                </p>
-                <p>
-                  I've generated over $8M in annual cost savings at a single organization. I've cut month-end close by five days. I've watched companies lose $200K+ a year to billing gaps they didn't know existed. What I've learned is that margin erosion rarely comes from one big mistake. It comes from a dozen small systems that nobody owns.
-                </p>
-                <p>
-                  That's why I built BaxterLabs. Not to sell another advisory retainer, but to give firms a clean answer in two weeks: here's exactly what's leaking, here's what it's worth, here's where to start.
-                </p>
-              </div>
+      <section className="py-32 px-6 md:px-12 max-w-7xl mx-auto">
+        <div className="text-center mb-20">
+          <p className="font-display italic text-2xl text-primary mb-4">"All engagements are led directly by partners. No junior teams. No handoffs."</p>
+          <h2 className="font-display text-4xl md:text-5xl text-secondary">The Partners</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-24">
+          {/* George */}
+          <div className="flex flex-col items-center group">
+            <div className="w-72 h-72 rounded-full overflow-hidden mb-8 border-4 border-surface-container-highest transition-transform duration-500 group-hover:scale-[1.02]">
+              <img
+                alt="George DeVries"
+                className="w-full h-full object-cover object-top transition-all duration-700"
+                src="/images/George.png"
+              />
             </div>
-
-            {/* Alfonso Cordón */}
-            <div className="flex flex-col items-center text-center md:items-start md:text-left">
-              <div className="mb-6">
-                <img
-                  src="/images/Alfonso.jpg"
-                  alt="Alfonso Cordón"
-                  className="w-40 h-40 rounded-full object-cover object-top border-4 border-white shadow-lg"
-                />
-              </div>
-              <h3 className="text-xl font-bold text-charcoal">Alfonso Cordón</h3>
-              <p className="text-teal text-sm font-semibold tracking-wide uppercase mt-1 mb-5">
-                Partner
-              </p>
-              <div className="space-y-4 text-charcoal text-base leading-relaxed">
-                <p>
-                  For 16 years at Moody's Analytics, I ran the finance function for businesses generating over $3 billion in annual recurring revenue. That means I've seen what scale actually looks like from the inside: the forecasting breakdowns, the pricing models that quietly underperform, the transition points where a business outgrows its financial infrastructure before anyone realizes it.
-                </p>
-                <p>
-                  I led the finance work for a $400M line of business through a full shift from on-premise to SaaS. I built the pricing framework that drove 12% revenue growth and got adopted company-wide. Before that, at Bayer and Abbott, I managed financial consolidations across multiple countries and currencies. What you learn doing that work is how to find signal in complex data, and how quickly things drift when nobody's built the right monitoring in.
-                </p>
-                <p>
-                  What drew me to BaxterLabs is the specificity of the model. We're not selling a strategy engagement or a roadmap. We're telling you, in two weeks, exactly where margin is leaving your business and what it's worth to get it back.
-                </p>
-              </div>
+            <h3 className="font-display text-2xl text-primary mb-1">George DeVries</h3>
+            <p className="text-secondary font-label text-sm uppercase tracking-widest font-bold mb-6">Managing Partner</p>
+            <div className="text-on-surface-variant leading-relaxed max-w-2xl font-body text-sm space-y-4 text-left">
+              <p>I've spent 25 years inside the finance function of companies that were growing faster than their infrastructure. Venture-backed startups closing $100M+ rounds. Healthcare services organizations managing 600 people across six states. Food technology companies in the middle of $175M Series C. At every stage, the same pattern: the money was there, but nobody had built the systems to see where it was going.</p>
+              <p>I've generated over $8M in annual cost savings at a single organization. I've cut month-end close by five days. I've watched companies lose $200K+ a year to billing gaps they didn't know existed. What I've learned is that margin erosion rarely comes from one big mistake. It comes from a dozen small systems that nobody owns.</p>
+              <p>That's why I built BaxterLabs. Not to sell another advisory retainer, but to give firms a clean answer in two weeks: here's exactly what's leaking, here's what it's worth, here's where to start.</p>
             </div>
-
+          </div>
+          {/* Alfonso */}
+          <div className="flex flex-col items-center group">
+            <div className="w-72 h-72 rounded-full overflow-hidden mb-8 border-4 border-surface-container-highest transition-transform duration-500 group-hover:scale-[1.02]">
+              <img
+                alt="Alfonso Cordon"
+                className="w-full h-full object-cover object-top transition-all duration-700"
+                src="/images/Alfonso.jpg"
+              />
+            </div>
+            <h3 className="font-display text-2xl text-primary mb-1">Alfonso Cordon</h3>
+            <p className="text-secondary font-label text-sm uppercase tracking-widest font-bold mb-6">Partner</p>
+            <div className="text-on-surface-variant leading-relaxed max-w-2xl font-body text-sm space-y-4 text-left">
+              <p>For 16 years at Moody's Analytics, I ran the finance function for businesses generating over $3 billion in annual recurring revenue. That means I've seen what scale actually looks like from the inside: the forecasting breakdowns, the pricing models that quietly underperform, the transition points where a business outgrows its financial infrastructure before anyone realizes it.</p>
+              <p>I led the finance work for a $400M line of business through a full shift from on-premise to SaaS. I built the pricing framework that drove 12% revenue growth and got adopted company-wide. Before that, at Bayer and Abbott, I managed financial consolidations across multiple countries and currencies. What you learn doing that work is how to find signal in complex data, and how quickly things drift when nobody's built the right monitoring in.</p>
+              <p>What drew me to BaxterLabs is the specificity of the model. We're not selling a strategy engagement or a roadmap. We're telling you, in two weeks, exactly where margin is leaving your business and what it's worth to get it back.</p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* How We're Different */}
-      <section className="bg-ivory py-16 md:py-20">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-crimson mb-8 text-center">
-            Four things we do differently.
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[
-              {
-                title: 'Senior leaders on every engagement.',
-                body: 'There are no junior analysts, no handoffs, no \'B team.\' The people who scope the engagement are the same people who analyze your data, conduct your interviews, and present the findings.',
-              },
-              {
-                title: 'Fixed scope. Fixed fee. Fixed timeline.',
-                body: '$12,500. Fourteen days. You know exactly what you\'re getting and exactly what it costs before we start. No hourly billing, no scope creep, no change orders.',
-              },
-              {
-                title: 'Every finding is quantified.',
-                body: 'We don\'t hand you a list of observations. Every identified inefficiency is tied to a dollar amount, so you can see the ROI before deciding what to act on first.',
-              },
-              {
-                title: 'Built for the gap between Big 4 and freelance.',
-                body: 'Growth-stage firms generating $5M to $50M deserve the same analytical rigor that enterprise companies get. They just don\'t need a six-month engagement and a seven-figure invoice to get it.',
-              },
-            ].map((card) => (
-              <div
-                key={card.title}
-                className="bg-white border-l-4 border-l-crimson rounded-lg p-6 shadow-sm"
-              >
-                <h3 className="text-lg font-semibold text-teal mb-3">{card.title}</h3>
-                <p className="text-charcoal">{card.body}</p>
-              </div>
-            ))}
+      {/* How We Work */}
+      <section className="bg-surface-container-highest py-32 px-6 md:px-12 border-y border-surface-container">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-12">
+            <div className="md:col-span-4">
+              <h2 className="font-display text-4xl text-primary">How We Work</h2>
+              <div className="mt-8 w-12 h-0.5 bg-secondary" />
+            </div>
+            <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-y-16 gap-x-12">
+              {[
+                { num: '01', title: 'Direct Partner Involvement', desc: 'No translation layers. The partners who pitch the work are the ones who conduct the forensic analysis and deliver the findings.' },
+                { num: '02', title: 'Structured Repeatable Process', desc: 'We utilize a proprietary diagnostic framework that ensures consistency across audits while remaining adaptable to industry-specific nuances.' },
+                { num: '03', title: 'Quantified Financial Impact', desc: 'Observations are only useful if they are priced. Every diagnostic finding is accompanied by a calculated dollar-value impact.' },
+                { num: '04', title: 'Executive Decision-Making', desc: 'Our outputs are designed for Board and C-Suite review—concise, data-backed, and focused on immediate actionable levers.' },
+              ].map((item) => (
+                <div key={item.num} className="flex flex-col gap-4">
+                  <span className="text-primary font-display italic text-3xl">{item.num}</span>
+                  <h4 className="font-bold text-secondary uppercase tracking-tight font-label text-sm">{item.title}</h4>
+                  <p className="text-on-surface-variant text-sm leading-relaxed">{item.desc}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Bottom CTA */}
-      <section className="bg-crimson py-16 md:py-20">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-white mb-6">
-            See if a diagnostic makes sense for your business.
-          </h2>
-          <p className="text-white/90 text-base md:text-lg mb-10 max-w-2xl mx-auto">
-            A 30-minute discovery call is free and confidential. We'll ask a few questions, share what we're seeing in your industry, and tell you honestly whether this engagement is the right fit. We work with a limited number of firms each quarter to ensure dedicated attention on every engagement.
+      {/* Trust Reinforcement */}
+      <section className="py-32 px-6 md:px-12 max-w-5xl mx-auto text-center">
+        <div className="bg-primary p-12 md:p-20 rounded-sm relative overflow-hidden text-on-primary">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-bl-full" />
+          <span className="material-symbols-outlined text-4xl text-surface-container-highest mb-6 block" style={{ fontVariationSettings: "'FILL' 1" }}>verified_user</span>
+          <h2 className="font-display text-3xl md:text-4xl mb-8">Data Integrity &amp; Professional Standards.</h2>
+          <p className="text-on-primary/80 leading-relaxed max-w-2xl mx-auto mb-12 italic text-lg">
+            "Integrity in financial advisory is non-negotiable. Our protocols ensure that your data remains your most protected asset."
           </p>
-          <Link
-            to="/get-started"
-            className="inline-flex items-center justify-center px-8 h-12 bg-white text-crimson font-semibold rounded-lg transition-colors hover:bg-white/90 text-base"
-          >
-            Book a Discovery Call
-          </Link>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8 border-t border-on-primary/10">
+            <div className="p-4">
+              <p className="font-bold text-surface-container-highest uppercase text-[10px] tracking-widest mb-2">NDA Commitment</p>
+              <p className="text-on-primary/60 text-xs">Full legal non-disclosure binding on all project phases.</p>
+            </div>
+            <div className="p-4 border-x border-on-primary/10">
+              <p className="font-bold text-surface-container-highest uppercase text-[10px] tracking-widest mb-2">Controlled Handling</p>
+              <p className="text-on-primary/60 text-xs">Direct, encrypted transmission of sensitive ledger data.</p>
+            </div>
+            <div className="p-4">
+              <p className="font-bold text-surface-container-highest uppercase text-[10px] tracking-widest mb-2">Zero External Use</p>
+              <p className="text-on-primary/60 text-xs">No anonymized benchmarking or external sharing of client data.</p>
+            </div>
+          </div>
         </div>
       </section>
     </>

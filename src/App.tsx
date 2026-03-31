@@ -69,8 +69,8 @@ export default function App() {
           <Route path="/services" element={<Services />} />
           <Route path="/about" element={<About />} />
           <Route path="/get-started" element={<GetStarted />} />
-          <Route path="/blog" element={<BlogIndex />} />
-          <Route path="/blog/:slug" element={<BlogPost />} />
+          <Route path="/insights" element={<BlogIndex />} />
+          <Route path="/insights/:slug" element={<BlogPost />} />
         </Route>
 
         {/* Public portals (token-based, no auth) */}

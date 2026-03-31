@@ -5,179 +5,251 @@ export default function Home() {
   return (
     <>
       <SEO
-        title="BaxterLabs Advisory | 14-Day Profit Leak Diagnostic"
-        description="BaxterLabs Advisory delivers a 14-day fixed-fee diagnostic that pinpoints where your business is losing margin. $12,500 all-in. Board-ready deliverables."
+        title="BaxterLabs Advisory | Executive Profit Recovery"
+        description="Most firms operate with significant, unidentified leakage. BaxterLabs delivers a 14-day executive diagnostic identifying specific, recoverable cash flow lost to misaligned financial controls."
       />
 
-      {/* Hero */}
-      <section className="bg-white py-20 md:py-28">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-crimson mb-6">
-            Get Back in Control of Your Margins.
+      {/* Hero Section */}
+      <section className="relative px-6 md:px-12 py-24 md:py-48 overflow-hidden bg-surface">
+        <div className="max-w-4xl mx-auto text-center">
+          <h1 className="font-display italic text-5xl md:text-8xl text-primary leading-[1.05] mb-4">
+            Quantify and Recover Material Annualized Profit Leakage.
           </h1>
-          <p className="text-lg md:text-xl text-charcoal max-w-3xl mx-auto mb-10">
-            BaxterLabs Advisory delivers a 14-day fixed-fee diagnostic that pinpoints exactly where your business is losing margin, and shows you how to get it back.
+          <p className="font-headline italic text-primary/70 text-2xl md:text-3xl mb-8">
+            Most firms don't know where profit is leaking. We make it visible.
           </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <p className="font-headline font-bold text-secondary text-2xl md:text-3xl mb-8 leading-snug">
+            Most firms operate with significant, unidentified leakage—often losing 5–12% of EBITDA to operational friction they haven't yet quantified.
+          </p>
+          <p className="font-body text-on-surface-variant text-lg md:text-xl max-w-2xl mx-auto leading-relaxed mb-12">
+            For professional service firms with $5M–$50M in revenue. A 14-day executive diagnostic identifying specific, recoverable cash flow lost to misaligned financial controls.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-8 justify-center items-center">
             <Link
               to="/get-started"
-              className="inline-flex items-center justify-center px-8 h-12 bg-crimson text-white font-semibold rounded-lg transition-colors hover:bg-crimson/90 text-base"
+              className="bg-primary text-on-primary px-12 py-5 rounded-sm font-label text-sm uppercase tracking-widest font-bold shadow-lg hover:bg-primary-container transition-all"
             >
-              Book a Discovery Call
+              Start Your Diagnostic
             </Link>
-            <a
-              href="#process"
-              className="inline-flex items-center text-teal font-semibold hover:underline text-base"
-            >
-              See How It Works
-              <svg className="ml-1 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* Social Proof Strip */}
-      <section className="bg-teal py-10">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-            <div>
-              <p className="text-3xl md:text-4xl font-bold text-gold mb-1">$400K+</p>
-              <p className="text-white/80 text-sm">Avg. profit leaks identified per engagement</p>
-            </div>
-            <div>
-              <p className="text-3xl md:text-4xl font-bold text-gold mb-1">14 Days</p>
-              <p className="text-white/80 text-sm">Fixed-scope, fixed-fee engagement</p>
-            </div>
-            <div>
-              <p className="text-3xl md:text-4xl font-bold text-gold mb-1">$12,500</p>
-              <p className="text-white/80 text-sm">All-in fee. No surprises.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Problem Block */}
-      <section className="bg-ivory py-16 md:py-20">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-crimson mb-8 text-center">
-            You're growing. So why are margins shrinking?
-          </h2>
-          <div className="space-y-5 text-charcoal text-base md:text-lg">
-            <p>
-              Most growth-stage businesses hit a wall somewhere between $5M and $50M. Revenue climbs. Headcount grows. But margins don't move. Or worse, they compress. The culprit is almost always the same: profit leaking quietly through overspend, inefficiency, billing lag, and operational drag that nobody has had the time to quantify.
-            </p>
-            <p>
-              Most owners know something is wrong. They just don't know exactly where, or how much.
-            </p>
-            <p className="font-semibold text-teal text-lg md:text-xl">
-              That's what we fix.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Solution Block */}
-      <section className="bg-white py-16 md:py-20">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-crimson mb-8 text-center">
-            A 14-Day Diagnostic That Pays for Itself.
-          </h2>
-          <p className="text-charcoal text-base md:text-lg">
-            The BaxterLabs 14-Day Profit Leak &amp; Operational Efficiency Diagnostic is a fixed-scope, fixed-fee engagement that delivers enterprise-level analytical rigor in two weeks. We collect your financials, interview your leadership, map your workflows, and hand you a board-ready report that tells you exactly what's leaking, how much, and how to stop it.
-          </p>
-        </div>
-      </section>
-
-      {/* 3 Feature Cards */}
-      <section className="bg-ivory py-16 md:py-20">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              {
-                title: 'Fixed Scope. Fixed Fee.',
-                body: '$12,500. No hourly billing, no scope creep, no surprises.',
-              },
-              {
-                title: 'Outcome-Quantified.',
-                body: 'Every finding is tied to a dollar value. You see the ROI before committing.',
-              },
-              {
-                title: 'Board-Ready Deliverables.',
-                body: 'A full diagnostic report + executive debrief your leadership team can act on.',
-              },
-            ].map((card) => (
-              <div
-                key={card.title}
-                className="bg-white border-l-4 border-l-crimson rounded-lg p-6 shadow-sm"
+            <div className="flex flex-col items-center">
+              <Link
+                to="/get-started"
+                className="border-b border-on-surface text-on-surface px-6 py-3 font-label text-sm uppercase tracking-widest font-bold hover:text-primary hover:border-primary transition-all"
               >
-                <h3 className="text-lg font-semibold text-teal mb-3">{card.title}</h3>
-                <p className="text-charcoal">{card.body}</p>
-              </div>
-            ))}
+                View Sample Executive Summary
+              </Link>
+              <p className="mt-2 text-[10px] text-on-surface/60 uppercase tracking-tighter">
+                Representative output illustrating the structure and depth of the 14-day diagnostic.
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Process Block */}
-      <section id="process" className="bg-white py-16 md:py-20">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-crimson mb-12 text-center">
-            How It Works
-          </h2>
-          <div className="space-y-8">
-            {[
-              { step: 1, title: 'Data Intake', body: 'You share your financials, payroll, and vendor data. We handle the analysis.' },
-              { step: 2, title: 'Leadership Interviews', body: 'We conduct structured interviews with your owner and operations lead.' },
-              { step: 3, title: 'Profit Leak Quantification', body: 'We model and dollar-quantify every identified inefficiency.' },
-              { step: 4, title: 'Report Assembly', body: 'We build your diagnostic report and 90-day roadmap.' },
-              { step: 5, title: 'Executive Debrief', body: 'We walk your team through every finding and answer every question.' },
-            ].map((item) => (
-              <div key={item.step} className="flex gap-5 items-start">
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-teal text-white flex items-center justify-center font-semibold text-sm">
-                  {item.step}
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-teal mb-1">{item.title}</h3>
-                  <p className="text-charcoal">{item.body}</p>
-                </div>
-              </div>
-            ))}
+      {/* Credibility Section */}
+      <section className="bg-surface-container-low px-6 md:px-12 py-24 border-y border-surface-container">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-16 items-start">
+            <div>
+              <span className="font-label text-secondary uppercase tracking-[0.3em] text-xs font-bold block mb-4">
+                Experienced Finance Operators
+              </span>
+              <h2 className="font-display text-4xl text-secondary leading-tight">
+                Led Exclusively by Partners with 25+ Years of Real-World P&amp;L Ownership.
+              </h2>
+            </div>
+            <div className="space-y-6">
+              <p className="text-on-surface-variant text-lg leading-relaxed">
+                Unlike software tools or generic consulting firms that deploy junior staff to learn on your time, we are experienced finance operators who have sat in the seat, managed the financials, and owned the outcomes. We operate as an extension of your executive team, leveraging 25+ years of real-world P&amp;L ownership to identify material leakage.
+              </p>
+              <div className="h-px w-24 bg-secondary" />
+              <p className="text-on-surface-variant font-medium italic">
+                "Precision is the difference between a forecast and a strategy."
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Who We Serve */}
-      <section className="bg-ivory py-16 md:py-20">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-crimson mb-8 text-center">
-            Built for Growth-Stage Mid-Market Businesses.
-          </h2>
-          <p className="text-charcoal text-base md:text-lg mb-6 text-center max-w-3xl mx-auto">
-            BaxterLabs Advisory is purpose-built for professional services firms: accounting, legal, staffing, consulting, and advisory businesses generating $5M to $50M in annual revenue. These firms share a common set of structural profit-leak patterns: utilization drag, billing inefficiencies, project margin erosion, and cost structures that haven't kept pace with growth.
-          </p>
-          <p className="text-charcoal/70 text-sm md:text-base text-center max-w-3xl mx-auto">
-            We also work with growth-stage businesses in healthcare and specialty services, technology, and other founder-led industries facing similar margin compression challenges.
-          </p>
+      {/* The 14-Day Diagnostic */}
+      <section className="bg-surface-container-lowest px-6 md:px-12 py-24">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="font-display text-4xl md:text-5xl text-primary mb-4">
+              The 14-Day Executive Profit Leak Diagnostic
+            </h2>
+            <p className="text-secondary uppercase tracking-widest text-sm font-semibold">
+              Three Phases to Absolute Financial Clarity
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* Phase 1 */}
+            <div className="bg-surface-container-low p-10 rounded-sm flex flex-col justify-between group hover:border-secondary border border-transparent transition-all">
+              <div>
+                <span className="text-5xl font-display italic text-secondary/20 mb-6 block">01</span>
+                <h3 className="font-headline text-2xl font-bold text-secondary mb-4">Forensic Data Integration</h3>
+                <p className="text-on-surface-variant leading-relaxed">
+                  We establish a secure, encrypted pipeline for your financial data. No generic surveys—just raw, unfiltered data ingestion for true analysis.
+                </p>
+              </div>
+              <div className="mt-8 flex items-center gap-2 text-secondary font-bold text-sm uppercase tracking-tighter">
+                <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>shield_person</span>
+                Secure Protocols
+              </div>
+            </div>
+            {/* Phase 2 */}
+            <div className="bg-primary p-10 rounded-sm flex flex-col justify-between text-on-primary shadow-xl">
+              <div>
+                <span className="text-5xl font-display italic text-on-primary/30 mb-6 block">02</span>
+                <h3 className="font-headline text-2xl font-bold mb-4">Leakage Diagnostics &amp; Modeling</h3>
+                <p className="text-on-primary/80 leading-relaxed">
+                  Our proprietary algorithms and 25 years of experience clash to find hidden overhead, inefficient capital allocation, and missed revenue triggers.
+                </p>
+              </div>
+              <div className="mt-8 flex items-center gap-2 font-bold text-sm uppercase tracking-tighter">
+                <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>analytics</span>
+                Deep Analysis
+              </div>
+            </div>
+            {/* Phase 3 */}
+            <div className="bg-surface-container-low p-10 rounded-sm flex flex-col justify-between group hover:border-secondary border border-transparent transition-all">
+              <div>
+                <span className="text-5xl font-display italic text-secondary/20 mb-6 block">03</span>
+                <h3 className="font-headline text-2xl font-bold text-secondary mb-4">Executive Recovery Roadmap</h3>
+                <p className="text-on-surface-variant leading-relaxed">
+                  You receive a direct executive summary. No fluff. Just specific actions to recover significant EBITDA within 90 days.
+                </p>
+              </div>
+              <div className="mt-8 flex items-center gap-2 text-secondary font-bold text-sm uppercase tracking-tighter">
+                <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>assignment_turned_in</span>
+                Actionable Roadmap
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Bottom CTA */}
-      <section className="bg-crimson py-16 md:py-20">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-white mb-6">
-            Ready to Get Your Margins Back on Track?
-          </h2>
-          <p className="text-white/90 text-base md:text-lg mb-10 max-w-2xl mx-auto">
-            A 30-minute discovery call is free and confidential. We'll ask a few questions, share what we're seeing in your industry, and tell you honestly whether this engagement makes sense for your business. We work with a limited number of firms each quarter to ensure dedicated partner attention.
+      {/* Trust Section (NDA/Data Integrity) */}
+      <section className="bg-primary text-on-primary px-6 md:px-12 py-24 overflow-hidden relative">
+        <div className="max-w-7xl mx-auto relative z-10 grid md:grid-cols-2 gap-12 items-center">
+          <div>
+            <div className="mb-6 inline-flex items-center gap-2 px-4 py-2 bg-on-primary/10 border border-on-primary/20 rounded-sm">
+              <span className="material-symbols-outlined text-sm">verified_user</span>
+              <span className="text-xs font-label uppercase tracking-widest font-bold">Standard Professional Practice</span>
+            </div>
+            <h2 className="font-display text-4xl md:text-5xl mb-8">Data Integrity &amp; Professional Standards.</h2>
+            <p className="text-on-primary/80 text-lg leading-relaxed mb-6">
+              We operate with the confidentiality of an internal finance team. As standard professional practice, a mutual confidentiality agreement (NDA) is executed prior to any data intake. All data is handled through a structured, controlled, and auditable protocol.
+            </p>
+            <div className="flex items-center gap-4 py-4 border-y border-on-primary/20">
+              <span className="material-symbols-outlined text-3xl">lock</span>
+              <p className="text-sm font-label uppercase tracking-widest font-semibold">STRICT GOVERNANCE PROTOCOLS</p>
+            </div>
+          </div>
+          <div className="bg-surface-container-lowest/5 p-8 rounded-sm backdrop-blur-md border border-on-primary/10">
+            <div className="flex items-start gap-4 mb-6">
+              <span className="material-symbols-outlined text-primary-container bg-on-primary p-2 rounded-sm" style={{ fontVariationSettings: "'FILL' 1" }}>psychology</span>
+              <div>
+                <h4 className="font-bold text-xl mb-2">The Human Advantage</h4>
+                <p className="text-sm text-on-primary/70 italic">
+                  AI-enabled modeling is our tool, but experience is the artist. We use advanced analytics as a support system, ensuring every insight is triple-verified by senior human partners with real-world P&amp;L ownership.
+                </p>
+              </div>
+            </div>
+            <div className="text-xs uppercase tracking-tighter text-on-primary/40 text-right">Auditable &amp; Non-Generative Workflows</div>
+          </div>
+        </div>
+      </section>
+
+      {/* Results Section */}
+      <section className="bg-surface-container-low px-6 md:px-12 py-24">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row justify-between items-end gap-8 mb-16">
+            <div className="max-w-2xl">
+              <h2 className="font-display text-4xl text-primary mb-4">Quantified, Prioritized, and Repeatable Outcomes.</h2>
+              <p className="text-on-surface-variant">
+                Every engagement produces a quantified, prioritized, and repeatable set of profit leaks for immediate recovery. Our methodology ensures consistent, auditable findings across every firm we analyze.
+              </p>
+            </div>
+            <div className="hidden md:block h-px flex-grow bg-outline-variant mx-12" />
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-surface-container-lowest p-8 rounded-sm shadow-sm border-b-4 border-secondary transition-transform hover:-translate-y-2">
+              <p className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-6 leading-tight">
+                Quantified forensic analysis of immediate recovery targets.
+              </p>
+              <h3 className="font-display text-4xl text-primary mb-2">$425,000</h3>
+              <p className="text-xs text-secondary font-bold uppercase">ANNUAL RECURRING RECOVERY</p>
+            </div>
+            <div className="bg-surface-container-lowest p-8 rounded-sm shadow-sm border-b-4 border-primary transition-transform hover:-translate-y-2">
+              <p className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-6 leading-tight">
+                Every finding is backed by auditable data trails and repeatable methodology.
+              </p>
+              <h3 className="font-display text-4xl text-primary mb-2">100%</h3>
+              <p className="text-xs text-secondary font-bold uppercase">AUDITABLE FINDINGS</p>
+            </div>
+            <div className="bg-surface-container-lowest p-8 rounded-sm shadow-sm border-b-4 border-secondary transition-transform hover:-translate-y-2">
+              <p className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-6 leading-tight">
+                Time from data intake to full executive recovery roadmap.
+              </p>
+              <h3 className="font-display text-4xl text-primary mb-2">14 Days</h3>
+              <p className="text-xs text-secondary font-bold uppercase">TOTAL DURATION</p>
+            </div>
+            <div className="bg-surface-container-lowest p-8 rounded-sm shadow-sm border-b-4 border-primary transition-transform hover:-translate-y-2">
+              <p className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-6 leading-tight">
+                Median return on investment for the diagnostic engagement.
+              </p>
+              <h3 className="font-display text-4xl text-primary mb-2">12.5x</h3>
+              <p className="text-xs text-secondary font-bold uppercase">ON ADVISORY FEE</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Implementation Section */}
+      <section className="bg-surface px-6 md:px-12 py-32 border-t border-surface-container">
+        <div className="max-w-4xl mx-auto text-center">
+          <span className="font-label text-secondary uppercase tracking-[0.3em] text-xs font-bold block mb-6">Post-Diagnostic Support</span>
+          <h2 className="font-display text-5xl text-secondary mb-8">Strategic Post-Diagnostic Execution.</h2>
+          <p className="text-on-surface-variant text-xl leading-relaxed mb-12">
+            The diagnostic identifies the leaks; the implementation retainer ensures they stay closed. For firms requiring continued excellence, we offer optional high-touch support to manage the execution of all recommended recovery strategies.
           </p>
-          <Link
-            to="/get-started"
-            className="inline-flex items-center justify-center px-8 h-12 bg-white text-crimson font-semibold rounded-lg transition-colors hover:bg-white/90 text-base"
-          >
-            Book a Discovery Call
+          <div className="grid md:grid-cols-3 gap-8 mb-12 text-left">
+            <div className="flex items-start gap-3">
+              <span className="material-symbols-outlined text-secondary mt-1" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+              <span className="text-on-surface font-medium">Direct access to Lead Partner</span>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="material-symbols-outlined text-secondary mt-1" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+              <span className="text-on-surface font-medium">Monthly performance audits</span>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="material-symbols-outlined text-secondary mt-1" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+              <span className="text-on-surface font-medium">Executive change management</span>
+            </div>
+          </div>
+          <Link to="/services" className="inline-block text-primary font-bold border-b-2 border-primary pb-1 hover:text-primary-container hover:border-primary-container transition-all">
+            Learn More About Implementation
           </Link>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="bg-surface-container-highest px-6 md:px-12 py-24 border-t border-surface-container">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="font-display text-5xl md:text-6xl text-primary mb-8 leading-tight">Secure Your Diagnostic.</h2>
+          <p className="text-on-surface-variant text-xl mb-12">Stop the bleed. Quantify the recovery. Limited intake availability for Q1.</p>
+          <div className="flex justify-center">
+            <Link
+              to="/get-started"
+              className="bg-primary text-on-primary px-12 py-6 rounded-sm font-label text-sm uppercase tracking-[0.3em] font-bold shadow-xl hover:bg-primary-container transition-all"
+            >
+              Request Diagnostic Review
+            </Link>
+          </div>
+          <p className="mt-8 text-sm text-on-surface-variant/60 font-medium">
+            A mutual confidentiality agreement (NDA) is executed prior to any data intake.
+          </p>
         </div>
       </section>
     </>

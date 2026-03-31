@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @theme {
+  /* Descriptive names (existing — used by dashboard) */
   --color-crimson: #66151C;
   --color-teal: #005454;
   --color-cream: #F6E7C8;
@@ -13,8 +14,32 @@
   --color-amber: #D4A843;
   --color-red-soft: #C0392B;
 
+  /* Material Design aliases (Stitch design system) */
+  --color-primary: #66151C;
+  --color-primary-container: #851c2c;
+  --color-on-primary: #ffffff;
+  --color-secondary: #005454;
+  --color-on-surface: #2D3436;
+  --color-on-surface-variant: #2D3436;
+  --color-background: #FAF8F2;
+  --color-surface: #FAF8F2;
+  --color-surface-container-low: #FAF8F2;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-highest: #F6E7C8;
+  --color-surface-container: #E5E7EB;
+  --color-outline-variant: #debfc0;
+
+  /* Fonts */
   --font-display: 'Playfair Display', Georgia, serif;
+  --font-headline: 'Newsreader', serif;
   --font-body: 'Inter', Arial, Helvetica, sans-serif;
+  --font-label: 'Inter', Arial, Helvetica, sans-serif;
+
+  /* Border radius — Stitch sharp/square aesthetic */
+  --radius: 0.125rem;
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.5rem;
+  --radius-full: 9999px;
 }
 
 html {
@@ -32,6 +57,17 @@ body {
 
 h1, h2, h3, h4, h5, h6 {
   line-height: 1.2;
+}
+
+/* Glass navigation bar */
+.glass-nav {
+  backdrop-filter: blur(20px);
+  background-color: rgba(250, 248, 242, 0.85);
+}
+
+/* Material Symbols */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
 
 @keyframes pulse-subtle {
