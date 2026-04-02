@@ -36,15 +36,30 @@ logger = logging.getLogger("baxterlabs.document_renderer")
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
 
-# Map output names to template filenames and output format
-TEMPLATE_MAP: Dict[str, Tuple[str, str]] = {
-    # output_name -> (template_filename, output_extension)
-    "Executive Summary": ("10_Executive_Summary.docx", "docx"),
-    "Full Diagnostic Report": ("09_Full_Diagnostic_Report.docx", "docx"),
-    "Implementation Roadmap": ("26_90_Day_Implementation_Roadmap.docx", "docx"),
-    "Phase 2 Retainer Proposal": ("17_Phase2_Retainer_Proposal.docx", "docx"),
-    "Presentation Deck": ("11_Presentation_Deck.pptx", "pptx"),
-}
+# Map file_prefix (from PHASE_OUTPUTS_SEED) to template filenames and output format.
+# Sorted longest-first so prefix matching doesn't hit a shorter prefix first.
+_TEMPLATE_LIST: List[Tuple[str, str, str, str]] = [
+    # (file_prefix, display_name, template_filename, output_extension)
+    ("Executive_Summary", "Executive Summary", "10_Executive_Summary.docx", "docx"),
+    ("Full_Diagnostic_Report", "Full Diagnostic Report", "09_Full_Diagnostic_Report.docx", "docx"),
+    ("Implementation_Roadmap", "Implementation Roadmap", "26_90_Day_Implementation_Roadmap.docx", "docx"),
+    ("Phase_2_Retainer_Proposal", "Phase 2 Retainer Proposal", "17_Phase2_Retainer_Proposal.docx", "docx"),
+    ("Presentation_Deck", "Presentation Deck", "11_Presentation_Deck.pptx", "pptx"),
+]
+_TEMPLATE_LIST.sort(key=lambda t: len(t[0]), reverse=True)
+
+
+def _match_template(filename: str) -> Optional[Tuple[str, str, str]]:
+    """Match a Drive filename to a template.
+
+    Returns ``(display_name, template_filename, output_ext)`` or ``None``.
+    Handles Cowork naming: ``{Prefix}_{ClientName}.md``.
+    """
+    base = filename.rsplit(".", 1)[0] if "." in filename else filename
+    for prefix, display_name, tpl, ext in _TEMPLATE_LIST:
+        if base.startswith(prefix):
+            return (display_name, tpl, ext)
+    return None
 
 # Regex to match any [PLACEHOLDER] pattern in text
 _PLACEHOLDER_RE = re.compile(r"\[([^\]]+)\]")
@@ -508,16 +523,14 @@ async def render_engagement_deliverables(engagement_id: str) -> List[dict]:
 
     for md_file in md_files:
         filename = md_file["name"]
-        # Derive output name from filename: "Executive_Summary.md" -> "Executive Summary"
-        output_name = filename.rsplit(".", 1)[0].replace("_", " ")
 
-        # Find matching template
-        template_info = TEMPLATE_MAP.get(output_name)
-        if not template_info:
-            logger.info("No template mapping for '%s' — skipping", output_name)
+        # Match filename to template using prefix-based lookup
+        match = _match_template(filename)
+        if not match:
+            logger.info("No template mapping for '%s' — skipping", filename)
             continue
 
-        template_filename, output_ext = template_info
+        output_name, template_filename, output_ext = match
         template_path = os.path.join(TEMPLATES_DIR, template_filename)
         if not os.path.exists(template_path):
             logger.error("Template file not found: %s", template_path)
