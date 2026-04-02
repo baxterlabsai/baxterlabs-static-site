@@ -288,16 +288,36 @@ export default function EngagementDetail() {
   const [phaseOutputContent, setPhaseOutputContent] = useState<PhaseOutputContent[]>([])
 
   // Phases where ALL outputs are approved
+  // Phases where ALL outputs are approved (checks Drive outputs first, falls back to DB)
   const completedPhases: number[] = (() => {
+    const completed: number[] = []
+
+    // Check DB-sourced outputs
     const byPhase: Record<number, PhaseOutputContent[]> = {}
     for (const p of phaseOutputContent) {
       if (!byPhase[p.phase_number]) byPhase[p.phase_number] = []
       byPhase[p.phase_number].push(p)
     }
-    return Object.entries(byPhase)
-      .filter(([, outputs]) => outputs.every(o => o.status === 'approved'))
-      .map(([num]) => Number(num))
-      .sort((a, b) => a - b)
+
+    // Check Drive-sourced outputs
+    const driveByPh: Record<number, DriveOutput[]> = {}
+    for (const d of driveOutputs) {
+      if (!driveByPh[d.phase_number]) driveByPh[d.phase_number] = []
+      driveByPh[d.phase_number].push(d)
+    }
+
+    const allPhaseNums = new Set([...Object.keys(byPhase).map(Number), ...Object.keys(driveByPh).map(Number)])
+    for (const phase of allPhaseNums) {
+      const drvOuts = driveByPh[phase]
+      if (drvOuts && drvOuts.length > 0) {
+        // Drive outputs take priority
+        if (drvOuts.every(d => d.status === 'approved')) completed.push(phase)
+      } else if (byPhase[phase]) {
+        if (byPhase[phase].every(o => o.status === 'approved')) completed.push(phase)
+      }
+    }
+
+    return completed.sort((a, b) => a - b)
   })()
 
   // Next phase to run (1–8). If all 8 complete, returns null.
@@ -1275,8 +1295,8 @@ export default function EngagementDetail() {
                           </div>
                         )}
 
-                        {/* DB-sourced outputs (legacy/Cowork-synced) */}
-                        {pocOutputs.length > 0 ? (
+                        {/* DB-sourced outputs — hidden for phases that have Drive outputs */}
+                        {pocOutputs.length > 0 && drivePhaseOutputs.length === 0 ? (
                           <div className="divide-y divide-gray-light">
                             {pocOutputs.map(output => {
                               const isPhase5Deliverable = phase === 5

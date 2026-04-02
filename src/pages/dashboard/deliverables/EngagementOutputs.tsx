@@ -237,8 +237,8 @@ export default function EngagementOutputs() {
                       )}
                     </div>
                   ))}
-                  {/* DB-sourced outputs */}
-                  {phaseOutputs.map(output => {
+                  {/* DB-sourced outputs — hidden when Drive outputs exist for this phase */}
+                  {drvOutputs.length === 0 && phaseOutputs.map(output => {
                     const badge = STATUS_BADGE[output.status] || STATUS_BADGE.draft
                     return (
                       <button

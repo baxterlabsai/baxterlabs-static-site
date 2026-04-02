@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -19,11 +20,26 @@ logger = logging.getLogger("baxterlabs.drive_outputs")
 
 router = APIRouter(prefix="/api", tags=["drive_outputs"])
 
+
+def _normalise_key(name: str) -> str:
+    """Normalise an output name or filename to a canonical key for matching.
+
+    Strips extension, lowercases, replaces ``&`` with ``and``, collapses all
+    non-alphanumeric characters to a single ``_``, and strips leading/trailing
+    underscores.
+
+    ``"Assumptions & Methodology Memo"`` -> ``"assumptions_and_methodology_memo"``
+    ``"Source_Document_Registry.md"``    -> ``"source_document_registry"``
+    """
+    base = name.rsplit(".", 1)[0] if "." in name else name
+    base = base.lower().replace("&", "and")
+    return re.sub(r"[^a-z0-9]+", "_", base).strip("_")
+
 # Build a lookup: output_name (normalised) -> phase number
 # Used to assign .md files from flat folders to the correct phase.
 _OUTPUT_NAME_TO_PHASE: Dict[str, int] = {}
 for _entry in PHASE_OUTPUTS_SEED:
-    _key = _entry["name"].lower().replace(" ", "_")
+    _key = _normalise_key(_entry["name"])
     _OUTPUT_NAME_TO_PHASE[_key] = _entry["phase"]
 
 # Phase -> Drive folder field on the engagements table
@@ -37,18 +53,9 @@ _PHASE_FOLDER_MAP: Dict[int, str] = {
 }
 
 
-def _normalise_filename(name: str) -> str:
-    """Turn a Drive filename into a normalised key for matching.
-
-    ``Source_Document_Registry.md`` -> ``source_document_registry``
-    """
-    base = name.rsplit(".", 1)[0] if "." in name else name
-    return base.lower().replace(" ", "_")
-
-
 def _match_phase(filename: str) -> Optional[int]:
     """Match a filename to a phase number via PHASE_OUTPUTS_SEED names."""
-    key = _normalise_filename(filename)
+    key = _normalise_key(filename)
     return _OUTPUT_NAME_TO_PHASE.get(key)
 
 
