@@ -36,15 +36,20 @@ async def trigger_render(
         )
 
     try:
-        results = await render_engagement_deliverables(engagement_id)
+        result = await render_engagement_deliverables(engagement_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error("Render failed for engagement %s: %s", engagement_id, e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Rendering failed: {e}")
 
+    rendered = result.get("rendered", [])
+    skipped = result.get("skipped", [])
+
     return {
         "success": True,
-        "rendered_count": len(results),
-        "files": results,
+        "rendered_count": len(rendered),
+        "rendered": [r["output_file"] for r in rendered],
+        "files": rendered,
+        "skipped": skipped,
     }

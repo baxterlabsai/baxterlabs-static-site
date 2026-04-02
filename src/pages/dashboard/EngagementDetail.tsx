@@ -354,6 +354,7 @@ export default function EngagementDetail() {
   const [approvingFormatId, setApprovingFormatId] = useState<string | null>(null)
 
   const [renderingPhase7, setRenderingPhase7] = useState(false)
+  const [copiedDeckCommand, setCopiedDeckCommand] = useState(false)
 
   // Blob URLs for PDF previews (iframes can't send Authorization headers)
   const [pdfBlobUrls, setPdfBlobUrls] = useState<Record<string, string>>({})
@@ -1114,6 +1115,40 @@ export default function EngagementDetail() {
                 </button>
               )
             })}
+
+            {/* Build Presentation Deck — visible after Phase 7 render completes */}
+            {completedPhases.includes(7) && data && (
+              <button
+                onClick={async () => {
+                  const folder = data.clients.company_name.replace(/\s+/g, '_') + '_' + new Date(data.start_date || Date.now()).getFullYear()
+                  const cmd = `/baxterlabs-delivery:build-deck ${folder}`
+                  try {
+                    await navigator.clipboard.writeText(cmd)
+                  } catch {
+                    const ta = document.createElement('textarea')
+                    ta.value = cmd
+                    document.body.appendChild(ta)
+                    ta.select()
+                    document.execCommand('copy')
+                    document.body.removeChild(ta)
+                  }
+                  setCopiedDeckCommand(true)
+                  toast(`Copied: ${cmd}`)
+                  setTimeout(() => setCopiedDeckCommand(false), 2000)
+                }}
+                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  copiedDeckCommand
+                    ? 'bg-teal/10 text-teal border border-teal'
+                    : 'bg-white text-teal border border-teal hover:bg-teal/5'
+                }`}
+                title="Opens in Cowork — creates the branded presentation deck"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                {copiedDeckCommand ? 'Copied!' : 'Build Presentation Deck'}
+              </button>
+            )}
           </div>
         </section>
       )}

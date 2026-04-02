@@ -60,15 +60,15 @@ _TEMPLATE_LIST: List[Tuple[str, str, str, str, int]] = [
 _TEMPLATE_LIST.sort(key=lambda t: len(t[0]), reverse=True)
 
 
-def _match_template(filename: str) -> Optional[Tuple[str, str, str, int]]:
+def _match_template(filename: str) -> Optional[Tuple[str, str, str, int, str]]:
     """Match a Drive filename to a template.
 
-    Returns ``(display_name, template_filename, output_ext, output_number)`` or ``None``.
+    Returns ``(display_name, template_filename, output_ext, output_number, file_prefix)`` or ``None``.
     """
     base = filename.rsplit(".", 1)[0] if "." in filename else filename
     for prefix, display_name, tpl, ext, out_num in _TEMPLATE_LIST:
         if base.startswith(prefix):
-            return (display_name, tpl, ext, out_num)
+            return (display_name, tpl, ext, out_num, prefix)
     return None
 
 
@@ -143,17 +143,50 @@ def _parse_table_lines(lines: List[str]) -> List[List[str]]:
     return rows
 
 
-def _tokenize_markdown(md: str) -> List[_Token]:
-    """Tokenize markdown into block-level tokens.
+def _strip_title_frontmatter(md: str) -> str:
+    """Strip the title/front-matter block from the start of markdown.
 
-    Strips optional YAML frontmatter before parsing.
+    The title block consists of lines of text (document title, client name,
+    byline, date) followed by a ``---`` / ``***`` / ``___`` horizontal rule.
+    This duplicates the cover page, so we strip everything through the last
+    front-matter separator near the top.
+
+    Also strips YAML frontmatter (``---`` delimited blocks at the very start).
     """
-    # Strip frontmatter
     content = md.strip()
+
+    # Strip YAML frontmatter first (starts and ends with ---)
     if content.startswith("---"):
         end = content.find("---", 3)
         if end != -1:
             content = content[end + 3:].strip()
+
+    # Now strip the title block: lines of text followed by a horizontal rule.
+    # If there are two rules close together at the top, strip through the second.
+    lines = content.split("\n")
+    last_rule_idx = -1
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        # Stop searching after the first heading or once we've gone past ~30 lines
+        if i > 30:
+            break
+        if re.match(r"^#{1,6}\s+", stripped):
+            break
+        if stripped in ("---", "***", "___"):
+            last_rule_idx = i
+
+    if last_rule_idx >= 0:
+        content = "\n".join(lines[last_rule_idx + 1:]).strip()
+
+    return content
+
+
+def _tokenize_markdown(md: str) -> List[_Token]:
+    """Tokenize markdown into block-level tokens.
+
+    Strips title front-matter before parsing.
+    """
+    content = _strip_title_frontmatter(md)
 
     tokens: List[_Token] = []
     lines = content.split("\n")
@@ -164,6 +197,11 @@ def _tokenize_markdown(md: str) -> List[_Token]:
         stripped = line.strip()
 
         if not stripped:
+            i += 1
+            continue
+
+        # Horizontal rule — skip entirely (don't render as text)
+        if stripped in ("---", "***", "___"):
             i += 1
             continue
 
@@ -242,6 +280,102 @@ def _tokenize_markdown(md: str) -> List[_Token]:
                 type="paragraph", text=para_text,
                 children=_parse_inline(para_text),
             ))
+
+    return tokens
+
+
+# ---------------------------------------------------------------------------
+# Endnote processing helpers
+# ---------------------------------------------------------------------------
+
+# Unicode superscript digit mapping
+_SUPERSCRIPT_DIGITS = str.maketrans("0123456789", "⁰¹²³⁴⁵⁶⁷⁸⁹")
+
+
+def _to_superscript(n: int) -> str:
+    """Convert an integer to Unicode superscript characters."""
+    return str(n).translate(_SUPERSCRIPT_DIGITS)
+
+
+def _number_endnotes(tokens: List[_Token]) -> List[_Token]:
+    """Add sequential numbers to endnote entries in the Endnotes section.
+
+    Detects the Endnotes heading, then prepends '1. ', '2. ', etc. to each
+    subsequent paragraph that starts with '[Verified:', '[Estimated:',
+    '[Stated:', or '[Derived:'.
+    """
+    in_endnotes = False
+    endnote_num = 0
+    citation_pattern = re.compile(r"^\[(Verified|Estimated|Stated|Derived):")
+
+    for token in tokens:
+        if token.type == "heading" and token.text.strip().lower() in ("endnotes", "end notes"):
+            in_endnotes = True
+            continue
+
+        if in_endnotes:
+            # A new non-endnote heading ends the endnotes section
+            if token.type == "heading":
+                in_endnotes = False
+                continue
+
+            if token.type == "paragraph" and citation_pattern.match(token.text.strip()):
+                endnote_num += 1
+                prefix = f"{endnote_num}. "
+                token.text = prefix + token.text
+                token.children = _parse_inline(token.text)
+
+    return tokens
+
+
+_CITATION_RE = re.compile(r"\[(Verified|Estimated|Stated|Derived):[^\]]*\]")
+
+
+def _extract_inline_citations(tokens: List[_Token]) -> List[_Token]:
+    """Convert inline citations to superscript references + appended Endnotes.
+
+    For the Retainer Proposal: scans body text for [Verified: ...], etc.,
+    replaces each with a Unicode superscript number, and appends an Endnotes
+    section at the end with numbered entries.
+
+    Only operates on tokens that do NOT already have an Endnotes section.
+    """
+    # Check if there's already an Endnotes section
+    for token in tokens:
+        if token.type == "heading" and token.text.strip().lower() in ("endnotes", "end notes"):
+            return tokens  # Already has endnotes — don't double-process
+
+    collected: List[str] = []
+    endnote_num = 0
+
+    for token in tokens:
+        if token.type != "paragraph":
+            continue
+
+        text = token.text
+        new_text = ""
+        last_end = 0
+
+        for m in _CITATION_RE.finditer(text):
+            endnote_num += 1
+            new_text += text[last_end:m.start()] + _to_superscript(endnote_num)
+            collected.append(m.group(0))
+            last_end = m.end()
+
+        if last_end > 0:
+            new_text += text[last_end:]
+            token.text = new_text
+            token.children = _parse_inline(new_text)
+
+    if collected:
+        # Append Endnotes heading
+        tokens.append(_Token(type="heading", level=2, text="Endnotes",
+                             children=_parse_inline("Endnotes")))
+        # Append numbered endnote entries
+        for i, citation in enumerate(collected, 1):
+            entry = f"{i}. {citation}"
+            tokens.append(_Token(type="paragraph", text=entry,
+                                 children=_parse_inline(entry)))
 
     return tokens
 
@@ -569,6 +703,7 @@ def render_docx(
     client_name: str,
     engagement_date: str,
     output_number: int,
+    file_prefix: str = "",
 ) -> bytes:
     """Render a .docx by extracting the template cover page and appending markdown content.
 
@@ -577,9 +712,10 @@ def render_docx(
     3. Find cover page boundary (in-body sectPr)
     4. Delete body stubs between cover and final sectPr
     5. Tokenize markdown
-    6. Convert tokens to docx elements using template styles
-    7. Insert chart PNGs from Supabase
-    8. Return rendered bytes
+    6. Post-process tokens (endnote numbering, citation extraction)
+    7. Convert tokens to docx elements using template styles
+    8. Insert chart PNGs from Supabase
+    9. Return rendered bytes
     """
     doc = Document(template_path)
     body = doc.element.body
@@ -604,6 +740,15 @@ def render_docx(
     # Step 5: Tokenize markdown
     tokens = _tokenize_markdown(markdown_content)
     logger.info("Tokenized markdown: %d blocks", len(tokens))
+
+    # Step 5b: For Retainer Proposal — extract inline citations to endnotes
+    is_retainer = file_prefix.startswith("Retainer_Proposal") or file_prefix.startswith("Phase_2_Retainer_Proposal")
+    if is_retainer:
+        tokens = _extract_inline_citations(tokens)
+        logger.info("Extracted inline citations for Retainer Proposal")
+
+    # Step 5c: Number endnotes in the Endnotes section (all documents)
+    tokens = _number_endnotes(tokens)
 
     # Step 6: Append converted content before the final sectPr
     if final_sect_pr is not None:
@@ -948,14 +1093,14 @@ def _replace_pptx_notes(notes_xml: bytes, narration: str) -> bytes:
 # Orchestrator
 # ---------------------------------------------------------------------------
 
-async def render_engagement_deliverables(engagement_id: str) -> List[dict]:
-    """Render all QC-approved .md files from Drive into .docx/.pptx.
+async def render_engagement_deliverables(engagement_id: str) -> dict:
+    """Render all QC-approved .md files from Drive into branded .docx deliverables.
 
     Downloads markdown files from the engagement's 04_Deliverables Drive folder,
     loads the corresponding template, renders using cover-page extraction +
     markdown conversion, and uploads the result back to Drive.
 
-    Returns a list of result dicts.
+    Returns dict with ``rendered`` list and ``skipped`` list.
     """
     eng = get_engagement_by_id(engagement_id)
     if not eng:
@@ -986,6 +1131,7 @@ async def render_engagement_deliverables(engagement_id: str) -> List[dict]:
         return []
 
     results: List[dict] = []
+    skipped: List[dict] = []
 
     for md_file in md_files:
         filename = md_file["name"]
@@ -995,8 +1141,15 @@ async def render_engagement_deliverables(engagement_id: str) -> List[dict]:
             logger.info("No template mapping for '%s' — skipping", filename)
             continue
 
-        output_name, template_filename, output_ext, output_number = match
+        output_name, template_filename, output_ext, output_number, file_prefix = match
         template_path = os.path.join(TEMPLATES_DIR, template_filename)
+
+        # Skip PPTX (Presentation Deck) — handled via Cowork
+        if file_prefix == "Presentation_Deck" or output_ext == "pptx":
+            logger.info("Skipping %s — Presentation Deck created via Cowork", filename)
+            skipped.append({"name": output_name, "reason": "Created via Cowork"})
+            continue
+
         if not os.path.exists(template_path):
             logger.error("Template file not found: %s", template_path)
             continue
@@ -1011,16 +1164,11 @@ async def render_engagement_deliverables(engagement_id: str) -> List[dict]:
 
         # Render
         try:
-            if output_ext == "pptx":
-                rendered_bytes = render_pptx(
-                    template_path, markdown_content, engagement_id,
-                    client_name, engagement_date, output_number,
-                )
-            else:
-                rendered_bytes = render_docx(
-                    template_path, markdown_content, engagement_id,
-                    client_name, engagement_date, output_number,
-                )
+            rendered_bytes = render_docx(
+                template_path, markdown_content, engagement_id,
+                client_name, engagement_date, output_number,
+                file_prefix=file_prefix,
+            )
         except Exception as e:
             logger.error("Render failed for %s: %s", output_name, e, exc_info=True)
             continue
@@ -1058,4 +1206,4 @@ async def render_engagement_deliverables(engagement_id: str) -> List[dict]:
             "files": [r["output_file"] for r in results],
         })
 
-    return results
+    return {"rendered": results, "skipped": skipped}
