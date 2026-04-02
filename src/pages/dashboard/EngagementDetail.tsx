@@ -356,6 +356,8 @@ export default function EngagementDetail() {
   // Render deliverables state
   const [generatingPreview, setGeneratingPreview] = useState<string | null>(null)
   const [approvingRenderFormat, setApprovingRenderFormat] = useState<string | null>(null)
+  const [renderingDeliverables, setRenderingDeliverables] = useState(false)
+  const [renderResults, setRenderResults] = useState<Array<{ output_name: string; output_file: string; drive_file_id: string; size_bytes: number }> | null>(null)
 
   // Blob URLs for PDF previews (iframes can't send Authorization headers)
   const [pdfBlobUrls, setPdfBlobUrls] = useState<Record<string, string>>({})
@@ -1235,6 +1237,61 @@ export default function EngagementDetail() {
                           )
                         })()}
 
+                        {/* Phase 7: Render Deliverables button */}
+                        {phase === 7 && (
+                          <div className="px-4 py-3 bg-ivory border-b border-gray-light">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-semibold text-charcoal">Document Packaging</p>
+                                <p className="text-xs text-gray-warm mt-0.5">Render QC-approved markdown into branded .docx/.pptx</p>
+                              </div>
+                              <button
+                                disabled={renderingDeliverables}
+                                onClick={async () => {
+                                  if (!data) return
+                                  setRenderingDeliverables(true)
+                                  setRenderResults(null)
+                                  try {
+                                    const res = await apiPost<{ success: boolean; rendered_count: number; files: typeof renderResults }>(`/api/engagements/${data.id}/render-deliverables`)
+                                    if (res.success) {
+                                      setRenderResults(res.files || [])
+                                      toast(`Rendered ${res.rendered_count} deliverable${res.rendered_count !== 1 ? 's' : ''}`, 'success')
+                                    }
+                                  } catch (err: unknown) {
+                                    toast((err as Error).message || 'Rendering failed', 'error')
+                                  } finally {
+                                    setRenderingDeliverables(false)
+                                  }
+                                }}
+                                className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-semibold transition-colors bg-gold text-white hover:bg-gold/90 disabled:opacity-50"
+                              >
+                                {renderingDeliverables ? (
+                                  <>
+                                    <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    Rendering…
+                                  </>
+                                ) : (
+                                  <>
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                                    Render All Deliverables
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                            {renderResults && renderResults.length > 0 && (
+                              <div className="mt-3 space-y-1">
+                                {renderResults.map(r => (
+                                  <div key={r.drive_file_id} className="flex items-center gap-2 text-xs text-charcoal">
+                                    <svg className="w-3.5 h-3.5 text-green flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                    <span className="font-medium">{r.output_file}</span>
+                                    <span className="text-gray-warm">({(r.size_bytes / 1024).toFixed(0)} KB)</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         {/* Drive-sourced outputs */}
                         {drivePhaseOutputs.length > 0 && (
                           <div className="divide-y divide-gray-light">
@@ -1633,216 +1690,6 @@ export default function EngagementDetail() {
                 )
               })}
             </div>
-          </section>
-        )
-      })()}
-
-      {/* Render Deliverables — appears after Phase 6 QC is complete */}
-      {data && completedPhases.includes(6) && (() => {
-        // Phase 5 narrative deliverables + Phase 3 workbook
-        const phase5Outputs = phaseOutputContent
-          .filter(o => o.phase_number === 5 && o.status === 'approved')
-          .sort((a, b) => (a.output_number || 1) - (b.output_number || 1))
-        const phase3Workbook = phaseOutputContent.find(
-          o => o.phase_number === 3 && o.output_number === 1 && o.status === 'approved'
-        )
-        const renderOutputs = [...phase5Outputs, ...(phase3Workbook ? [phase3Workbook] : [])]
-        if (renderOutputs.length === 0) return null
-        const clientName = data.clients?.company_name || ''
-        const allFormatApproved = renderOutputs.length > 0 && renderOutputs.every(o => o.pdf_approved)
-        return (
-          <section className="bg-white rounded-lg border border-teal p-5 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="font-display text-lg font-bold text-teal">Render Deliverables</h3>
-                <p className="text-xs text-gray-warm mt-0.5">
-                  {allFormatApproved
-                    ? 'All deliverables rendered and approved — ready for client delivery'
-                    : 'QC complete — render each deliverable, preview, then approve the format'}
-                </p>
-              </div>
-            </div>
-            <div className="space-y-4">
-              {renderOutputs.map(output => {
-                const isWorkbook = output.phase_number === 3
-                const renderSkill = isWorkbook ? 'render-xlsx' : output.output_type === 'pptx' ? 'render-pptx' : output.output_type === 'xlsx' ? 'render-xlsx' : 'render-docx'
-                const displayType = isWorkbook ? 'xlsx' : output.output_type
-                const displayName = isWorkbook ? 'Profit Leak Quantification Workbook' : output.output_name
-                const hasRenderedFile = !!(output.xlsx_path || output.docx_path || output.pptx_path)
-                const previewUrl = output.docx_pdf_preview_path_url
-                const hasPreview = !!previewUrl
-                const isApproved = output.pdf_approved
-                const isGenerating = generatingPreview === output.id
-                const previewQueryParam = isWorkbook ? '?phase_number=3' : ''
-
-                return (
-                  <div key={output.id} className="rounded-lg border border-gray-light overflow-hidden">
-                    {/* Output header row */}
-                    <div className="flex items-center justify-between px-4 py-3 bg-ivory">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="w-8 h-8 rounded bg-white flex items-center justify-center text-xs font-bold text-gray-warm flex-shrink-0">
-                          {FILE_TYPE_ICONS[displayType] || '?'}
-                        </span>
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-charcoal truncate">{displayName}</p>
-                          <p className="text-xs text-gray-warm">.{displayType} · Version {output.version}</p>
-                        </div>
-                        {/* Status badges */}
-                        {isApproved ? (
-                          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green/10 text-green flex-shrink-0">Approved</span>
-                        ) : hasRenderedFile ? (
-                          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-teal/10 text-teal flex-shrink-0">Rendered</span>
-                        ) : null}
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        {/* State 1: Not rendered — show Render button */}
-                        {!hasRenderedFile && (
-                          <button
-                            onClick={() => copyDeliveryCommand(`render-${output.id}`, `/${renderSkill} ${clientName} "${displayName}"`)}
-                            className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-semibold transition-colors ${
-                              copiedDeliveryCmd === `render-${output.id}`
-                                ? 'bg-teal/10 text-teal'
-                                : 'bg-gold text-white hover:bg-gold/90'
-                            }`}
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
-                            {copiedDeliveryCmd === `render-${output.id}` ? 'Copied!' : 'Render'}
-                          </button>
-                        )}
-
-                        {/* State 2: Rendered, no preview — show Generate Preview */}
-                        {hasRenderedFile && !hasPreview && !isApproved && (
-                          <button
-                            disabled={isGenerating}
-                            onClick={async () => {
-                              setGeneratingPreview(output.id)
-                              try {
-                                const res = await apiPost<{ success: boolean; preview_url: string }>(`/api/engagements/${data.id}/outputs/${output.output_number}/generate-preview${previewQueryParam}`)
-                                if (res.success) {
-                                  toast('Preview generated', 'success')
-                                  const fresh = await apiGet<{ outputs: PhaseOutputContent[] }>(`/api/engagements/${data.id}/phase-output-content`)
-                                  setPhaseOutputContent(fresh.outputs)
-                                }
-                              } catch (err: unknown) {
-                                toast((err as Error).message || 'Failed to generate preview', 'error')
-                              } finally {
-                                setGeneratingPreview(null)
-                              }
-                            }}
-                            className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-semibold transition-colors bg-teal text-white hover:bg-teal/90 disabled:opacity-50"
-                          >
-                            {isGenerating ? (
-                              <>
-                                <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                Generating…
-                              </>
-                            ) : (
-                              <>
-                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                Generate Preview
-                              </>
-                            )}
-                          </button>
-                        )}
-
-                        {/* State 3: Preview available, not approved — show Approve + Regenerate */}
-                        {hasPreview && !isApproved && (
-                          <>
-                            <button
-                              onClick={async () => {
-                                setGeneratingPreview(output.id)
-                                try {
-                                  const res = await apiPost<{ success: boolean }>(`/api/engagements/${data.id}/outputs/${output.output_number}/generate-preview${previewQueryParam}`)
-                                  if (res.success) {
-                                    toast('Preview regenerated', 'success')
-                                    const fresh = await apiGet<{ outputs: PhaseOutputContent[] }>(`/api/engagements/${data.id}/phase-output-content`)
-                                    setPhaseOutputContent(fresh.outputs)
-                                  }
-                                } catch (err: unknown) {
-                                  toast((err as Error).message || 'Failed to regenerate preview', 'error')
-                                } finally {
-                                  setGeneratingPreview(null)
-                                }
-                              }}
-                              disabled={isGenerating}
-                              className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border border-gray-light text-gray-warm hover:bg-ivory font-semibold transition-colors disabled:opacity-50"
-                            >
-                              {isGenerating ? (
-                                <span className="w-3 h-3 border-2 border-gray-warm border-t-transparent rounded-full animate-spin" />
-                              ) : (
-                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182" /></svg>
-                              )}
-                              Regenerate
-                            </button>
-                            <button
-                              disabled={approvingRenderFormat === output.id}
-                              onClick={async () => {
-                                setApprovingRenderFormat(output.id)
-                                try {
-                                  await apiPatch(`/api/phase-output-content/${output.id}`, { pdf_approved: true })
-                                  toast('Format approved', 'success')
-                                  const fresh = await apiGet<{ outputs: PhaseOutputContent[] }>(`/api/engagements/${data.id}/phase-output-content`)
-                                  setPhaseOutputContent(fresh.outputs)
-                                } catch (err: unknown) {
-                                  toast((err as Error).message || 'Failed to approve format', 'error')
-                                } finally {
-                                  setApprovingRenderFormat(null)
-                                }
-                              }}
-                              className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-semibold transition-colors bg-green text-white hover:bg-green/90 disabled:opacity-50"
-                            >
-                              {approvingRenderFormat === output.id ? (
-                                <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                              ) : (
-                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                              )}
-                              Format Approve
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* PDF preview embed */}
-                    {hasPreview && (
-                      <div className="border-t border-gray-light">
-                        {pdfBlobUrls[output.id] ? (
-                          <iframe
-                            src={pdfBlobUrls[output.id]}
-                            className="w-full bg-gray-50"
-                            style={{ height: '600px' }}
-                            title={`Preview: ${displayName}`}
-                            allow="autoplay"
-                          />
-                        ) : (
-                          <div className="flex items-center justify-center bg-gray-50" style={{ height: '600px' }}>
-                            <span className="w-4 h-4 border-2 border-teal border-t-transparent rounded-full animate-spin mr-2" />
-                            <span className="text-gray-warm text-sm">Loading PDF…</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-
-            {/* Send to Client — shown when all outputs format-approved */}
-            {allFormatApproved && (
-              <div className="mt-4 pt-4 border-t border-teal/20">
-                <button
-                  onClick={() => copyDeliveryCommand('send-deliverables', `/send-deliverables ${clientName}`)}
-                  className={`inline-flex items-center gap-2 text-sm px-4 py-2 rounded font-semibold transition-colors ${
-                    copiedDeliveryCmd === 'send-deliverables'
-                      ? 'bg-teal/10 text-teal'
-                      : 'bg-teal text-white hover:bg-teal/90'
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
-                  {copiedDeliveryCmd === 'send-deliverables' ? 'Copied!' : 'Send to Client'}
-                </button>
-              </div>
-            )}
           </section>
         )
       })()}
