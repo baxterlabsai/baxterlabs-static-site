@@ -24,7 +24,6 @@ from docx import Document
 from docx.shared import Inches, Pt, RGBColor
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
-from docx.text.paragraph import Paragraph
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from lxml import etree
@@ -55,6 +54,8 @@ _TEMPLATE_LIST: List[Tuple[str, str, str, str, int]] = [
     ("Presentation_Deck", "Presentation Deck", "11_Presentation_Deck.pptx", "pptx", 3),
     ("Implementation_Roadmap", "Implementation Roadmap", "26_90_Day_Implementation_Roadmap.docx", "docx", 4),
     ("Phase_2_Retainer_Proposal", "Phase 2 Retainer Proposal", "17_Phase2_Retainer_Proposal.docx", "docx", 5),
+    # Alternate prefix — Cowork saves as Retainer_Proposal_* not Phase_2_Retainer_Proposal_*
+    ("Retainer_Proposal", "Phase 2 Retainer Proposal", "17_Phase2_Retainer_Proposal.docx", "docx", 5),
 ]
 _TEMPLATE_LIST.sort(key=lambda t: len(t[0]), reverse=True)
 
@@ -401,30 +402,30 @@ def _add_styled_runs(paragraph, spans: List[_InlineSpan]) -> None:
 
 
 def _insert_chart_image(
-    doc: Document, body_element, insert_before, chart_name: str,
+    doc: Document, insert_before, chart_name: str,
     charts: Dict[str, Tuple[bytes, dict]],
 ) -> None:
     """Insert a chart PNG as a centered paragraph before insert_before element."""
     chart_data = charts.get(chart_name)
     if not chart_data:
         logger.warning("No chart image for [CHART: %s] — inserting placeholder text", chart_name)
-        new_p = OxmlElement("w:p")
-        insert_before.addprevious(new_p)
-        para = Paragraph(new_p, body_element)
+        para = doc.add_paragraph()
         para.alignment = WD_ALIGN_PARAGRAPH.CENTER
         run = para.add_run(f"[Chart: {chart_name} — image not available]")
         run.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
         run.italic = True
+        # Move from end of body to correct position
+        insert_before.addprevious(para._element)
         return
 
     png_bytes, _row = chart_data
 
-    new_p = OxmlElement("w:p")
-    insert_before.addprevious(new_p)
-    para = Paragraph(new_p, body_element)
+    para = doc.add_paragraph()
     para.alignment = WD_ALIGN_PARAGRAPH.CENTER
     run = para.add_run()
     run.add_picture(io.BytesIO(png_bytes), width=Inches(6.0))
+    # Move from end of body to correct position
+    insert_before.addprevious(para._element)
 
 
 def _set_cell_shading(cell, color_hex: str) -> None:
@@ -453,15 +454,15 @@ def _set_table_borders(table) -> None:
 
 def _append_tokens_to_body(
     doc: Document,
-    body_element,
     insert_before,
     tokens: List[_Token],
     charts: Dict[str, Tuple[bytes, dict]],
 ) -> None:
     """Convert tokens to python-docx elements and insert before insert_before.
 
-    Uses template's built-in style IDs (Heading1, Heading2, Heading3,
-    ListParagraph) instead of applying inline formatting for headings.
+    Uses doc.add_paragraph() to create elements with a valid .part reference,
+    then moves them to the correct position before insert_before.
+    Template style IDs: Heading1, Heading2, Heading3, ListParagraph.
     """
     style_map = {1: "Heading1", 2: "Heading2", 3: "Heading3"}
 
@@ -470,30 +471,21 @@ def _append_tokens_to_body(
             level = min(token.level, 3)
             style_name = style_map[level]
 
-            new_p = OxmlElement("w:p")
-            insert_before.addprevious(new_p)
-            para = Paragraph(new_p, body_element)
-
+            para = doc.add_paragraph()
             try:
                 para.style = doc.styles[style_name]
             except KeyError:
-                pass  # falls back to document default
-
+                pass
             _add_styled_runs(para, token.children or [_InlineSpan(token.text)])
+            insert_before.addprevious(para._element)
 
         elif token.type == "paragraph":
-            new_p = OxmlElement("w:p")
-            insert_before.addprevious(new_p)
-            para = Paragraph(new_p, body_element)
-            # No explicit style — inherits document default (Arial 11pt Charcoal)
-
+            para = doc.add_paragraph()
             _add_styled_runs(para, token.children or [_InlineSpan(token.text)])
+            insert_before.addprevious(para._element)
 
         elif token.type == "bullet":
-            new_p = OxmlElement("w:p")
-            insert_before.addprevious(new_p)
-            para = Paragraph(new_p, body_element)
-
+            para = doc.add_paragraph()
             try:
                 para.style = doc.styles["ListParagraph"]
             except KeyError:
@@ -511,18 +503,16 @@ def _append_tokens_to_body(
             pPr.append(numPr)
 
             _add_styled_runs(para, token.children or [_InlineSpan(token.text)])
+            insert_before.addprevious(para._element)
 
         elif token.type == "numbered":
-            new_p = OxmlElement("w:p")
-            insert_before.addprevious(new_p)
-            para = Paragraph(new_p, body_element)
-
+            para = doc.add_paragraph()
             try:
                 para.style = doc.styles["ListParagraph"]
             except KeyError:
                 pass
-
             _add_styled_runs(para, token.children or [_InlineSpan(token.text)])
+            insert_before.addprevious(para._element)
 
         elif token.type == "table":
             if not token.rows:
@@ -531,7 +521,7 @@ def _append_tokens_to_body(
             num_cols = max(len(row) for row in token.rows)
             num_rows = len(token.rows)
 
-            # Create table element via python-docx then move it
+            # Create table via python-docx API (gives valid .part)
             tbl = doc.add_table(rows=num_rows, cols=num_cols)
             tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
             _set_table_borders(tbl)
@@ -557,17 +547,15 @@ def _append_tokens_to_body(
                         run.font.size = Pt(10)
                         run.font.color.rgb = CHARCOAL
 
-            # Move table element from end of document to insert position
-            tbl_element = tbl._tbl
-            body_element.remove(tbl_element)
-            insert_before.addprevious(tbl_element)
+            # Move table from end of document to correct position
+            insert_before.addprevious(tbl._tbl)
 
             # Add spacing paragraph after table
             spacer = OxmlElement("w:p")
             insert_before.addprevious(spacer)
 
         elif token.type == "chart_placeholder":
-            _insert_chart_image(doc, body_element, insert_before, token.chart_name, charts)
+            _insert_chart_image(doc, insert_before, token.chart_name, charts)
 
             # Add spacing after chart
             spacer = OxmlElement("w:p")
@@ -619,10 +607,10 @@ def render_docx(
 
     # Step 6: Append converted content before the final sectPr
     if final_sect_pr is not None:
-        _append_tokens_to_body(doc, body, final_sect_pr, tokens, charts)
+        _append_tokens_to_body(doc, final_sect_pr, tokens, charts)
     else:
         # No final sectPr — append at end (shouldn't happen with our templates)
-        _append_tokens_to_body(doc, body, body[-1], tokens, charts)
+        _append_tokens_to_body(doc, body[-1], tokens, charts)
 
     # Save to bytes
     buf = io.BytesIO()
@@ -817,80 +805,96 @@ def _render_pptx_slide(
 
 
 def _populate_slide_body(tree, title: str, body_text: str) -> None:
-    """Populate a slide's shape text bodies with title and body content."""
+    """Populate a slide's shape text bodies with title and body content.
+
+    Uses content-matching: finds shapes by text length rather than placeholder
+    type, since these templates use raw <p:sp> without <p:ph> type attributes.
+
+    Strategy:
+    - The shape with the most text content is the body area — replace it.
+    - Short single-line shapes that match the slide title get the new title.
+    - Section divider slides (with just a number + short text) are left as-is
+      if they only have small text areas.
+    """
     sp_elements = list(tree.iter(f"{{{NS_P}}}sp"))
 
+    # Gather all shapes with text, along with their total text length
+    shape_texts: List[Tuple] = []  # (sp_element, txBody, existing_text, text_len)
     for sp in sp_elements:
         txBody = sp.find(f".//{{{NS_A}}}txBody")
         if txBody is None:
             continue
-
-        # Check existing text to determine if this is a title or body placeholder
         existing_text = ""
         for t in txBody.iter(f"{{{NS_A}}}t"):
             if t.text:
                 existing_text += t.text
+        if existing_text.strip():
+            shape_texts.append((sp, txBody, existing_text.strip(), len(existing_text.strip())))
 
-        existing_lower = existing_text.strip().lower()
+    if not shape_texts:
+        return
 
-        # Check for placeholder type via nvSpPr
-        nvSpPr = sp.find(f"{{{NS_P}}}nvSpPr")
-        ph_type = ""
-        if nvSpPr is not None:
-            ph = nvSpPr.find(f".//{{{NS_P}}}ph")
-            if ph is not None:
-                ph_type = ph.get("type", "")
+    # Sort by text length descending — largest text area is the body
+    shape_texts.sort(key=lambda x: x[3], reverse=True)
 
-        # Title placeholder
-        if ph_type in ("title", "ctrTitle"):
-            if title:
-                for t in txBody.iter(f"{{{NS_A}}}t"):
-                    if t.text:
-                        t.text = title
-                        break
+    # Replace the largest text body with the markdown body content
+    body_replaced = False
+    for sp, txBody, existing_text, text_len in shape_texts:
+        # Skip very short shapes (slide numbers like "01", "02")
+        if text_len <= 3:
+            continue
 
-        # Body/subtitle placeholder
-        elif ph_type in ("body", "subTitle", ""):
-            if body_text and (
-                "[" in existing_text
-                or not existing_text.strip()
-                or ph_type in ("body", "subTitle")
-            ):
-                # Replace content with body text paragraphs
-                paragraphs = txBody.findall(f"{{{NS_A}}}p")
-                if paragraphs:
-                    # Get formatting from first paragraph's first run
-                    first_p = paragraphs[0]
-                    first_rPr = first_p.find(f".//{{{NS_A}}}rPr")
+        if not body_replaced and body_text and text_len > 20:
+            # This is the body area — replace with markdown content
+            _replace_txBody_content(txBody, body_text)
+            body_replaced = True
+        elif title and existing_text.upper() == existing_text and text_len < 50:
+            # ALL-CAPS short text is likely a title — replace it
+            for t in txBody.iter(f"{{{NS_A}}}t"):
+                if t.text and t.text.strip():
+                    t.text = title.upper()
+                    break
 
-                    # Split body text into lines
-                    body_lines = [l.strip() for l in body_text.split("\n") if l.strip()]
 
-                    # Clear existing paragraphs except first
-                    for p in paragraphs[1:]:
-                        txBody.remove(p)
+def _replace_txBody_content(txBody, body_text: str) -> None:
+    """Replace all content in a DrawingML txBody with new body text lines."""
+    paragraphs = txBody.findall(f"{{{NS_A}}}p")
+    if not paragraphs:
+        return
 
-                    # Set first paragraph text
-                    if body_lines:
-                        for r in first_p.findall(f"{{{NS_A}}}r"):
-                            first_p.remove(r)
-                        r_elem = etree.SubElement(first_p, f"{{{NS_A}}}r")
-                        if first_rPr is not None:
-                            r_elem.append(deepcopy(first_rPr))
-                        t_elem = etree.SubElement(r_elem, f"{{{NS_A}}}t")
-                        t_elem.text = body_lines[0]
+    # Capture formatting from the first paragraph's first run
+    first_p = paragraphs[0]
+    first_rPr = first_p.find(f".//{{{NS_A}}}rPr")
 
-                        # Add remaining lines as new paragraphs
-                        for line in body_lines[1:]:
-                            new_p = deepcopy(first_p)
-                            for r in new_p.findall(f"{{{NS_A}}}r"):
-                                new_p.remove(r)
-                            r_elem = etree.SubElement(new_p, f"{{{NS_A}}}r")
-                            if first_rPr is not None:
-                                r_elem.append(deepcopy(first_rPr))
-                            t_elem = etree.SubElement(r_elem, f"{{{NS_A}}}t")
-                            t_elem.text = line
-                            txBody.append(new_p)
+    # Split body text into lines
+    body_lines = [l.strip() for l in body_text.split("\n") if l.strip()]
+    if not body_lines:
+        return
+
+    # Clear all existing paragraphs except first
+    for p in paragraphs[1:]:
+        txBody.remove(p)
+
+    # Set first paragraph text
+    for r in first_p.findall(f"{{{NS_A}}}r"):
+        first_p.remove(r)
+    r_elem = etree.SubElement(first_p, f"{{{NS_A}}}r")
+    if first_rPr is not None:
+        r_elem.append(deepcopy(first_rPr))
+    t_elem = etree.SubElement(r_elem, f"{{{NS_A}}}t")
+    t_elem.text = body_lines[0]
+
+    # Add remaining lines as new paragraphs
+    for line in body_lines[1:]:
+        new_p = deepcopy(first_p)
+        for r in new_p.findall(f"{{{NS_A}}}r"):
+            new_p.remove(r)
+        r_elem = etree.SubElement(new_p, f"{{{NS_A}}}r")
+        if first_rPr is not None:
+            r_elem.append(deepcopy(first_rPr))
+        t_elem = etree.SubElement(r_elem, f"{{{NS_A}}}t")
+        t_elem.text = line
+        txBody.append(new_p)
 
 
 def _replace_pptx_notes(notes_xml: bytes, narration: str) -> bytes:
