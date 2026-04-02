@@ -354,8 +354,6 @@ export default function EngagementDetail() {
   const [approvingFormatId, setApprovingFormatId] = useState<string | null>(null)
 
   // Render deliverables state
-  const [generatingPreview, setGeneratingPreview] = useState<string | null>(null)
-  const [approvingRenderFormat, setApprovingRenderFormat] = useState<string | null>(null)
   const [renderingDeliverables, setRenderingDeliverables] = useState(false)
   const [renderResults, setRenderResults] = useState<Array<{ output_name: string; output_file: string; drive_file_id: string; size_bytes: number }> | null>(null)
 
