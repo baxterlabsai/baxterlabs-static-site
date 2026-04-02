@@ -288,15 +288,6 @@ def _tokenize_markdown(md: str) -> List[_Token]:
 # Endnote processing helpers
 # ---------------------------------------------------------------------------
 
-# Unicode superscript digit mapping
-_SUPERSCRIPT_DIGITS = str.maketrans("0123456789", "⁰¹²³⁴⁵⁶⁷⁸⁹")
-
-
-def _to_superscript(n: int) -> str:
-    """Convert an integer to Unicode superscript characters."""
-    return str(n).translate(_SUPERSCRIPT_DIGITS)
-
-
 def _number_endnotes(tokens: List[_Token]) -> List[_Token]:
     """Add sequential numbers to endnote entries in the Endnotes section.
 
@@ -324,58 +315,6 @@ def _number_endnotes(tokens: List[_Token]) -> List[_Token]:
                 prefix = f"{endnote_num}. "
                 token.text = prefix + token.text
                 token.children = _parse_inline(token.text)
-
-    return tokens
-
-
-_CITATION_RE = re.compile(r"\[(Verified|Estimated|Stated|Derived):[^\]]*\]")
-
-
-def _extract_inline_citations(tokens: List[_Token]) -> List[_Token]:
-    """Convert inline citations to superscript references + appended Endnotes.
-
-    For the Retainer Proposal: scans body text for [Verified: ...], etc.,
-    replaces each with a Unicode superscript number, and appends an Endnotes
-    section at the end with numbered entries.
-
-    Only operates on tokens that do NOT already have an Endnotes section.
-    """
-    # Check if there's already an Endnotes section
-    for token in tokens:
-        if token.type == "heading" and token.text.strip().lower() in ("endnotes", "end notes"):
-            return tokens  # Already has endnotes — don't double-process
-
-    collected: List[str] = []
-    endnote_num = 0
-
-    for token in tokens:
-        if token.type != "paragraph":
-            continue
-
-        text = token.text
-        new_text = ""
-        last_end = 0
-
-        for m in _CITATION_RE.finditer(text):
-            endnote_num += 1
-            new_text += text[last_end:m.start()] + _to_superscript(endnote_num)
-            collected.append(m.group(0))
-            last_end = m.end()
-
-        if last_end > 0:
-            new_text += text[last_end:]
-            token.text = new_text
-            token.children = _parse_inline(new_text)
-
-    if collected:
-        # Append Endnotes heading
-        tokens.append(_Token(type="heading", level=2, text="Endnotes",
-                             children=_parse_inline("Endnotes")))
-        # Append numbered endnote entries
-        for i, citation in enumerate(collected, 1):
-            entry = f"{i}. {citation}"
-            tokens.append(_Token(type="paragraph", text=entry,
-                                 children=_parse_inline(entry)))
 
     return tokens
 
@@ -703,7 +642,6 @@ def render_docx(
     client_name: str,
     engagement_date: str,
     output_number: int,
-    file_prefix: str = "",
 ) -> bytes:
     """Render a .docx by extracting the template cover page and appending markdown content.
 
@@ -741,13 +679,7 @@ def render_docx(
     tokens = _tokenize_markdown(markdown_content)
     logger.info("Tokenized markdown: %d blocks", len(tokens))
 
-    # Step 5b: For Retainer Proposal — extract inline citations to endnotes
-    is_retainer = file_prefix.startswith("Retainer_Proposal") or file_prefix.startswith("Phase_2_Retainer_Proposal")
-    if is_retainer:
-        tokens = _extract_inline_citations(tokens)
-        logger.info("Extracted inline citations for Retainer Proposal")
-
-    # Step 5c: Number endnotes in the Endnotes section (all documents)
+    # Step 5b: Number endnotes in the Endnotes section (all documents)
     tokens = _number_endnotes(tokens)
 
     # Step 6: Append converted content before the final sectPr
@@ -1167,7 +1099,6 @@ async def render_engagement_deliverables(engagement_id: str) -> dict:
             rendered_bytes = render_docx(
                 template_path, markdown_content, engagement_id,
                 client_name, engagement_date, output_number,
-                file_prefix=file_prefix,
             )
         except Exception as e:
             logger.error("Render failed for %s: %s", output_name, e, exc_info=True)
