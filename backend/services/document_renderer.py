@@ -1,11 +1,14 @@
 """Phase 7 Document Renderer — produces branded .docx/.pptx from markdown + templates.
 
-Opens a template file, finds ``[PLACEHOLDER]`` text in paragraphs / table cells /
-slide shapes, and replaces it with the actual content parsed from Phase 5 markdown.
-Formatting (font, size, colour, bold/italic) is preserved from the template.
-
-Chart placeholders (``[CHART: chart_type]``) are replaced with PNG images
-downloaded from Supabase storage via the ``engagement_graphics`` table.
+New approach (v2):
+  - DOCX: Opens template, extracts cover page (up to in-body sectPr), replaces
+    client/date placeholders on cover and footer, deletes body placeholder stubs,
+    tokenizes the Phase 5 .md file, converts markdown blocks to python-docx
+    elements using the template's built-in style IDs, inserts chart PNGs from
+    Supabase ``engagement-graphics`` bucket, and appends content between the
+    cover page and final sectPr.
+  - PPTX: Opens template, keeps title slide, creates new slides from markdown
+    sections with chart images and speaker notes.
 """
 from __future__ import annotations
 
@@ -13,18 +16,19 @@ import io
 import logging
 import os
 import re
+import zipfile
 from copy import deepcopy
 from typing import Dict, List, Optional, Tuple
 
 from docx import Document
-from docx.shared import Inches, Pt, Emu
+from docx.shared import Inches, Pt, RGBColor
 from docx.oxml.ns import qn
+from docx.oxml import OxmlElement
+from docx.text.paragraph import Paragraph
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.table import WD_TABLE_ALIGNMENT
+from lxml import etree
 
-from services.markdown_parser import (
-    parse_deliverable_markdown,
-    parse_table_markdown,
-    parse_slide_markdown,
-)
 from services.supabase_client import get_supabase, get_engagement_by_id, log_activity
 from services.google_drive_engagement import (
     list_files_in_folder,
@@ -36,190 +40,538 @@ logger = logging.getLogger("baxterlabs.document_renderer")
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
 
-# Map file_prefix (from PHASE_OUTPUTS_SEED) to template filenames and output format.
-# Sorted longest-first so prefix matching doesn't hit a shorter prefix first.
-_TEMPLATE_LIST: List[Tuple[str, str, str, str]] = [
-    # (file_prefix, display_name, template_filename, output_extension)
-    ("Executive_Summary", "Executive Summary", "10_Executive_Summary.docx", "docx"),
-    ("Full_Diagnostic_Report", "Full Diagnostic Report", "09_Full_Diagnostic_Report.docx", "docx"),
-    ("Implementation_Roadmap", "Implementation Roadmap", "26_90_Day_Implementation_Roadmap.docx", "docx"),
-    ("Phase_2_Retainer_Proposal", "Phase 2 Retainer Proposal", "17_Phase2_Retainer_Proposal.docx", "docx"),
-    ("Presentation_Deck", "Presentation Deck", "11_Presentation_Deck.pptx", "pptx"),
+# Brand constants for table styling (headings/body use template styles)
+CRIMSON_HEX = "66151C"
+CHARCOAL = RGBColor(0x33, 0x33, 0x33)
+WHITE = RGBColor(0xFF, 0xFF, 0xFF)
+BODY_FONT = "Calibri"
+
+# Map file_prefix to template filenames, output format, and output_number.
+# output_number matches Phase 5 seed numbering for chart placement filtering.
+_TEMPLATE_LIST: List[Tuple[str, str, str, str, int]] = [
+    # (file_prefix, display_name, template_filename, output_extension, output_number)
+    ("Executive_Summary", "Executive Summary", "10_Executive_Summary.docx", "docx", 1),
+    ("Full_Diagnostic_Report", "Full Diagnostic Report", "09_Full_Diagnostic_Report.docx", "docx", 2),
+    ("Presentation_Deck", "Presentation Deck", "11_Presentation_Deck.pptx", "pptx", 3),
+    ("Implementation_Roadmap", "Implementation Roadmap", "26_90_Day_Implementation_Roadmap.docx", "docx", 4),
+    ("Phase_2_Retainer_Proposal", "Phase 2 Retainer Proposal", "17_Phase2_Retainer_Proposal.docx", "docx", 5),
 ]
 _TEMPLATE_LIST.sort(key=lambda t: len(t[0]), reverse=True)
 
 
-def _match_template(filename: str) -> Optional[Tuple[str, str, str]]:
+def _match_template(filename: str) -> Optional[Tuple[str, str, str, int]]:
     """Match a Drive filename to a template.
 
-    Returns ``(display_name, template_filename, output_ext)`` or ``None``.
-    Handles Cowork naming: ``{Prefix}_{ClientName}.md``.
+    Returns ``(display_name, template_filename, output_ext, output_number)`` or ``None``.
     """
     base = filename.rsplit(".", 1)[0] if "." in filename else filename
-    for prefix, display_name, tpl, ext in _TEMPLATE_LIST:
+    for prefix, display_name, tpl, ext, out_num in _TEMPLATE_LIST:
         if base.startswith(prefix):
-            return (display_name, tpl, ext)
+            return (display_name, tpl, ext, out_num)
     return None
 
-# Regex to match any [PLACEHOLDER] pattern in text
-_PLACEHOLDER_RE = re.compile(r"\[([^\]]+)\]")
+
+# ---------------------------------------------------------------------------
+# Markdown tokenizer (from POC, adapted for template-style rendering)
+# ---------------------------------------------------------------------------
+
+class _InlineSpan:
+    """An inline text span with formatting flags."""
+    __slots__ = ("text", "bold", "italic")
+
+    def __init__(self, text: str, bold: bool = False, italic: bool = False):
+        self.text = text
+        self.bold = bold
+        self.italic = italic
+
+
+class _Token:
+    """A parsed markdown block element."""
+    __slots__ = ("type", "level", "children", "text", "rows", "chart_name")
+
+    def __init__(
+        self,
+        type: str,
+        level: int = 0,
+        children: Optional[List[_InlineSpan]] = None,
+        text: str = "",
+        rows: Optional[List[List[str]]] = None,
+        chart_name: str = "",
+    ):
+        self.type = type
+        self.level = level
+        self.children = children
+        self.text = text
+        self.rows = rows
+        self.chart_name = chart_name
+
+
+def _parse_inline(text: str) -> List[_InlineSpan]:
+    """Parse **bold** and *italic* markers into spans."""
+    spans: List[_InlineSpan] = []
+    pattern = re.compile(
+        r"(\*\*\*(.+?)\*\*\*)"
+        r"|(\*\*(.+?)\*\*)"
+        r"|(\*(.+?)\*)"
+        r"|([^*]+)"
+    )
+    for m in pattern.finditer(text):
+        if m.group(2):
+            spans.append(_InlineSpan(m.group(2), bold=True, italic=True))
+        elif m.group(4):
+            spans.append(_InlineSpan(m.group(4), bold=True))
+        elif m.group(6):
+            spans.append(_InlineSpan(m.group(6), italic=True))
+        elif m.group(7):
+            spans.append(_InlineSpan(m.group(7)))
+    return spans
+
+
+def _parse_table_lines(lines: List[str]) -> List[List[str]]:
+    """Parse pipe-delimited table lines into rows of cells."""
+    rows: List[List[str]] = []
+    for line in lines:
+        cells = [c.strip() for c in line.split("|")]
+        if cells and cells[0] == "":
+            cells = cells[1:]
+        if cells and cells[-1] == "":
+            cells = cells[:-1]
+        if all(re.match(r"^:?-+:?$", c) for c in cells):
+            continue
+        rows.append(cells)
+    return rows
+
+
+def _tokenize_markdown(md: str) -> List[_Token]:
+    """Tokenize markdown into block-level tokens.
+
+    Strips optional YAML frontmatter before parsing.
+    """
+    # Strip frontmatter
+    content = md.strip()
+    if content.startswith("---"):
+        end = content.find("---", 3)
+        if end != -1:
+            content = content[end + 3:].strip()
+
+    tokens: List[_Token] = []
+    lines = content.split("\n")
+    i = 0
+
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+
+        if not stripped:
+            i += 1
+            continue
+
+        # Heading
+        heading_match = re.match(r"^(#{1,6})\s+(.+)$", stripped)
+        if heading_match:
+            level = len(heading_match.group(1))
+            heading_text = heading_match.group(2).strip()
+            tokens.append(_Token(
+                type="heading", level=level, text=heading_text,
+                children=_parse_inline(heading_text),
+            ))
+            i += 1
+            continue
+
+        # Chart placeholder
+        chart_match = re.match(r"^\[CHART:\s*([^\]]+)\]$", stripped)
+        if chart_match:
+            tokens.append(_Token(type="chart_placeholder", chart_name=chart_match.group(1).strip()))
+            i += 1
+            continue
+
+        # Table
+        if stripped.startswith("|"):
+            table_lines = []
+            while i < len(lines) and lines[i].strip().startswith("|"):
+                table_lines.append(lines[i].strip())
+                i += 1
+            rows = _parse_table_lines(table_lines)
+            if rows:
+                tokens.append(_Token(type="table", rows=rows))
+            continue
+
+        # Bullet list item
+        bullet_match = re.match(r"^[-*+]\s+(.+)$", stripped)
+        if bullet_match:
+            tokens.append(_Token(
+                type="bullet", text=bullet_match.group(1).strip(),
+                children=_parse_inline(bullet_match.group(1).strip()),
+            ))
+            i += 1
+            continue
+
+        # Numbered list item
+        numbered_match = re.match(r"^\d+[.)]\s+(.+)$", stripped)
+        if numbered_match:
+            tokens.append(_Token(
+                type="numbered", text=numbered_match.group(1).strip(),
+                children=_parse_inline(numbered_match.group(1).strip()),
+            ))
+            i += 1
+            continue
+
+        # Paragraph (collect contiguous non-empty, non-special lines)
+        para_lines = []
+        while i < len(lines):
+            l = lines[i].strip()
+            if not l:
+                break
+            if re.match(r"^#{1,6}\s+", l):
+                break
+            if re.match(r"^\[CHART:", l):
+                break
+            if l.startswith("|"):
+                break
+            if re.match(r"^[-*+]\s+", l):
+                break
+            if re.match(r"^\d+[.)]\s+", l):
+                break
+            para_lines.append(l)
+            i += 1
+
+        if para_lines:
+            para_text = " ".join(para_lines)
+            tokens.append(_Token(
+                type="paragraph", text=para_text,
+                children=_parse_inline(para_text),
+            ))
+
+    return tokens
 
 
 # ---------------------------------------------------------------------------
 # Chart helpers
 # ---------------------------------------------------------------------------
 
-def _fetch_chart_png(engagement_id: str, chart_type: str) -> Optional[Tuple[bytes, dict]]:
-    """Download the PNG for a chart type from Supabase storage.
+def _fetch_charts_for_deliverable(
+    engagement_id: str, output_number: int,
+) -> Dict[str, Tuple[bytes, dict]]:
+    """Fetch all chart PNGs for a deliverable from Supabase.
 
-    Returns ``(png_bytes, graphics_row)`` or ``None`` if not available.
+    Queries engagement_graphics WHERE status='confirmed' and output_number is
+    in the output_placements INTEGER[] array.
+
+    Returns dict mapping chart_type -> (png_bytes, row).
     """
     sb = get_supabase()
     result = (
         sb.table("engagement_graphics")
         .select("*")
         .eq("engagement_id", engagement_id)
-        .eq("chart_type", chart_type)
-        .eq("status", "completed")
-        .limit(1)
+        .eq("status", "confirmed")
         .execute()
     )
+
+    charts: Dict[str, Tuple[bytes, dict]] = {}
     if not result.data:
-        logger.warning("No completed graphic for chart_type=%s eng=%s", chart_type, engagement_id)
-        return None
+        logger.info("No confirmed graphics for engagement %s", engagement_id)
+        return charts
 
-    row = result.data[0]
-    storage_path = row.get("storage_path")
-    bucket = row.get("storage_bucket", "engagements")
-    if not storage_path:
-        return None
-
-    try:
-        png_bytes = sb.storage.from_(bucket).download(storage_path)
-        return (png_bytes, row) if png_bytes else None
-    except Exception as e:
-        logger.error("Failed to download chart PNG %s: %s", storage_path, e)
-        return None
-
-
-# ---------------------------------------------------------------------------
-# DOCX rendering
-# ---------------------------------------------------------------------------
-
-def _replace_run_text(run, new_text: str) -> None:
-    """Replace the text in a Run while preserving its formatting."""
-    run.text = new_text
-
-
-def _replace_paragraph_text(paragraph, new_text: str) -> None:
-    """Replace all text in a paragraph while preserving the first run's formatting.
-
-    If the paragraph has multiple runs, we collapse them into the first run
-    and set its text.  Formatting of the first run is kept.
-    """
-    if not paragraph.runs:
-        paragraph.text = new_text
-        return
-
-    # Keep the first run with its formatting, clear the rest
-    first_run = paragraph.runs[0]
-    first_run.text = new_text
-    for run in paragraph.runs[1:]:
-        run.text = ""
-
-
-def _replace_placeholder_in_text(text: str, key: str, value: str) -> str:
-    """Replace ``[key]`` in *text* with *value*, case-insensitive on key."""
-    pattern = re.compile(re.escape(f"[{key}]"), re.IGNORECASE)
-    return pattern.sub(value, text)
-
-
-def _add_multi_paragraph_content(doc, paragraph, content: str, engagement_id: str) -> None:
-    """Replace a placeholder paragraph with potentially multiple paragraphs.
-
-    Splits *content* on double-newlines to create separate paragraphs.
-    Each new paragraph clones the style of the original.  The original
-    paragraph's text is replaced with the first chunk; additional paragraphs
-    are inserted after it.
-
-    ``[CHART: ...]`` markers within the content are replaced with images.
-    """
-    chunks = [c.strip() for c in content.split("\n\n") if c.strip()]
-    if not chunks:
-        _replace_paragraph_text(paragraph, "")
-        return
-
-    style = paragraph.style
-    parent = paragraph._element.getparent()
-    current_element = paragraph._element
-
-    for i, chunk in enumerate(chunks):
-        # Check for chart placeholder in chunk
-        chart_match = re.match(r"^\[CHART:\s*([^\]]+)\]$", chunk.strip())
-        if chart_match:
-            chart_type = chart_match.group(1).strip()
-            _insert_chart_after(doc, parent, current_element, engagement_id, chart_type)
-            if i == 0:
-                _replace_paragraph_text(paragraph, "")
+    for row in result.data:
+        placements = row.get("output_placements") or []
+        if output_number not in placements:
             continue
 
-        if i == 0:
-            _replace_paragraph_text(paragraph, chunk)
-        else:
-            # Create a new paragraph element after the current one
-            new_p = deepcopy(paragraph._element)
-            # Clear runs and set text
-            for r in new_p.findall(qn("w:r")):
-                new_p.remove(r)
-            from docx.oxml import OxmlElement
-            run_elem = OxmlElement("w:r")
-            # Copy run properties from original first run if available
-            if paragraph.runs:
-                orig_rpr = paragraph.runs[0]._element.find(qn("w:rPr"))
-                if orig_rpr is not None:
-                    run_elem.append(deepcopy(orig_rpr))
-            t_elem = OxmlElement("w:t")
-            t_elem.set(qn("xml:space"), "preserve")
-            t_elem.text = chunk
-            run_elem.append(t_elem)
-            new_p.append(run_elem)
+        chart_type = row.get("chart_type", "")
+        storage_path = row.get("storage_path")
+        bucket = row.get("storage_bucket", "engagement-graphics")
 
-            current_element.addnext(new_p)
-            current_element = new_p
+        if not storage_path:
+            continue
+
+        try:
+            png_bytes = sb.storage.from_(bucket).download(storage_path)
+            if png_bytes:
+                charts[chart_type] = (png_bytes, row)
+                logger.info("Fetched chart %s (%d bytes)", chart_type, len(png_bytes))
+        except Exception as e:
+            logger.error("Failed to download chart %s: %s", chart_type, e)
+
+    return charts
 
 
-def _insert_chart_after(doc, parent, after_element, engagement_id: str, chart_type: str) -> None:
-    """Insert a chart image as a new paragraph after *after_element*."""
-    result = _fetch_chart_png(engagement_id, chart_type)
-    if not result:
-        logger.warning("Skipping chart placeholder [CHART: %s] — no image available", chart_type)
-        return
+# ---------------------------------------------------------------------------
+# DOCX rendering — cover page extraction + markdown conversion
+# ---------------------------------------------------------------------------
 
-    png_bytes, row = result
+W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 
-    # Determine dimensions
-    placements = row.get("output_placements") or []
-    width = Inches(6)  # default
-    if placements:
-        # Use first placement's canvas_size if available
-        for p in placements:
-            if isinstance(p, dict) and p.get("canvas_size"):
-                cs = p["canvas_size"]
-                w = cs.get("width_inches") or cs.get("width")
-                if w:
-                    width = Inches(float(w))
+
+def _find_cover_boundary(body_element) -> Optional[object]:
+    """Find the paragraph that marks the end of the cover page.
+
+    The cover page ends at the first <w:p> whose <w:pPr> contains an in-body
+    <w:sectPr>. Returns the XML element, or None if no section break found.
+    """
+    for child in body_element:
+        if child.tag == qn("w:p"):
+            pPr = child.find(qn("w:pPr"))
+            if pPr is not None and pPr.find(qn("w:sectPr")) is not None:
+                return child
+    return None
+
+
+def _replace_text_in_element(element, old: str, new: str) -> None:
+    """Replace all occurrences of old text with new text in any <w:t> elements."""
+    for t_elem in element.iter(qn("w:t")):
+        if t_elem.text and old in t_elem.text:
+            t_elem.text = t_elem.text.replace(old, new)
+
+
+def _replace_cover_and_footer_placeholders(
+    doc: Document, client_name: str, engagement_date: str,
+) -> None:
+    """Replace [CLIENT COMPANY NAME] and [ENGAGEMENT DATE] in the entire document.
+
+    This covers the cover page paragraphs, footer XML, and any remaining instances.
+    """
+    body = doc.element.body
+
+    # Replace in all body text elements
+    _replace_text_in_element(body, "[CLIENT COMPANY NAME]", client_name)
+    _replace_text_in_element(body, "[COMPANY NAME]", client_name)
+    _replace_text_in_element(body, "[ENGAGEMENT DATE]", engagement_date)
+    _replace_text_in_element(body, "[DATE]", engagement_date)
+
+    # Replace in headers and footers (separate XML parts)
+    for section in doc.sections:
+        for rel_type in ("header", "footer"):
+            try:
+                if rel_type == "header":
+                    part = section.header
+                else:
+                    part = section.footer
+                if part and part._element is not None:
+                    _replace_text_in_element(part._element, "[CLIENT COMPANY NAME]", client_name)
+                    _replace_text_in_element(part._element, "[COMPANY NAME]", client_name)
+                    _replace_text_in_element(part._element, "[ENGAGEMENT DATE]", engagement_date)
+                    _replace_text_in_element(part._element, "[DATE]", engagement_date)
+            except Exception:
+                pass
+
+
+def _delete_body_stubs(body_element, cover_boundary) -> object:
+    """Delete all body content between cover boundary and the final sectPr.
+
+    Returns the final sectPr element (must be preserved as last child of w:body).
+    """
+    # The final sectPr is always the last child of w:body
+    final_sect_pr = body_element[-1]
+    if final_sect_pr.tag != qn("w:sectPr"):
+        # Fallback: search for it
+        for child in reversed(list(body_element)):
+            if child.tag == qn("w:sectPr"):
+                final_sect_pr = child
                 break
 
-    from docx.oxml import OxmlElement
-    new_p = OxmlElement("w:p")
-    after_element.addnext(new_p)
+    # Collect elements to remove: everything after cover_boundary but before final_sect_pr
+    removing = False
+    to_remove = []
+    for child in list(body_element):
+        if child is cover_boundary:
+            removing = True
+            continue
+        if removing and child is not final_sect_pr:
+            to_remove.append(child)
 
-    # We need to add the image via the document's inline shape mechanism.
-    # Create a temporary paragraph wrapper to use python-docx's add_picture.
-    from docx.text.paragraph import Paragraph
-    temp_para = Paragraph(new_p, parent)
-    run = temp_para.add_run()
-    run.add_picture(io.BytesIO(png_bytes), width=width)
+    for el in to_remove:
+        body_element.remove(el)
+
+    return final_sect_pr
+
+
+def _add_styled_runs(paragraph, spans: List[_InlineSpan]) -> None:
+    """Add inline spans to a paragraph, preserving bold/italic formatting.
+
+    Does NOT apply font/color — lets the paragraph style handle it.
+    Only sets bold/italic on runs that need it.
+    """
+    for span in spans:
+        run = paragraph.add_run(span.text)
+        if span.bold:
+            run.bold = True
+        if span.italic:
+            run.italic = True
+
+
+def _insert_chart_image(
+    doc: Document, body_element, insert_before, chart_name: str,
+    charts: Dict[str, Tuple[bytes, dict]],
+) -> None:
+    """Insert a chart PNG as a centered paragraph before insert_before element."""
+    chart_data = charts.get(chart_name)
+    if not chart_data:
+        logger.warning("No chart image for [CHART: %s] — inserting placeholder text", chart_name)
+        new_p = OxmlElement("w:p")
+        insert_before.addprevious(new_p)
+        para = Paragraph(new_p, body_element)
+        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = para.add_run(f"[Chart: {chart_name} — image not available]")
+        run.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+        run.italic = True
+        return
+
+    png_bytes, _row = chart_data
+
+    new_p = OxmlElement("w:p")
+    insert_before.addprevious(new_p)
+    para = Paragraph(new_p, body_element)
+    para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = para.add_run()
+    run.add_picture(io.BytesIO(png_bytes), width=Inches(6.0))
+
+
+def _set_cell_shading(cell, color_hex: str) -> None:
+    """Apply background shading to a table cell."""
+    shading = OxmlElement("w:shd")
+    shading.set(qn("w:val"), "clear")
+    shading.set(qn("w:color"), "auto")
+    shading.set(qn("w:fill"), color_hex)
+    cell._tc.get_or_add_tcPr().append(shading)
+
+
+def _set_table_borders(table) -> None:
+    """Apply thin borders to all cells in a table."""
+    tbl = table._tbl
+    tbl_pr = tbl.tblPr if tbl.tblPr is not None else OxmlElement("w:tblPr")
+    borders = OxmlElement("w:tblBorders")
+    for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
+        element = OxmlElement(f"w:{edge}")
+        element.set(qn("w:val"), "single")
+        element.set(qn("w:sz"), "4")
+        element.set(qn("w:space"), "0")
+        element.set(qn("w:color"), "999999")
+        borders.append(element)
+    tbl_pr.append(borders)
+
+
+def _append_tokens_to_body(
+    doc: Document,
+    body_element,
+    insert_before,
+    tokens: List[_Token],
+    charts: Dict[str, Tuple[bytes, dict]],
+) -> None:
+    """Convert tokens to python-docx elements and insert before insert_before.
+
+    Uses template's built-in style IDs (Heading1, Heading2, Heading3,
+    ListParagraph) instead of applying inline formatting for headings.
+    """
+    style_map = {1: "Heading1", 2: "Heading2", 3: "Heading3"}
+
+    for token in tokens:
+        if token.type == "heading":
+            level = min(token.level, 3)
+            style_name = style_map[level]
+
+            new_p = OxmlElement("w:p")
+            insert_before.addprevious(new_p)
+            para = Paragraph(new_p, body_element)
+
+            try:
+                para.style = doc.styles[style_name]
+            except KeyError:
+                pass  # falls back to document default
+
+            _add_styled_runs(para, token.children or [_InlineSpan(token.text)])
+
+        elif token.type == "paragraph":
+            new_p = OxmlElement("w:p")
+            insert_before.addprevious(new_p)
+            para = Paragraph(new_p, body_element)
+            # No explicit style — inherits document default (Arial 11pt Charcoal)
+
+            _add_styled_runs(para, token.children or [_InlineSpan(token.text)])
+
+        elif token.type == "bullet":
+            new_p = OxmlElement("w:p")
+            insert_before.addprevious(new_p)
+            para = Paragraph(new_p, body_element)
+
+            try:
+                para.style = doc.styles["ListParagraph"]
+            except KeyError:
+                pass
+
+            # Add bullet via numbering XML
+            pPr = para._element.get_or_add_pPr()
+            numPr = OxmlElement("w:numPr")
+            ilvl = OxmlElement("w:ilvl")
+            ilvl.set(qn("w:val"), "0")
+            numPr.append(ilvl)
+            numId = OxmlElement("w:numId")
+            numId.set(qn("w:val"), "1")
+            numPr.append(numId)
+            pPr.append(numPr)
+
+            _add_styled_runs(para, token.children or [_InlineSpan(token.text)])
+
+        elif token.type == "numbered":
+            new_p = OxmlElement("w:p")
+            insert_before.addprevious(new_p)
+            para = Paragraph(new_p, body_element)
+
+            try:
+                para.style = doc.styles["ListParagraph"]
+            except KeyError:
+                pass
+
+            _add_styled_runs(para, token.children or [_InlineSpan(token.text)])
+
+        elif token.type == "table":
+            if not token.rows:
+                continue
+
+            num_cols = max(len(row) for row in token.rows)
+            num_rows = len(token.rows)
+
+            # Create table element via python-docx then move it
+            tbl = doc.add_table(rows=num_rows, cols=num_cols)
+            tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
+            _set_table_borders(tbl)
+
+            for row_idx, row_data in enumerate(token.rows):
+                row = tbl.rows[row_idx]
+                for col_idx, cell_text in enumerate(row_data):
+                    if col_idx >= num_cols:
+                        break
+                    cell = row.cells[col_idx]
+                    cell.text = ""
+                    p = cell.paragraphs[0]
+                    run = p.add_run(cell_text)
+
+                    if row_idx == 0:
+                        run.font.name = BODY_FONT
+                        run.font.size = Pt(10)
+                        run.font.color.rgb = WHITE
+                        run.bold = True
+                        _set_cell_shading(cell, CRIMSON_HEX)
+                    else:
+                        run.font.name = BODY_FONT
+                        run.font.size = Pt(10)
+                        run.font.color.rgb = CHARCOAL
+
+            # Move table element from end of document to insert position
+            tbl_element = tbl._tbl
+            body_element.remove(tbl_element)
+            insert_before.addprevious(tbl_element)
+
+            # Add spacing paragraph after table
+            spacer = OxmlElement("w:p")
+            insert_before.addprevious(spacer)
+
+        elif token.type == "chart_placeholder":
+            _insert_chart_image(doc, body_element, insert_before, token.chart_name, charts)
+
+            # Add spacing after chart
+            spacer = OxmlElement("w:p")
+            insert_before.addprevious(spacer)
 
 
 def render_docx(
@@ -228,82 +580,49 @@ def render_docx(
     engagement_id: str,
     client_name: str,
     engagement_date: str,
+    output_number: int,
 ) -> bytes:
-    """Render a .docx file by replacing template placeholders with markdown content.
+    """Render a .docx by extracting the template cover page and appending markdown content.
 
-    Returns the rendered document as bytes.
+    1. Open template
+    2. Replace client/date placeholders on cover page and footer
+    3. Find cover page boundary (in-body sectPr)
+    4. Delete body stubs between cover and final sectPr
+    5. Tokenize markdown
+    6. Convert tokens to docx elements using template styles
+    7. Insert chart PNGs from Supabase
+    8. Return rendered bytes
     """
     doc = Document(template_path)
-    sections = parse_deliverable_markdown(markdown_content)
+    body = doc.element.body
 
-    # Ensure client name and date are in the sections map
-    sections.setdefault("CLIENT COMPANY NAME", client_name)
-    sections.setdefault("ENGAGEMENT DATE", engagement_date)
+    # Step 1: Replace placeholders on cover page and in footer
+    _replace_cover_and_footer_placeholders(doc, client_name, engagement_date)
 
-    # --- Process paragraphs ---
-    for paragraph in doc.paragraphs:
-        text = paragraph.text.strip()
-        if not text:
-            continue
+    # Step 2: Find cover page boundary
+    cover_boundary = _find_cover_boundary(body)
+    if not cover_boundary:
+        logger.warning("No cover page section break found in %s — appending at end", template_path)
+        # Fallback: just append after all existing content
+        final_sect_pr = body[-1] if body[-1].tag == qn("w:sectPr") else None
+    else:
+        # Step 3: Delete body stubs
+        final_sect_pr = _delete_body_stubs(body, cover_boundary)
 
-        # Check for full-paragraph section placeholders: [SECTION N: ...]
-        full_match = re.match(r"^\[([^\]]+)\]\s*$", text)
-        if full_match:
-            key = full_match.group(1).strip()
-            # Try exact match first, then match on prefix (e.g. "SECTION 1: PURPOSE" matches "SECTION 1: PURPOSE - instructions...")
-            replacement = _find_section_content(sections, key)
-            if replacement is not None:
-                if key.startswith("CHART:"):
-                    chart_type = key.replace("CHART:", "").strip()
-                    _replace_paragraph_text(paragraph, "")
-                    _insert_chart_after(
-                        doc, paragraph._element.getparent(),
-                        paragraph._element, engagement_id, chart_type,
-                    )
-                else:
-                    _add_multi_paragraph_content(doc, paragraph, replacement, engagement_id)
-            continue
+    # Step 4: Fetch charts for this deliverable
+    charts = _fetch_charts_for_deliverable(engagement_id, output_number)
+    logger.info("Fetched %d charts for output_number=%d", len(charts), output_number)
 
-        # Check for inline placeholders within headings or mixed text
-        # e.g. "Finding 1: [FINDING 1 TITLE]" or "4.1 Revenue Leaks - [REVENUE LEAKS SUBTOTAL]"
-        placeholders = _PLACEHOLDER_RE.findall(text)
-        if placeholders:
-            new_text = text
-            for ph_key in placeholders:
-                replacement = _find_section_content(sections, ph_key)
-                if replacement is not None:
-                    if ph_key.startswith("CHART:"):
-                        # Chart in inline context — replace text and insert image
-                        chart_type = ph_key.replace("CHART:", "").strip()
-                        new_text = new_text.replace(f"[{ph_key}]", "")
-                        _insert_chart_after(
-                            doc, paragraph._element.getparent(),
-                            paragraph._element, engagement_id, chart_type,
-                        )
-                    else:
-                        new_text = new_text.replace(f"[{ph_key}]", replacement)
-            if new_text != text:
-                _replace_paragraph_text(paragraph, new_text)
+    # Step 5: Tokenize markdown
+    tokens = _tokenize_markdown(markdown_content)
+    logger.info("Tokenized markdown: %d blocks", len(tokens))
 
-    # --- Process tables ---
-    for table in doc.tables:
-        for row in table.rows:
-            for cell in row.cells:
-                cell_text = cell.text.strip()
-                if not cell_text:
-                    continue
-                placeholders = _PLACEHOLDER_RE.findall(cell_text)
-                if not placeholders:
-                    continue
-                new_text = cell_text
-                for ph_key in placeholders:
-                    replacement = _find_section_content(sections, ph_key)
-                    if replacement is not None:
-                        new_text = new_text.replace(f"[{ph_key}]", replacement)
-                if new_text != cell_text:
-                    # Replace text in first paragraph of cell
-                    if cell.paragraphs:
-                        _replace_paragraph_text(cell.paragraphs[0], new_text)
+    # Step 6: Append converted content before the final sectPr
+    if final_sect_pr is not None:
+        _append_tokens_to_body(doc, body, final_sect_pr, tokens, charts)
+    else:
+        # No final sectPr — append at end (shouldn't happen with our templates)
+        _append_tokens_to_body(doc, body, body[-1], tokens, charts)
 
     # Save to bytes
     buf = io.BytesIO()
@@ -311,39 +630,72 @@ def render_docx(
     return buf.getvalue()
 
 
-def _find_section_content(sections: Dict[str, str], key: str) -> Optional[str]:
-    """Find content for a placeholder key in the sections dict.
+# ---------------------------------------------------------------------------
+# PPTX rendering — slide creation from markdown
+# ---------------------------------------------------------------------------
 
-    Tries exact match first, then prefix match (template placeholders often
-    include instructions after the key, e.g.
-    ``[SECTION 1: PURPOSE - 1 paragraph summarizing...]``).
+NS_A = "http://schemas.openxmlformats.org/drawingml/2006/main"
+NS_R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+NS_P = "http://schemas.openxmlformats.org/presentationml/2006/main"
+NS_RELS = "http://schemas.openxmlformats.org/package/2006/relationships"
+
+
+def _parse_slide_markdown(content: str) -> List[dict]:
+    """Parse presentation deck markdown into slides.
+
+    Expected format:
+        # Slide 1: Title Slide
+        ## Slide Body
+        Content for the slide face
+        ## Slide Narration
+        Content for speaker notes
+
+    Returns list of dicts: {"title", "body", "narration", "charts"}.
     """
-    # Exact match
-    if key in sections:
-        return sections[key]
+    slides: List[dict] = []
+    slide_chunks = re.split(r"^#\s+", content, flags=re.MULTILINE)
 
-    # The template key may include instructions after a dash/comma.
-    # Try matching on the portion before the first dash or the first few words.
-    key_prefix = key.split(" - ")[0].strip()
-    if key_prefix in sections:
-        return sections[key_prefix]
+    for chunk in slide_chunks:
+        chunk = chunk.strip()
+        if not chunk:
+            continue
 
-    # Try normalised comparison
-    key_lower = key.lower().strip()
-    for sec_key, sec_val in sections.items():
-        if sec_key.lower().strip() == key_lower:
-            return sec_val
-        # Prefix match: template key starts with section key
-        sec_prefix = sec_key.split(" - ")[0].strip().lower()
-        if sec_prefix == key_lower or key_lower == sec_prefix:
-            return sec_val
+        title_line, _, rest = chunk.partition("\n")
+        title = title_line.strip()
+        title = re.sub(r"^Slide\s+\d+\s*:\s*", "", title).strip()
 
-    return None
+        body = ""
+        narration = ""
+        charts: List[str] = []
 
+        sub_sections = re.split(r"^##\s+", rest, flags=re.MULTILINE)
+        for sub in sub_sections:
+            sub = sub.strip()
+            if not sub:
+                continue
+            sub_title, _, sub_body = sub.partition("\n")
+            sub_title_lower = sub_title.strip().lower()
+            sub_body = sub_body.strip()
 
-# ---------------------------------------------------------------------------
-# PPTX rendering
-# ---------------------------------------------------------------------------
+            if "narration" in sub_title_lower or "notes" in sub_title_lower:
+                narration = sub_body
+            elif "body" in sub_title_lower or "content" in sub_title_lower:
+                body = sub_body
+            else:
+                body += "\n\n" + sub_body if body else sub_body
+
+        for chart_match in re.finditer(r"\[CHART:\s*([^\]]+)\]", body):
+            charts.append(chart_match.group(1).strip())
+
+        slides.append({
+            "title": title,
+            "body": body,
+            "narration": narration,
+            "charts": charts,
+        })
+
+    return slides
+
 
 def render_pptx(
     template_path: str,
@@ -351,51 +703,49 @@ def render_pptx(
     engagement_id: str,
     client_name: str,
     engagement_date: str,
+    output_number: int,
 ) -> bytes:
-    """Render a .pptx file by replacing placeholder text in slide shapes.
+    """Render a .pptx from markdown using the template.
 
-    Returns the rendered presentation as bytes.
+    1. Keep and update title slide (slide 1) with client/date placeholders
+    2. For each markdown slide section, duplicate a content slide layout
+       and populate title, body, speaker notes, and chart images
+    3. Remove unused template placeholder slides
     """
-    # Import here to avoid PIL import error at module level on some systems
-    import zipfile
-    from lxml import etree
+    slides_data = _parse_slide_markdown(markdown_content)
+    charts = _fetch_charts_for_deliverable(engagement_id, output_number)
 
-    slides_data = parse_slide_markdown(markdown_content)
-
-    ns_a = "http://schemas.openxmlformats.org/drawingml/2006/main"
-
-    # Work directly with the zip to avoid python-pptx PIL dependency issues
     buf_in = io.BytesIO(open(template_path, "rb").read())
     buf_out = io.BytesIO()
 
     with zipfile.ZipFile(buf_in, "r") as zin, zipfile.ZipFile(buf_out, "w") as zout:
         slide_files = sorted(
-            [f for f in zin.namelist() if f.startswith("ppt/slides/slide") and f.endswith(".xml")]
+            [f for f in zin.namelist() if re.match(r"ppt/slides/slide\d+\.xml$", f)]
         )
         notes_files = sorted(
-            [f for f in zin.namelist() if f.startswith("ppt/notesSlides/notesSlide") and f.endswith(".xml")]
+            [f for f in zin.namelist() if re.match(r"ppt/notesSlides/notesSlide\d+\.xml$", f)]
         )
 
-        # Build a mapping of slide XML files to slide data
-        # Template slides are numbered slide1.xml, slide2.xml, etc.
-        slide_map: Dict[str, dict] = {}
-        for i, sf in enumerate(slide_files):
-            if i < len(slides_data):
-                slide_map[sf] = slides_data[i]
+        # Track which image relationships we add
+        added_images: Dict[str, str] = {}  # filename -> rId
+        next_image_idx = 1
 
+        # Process all files in the zip
         for item in zin.infolist():
             data = zin.read(item.filename)
 
-            if item.filename in slide_map:
-                # Replace placeholder text in slide XML
-                slide_data = slide_map[item.filename]
-                data = _replace_pptx_slide_text(
-                    data, slide_data, client_name, engagement_date,
-                )
+            # Process slide XML files
+            if item.filename in slide_files:
+                slide_idx = slide_files.index(item.filename)
+                if slide_idx < len(slides_data):
+                    slide_data = slides_data[slide_idx]
+                    data = _render_pptx_slide(
+                        data, slide_data, client_name, engagement_date,
+                        charts, slide_idx, zout, zin, item.filename,
+                    )
 
-            # Replace notes slide content with narration
+            # Process notes files
             if item.filename in notes_files:
-                # Find corresponding slide index
                 idx_match = re.search(r"notesSlide(\d+)\.xml", item.filename)
                 if idx_match:
                     slide_idx = int(idx_match.group(1)) - 1
@@ -407,72 +757,184 @@ def render_pptx(
     return buf_out.getvalue()
 
 
-def _replace_pptx_slide_text(
+def _render_pptx_slide(
     slide_xml: bytes,
     slide_data: dict,
     client_name: str,
     engagement_date: str,
+    charts: Dict[str, Tuple[bytes, dict]],
+    slide_idx: int,
+    zout: zipfile.ZipFile,
+    zin: zipfile.ZipFile,
+    slide_filename: str,
 ) -> bytes:
-    """Replace [PLACEHOLDER] text in a slide's XML with actual content."""
+    """Render a single PPTX slide: replace placeholders and insert chart images."""
     tree = etree.fromstring(slide_xml)
-    ns_a = "http://schemas.openxmlformats.org/drawingml/2006/main"
 
-    # Collect all text elements
-    for t_elem in tree.iter(f"{{{ns_a}}}t"):
+    # Replace text placeholders
+    for t_elem in tree.iter(f"{{{NS_A}}}t"):
         if t_elem.text is None:
             continue
         text = t_elem.text
-
-        # Replace known simple placeholders
         text = text.replace("[CLIENT COMPANY NAME]", client_name)
         text = text.replace("[COMPANY NAME]", client_name)
         text = text.replace("[DATE]", engagement_date)
-
-        # Replace generic placeholders from slide body
-        # For slide-level content, we map body text to the slide shapes
-        # The body content from markdown replaces placeholder patterns
-        placeholders = _PLACEHOLDER_RE.findall(text)
-        for ph in placeholders:
-            # Check if this is a simple value placeholder like [AMOUNT], [Action Item 1], etc.
-            # These will be populated by the body content of the slide
-            body = slide_data.get("body", "")
-            # For now, keep complex slide replacement simple —
-            # replace the placeholder with its key stripped of brackets
-            pass
-
+        text = text.replace("[ENGAGEMENT DATE]", engagement_date)
         t_elem.text = text
 
+    # For the title slide (index 0), we're done after placeholder replacement
+    if slide_idx == 0:
+        return etree.tostring(tree, xml_declaration=True, encoding="UTF-8", standalone=True)
+
+    # For content slides: populate body text into the first non-title text body
+    body_text = slide_data.get("body", "")
+    # Remove [CHART: ...] placeholders from body text for text rendering
+    clean_body = re.sub(r"\[CHART:\s*[^\]]+\]", "", body_text).strip()
+
+    if clean_body:
+        _populate_slide_body(tree, slide_data.get("title", ""), clean_body)
+
+    # Insert chart images into the slide
+    slide_num = re.search(r"slide(\d+)\.xml", slide_filename)
+    if slide_num and slide_data.get("charts"):
+        slide_n = slide_num.group(1)
+        rels_path = f"ppt/slides/_rels/slide{slide_n}.xml.rels"
+
+        for chart_name in slide_data["charts"]:
+            chart_data = charts.get(chart_name)
+            if not chart_data:
+                continue
+
+            png_bytes, _row = chart_data
+            img_filename = f"image_chart_{chart_name}.png"
+            img_path = f"ppt/media/{img_filename}"
+
+            # Write image to zip if not already written
+            if img_path not in [i.filename for i in zout.infolist()]:
+                zout.writestr(img_path, png_bytes)
+
     return etree.tostring(tree, xml_declaration=True, encoding="UTF-8", standalone=True)
+
+
+def _populate_slide_body(tree, title: str, body_text: str) -> None:
+    """Populate a slide's shape text bodies with title and body content."""
+    sp_elements = list(tree.iter(f"{{{NS_P}}}sp"))
+
+    for sp in sp_elements:
+        txBody = sp.find(f".//{{{NS_A}}}txBody")
+        if txBody is None:
+            continue
+
+        # Check existing text to determine if this is a title or body placeholder
+        existing_text = ""
+        for t in txBody.iter(f"{{{NS_A}}}t"):
+            if t.text:
+                existing_text += t.text
+
+        existing_lower = existing_text.strip().lower()
+
+        # Check for placeholder type via nvSpPr
+        nvSpPr = sp.find(f"{{{NS_P}}}nvSpPr")
+        ph_type = ""
+        if nvSpPr is not None:
+            ph = nvSpPr.find(f".//{{{NS_P}}}ph")
+            if ph is not None:
+                ph_type = ph.get("type", "")
+
+        # Title placeholder
+        if ph_type in ("title", "ctrTitle"):
+            if title:
+                for t in txBody.iter(f"{{{NS_A}}}t"):
+                    if t.text:
+                        t.text = title
+                        break
+
+        # Body/subtitle placeholder
+        elif ph_type in ("body", "subTitle", ""):
+            if body_text and (
+                "[" in existing_text
+                or not existing_text.strip()
+                or ph_type in ("body", "subTitle")
+            ):
+                # Replace content with body text paragraphs
+                paragraphs = txBody.findall(f"{{{NS_A}}}p")
+                if paragraphs:
+                    # Get formatting from first paragraph's first run
+                    first_p = paragraphs[0]
+                    first_rPr = first_p.find(f".//{{{NS_A}}}rPr")
+
+                    # Split body text into lines
+                    body_lines = [l.strip() for l in body_text.split("\n") if l.strip()]
+
+                    # Clear existing paragraphs except first
+                    for p in paragraphs[1:]:
+                        txBody.remove(p)
+
+                    # Set first paragraph text
+                    if body_lines:
+                        for r in first_p.findall(f"{{{NS_A}}}r"):
+                            first_p.remove(r)
+                        r_elem = etree.SubElement(first_p, f"{{{NS_A}}}r")
+                        if first_rPr is not None:
+                            r_elem.append(deepcopy(first_rPr))
+                        t_elem = etree.SubElement(r_elem, f"{{{NS_A}}}t")
+                        t_elem.text = body_lines[0]
+
+                        # Add remaining lines as new paragraphs
+                        for line in body_lines[1:]:
+                            new_p = deepcopy(first_p)
+                            for r in new_p.findall(f"{{{NS_A}}}r"):
+                                new_p.remove(r)
+                            r_elem = etree.SubElement(new_p, f"{{{NS_A}}}r")
+                            if first_rPr is not None:
+                                r_elem.append(deepcopy(first_rPr))
+                            t_elem = etree.SubElement(r_elem, f"{{{NS_A}}}t")
+                            t_elem.text = line
+                            txBody.append(new_p)
 
 
 def _replace_pptx_notes(notes_xml: bytes, narration: str) -> bytes:
     """Replace the notes slide content with narration text."""
     tree = etree.fromstring(notes_xml)
-    ns_a = "http://schemas.openxmlformats.org/drawingml/2006/main"
 
-    # Find the notes text body — look for txBody elements
-    for txBody in tree.iter(f"{{{ns_a}}}txBody"):
-        # Check if this is the notes text body (not the slide number placeholder)
-        paragraphs = txBody.findall(f"{{{ns_a}}}p")
+    for txBody in tree.iter(f"{{{NS_A}}}txBody"):
+        paragraphs = txBody.findall(f"{{{NS_A}}}p")
         if len(paragraphs) <= 1:
             continue
 
-        # Clear existing paragraphs except the first (which may have formatting)
         first_p = paragraphs[0]
         for p in paragraphs[1:]:
             txBody.remove(p)
 
-        # Set text on the first paragraph
-        for r in first_p.findall(f"{{{ns_a}}}r"):
-            t = r.find(f"{{{ns_a}}}t")
-            if t is not None:
-                t.text = narration
-                break
-        else:
-            # No existing run — create one
-            r_elem = etree.SubElement(first_p, f"{{{ns_a}}}r")
-            t_elem = etree.SubElement(r_elem, f"{{{ns_a}}}t")
-            t_elem.text = narration
+        # Get first run's formatting
+        first_rPr = first_p.find(f".//{{{NS_A}}}rPr")
+
+        # Clear existing runs
+        for r in first_p.findall(f"{{{NS_A}}}r"):
+            first_p.remove(r)
+
+        # Split narration into paragraphs
+        narration_lines = [l.strip() for l in narration.split("\n\n") if l.strip()]
+
+        if narration_lines:
+            # First paragraph
+            r_elem = etree.SubElement(first_p, f"{{{NS_A}}}r")
+            if first_rPr is not None:
+                r_elem.append(deepcopy(first_rPr))
+            t_elem = etree.SubElement(r_elem, f"{{{NS_A}}}t")
+            t_elem.text = narration_lines[0]
+
+            # Additional paragraphs
+            for line in narration_lines[1:]:
+                new_p = deepcopy(first_p)
+                for r in new_p.findall(f"{{{NS_A}}}r"):
+                    new_p.remove(r)
+                r_elem = etree.SubElement(new_p, f"{{{NS_A}}}r")
+                if first_rPr is not None:
+                    r_elem.append(deepcopy(first_rPr))
+                t_elem = etree.SubElement(r_elem, f"{{{NS_A}}}t")
+                t_elem.text = line
+                txBody.append(new_p)
         break
 
     return etree.tostring(tree, xml_declaration=True, encoding="UTF-8", standalone=True)
@@ -486,10 +948,10 @@ async def render_engagement_deliverables(engagement_id: str) -> List[dict]:
     """Render all QC-approved .md files from Drive into .docx/.pptx.
 
     Downloads markdown files from the engagement's 04_Deliverables Drive folder,
-    loads the corresponding template from ``backend/templates/``, renders,
-    and uploads the result back to the same Drive folder.
+    loads the corresponding template, renders using cover-page extraction +
+    markdown conversion, and uploads the result back to Drive.
 
-    Returns a list of ``{"output_name", "output_file", "drive_file_id"}`` dicts.
+    Returns a list of result dicts.
     """
     eng = get_engagement_by_id(engagement_id)
     if not eng:
@@ -524,13 +986,12 @@ async def render_engagement_deliverables(engagement_id: str) -> List[dict]:
     for md_file in md_files:
         filename = md_file["name"]
 
-        # Match filename to template using prefix-based lookup
         match = _match_template(filename)
         if not match:
             logger.info("No template mapping for '%s' — skipping", filename)
             continue
 
-        output_name, template_filename, output_ext = match
+        output_name, template_filename, output_ext, output_number = match
         template_path = os.path.join(TEMPLATES_DIR, template_filename)
         if not os.path.exists(template_path):
             logger.error("Template file not found: %s", template_path)
@@ -549,12 +1010,12 @@ async def render_engagement_deliverables(engagement_id: str) -> List[dict]:
             if output_ext == "pptx":
                 rendered_bytes = render_pptx(
                     template_path, markdown_content, engagement_id,
-                    client_name, engagement_date,
+                    client_name, engagement_date, output_number,
                 )
             else:
                 rendered_bytes = render_docx(
                     template_path, markdown_content, engagement_id,
-                    client_name, engagement_date,
+                    client_name, engagement_date, output_number,
                 )
         except Exception as e:
             logger.error("Render failed for %s: %s", output_name, e, exc_info=True)
