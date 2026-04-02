@@ -353,9 +353,7 @@ export default function EngagementDetail() {
   const [copiedFormatFix, setCopiedFormatFix] = useState<string | null>(null)
   const [approvingFormatId, setApprovingFormatId] = useState<string | null>(null)
 
-  // Render deliverables state
-  const [renderingDeliverables, setRenderingDeliverables] = useState(false)
-  const [renderResults, setRenderResults] = useState<Array<{ output_name: string; output_file: string; drive_file_id: string; size_bytes: number }> | null>(null)
+  const [renderingPhase7, setRenderingPhase7] = useState(false)
 
   // Blob URLs for PDF previews (iframes can't send Authorization headers)
   const [pdfBlobUrls, setPdfBlobUrls] = useState<Record<string, string>>({})
@@ -1073,12 +1071,29 @@ export default function EngagementDetail() {
             {PHASE_INFO.map(({ num }) => {
               const done = completedPhases.includes(num)
               const isNext = num === nextPhase
+              const isPhase7 = num === 7
               return (
                 <button
                   key={num}
-                  onClick={() => !done && copyPhaseCommand(num)}
+                  disabled={isPhase7 && renderingPhase7}
+                  onClick={async () => {
+                    if (done) return
+                    if (isPhase7 && data) {
+                      setRenderingPhase7(true)
+                      try {
+                        const res = await apiPost<{ success: boolean; rendered_count: number }>(`/api/engagements/${data.id}/render-deliverables`)
+                        if (res.success) toast(`Rendered ${res.rendered_count} deliverable${res.rendered_count !== 1 ? 's' : ''}`, 'success')
+                      } catch (err: unknown) {
+                        toast((err as Error).message || 'Rendering failed', 'error')
+                      } finally {
+                        setRenderingPhase7(false)
+                      }
+                    } else {
+                      copyPhaseCommand(num)
+                    }
+                  }}
                   className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                    copiedCommand === num
+                    copiedCommand === num || (isPhase7 && renderingPhase7)
                       ? 'bg-teal/10 text-teal border border-teal'
                       : done
                       ? 'bg-gray-light text-gray-warm opacity-40 cursor-default border border-transparent'
@@ -1086,14 +1101,16 @@ export default function EngagementDetail() {
                       ? 'bg-teal text-white border border-teal hover:bg-teal/90'
                       : 'bg-ivory text-teal border border-gray-light opacity-60 hover:opacity-100 hover:bg-teal/5'
                   }`}
-                  title={done ? `Phase ${num} complete` : getPhaseCommand(num)}
+                  title={done ? `Phase ${num} complete` : isPhase7 ? 'Render deliverables' : getPhaseCommand(num)}
                 >
                   {done ? (
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  ) : isPhase7 && renderingPhase7 ? (
+                    <span className="w-3.5 h-3.5 border-2 border-teal border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
                   )}
-                  {copiedCommand === num ? 'Copied!' : `Phase ${num}`}
+                  {copiedCommand === num ? 'Copied!' : isPhase7 && renderingPhase7 ? 'Rendering…' : `Phase ${num}`}
                 </button>
               )
             })}
@@ -1234,61 +1251,6 @@ export default function EngagementDetail() {
                             </div>
                           )
                         })()}
-
-                        {/* Phase 7: Render Deliverables button */}
-                        {phase === 7 && (
-                          <div className="px-4 py-3 bg-ivory border-b border-gray-light">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm font-semibold text-charcoal">Document Packaging</p>
-                                <p className="text-xs text-gray-warm mt-0.5">Render QC-approved markdown into branded .docx/.pptx</p>
-                              </div>
-                              <button
-                                disabled={renderingDeliverables}
-                                onClick={async () => {
-                                  if (!data) return
-                                  setRenderingDeliverables(true)
-                                  setRenderResults(null)
-                                  try {
-                                    const res = await apiPost<{ success: boolean; rendered_count: number; files: typeof renderResults }>(`/api/engagements/${data.id}/render-deliverables`)
-                                    if (res.success) {
-                                      setRenderResults(res.files || [])
-                                      toast(`Rendered ${res.rendered_count} deliverable${res.rendered_count !== 1 ? 's' : ''}`, 'success')
-                                    }
-                                  } catch (err: unknown) {
-                                    toast((err as Error).message || 'Rendering failed', 'error')
-                                  } finally {
-                                    setRenderingDeliverables(false)
-                                  }
-                                }}
-                                className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-semibold transition-colors bg-gold text-white hover:bg-gold/90 disabled:opacity-50"
-                              >
-                                {renderingDeliverables ? (
-                                  <>
-                                    <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                    Rendering…
-                                  </>
-                                ) : (
-                                  <>
-                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
-                                    Render All Deliverables
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                            {renderResults && renderResults.length > 0 && (
-                              <div className="mt-3 space-y-1">
-                                {renderResults.map(r => (
-                                  <div key={r.drive_file_id} className="flex items-center gap-2 text-xs text-charcoal">
-                                    <svg className="w-3.5 h-3.5 text-green flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                                    <span className="font-medium">{r.output_file}</span>
-                                    <span className="text-gray-warm">({(r.size_bytes / 1024).toFixed(0)} KB)</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
 
                         {/* Drive-sourced outputs */}
                         {drivePhaseOutputs.length > 0 && (
