@@ -224,6 +224,54 @@ def move_file_to_folder(file_id: str, target_folder_id: str) -> bool:
         return False
 
 
+async def list_files_in_folder(
+    folder_id: str,
+    extension: Optional[str] = None,
+) -> List[dict]:
+    """List files in a Drive folder (non-recursive).
+
+    Returns list of ``{"id", "name", "mimeType", "modifiedTime", "size"}`` dicts.
+    Optionally filter by file extension (e.g. ``".md"``).
+    Never raises — returns empty list on failure.
+    """
+    try:
+        service = _get_drive_service()
+        items: List[dict] = []
+        page_token = None
+
+        while True:
+            resp = service.files().list(
+                q=f"'{folder_id}' in parents and trashed = false",
+                fields="nextPageToken, files(id, name, mimeType, modifiedTime, size)",
+                includeItemsFromAllDrives=True,
+                supportsAllDrives=True,
+                pageToken=page_token,
+            ).execute()
+
+            for f in resp.get("files", []):
+                mime = f.get("mimeType", "")
+                if mime == FOLDER_MIME:
+                    continue
+                if extension and not f["name"].lower().endswith(extension.lower()):
+                    continue
+                items.append({
+                    "id": f["id"],
+                    "name": f["name"],
+                    "mimeType": mime,
+                    "modifiedTime": f.get("modifiedTime"),
+                    "size": f.get("size"),
+                })
+
+            page_token = resp.get("nextPageToken")
+            if not page_token:
+                break
+
+        return items
+    except Exception as e:
+        logger.error(f"Drive list_files_in_folder failed for {folder_id}: {e}")
+        return []
+
+
 async def download_file_by_name(
     folder_id: str,
     filename: str,

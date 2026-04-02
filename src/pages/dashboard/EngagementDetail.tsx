@@ -152,7 +152,7 @@ interface EngagementData {
 const ALL_STATUSES = [
   'intake', 'discovery_done', 'agreement_pending', 'agreement_signed',
   'documents_pending', 'documents_received',
-  'phase_1', 'phase_2', 'phase_3', 'phase_4', 'phase_5', 'phase_6', 'phase_7', 'phases_complete',
+  'phase_1', 'phase_2', 'phase_3', 'phase_4', 'phase_5', 'phase_6', 'phase_7', 'phase_8', 'phases_complete',
   'debrief', 'wave_1_released', 'wave_2_released', 'closed',
 ]
 
@@ -161,9 +161,10 @@ const PHASE_INFO = [
   { num: 2, name: 'Leadership Interviews', short: 'Interviews' },
   { num: 3, name: 'Profit Leak Quantification', short: 'Quantify', reviewGate: true },
   { num: 4, name: 'Optimization Analysis', short: 'Optimize' },
-  { num: 5, name: 'Report Assembly', short: 'Reports' },
+  { num: 5, name: 'Deliverable Content Assembly', short: 'Content' },
   { num: 6, name: 'Quality Control', short: 'QC', reviewGate: true },
-  { num: 7, name: 'Close & Archive', short: 'Archive', reviewGate: true },
+  { num: 7, name: 'Document Packaging', short: 'Package' },
+  { num: 8, name: 'Archive & Close', short: 'Archive', reviewGate: true },
 ]
 
 const PHASE_NAMES: Record<number, string> = {
@@ -171,12 +172,13 @@ const PHASE_NAMES: Record<number, string> = {
   2: 'Leadership Interviews',
   3: 'Profit Leak Quantification',
   4: 'Optimization Analysis',
-  5: 'Report Assembly & Retainer Proposal',
+  5: 'Deliverable Content Assembly',
   6: 'Quality Control',
-  7: 'Engagement Close & Archive',
+  7: 'Document Packaging',
+  8: 'Archive & Close Engagement',
 }
 
-const REVIEW_GATE_PHASES = new Set([1, 3, 6, 7])
+const REVIEW_GATE_PHASES = new Set([1, 3, 6, 8])
 
 const FILE_TYPE_ICONS: Record<string, string> = {
   docx: 'W', xlsx: 'X', pptx: 'P', md: 'M', pdf: 'PDF',
@@ -192,7 +194,7 @@ const DELIVERABLE_LABELS: Record<string, string> = {
 }
 
 const DELIVERABLE_STATUSES_SHOWING = new Set([
-  'phase_5', 'phase_6', 'phase_7', 'phases_complete',
+  'phase_5', 'phase_6', 'phase_7', 'phase_8', 'phases_complete',
   'debrief', 'wave_1_released', 'wave_2_released', 'closed',
 ])
 
@@ -276,7 +278,13 @@ export default function EngagementDetail() {
   const [dossierModalOpen, setDossierModalOpen] = useState(false)
   const [expandedOutput, setExpandedOutput] = useState<PhaseOutputContent | null>(null)
 
-  // Phase output content (Cowork-synced)
+  // Drive-sourced outputs (source of truth for .md files)
+  interface DriveOutput { phase_number: number; output_name: string; file_id: string; filename: string; modified_time: string | null; size: string | null; status: string }
+  const [driveOutputs, setDriveOutputs] = useState<DriveOutput[]>([])
+  const [driveContentCache, setDriveContentCache] = useState<Record<string, string>>({})
+  const [loadingDriveContent, setLoadingDriveContent] = useState<string | null>(null)
+
+  // Phase output content (Cowork-synced + DB-backed)
   const [phaseOutputContent, setPhaseOutputContent] = useState<PhaseOutputContent[]>([])
 
   // Phases where ALL outputs are approved
@@ -292,9 +300,9 @@ export default function EngagementDetail() {
       .sort((a, b) => a - b)
   })()
 
-  // Next phase to run (1–7). If all 7 complete, returns null.
+  // Next phase to run (1–8). If all 8 complete, returns null.
   const nextPhase: number | null = (() => {
-    for (let i = 1; i <= 7; i++) {
+    for (let i = 1; i <= 8; i++) {
       if (!completedPhases.includes(i)) return i
     }
     return null
@@ -429,12 +437,15 @@ export default function EngagementDetail() {
     apiGet<{ contacts: typeof transcriptIntel }>(`/api/engagements/${id}/transcript-intelligence`)
       .then(res => setTranscriptIntel(res.contacts || []))
       .catch(() => {})
-    // Fetch phase output content (Cowork-synced)
+    // Fetch phase output content (Cowork-synced / DB-backed)
     apiGet<{ outputs: PhaseOutputContent[] }>(`/api/engagements/${id}/phase-output-content`)
       .then(res => {
         setPhaseOutputContent(res.outputs || [])
-        // Auto-expand the active phase
       })
+      .catch(() => {})
+    // Fetch Drive-sourced outputs (.md files from Google Drive folders)
+    apiGet<{ outputs: DriveOutput[] }>(`/api/engagements/${id}/drive-outputs`)
+      .then(res => setDriveOutputs(res.outputs || []))
       .catch(() => {})
   }, [id])
 
@@ -1071,10 +1082,10 @@ export default function EngagementDetail() {
       )}
 
       {/* Phase Outputs — Dynamic Cowork-synced viewer */}
-      {data && phaseOutputContent.length > 0 && (() => {
+      {data && (phaseOutputContent.length > 0 || driveOutputs.length > 0) && (() => {
         const PHASE_TIMING: Record<number, string> = {
           1: 'Days 1–3', 2: 'Days 4–6', 3: 'Days 7–9',
-          4: 'Days 10–11', 5: 'Days 12–13', 6: 'Pre-Delivery', 7: 'Post-Debrief',
+          4: 'Days 10–11', 5: 'Days 12–13', 6: 'Day 14', 7: 'Pre-Delivery', 8: 'Post-Debrief',
         }
 
         // Group phase_output_content by phase, sorted by output_number
@@ -1087,7 +1098,14 @@ export default function EngagementDetail() {
           pocByPhase[Number(phase)].sort((a, b) => (a.output_number || 1) - (b.output_number || 1))
         }
 
-        const activePhase = nextPhase ?? 8
+        // Group Drive outputs by phase
+        const driveByPhase: Record<number, DriveOutput[]> = {}
+        for (const d of driveOutputs) {
+          if (!driveByPhase[d.phase_number]) driveByPhase[d.phase_number] = []
+          driveByPhase[d.phase_number].push(d)
+        }
+
+        const activePhase = nextPhase ?? 9
 
         return (
           <section className="bg-white rounded-lg border border-gray-light p-5 mb-6">
@@ -1095,19 +1113,22 @@ export default function EngagementDetail() {
               <div>
                 <h3 className="font-display text-lg font-bold text-teal">Phase Outputs</h3>
                 <p className="text-xs text-gray-warm mt-0.5">
-                  {phaseOutputContent.length > 0
-                    ? `${phaseOutputContent.length} output${phaseOutputContent.length !== 1 ? 's' : ''} synced from Cowork`
-                    : 'Outputs will appear here as phases are completed in Cowork'}
+                  {driveOutputs.length > 0
+                    ? `${driveOutputs.length} file${driveOutputs.length !== 1 ? 's' : ''} from Drive`
+                    : phaseOutputContent.length > 0
+                    ? `${phaseOutputContent.length} output${phaseOutputContent.length !== 1 ? 's' : ''} synced`
+                    : 'Outputs will appear here as phases are completed'}
                 </p>
               </div>
             </div>
 
             <div className="space-y-2">
-              {[1, 2, 3, 4, 5, 6, 7].map(phase => {
+              {[1, 2, 3, 4, 5, 6, 7, 8].map(phase => {
                 const pocOutputs = pocByPhase[phase] || []
+                const drivePhaseOutputs = driveByPhase[phase] || []
 
-                // Skip phases with no content
-                if (pocOutputs.length === 0) return null
+                // Skip phases with no content from either source
+                if (pocOutputs.length === 0 && drivePhaseOutputs.length === 0) return null
 
                 const isGate = REVIEW_GATE_PHASES.has(phase)
                 const isActive = phase === activePhase
@@ -1142,7 +1163,11 @@ export default function EngagementDetail() {
                             )}
                           </div>
                           <p className="text-xs text-gray-warm mt-0.5">
-                            {pocOutputs.length > 0 ? `${pocOutputs.length} output${pocOutputs.length !== 1 ? 's' : ''}` : 'No synced outputs yet'}
+                            {(() => {
+                              const total = pocOutputs.length + drivePhaseOutputs.length
+                              if (total > 0) return `${total} output${total !== 1 ? 's' : ''}`
+                              return 'No outputs yet'
+                            })()}
                           </p>
                         </div>
                       </div>
@@ -1190,6 +1215,67 @@ export default function EngagementDetail() {
                           )
                         })()}
 
+                        {/* Drive-sourced outputs */}
+                        {drivePhaseOutputs.length > 0 && (
+                          <div className="divide-y divide-gray-light">
+                            {drivePhaseOutputs.map(dOutput => (
+                              <div key={dOutput.file_id} className="px-4 py-4">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <span className="w-8 h-8 rounded bg-ivory flex items-center justify-center text-xs font-bold text-gray-warm flex-shrink-0">M</span>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold text-charcoal">{dOutput.output_name}</p>
+                                    <p className="text-xs text-gray-warm">
+                                      .md · Drive
+                                      {dOutput.modified_time && ` · ${new Date(dOutput.modified_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+                                    </p>
+                                  </div>
+                                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                                    dOutput.status === 'approved' ? 'bg-green/10 text-green' : 'bg-amber/10 text-amber'
+                                  }`}>
+                                    {dOutput.status === 'approved' ? 'Approved' : 'Draft'}
+                                  </span>
+                                  <button
+                                    onClick={async () => {
+                                      if (driveContentCache[dOutput.file_id]) {
+                                        setDriveContentCache(prev => { const next = { ...prev }; delete next[dOutput.file_id]; return next })
+                                        return
+                                      }
+                                      setLoadingDriveContent(dOutput.file_id)
+                                      try {
+                                        const res = await apiGet<{ content: string }>(`/api/engagements/${id}/drive-outputs/${dOutput.file_id}/content`)
+                                        setDriveContentCache(prev => ({ ...prev, [dOutput.file_id]: res.content }))
+                                      } catch { /* ignore */ }
+                                      setLoadingDriveContent(null)
+                                    }}
+                                    className="text-xs text-teal font-semibold hover:underline flex-shrink-0"
+                                  >
+                                    {loadingDriveContent === dOutput.file_id ? '...' : driveContentCache[dOutput.file_id] ? 'Hide' : 'View'}
+                                  </button>
+                                  {dOutput.status !== 'approved' && (
+                                    <button
+                                      onClick={async () => {
+                                        try {
+                                          await apiPut(`/api/engagements/${id}/drive-outputs/${dOutput.file_id}/approve`)
+                                          setDriveOutputs(prev => prev.map(d => d.file_id === dOutput.file_id ? { ...d, status: 'approved' } : d))
+                                        } catch { /* ignore */ }
+                                      }}
+                                      className="text-xs bg-green text-white px-3 py-1 rounded font-semibold hover:bg-green/90"
+                                    >
+                                      Approve
+                                    </button>
+                                  )}
+                                </div>
+                                {driveContentCache[dOutput.file_id] && (
+                                  <div className="mt-2 bg-ivory rounded-lg p-4 prose-bl text-sm max-h-[400px] overflow-auto">
+                                    <MarkdownContent content={driveContentCache[dOutput.file_id]} />
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* DB-sourced outputs (legacy/Cowork-synced) */}
                         {pocOutputs.length > 0 ? (
                           <div className="divide-y divide-gray-light">
                             {pocOutputs.map(output => {

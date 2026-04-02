@@ -22,13 +22,14 @@ interface OutputRow {
 }
 
 const PHASE_LABELS: Record<number, string> = {
-  1: 'Phase 1 — Discovery',
-  2: 'Phase 2 — Analysis',
-  3: 'Phase 3 — Strategy',
-  4: 'Phase 4 — Roadmap',
-  5: 'Phase 5 — Implementation',
-  6: 'Phase 6 — Review',
-  7: 'Phase 7 — Close-out',
+  1: 'Phase 1 — Data Intake',
+  2: 'Phase 2 — Interviews',
+  3: 'Phase 3 — Quantification',
+  4: 'Phase 4 — Optimization',
+  5: 'Phase 5 — Content Assembly',
+  6: 'Phase 6 — Quality Control',
+  7: 'Phase 7 — Document Packaging',
+  8: 'Phase 8 — Archive & Close',
 }
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {

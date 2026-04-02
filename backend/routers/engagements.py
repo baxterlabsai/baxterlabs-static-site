@@ -188,12 +188,13 @@ PHASE_STATUSES = {
     4: "phase_5",
     5: "phase_6",
     6: "phase_7",
-    7: "phases_complete",
+    7: "phase_8",
+    8: "phases_complete",
 }
 
-REVIEW_GATE_PHASES = {1, 3, 6}
+REVIEW_GATE_PHASES = {1, 3, 6, 8}
 
-ACTIVE_PHASE_STATUSES = {f"phase_{i}" for i in range(8)}
+ACTIVE_PHASE_STATUSES = {f"phase_{i}" for i in range(9)}
 
 
 class AdvancePhaseInput(BaseModel):
@@ -226,7 +227,7 @@ async def advance_phase(
         )
 
     current_phase: int = engagement["phase"]
-    if current_phase > 7:
+    if current_phase > 8:
         raise HTTPException(status_code=400, detail="All phases are already complete")
 
     # Review gate check — phases 1, 3, 6 require explicit confirmation
@@ -292,8 +293,8 @@ async def advance_phase(
 
     # Determine next status
     new_status = PHASE_STATUSES.get(current_phase, "phases_complete")
-    # Keep phase capped at 7 (DB constraint: 0-7)
-    new_phase = min(current_phase + 1, 7)
+    # Keep phase capped at 8 (DB constraint: 0-8)
+    new_phase = min(current_phase + 1, 8)
 
     # Update engagement
     sb.table("engagements").update({

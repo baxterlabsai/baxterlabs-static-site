@@ -1,7 +1,19 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../../lib/supabase'
+import { apiGet, apiPut } from '../../../lib/api'
 import SEO from '../../../components/SEO'
+import MarkdownContent from '../../../components/MarkdownContent'
+
+interface DriveOutput {
+  phase_number: number
+  output_name: string
+  file_id: string
+  filename: string
+  modified_time: string | null
+  size: string | null
+  status: string
+}
 
 interface OutputRow {
   id: string
@@ -54,6 +66,9 @@ export default function EngagementOutputs() {
   const navigate = useNavigate()
   const [engagement, setEngagement] = useState<EngagementInfo | null>(null)
   const [outputs, setOutputs] = useState<OutputRow[]>([])
+  const [driveOutputs, setDriveOutputs] = useState<DriveOutput[]>([])
+  const [driveContentCache, setDriveContentCache] = useState<Record<string, string>>({})
+  const [loadingDriveContent, setLoadingDriveContent] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -80,6 +95,13 @@ export default function EngagementOutputs() {
       setEngagement({ ...engRes.data, clients })
     }
     setOutputs(outRes.data || [])
+
+    // Fetch Drive outputs
+    try {
+      const driveRes = await apiGet<{ outputs: DriveOutput[] }>(`/api/engagements/${engagementId}/drive-outputs`)
+      setDriveOutputs(driveRes.outputs || [])
+    } catch { /* ignore if endpoint not available */ }
+
     setLoading(false)
   }
 
@@ -108,6 +130,17 @@ export default function EngagementOutputs() {
     byPhase.set(o.phase_number, list)
   }
 
+  // Group Drive outputs by phase
+  const driveByPhase = new Map<number, DriveOutput[]>()
+  for (const d of driveOutputs) {
+    const list = driveByPhase.get(d.phase_number) || []
+    list.push(d)
+    driveByPhase.set(d.phase_number, list)
+  }
+
+  // Merge phase numbers from both sources
+  const allPhases = new Set([...byPhase.keys(), ...driveByPhase.keys()])
+
   const companyName = engagement?.clients?.company_name || 'Engagement'
 
   return (
@@ -131,18 +164,80 @@ export default function EngagementOutputs() {
           <div className="flex items-center justify-center py-20">
             <div className="w-6 h-6 border-2 border-teal border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : outputs.length === 0 ? (
+        ) : outputs.length === 0 && driveOutputs.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-light p-12 text-center">
             <p className="text-gray-warm">No outputs generated for this engagement yet</p>
           </div>
         ) : (
           <div className="space-y-6">
-            {Array.from(byPhase.entries()).map(([phase, phaseOutputs]) => (
+            {Array.from(allPhases).sort((a, b) => a - b).map(phase => {
+              const phaseOutputs = byPhase.get(phase) || []
+              const drvOutputs = driveByPhase.get(phase) || []
+              return (
               <div key={phase}>
                 <h2 className="text-sm font-semibold text-charcoal/60 uppercase tracking-wider mb-3">
                   Phase {phase}
                 </h2>
                 <div className="space-y-2">
+                  {/* Drive outputs */}
+                  {drvOutputs.map(dOutput => (
+                    <div
+                      key={dOutput.file_id}
+                      className="w-full bg-white rounded-lg border border-gray-light p-4 text-left"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-lg bg-charcoal text-white flex items-center justify-center text-sm font-bold flex-shrink-0">M</div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-charcoal truncate">{dOutput.output_name}</p>
+                          <p className="text-xs text-gray-warm mt-0.5">
+                            MD — Drive
+                            {dOutput.modified_time && <span className="ml-2">Updated {new Date(dOutput.modified_time).toLocaleDateString()}</span>}
+                          </p>
+                        </div>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          dOutput.status === 'approved' ? 'bg-green/10 text-green' : 'bg-gray-light text-charcoal'
+                        }`}>
+                          {dOutput.status === 'approved' ? 'Approved' : 'Draft'}
+                        </span>
+                        <button
+                          onClick={async () => {
+                            if (driveContentCache[dOutput.file_id]) {
+                              setDriveContentCache(prev => { const next = { ...prev }; delete next[dOutput.file_id]; return next })
+                              return
+                            }
+                            setLoadingDriveContent(dOutput.file_id)
+                            try {
+                              const res = await apiGet<{ content: string }>(`/api/engagements/${engagementId}/drive-outputs/${dOutput.file_id}/content`)
+                              setDriveContentCache(prev => ({ ...prev, [dOutput.file_id]: res.content }))
+                            } catch { /* ignore */ }
+                            setLoadingDriveContent(null)
+                          }}
+                          className="text-xs text-teal font-semibold hover:underline flex-shrink-0"
+                        >
+                          {loadingDriveContent === dOutput.file_id ? '...' : driveContentCache[dOutput.file_id] ? 'Hide' : 'View'}
+                        </button>
+                        {dOutput.status !== 'approved' && (
+                          <button
+                            onClick={async () => {
+                              try {
+                                await apiPut(`/api/engagements/${engagementId}/drive-outputs/${dOutput.file_id}/approve`)
+                                setDriveOutputs(prev => prev.map(d => d.file_id === dOutput.file_id ? { ...d, status: 'approved' } : d))
+                              } catch { /* ignore */ }
+                            }}
+                            className="text-xs bg-green text-white px-3 py-1 rounded font-semibold hover:bg-green/90"
+                          >
+                            Approve
+                          </button>
+                        )}
+                      </div>
+                      {driveContentCache[dOutput.file_id] && (
+                        <div className="mt-3 bg-ivory rounded-lg p-4 prose-bl text-sm max-h-[400px] overflow-auto">
+                          <MarkdownContent content={driveContentCache[dOutput.file_id]} />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {/* DB-sourced outputs */}
                   {phaseOutputs.map(output => {
                     const badge = STATUS_BADGE[output.status] || STATUS_BADGE.draft
                     return (
@@ -191,7 +286,8 @@ export default function EngagementOutputs() {
                   })}
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
