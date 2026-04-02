@@ -258,6 +258,7 @@ export default function EngagementDetail() {
   const [downloadingDocId, setDownloadingDocId] = useState<string | null>(null)
   const [copiedCommand, setCopiedCommand] = useState<number | null>(null)
   const [beginLoading, setBeginLoading] = useState(false)
+  const [phase7Complete, setPhase7Complete] = useState(false)
   const [uploadingDeliverableId, setUploadingDeliverableId] = useState<string | null>(null)
   const [approvingDeliverableId, setApprovingDeliverableId] = useState<string | null>(null)
   const [releasingWave, setReleasingWave] = useState<1 | 2 | null>(null)
@@ -316,6 +317,11 @@ export default function EngagementDetail() {
         if (byPhase[phase].every(o => o.status === 'approved')) completed.push(phase)
       }
     }
+
+    // Phase 7 (Document Packaging) is complete when render has run successfully
+    // Check activity_log for deliverables_rendered OR local state from this session
+    const hasRendered = phase7Complete || (data?.activity_log?.some(l => l.action === 'deliverables_rendered') ?? false)
+    if (hasRendered && !completed.includes(7)) completed.push(7)
 
     return completed.sort((a, b) => a - b)
   })()
@@ -1083,7 +1089,10 @@ export default function EngagementDetail() {
                       setRenderingPhase7(true)
                       try {
                         const res = await apiPost<{ success: boolean; rendered_count: number }>(`/api/engagements/${data.id}/render-deliverables`)
-                        if (res.success) toast(`Rendered ${res.rendered_count} deliverable${res.rendered_count !== 1 ? 's' : ''}`, 'success')
+                        if (res.success) {
+                          toast(`Rendered ${res.rendered_count} deliverable${res.rendered_count !== 1 ? 's' : ''}`, 'success')
+                          setPhase7Complete(true)
+                        }
                       } catch (err: unknown) {
                         toast((err as Error).message || 'Rendering failed', 'error')
                       } finally {
@@ -1146,7 +1155,7 @@ export default function EngagementDetail() {
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
-                {copiedDeckCommand ? 'Copied!' : 'Build Presentation Deck'}
+                {copiedDeckCommand ? 'Copied!' : 'Build Deck'}
               </button>
             )}
           </div>

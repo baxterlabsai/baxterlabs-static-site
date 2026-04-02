@@ -187,13 +187,16 @@ def _strip_title_frontmatter(md: str) -> str:
 def _tokenize_markdown(md: str) -> List[_Token]:
     """Tokenize markdown into block-level tokens.
 
-    Strips title front-matter before parsing.
+    Strips title front-matter before parsing.  Inside the Endnotes section,
+    every non-blank, non-heading line is treated as a plain paragraph to
+    preserve number prefixes like ``1. [Verified: ...]``.
     """
     content = _strip_title_frontmatter(md)
 
     tokens: List[_Token] = []
     lines = content.split("\n")
     i = 0
+    in_endnotes = False
 
     while i < len(lines):
         line = lines[i]
@@ -216,6 +219,20 @@ def _tokenize_markdown(md: str) -> List[_Token]:
             tokens.append(_Token(
                 type="heading", level=level, text=heading_text,
                 children=_parse_inline(heading_text),
+            ))
+            # Track Endnotes section
+            if heading_text.strip().lower() in ("endnotes", "end notes"):
+                in_endnotes = True
+            else:
+                in_endnotes = False
+            i += 1
+            continue
+
+        # --- Inside the Endnotes section: every line is a plain paragraph ---
+        if in_endnotes:
+            tokens.append(_Token(
+                type="paragraph", text=stripped,
+                children=_parse_inline(stripped),
             ))
             i += 1
             continue
@@ -285,53 +302,6 @@ def _tokenize_markdown(md: str) -> List[_Token]:
             ))
 
     return tokens
-
-
-# ---------------------------------------------------------------------------
-# Endnote processing helpers
-# ---------------------------------------------------------------------------
-
-def _number_endnotes_in_markdown(md: str) -> str:
-    """Number endnote entries in the raw markdown string.
-
-    Finds the Endnotes heading (## Endnotes or # Endnotes), then prepends
-    sequential numbers to each subsequent line starting with ``[``.
-
-    This runs on the raw markdown BEFORE tokenization so that each endnote
-    becomes a numbered list item (``1. [Verified: ...]``) which the tokenizer
-    handles as individual tokens rather than merging consecutive lines into
-    one paragraph.
-    """
-    lines = md.split("\n")
-    result: List[str] = []
-    in_endnotes = False
-    endnote_num = 0
-
-    for line in lines:
-        stripped = line.strip()
-
-        # Detect the Endnotes heading
-        if re.match(r"^#{1,2}\s+[Ee]nd\s*[Nn]otes\s*$", stripped):
-            in_endnotes = True
-            result.append(line)
-            continue
-
-        if in_endnotes:
-            # A new heading ends the endnotes section
-            if re.match(r"^#{1,3}\s+", stripped) and not re.match(r"^#{1,2}\s+[Ee]nd\s*[Nn]otes", stripped):
-                in_endnotes = False
-                result.append(line)
-                continue
-
-            # Number lines that start with [ (endnote entries)
-            if stripped.startswith("["):
-                endnote_num += 1
-                result.append(f"{endnote_num}. {stripped}")
-                continue
-
-        result.append(line)
-
-    return "\n".join(result)
 
 
 # ---------------------------------------------------------------------------
@@ -672,10 +642,9 @@ def render_docx(
     3. Find cover page boundary (in-body sectPr)
     4. Delete body stubs between cover and final sectPr
     5. Tokenize markdown
-    6. Post-process tokens (endnote numbering, citation extraction)
-    7. Convert tokens to docx elements using template styles
-    8. Insert chart PNGs from Supabase
-    9. Return rendered bytes
+    6. Convert tokens to docx elements using template styles
+    7. Insert chart PNGs from Supabase
+    8. Return rendered bytes
     """
     doc = Document(template_path)
     body = doc.element.body
@@ -697,10 +666,7 @@ def render_docx(
     charts = _fetch_charts_for_deliverable(engagement_id, output_number)
     logger.info("Fetched %d charts for output_number=%d", len(charts), output_number)
 
-    # Step 5: Pre-process markdown — number endnotes before tokenizing
-    markdown_content = _number_endnotes_in_markdown(markdown_content)
-
-    # Step 5b: Tokenize markdown
+    # Step 5: Tokenize markdown
     tokens = _tokenize_markdown(markdown_content)
     logger.info("Tokenized markdown: %d blocks", len(tokens))
 
