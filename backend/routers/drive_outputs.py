@@ -3,8 +3,7 @@ from __future__ import annotations
 
 import logging
 import os
-import re
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -20,27 +19,15 @@ logger = logging.getLogger("baxterlabs.drive_outputs")
 
 router = APIRouter(prefix="/api", tags=["drive_outputs"])
 
-
-def _normalise_key(name: str) -> str:
-    """Normalise an output name or filename to a canonical key for matching.
-
-    Strips extension, lowercases, replaces ``&`` with ``and``, collapses all
-    non-alphanumeric characters to a single ``_``, and strips leading/trailing
-    underscores.
-
-    ``"Assumptions & Methodology Memo"`` -> ``"assumptions_and_methodology_memo"``
-    ``"Source_Document_Registry.md"``    -> ``"source_document_registry"``
-    """
-    base = name.rsplit(".", 1)[0] if "." in name else name
-    base = base.lower().replace("&", "and")
-    return re.sub(r"[^a-z0-9]+", "_", base).strip("_")
-
-# Build a lookup: output_name (normalised) -> phase number
-# Used to assign .md files from flat folders to the correct phase.
-_OUTPUT_NAME_TO_PHASE: Dict[str, int] = {}
+# Build a list of (file_prefix, phase, display_name) sorted longest-prefix-first
+# so that a prefix like "Updated_Data_Gap_Resolution" is checked before
+# "Data_Gap_Flag_List".
+_PREFIX_LOOKUP: List[Tuple[str, int, str]] = []
 for _entry in PHASE_OUTPUTS_SEED:
-    _key = _normalise_key(_entry["name"])
-    _OUTPUT_NAME_TO_PHASE[_key] = _entry["phase"]
+    _prefix = _entry.get("file_prefix")
+    if _prefix:
+        _PREFIX_LOOKUP.append((_prefix, _entry["phase"], _entry["name"]))
+_PREFIX_LOOKUP.sort(key=lambda t: len(t[0]), reverse=True)
 
 # Phase -> Drive folder field on the engagements table
 _PHASE_FOLDER_MAP: Dict[int, str] = {
@@ -53,10 +40,18 @@ _PHASE_FOLDER_MAP: Dict[int, str] = {
 }
 
 
-def _match_phase(filename: str) -> Optional[int]:
-    """Match a filename to a phase number via PHASE_OUTPUTS_SEED names."""
-    key = _normalise_key(filename)
-    return _OUTPUT_NAME_TO_PHASE.get(key)
+def _match_file(filename: str) -> Optional[Tuple[int, str]]:
+    """Match a Drive filename to a phase number and display name.
+
+    Cowork names files as ``{file_prefix}_{ClientName}.{ext}``.
+    We strip the extension, then check if the base starts with any known
+    ``file_prefix``.  Returns ``(phase, display_name)`` or ``None``.
+    """
+    base = filename.rsplit(".", 1)[0] if "." in filename else filename
+    for prefix, phase, display_name in _PREFIX_LOOKUP:
+        if base.startswith(prefix):
+            return (phase, display_name)
+    return None
 
 
 @router.get("/engagements/{engagement_id}/drive-outputs")
@@ -104,15 +99,16 @@ async def list_drive_outputs(
     for folder_id, phase_nums in folders_to_scan.items():
         files = await list_files_in_folder(folder_id, extension=".md")
         for f in files:
-            matched_phase = _match_phase(f["name"])
-            if matched_phase is None:
+            match = _match_file(f["name"])
+            if match is None:
                 continue
+            matched_phase, display_name = match
             # Only include if this phase is one of the phases served by this folder
             if matched_phase not in phase_nums:
                 continue
             outputs.append({
                 "phase_number": matched_phase,
-                "output_name": f["name"].rsplit(".", 1)[0].replace("_", " "),
+                "output_name": display_name,
                 "file_id": f["id"],
                 "filename": f["name"],
                 "modified_time": f.get("modifiedTime"),
