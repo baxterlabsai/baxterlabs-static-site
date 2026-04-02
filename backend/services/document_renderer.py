@@ -146,12 +146,17 @@ def _parse_table_lines(lines: List[str]) -> List[List[str]]:
 def _strip_title_frontmatter(md: str) -> str:
     """Strip the title/front-matter block from the start of markdown.
 
-    The title block consists of lines of text (document title, client name,
-    byline, date) followed by a ``---`` / ``***`` / ``___`` horizontal rule.
-    This duplicates the cover page, so we strip everything through the last
-    front-matter separator near the top.
+    The markdown files start with a title block that duplicates the cover page:
 
-    Also strips YAML frontmatter (``---`` delimited blocks at the very start).
+        # Document Title Here
+        ## Client Name (optional)
+        **Prepared by BaxterLabs Advisory | April 2026**
+        ---
+        ## First Real Section Heading
+
+    Strategy: find the first ``---`` / ``***`` / ``___`` horizontal rule in
+    the first ~50 lines and strip everything up to and including it.  Also
+    handles YAML frontmatter (``---`` delimited blocks at the very start).
     """
     content = md.strip()
 
@@ -161,22 +166,20 @@ def _strip_title_frontmatter(md: str) -> str:
         if end != -1:
             content = content[end + 3:].strip()
 
-    # Now strip the title block: lines of text followed by a horizontal rule.
-    # If there are two rules close together at the top, strip through the second.
+    # Find the first horizontal rule in the first ~50 lines.
+    # Everything before it (title, byline, date) is front-matter.
     lines = content.split("\n")
-    last_rule_idx = -1
     for i, line in enumerate(lines):
-        stripped = line.strip()
-        # Stop searching after the first heading or once we've gone past ~30 lines
-        if i > 30:
+        if i > 50:
             break
-        if re.match(r"^#{1,6}\s+", stripped):
-            break
-        if stripped in ("---", "***", "___"):
-            last_rule_idx = i
+        if line.strip() in ("---", "***", "___"):
+            content = "\n".join(lines[i + 1:]).strip()
+            return content
 
-    if last_rule_idx >= 0:
-        content = "\n".join(lines[last_rule_idx + 1:]).strip()
+    # No horizontal rule found — fallback: if the markdown starts with
+    # an H1 heading, skip it (the title line duplicates the cover page).
+    if lines and re.match(r"^#\s+", lines[0].strip()):
+        content = "\n".join(lines[1:]).strip()
 
     return content
 
@@ -288,35 +291,47 @@ def _tokenize_markdown(md: str) -> List[_Token]:
 # Endnote processing helpers
 # ---------------------------------------------------------------------------
 
-def _number_endnotes(tokens: List[_Token]) -> List[_Token]:
-    """Add sequential numbers to endnote entries in the Endnotes section.
+def _number_endnotes_in_markdown(md: str) -> str:
+    """Number endnote entries in the raw markdown string.
 
-    Detects the Endnotes heading, then prepends '1. ', '2. ', etc. to each
-    subsequent paragraph that starts with '[Verified:', '[Estimated:',
-    '[Stated:', or '[Derived:'.
+    Finds the Endnotes heading (## Endnotes or # Endnotes), then prepends
+    sequential numbers to each subsequent line starting with ``[``.
+
+    This runs on the raw markdown BEFORE tokenization so that each endnote
+    becomes a numbered list item (``1. [Verified: ...]``) which the tokenizer
+    handles as individual tokens rather than merging consecutive lines into
+    one paragraph.
     """
+    lines = md.split("\n")
+    result: List[str] = []
     in_endnotes = False
     endnote_num = 0
-    citation_pattern = re.compile(r"^\[(Verified|Estimated|Stated|Derived):")
 
-    for token in tokens:
-        if token.type == "heading" and token.text.strip().lower() in ("endnotes", "end notes"):
+    for line in lines:
+        stripped = line.strip()
+
+        # Detect the Endnotes heading
+        if re.match(r"^#{1,2}\s+[Ee]nd\s*[Nn]otes\s*$", stripped):
             in_endnotes = True
+            result.append(line)
             continue
 
         if in_endnotes:
-            # A new non-endnote heading ends the endnotes section
-            if token.type == "heading":
+            # A new heading ends the endnotes section
+            if re.match(r"^#{1,3}\s+", stripped) and not re.match(r"^#{1,2}\s+[Ee]nd\s*[Nn]otes", stripped):
                 in_endnotes = False
+                result.append(line)
                 continue
 
-            if token.type == "paragraph" and citation_pattern.match(token.text.strip()):
+            # Number lines that start with [ (endnote entries)
+            if stripped.startswith("["):
                 endnote_num += 1
-                prefix = f"{endnote_num}. "
-                token.text = prefix + token.text
-                token.children = _parse_inline(token.text)
+                result.append(f"{endnote_num}. {stripped}")
+                continue
 
-    return tokens
+        result.append(line)
+
+    return "\n".join(result)
 
 
 # ---------------------------------------------------------------------------
@@ -607,18 +622,25 @@ def _append_tokens_to_body(
                     cell = row.cells[col_idx]
                     cell.text = ""
                     p = cell.paragraphs[0]
-                    run = p.add_run(cell_text)
+
+                    # Parse **bold** and *italic* markdown in cell text
+                    spans = _parse_inline(cell_text)
+                    for span in spans:
+                        run = p.add_run(span.text)
+                        run.font.name = BODY_FONT
+                        run.font.size = Pt(10)
+                        if row_idx == 0:
+                            run.font.color.rgb = WHITE
+                            run.bold = True
+                        else:
+                            run.font.color.rgb = CHARCOAL
+                            if span.bold:
+                                run.bold = True
+                            if span.italic:
+                                run.italic = True
 
                     if row_idx == 0:
-                        run.font.name = BODY_FONT
-                        run.font.size = Pt(10)
-                        run.font.color.rgb = WHITE
-                        run.bold = True
                         _set_cell_shading(cell, CRIMSON_HEX)
-                    else:
-                        run.font.name = BODY_FONT
-                        run.font.size = Pt(10)
-                        run.font.color.rgb = CHARCOAL
 
             # Move table from end of document to correct position
             insert_before.addprevious(tbl._tbl)
@@ -675,12 +697,12 @@ def render_docx(
     charts = _fetch_charts_for_deliverable(engagement_id, output_number)
     logger.info("Fetched %d charts for output_number=%d", len(charts), output_number)
 
-    # Step 5: Tokenize markdown
+    # Step 5: Pre-process markdown — number endnotes before tokenizing
+    markdown_content = _number_endnotes_in_markdown(markdown_content)
+
+    # Step 5b: Tokenize markdown
     tokens = _tokenize_markdown(markdown_content)
     logger.info("Tokenized markdown: %d blocks", len(tokens))
-
-    # Step 5b: Number endnotes in the Endnotes section (all documents)
-    tokens = _number_endnotes(tokens)
 
     # Step 6: Append converted content before the final sectPr
     if final_sect_pr is not None:
