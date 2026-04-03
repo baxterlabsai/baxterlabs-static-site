@@ -34,6 +34,53 @@ router = APIRouter(prefix="/api", tags=["pdf_conversion"])
 
 
 # ============================================================================
+# GET /api/engagements/{id}/deliverables-status
+# Check Drive folder for .pptx and .pdf files — source of truth for pipeline
+# progression.  Auto-advances engagement status to deck_complete when a PPTX
+# is detected and status is still phase_7.
+# ============================================================================
+@router.get("/engagements/{engagement_id}/deliverables-status")
+async def deliverables_status(
+    engagement_id: str,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Return the current state of the deliverables pipeline based on Drive contents."""
+    eng = get_engagement_by_id(engagement_id)
+    if not eng:
+        raise HTTPException(status_code=404, detail="Engagement not found")
+
+    folder_id = eng.get("drive_deliverables_folder_id")
+    has_pptx = False
+    pptx_filename: Optional[str] = None
+    pdf_filenames: List[str] = []
+
+    if folder_id:
+        all_files = await list_files_in_folder(folder_id)
+        for f in all_files:
+            name_lower = f["name"].lower()
+            if name_lower.endswith(".pptx"):
+                has_pptx = True
+                pptx_filename = f["name"]
+            elif name_lower.endswith(".pdf"):
+                pdf_filenames.append(f["name"])
+
+    # Auto-advance: if PPTX exists and status is still phase_7, move to deck_complete
+    if has_pptx and eng.get("status") == "phase_7":
+        update_engagement_status(engagement_id, "deck_complete")
+        log_activity(engagement_id, "system", "deck_complete_auto", {
+            "pptx_filename": pptx_filename,
+        })
+
+    return {
+        "has_pptx": has_pptx,
+        "pptx_filename": pptx_filename,
+        "has_pdfs": len(pdf_filenames) > 0,
+        "pdf_count": len(pdf_filenames),
+        "pdf_filenames": pdf_filenames,
+    }
+
+
+# ============================================================================
 # POST /api/engagements/{id}/convert-pdfs
 # Download DOCX/PPTX from Drive 04_Deliverables, convert to PDF, upload back.
 # ============================================================================

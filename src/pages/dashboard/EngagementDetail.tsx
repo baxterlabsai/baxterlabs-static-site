@@ -362,6 +362,11 @@ export default function EngagementDetail() {
   const [archivingPhase8, setArchivingPhase8] = useState(false)
   const [archivePhase8Dialog, setArchivePhase8Dialog] = useState(false)
 
+  // Drive-based deliverables pipeline state (source of truth for PPTX/PDF detection)
+  const [driveDeliverablesStatus, setDriveDeliverablesStatus] = useState<{
+    has_pptx: boolean; pptx_filename: string | null; has_pdfs: boolean; pdf_count: number
+  }>({ has_pptx: false, pptx_filename: null, has_pdfs: false, pdf_count: 0 })
+
   // Blob URLs for PDF previews (iframes can't send Authorization headers)
   const [pdfBlobUrls, setPdfBlobUrls] = useState<Record<string, string>>({})
   const blobUrlsRef = useRef<Record<string, string>>({})
@@ -470,6 +475,10 @@ export default function EngagementDetail() {
     // Fetch Drive-sourced outputs (.md files from Google Drive folders)
     apiGet<{ outputs: DriveOutput[] }>(`/api/engagements/${id}/drive-outputs`)
       .then(res => setDriveOutputs(res.outputs || []))
+      .catch(() => {})
+    // Fetch deliverables pipeline status from Drive (PPTX/PDF detection)
+    apiGet<typeof driveDeliverablesStatus>(`/api/engagements/${id}/deliverables-status`)
+      .then(res => setDriveDeliverablesStatus(res))
       .catch(() => {})
   }, [id])
 
@@ -1057,9 +1066,11 @@ export default function EngagementDetail() {
             })}
 
             {/* ── DELIVERABLE PIPELINE BUTTONS ──────────────────────────── */}
+            {/* DO NOT change deckDone detection — it uses Drive-based detection via
+                driveDeliverablesStatus.has_pptx, NOT the DB pptx_path column. */}
             {/* Build Presentation Deck — visible after Phase 7 render completes */}
             {completedPhases.includes(7) && data && (() => {
-              const deckDone = phaseOutputContent.some(o => o.phase_number === 5 && o.output_number === 3 && o.pptx_path)
+              const deckDone = driveDeliverablesStatus.has_pptx
               return (
                 <button
                   onClick={async () => {
@@ -1101,9 +1112,9 @@ export default function EngagementDetail() {
               )
             })()}
 
-            {/* Create PDFs — visible after deck is built */}
+            {/* Create PDFs — visible only after PPTX detected in Drive */}
             {completedPhases.includes(7) && data && (() => {
-              const deckDone = phaseOutputContent.some(o => o.phase_number === 5 && o.output_number === 3 && o.pptx_path)
+              const deckDone = driveDeliverablesStatus.has_pptx
               const pdfsDone = phaseOutputContent.some(o => o.phase_number === 5 && o.final_pdf_path)
               if (!deckDone) return null
               return (
@@ -1116,10 +1127,14 @@ export default function EngagementDetail() {
                       const res = await apiPost<{ success: boolean; converted: Array<{ source: string }>; errors: Array<{ file: string; error: string }> }>(`/api/engagements/${data.id}/convert-pdfs`)
                       if (res.success) {
                         toast(`Converted ${res.converted.length} file${res.converted.length !== 1 ? 's' : ''} to PDF`, 'success')
-                        // Refresh phase output content
-                        const refreshed = await apiGet<{ outputs: PhaseOutputContent[] }>(`/api/engagements/${data.id}/phase-output-content`)
+                        // Refresh phase output content + Drive status + engagement data
+                        const [refreshed, drvStatus, d] = await Promise.all([
+                          apiGet<{ outputs: PhaseOutputContent[] }>(`/api/engagements/${data.id}/phase-output-content`),
+                          apiGet<typeof driveDeliverablesStatus>(`/api/engagements/${data.id}/deliverables-status`),
+                          apiGet<EngagementData>(`/api/engagements/${data.id}`),
+                        ])
                         setPhaseOutputContent(refreshed.outputs || [])
-                        const d = await apiGet<EngagementData>(`/api/engagements/${data.id}`)
+                        setDriveDeliverablesStatus(drvStatus)
                         setData(d)
                       }
                       if (res.errors?.length) {
