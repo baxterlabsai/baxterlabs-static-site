@@ -290,29 +290,38 @@ async def send_deliverables(
     if not attachments:
         raise HTTPException(status_code=400, detail="Could not download any attachments")
 
-    # Compose email
+    # Look up lead partner info from pipeline_partners
+    from services.email_service import get_partner_info
+    partner_name = eng.get("partner_lead") or "George DeVries"
+    partner = get_partner_info(partner_name)
+    partner_full_name = partner.get("name", "George DeVries")
+    partner_title = partner.get("title", "Partner")
+    partner_email = partner.get("email", "george@baxterlabs.ai")
+
     first_name = client_name.split()[0] if client_name else "there"
     body_html = f"""<p>Dear {first_name},</p>
 
-<p>Please find attached the complete deliverable package from our profit leak diagnostic engagement with {company_name}.</p>
+<p>Thank you for the opportunity to work with {company_name} on this engagement. As discussed during our executive debrief, please find attached the complete deliverable package from the profit leak diagnostic:</p>
 
-<p>The package includes:</p>
 <ul>
     <li>Executive Summary</li>
     <li>Full Diagnostic Report</li>
-    <li>Implementation Roadmap</li>
+    <li>90-Day Implementation Roadmap</li>
     <li>Presentation Deck</li>
     <li>Profit Leak Quantification Workbook</li>
+    <li>Phase 2 Retainer Proposal</li>
 </ul>
 
-<p>We look forward to discussing these findings with you. Please don't hesitate to reach out with any questions.</p>
+<p>These documents contain the full analytical foundation, prioritized recommendations, and implementation timeline we reviewed together. The Profit Leak Quantification Workbook is the living reference for all financial figures and scenario analyses.</p>
+
+<p>We have also included a Phase 2 Retainer Proposal outlining how BaxterLabs can support {company_name} through the implementation phase. If you would like to discuss implementation support or have any questions about the findings, I am happy to schedule a follow-up conversation at your convenience.</p>
 
 <p>Best regards,<br>
-George DeVries<br>
-Managing Partner, BaxterLabs Advisory<br>
-george@baxterlabs.ai</p>"""
+{partner_full_name}<br>
+{partner_title}, BaxterLabs Advisory<br>
+{partner_email}</p>"""
 
-    subject = f"BaxterLabs Advisory - Diagnostic Deliverables - {company_name}"
+    subject = f"BaxterLabs Advisory \u2014 Diagnostic Deliverables \u2014 {company_name}"
 
     # Send via SMTP (same email service used by all other system emails)
     email_svc = get_email_service()
@@ -321,8 +330,8 @@ george@baxterlabs.ai</p>"""
         subject=subject,
         html_body=body_html,
         attachments=attachments,
-        from_email="george@baxterlabs.ai",
-        from_name="George DeVries",
+        from_email=partner_email,
+        from_name=partner_full_name,
     )
 
     if not result.get("success"):
