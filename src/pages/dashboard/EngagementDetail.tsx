@@ -368,8 +368,9 @@ export default function EngagementDetail() {
 
   // Drive-based deliverables pipeline state (source of truth for PPTX/PDF detection)
   const [driveDeliverablesStatus, setDriveDeliverablesStatus] = useState<{
-    has_pptx: boolean; pptx_filename: string | null; has_pdfs: boolean; pdf_count: number
-  }>({ has_pptx: false, pptx_filename: null, has_pdfs: false, pdf_count: 0 })
+    has_pptx: boolean; pptx_filename: string | null; has_pdfs: boolean; pdf_count: number;
+    pdf_files: Array<{ name: string; id: string }>
+  }>({ has_pptx: false, pptx_filename: null, has_pdfs: false, pdf_count: 0, pdf_files: [] })
 
   // Blob URLs for PDF previews (iframes can't send Authorization headers)
   const [pdfBlobUrls, setPdfBlobUrls] = useState<Record<string, string>>({})
@@ -778,16 +779,10 @@ export default function EngagementDetail() {
   const client = data.clients
   const agreement = data.legal_documents.find(d => d.type === 'agreement')
   const dossier = data.research_documents.find(d => d.type === 'company_dossier')
-  const currentIdx = (() => {
-    const dbIdx = ALL_STATUSES.indexOf(data.status)
-    if (phaseOutputContent.length > 0) {
-      const phaseIdx = nextPhase !== null
-        ? ALL_STATUSES.indexOf(`phase_${nextPhase}`)
-        : ALL_STATUSES.indexOf('phases_complete')
-      return Math.max(dbIdx, phaseIdx)
-    }
-    return dbIdx
-  })()
+  // Progress pill strip index — use the DB status directly as source of truth.
+  // DO NOT override with nextPhase logic — the status enum already tracks the
+  // full pipeline including deck_complete, pdfs_complete, deliverables_sent.
+  const currentIdx = ALL_STATUSES.indexOf(data.status)
 
   // Documents analysis
   const clientDocs = data.documents.filter(d => d.document_type === 'client_upload')
@@ -937,7 +932,7 @@ export default function EngagementDetail() {
       {/* Phase Tracker Timeline — phases 1-7, then Deck, PDFs, Archive */}
       {(isInPhases || ALL_STATUSES.indexOf(data.status) > ALL_STATUSES.indexOf('documents_received')) && (() => {
         const deckDone = driveDeliverablesStatus.has_pptx
-        const pdfsDone = phaseOutputContent.some(o => o.final_pdf_path)
+        const pdfsDone = driveDeliverablesStatus.has_pdfs
         const archiveDone = data.status === 'closed'
 
         // Build unified steps array: phases 1-7 + deck + pdfs + archive
@@ -1024,9 +1019,8 @@ export default function EngagementDetail() {
            action button, not a Cowork command. */}
       {!isClosed && data && (() => {
         const deckDone = driveDeliverablesStatus.has_pptx
-        const pdfsDone = phaseOutputContent.some(o => o.final_pdf_path)
-        const finalPdfOutputs = phaseOutputContent.filter(o => o.final_pdf_path)
-        const allApproved = finalPdfOutputs.length > 0 && finalPdfOutputs.every(o => o.final_pdf_approved)
+        const pdfsDone = driveDeliverablesStatus.has_pdfs
+        // Send Deliverables is available once PDFs exist in Drive (approval happens in ribbon)
         const alreadySent = !!data.deliverables_sent_at
         const archiveDone = data.status === 'closed'
 
@@ -1147,11 +1141,11 @@ export default function EngagementDetail() {
                 {pdfsDone ? 'PDFs Created' : convertingPdfs ? 'Converting…' : 'Create PDFs'}
               </button>
 
-              {/* Send Deliverables (index 9) — only after all PDFs approved */}
+              {/* Send Deliverables (index 9) — available once PDFs exist in Drive */}
               <button
-                disabled={sendingDeliverables || (!allApproved && !alreadySent)}
+                disabled={sendingDeliverables || (!pdfsDone && !alreadySent)}
                 onClick={async () => {
-                  if (alreadySent || !allApproved) return
+                  if (alreadySent || !pdfsDone) return
                   setSendingDeliverables(true)
                   try {
                     const res = await apiPost<{ success: boolean; draft_id: string; to_email: string }>(`/api/engagements/${data.id}/send-deliverables`)
@@ -1164,11 +1158,11 @@ export default function EngagementDetail() {
                     ? 'bg-gray-light text-gray-warm opacity-40 cursor-default border border-transparent'
                     : sendingDeliverables
                     ? 'bg-teal/10 text-teal border border-teal'
-                    : allApproved
+                    : pdfsDone
                     ? 'bg-crimson text-white border border-crimson hover:bg-crimson/90'
                     : 'bg-ivory text-teal border border-gray-light opacity-60'
                 }`}
-                title={alreadySent ? `Sent to ${data.deliverables_sent_to}` : allApproved ? 'Create Gmail draft with deliverables' : 'Approve all PDFs in Final Deliverables first'}
+                title={alreadySent ? `Sent to ${data.deliverables_sent_to}` : pdfsDone ? 'Create Gmail draft with deliverables' : 'Create PDFs first'}
               >
                 {alreadySent ? checkSvg : sendingDeliverables ? <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>}
                 {alreadySent ? 'Sent' : sendingDeliverables ? 'Creating Draft…' : 'Send Deliverables'}
@@ -1745,10 +1739,10 @@ export default function EngagementDetail() {
       })()}
 
       {/* ── FINAL DELIVERABLES RIBBON ─────────────────────────────────── */}
-      {/* DO NOT remove — replaces the legacy Wave 1/Wave 2 deliverables section */}
+      {/* Uses Drive PDF files as source of truth (not DB final_pdf_path) */}
       {data && (() => {
-        const finalPdfOutputs = phaseOutputContent.filter(o => o.final_pdf_path)
-        if (finalPdfOutputs.length === 0) return null
+        const pdfFiles = driveDeliverablesStatus.pdf_files
+        if (pdfFiles.length === 0) return null
 
         // Also get the XLSX workbook row (output with xlsx_link, any phase)
         const xlsxOutput = phaseOutputContent.find(o => o.xlsx_link)
@@ -1760,28 +1754,26 @@ export default function EngagementDetail() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
               </svg>
               <h3 className="font-display text-lg font-bold text-teal">Final Deliverables</h3>
-              {finalPdfOutputs.length > 0 && finalPdfOutputs.every(o => o.final_pdf_approved) && (
-                <span className="text-xs font-semibold text-green bg-green/10 px-2 py-0.5 rounded-full ml-auto">All Approved</span>
-              )}
+              <span className="text-xs text-gray-warm ml-auto">{pdfFiles.length} PDF{pdfFiles.length !== 1 ? 's' : ''} in Drive</span>
             </div>
             <div className="space-y-2">
-              {finalPdfOutputs.map(output => {
-                const isExpanded = pocExpandedPhases.has(-(output.output_number + 100))
-                const blobKey = `final_${output.id}`
+              {pdfFiles.map((pdf, idx) => {
+                const isExpanded = pocExpandedPhases.has(-(idx + 200))
+                const blobKey = `drive_pdf_${pdf.id}`
+                const displayName = pdf.name.replace(/\.pdf$/i, '').replace(/_/g, ' ')
+                const previewUrl = `/api/engagements/${data.id}/outputs/${pdf.id}/final-pdf-preview`
                 return (
-                  <div key={output.id} className="border border-gray-light rounded-lg overflow-hidden">
-                    {/* Collapsed row */}
+                  <div key={pdf.id} className="border border-gray-light rounded-lg overflow-hidden">
                     <button
                       onClick={() => {
                         setPocExpandedPhases(prev => {
                           const next = new Set(prev)
-                          const key = -(output.output_number + 100)
+                          const key = -(idx + 200)
                           if (next.has(key)) next.delete(key)
                           else {
                             next.add(key)
-                            // Pre-fetch blob URL for iframe
-                            if (output.final_pdf_preview_url && !blobUrlsRef.current[blobKey]) {
-                              fetchPdfBlob(output.final_pdf_preview_url, blobKey)
+                            if (!blobUrlsRef.current[blobKey]) {
+                              fetchPdfBlob(previewUrl, blobKey)
                             }
                           }
                           return next
@@ -1792,17 +1784,11 @@ export default function EngagementDetail() {
                       <span className="text-xs font-bold text-teal bg-teal/10 w-6 h-6 rounded flex items-center justify-center flex-shrink-0">
                         PDF
                       </span>
-                      <span className="text-sm font-semibold text-charcoal flex-1 text-left">{output.output_name}</span>
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${
-                        output.final_pdf_approved ? 'bg-green/10 text-green' : 'bg-amber/10 text-amber'
-                      }`}>
-                        {output.final_pdf_approved ? 'Approved' : 'Pending Review'}
-                      </span>
+                      <span className="text-sm font-semibold text-charcoal flex-1 text-left">{displayName}</span>
                       <svg className={`w-4 h-4 text-gray-warm transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                       </svg>
                     </button>
-                    {/* Expanded preview */}
                     {isExpanded && (
                       <div className="p-4 border-t border-gray-light">
                         {pdfBlobUrls[blobKey] ? (
@@ -1810,7 +1796,7 @@ export default function EngagementDetail() {
                             src={pdfBlobUrls[blobKey]}
                             className="w-full rounded-lg border border-gray-light"
                             style={{ height: '600px' }}
-                            title={`${output.output_name} PDF preview`}
+                            title={`${displayName} PDF preview`}
                           />
                         ) : (
                           <div className="flex items-center justify-center h-32 text-gray-warm text-sm">
@@ -1819,28 +1805,10 @@ export default function EngagementDetail() {
                           </div>
                         )}
                         <div className="flex items-center gap-3 mt-3">
-                          {!output.final_pdf_approved && (
-                            <button
-                              onClick={async (e) => {
-                                e.stopPropagation()
-                                try {
-                                  await apiPatch(`/api/phase-output-content/${output.id}`, { final_pdf_approved: true })
-                                  toast(`Approved: ${output.output_name}`, 'success')
-                                  const refreshed = await apiGet<{ outputs: PhaseOutputContent[] }>(`/api/engagements/${data.id}/phase-output-content`)
-                                  setPhaseOutputContent(refreshed.outputs || [])
-                                } catch (err: unknown) {
-                                  toast((err as Error).message || 'Approval failed', 'error')
-                                }
-                              }}
-                              className="px-4 py-2 bg-green text-white text-sm font-semibold rounded-lg hover:bg-green/90"
-                            >
-                              Approve
-                            </button>
-                          )}
-                          {output.final_pdf_preview_url && (
+                          {pdfBlobUrls[blobKey] && (
                             <a
-                              href={pdfBlobUrls[blobKey] || '#'}
-                              download={`${output.output_name}.pdf`}
+                              href={pdfBlobUrls[blobKey]}
+                              download={pdf.name}
                               className="px-4 py-2 bg-white text-teal text-sm font-semibold rounded-lg border border-teal hover:bg-teal/5"
                             >
                               Download PDF

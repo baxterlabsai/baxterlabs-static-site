@@ -58,7 +58,7 @@ async def deliverables_status(
     folder_id = eng.get("drive_deliverables_folder_id")
     has_pptx = False
     pptx_filename: Optional[str] = None
-    pdf_filenames: List[str] = []
+    pdf_files: List[dict] = []
 
     if folder_id:
         all_files = await list_files_in_folder(folder_id)
@@ -68,7 +68,7 @@ async def deliverables_status(
                 has_pptx = True
                 pptx_filename = f["name"]
             elif name_lower.endswith(".pdf"):
-                pdf_filenames.append(f["name"])
+                pdf_files.append({"name": f["name"], "id": f["id"]})
 
     # Auto-advance: if PPTX exists and status is still phase_7, move to deck_complete
     if has_pptx and eng.get("status") == "phase_7":
@@ -80,9 +80,9 @@ async def deliverables_status(
     return {
         "has_pptx": has_pptx,
         "pptx_filename": pptx_filename,
-        "has_pdfs": len(pdf_filenames) > 0,
-        "pdf_count": len(pdf_filenames),
-        "pdf_filenames": pdf_filenames,
+        "has_pdfs": len(pdf_files) > 0,
+        "pdf_count": len(pdf_files),
+        "pdf_files": pdf_files,
     }
 
 
@@ -204,41 +204,31 @@ def _update_final_pdf_path(sb, engagement_id: str, source_filename: str, pdf_dri
 
 
 # ============================================================================
-# GET /api/engagements/{id}/outputs/{output_id}/final-pdf-preview
-# Proxy-serve a final PDF from Google Drive for iframe embedding.
+# GET /api/engagements/{id}/outputs/{drive_file_id}/final-pdf-preview
+# Proxy-serve a PDF from Google Drive for iframe embedding.
+# The drive_file_id is passed directly from the frontend (sourced from the
+# deliverables-status endpoint's pdf_files list).
 # ============================================================================
-@router.get("/engagements/{engagement_id}/outputs/{output_id}/final-pdf-preview")
+@router.get("/engagements/{engagement_id}/outputs/{drive_file_id}/final-pdf-preview")
 async def serve_final_pdf_preview(
     engagement_id: str,
-    output_id: str,
+    drive_file_id: str,
     user: dict = Depends(verify_partner_auth),
 ):
-    """Proxy the final PDF from Drive for iframe preview."""
-    sb = get_supabase()
+    """Proxy a PDF from Drive by its file ID for iframe preview."""
+    # Verify the engagement exists (auth guard)
+    eng = get_engagement_by_id(engagement_id)
+    if not eng:
+        raise HTTPException(status_code=404, detail="Engagement not found")
 
-    row = sb.table("phase_output_content").select(
-        "id, final_pdf_path, output_name"
-    ).eq("id", output_id).single().execute()
-
-    if not row.data:
-        raise HTTPException(status_code=404, detail="Output not found")
-
-    rec = row.data
-    file_id = rec.get("final_pdf_path")
-    if not file_id:
-        raise HTTPException(status_code=404, detail="No final PDF generated for this output")
-
-    if file_id.startswith("http") or "/" in file_id or "." in file_id:
-        raise HTTPException(status_code=400, detail="final_pdf_path is not a Drive file ID")
-
-    pdf_bytes = await download_file_by_id(file_id)
+    pdf_bytes = await download_file_by_id(drive_file_id)
     if not pdf_bytes:
         raise HTTPException(status_code=502, detail="Failed to download PDF from Google Drive")
 
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'inline; filename="{rec.get("output_name", "deliverable")}.pdf"'},
+        headers={"Content-Disposition": f'inline; filename="deliverable.pdf"'},
     )
 
 
@@ -264,63 +254,35 @@ async def send_deliverables(
     if not client_email:
         raise HTTPException(status_code=400, detail="Client has no email address on file")
 
-    sb = get_supabase()
+    # Get PDFs directly from Google Drive deliverables folder (source of truth)
+    folder_id = eng.get("drive_deliverables_folder_id")
+    if not folder_id:
+        raise HTTPException(status_code=400, detail="No deliverables folder configured")
 
-    # Get final PDF deliverables (any phase with final_pdf_path populated)
-    pdf_rows = (
-        sb.table("phase_output_content")
-        .select("id, output_name, output_number, phase_number, final_pdf_path")
-        .eq("engagement_id", engagement_id)
-        .not_.is_("final_pdf_path", "null")
-        .order("phase_number")
-        .order("output_number")
-        .execute()
-    )
+    all_drive_files = await list_files_in_folder(folder_id)
+    pdf_drive_files = [f for f in all_drive_files if f["name"].lower().endswith(".pdf")]
+    xlsx_drive_files = [f for f in all_drive_files if f["name"].lower().endswith(".xlsx")]
 
-    # Deduplicate to latest per output_name
-    seen = set()
-    pdf_outputs = []
-    for row in pdf_rows.data:
-        if row["output_name"] not in seen:
-            seen.add(row["output_name"])
-            pdf_outputs.append(row)
-
-    if not pdf_outputs:
-        raise HTTPException(status_code=400, detail="No final PDFs found — run Create PDFs first")
+    if not pdf_drive_files:
+        raise HTTPException(status_code=400, detail="No PDFs found in Drive — run Create PDFs first")
 
     # Download all PDF attachments from Drive
     attachments: List[dict] = []
-    for out in pdf_outputs:
-        pdf_bytes = await download_file_by_id(out["final_pdf_path"])
+    for pdf_file in pdf_drive_files:
+        pdf_bytes = await download_file_by_id(pdf_file["id"])
         if pdf_bytes:
-            safe_name = out["output_name"].replace(" ", "_")
             attachments.append({
-                "filename": f"{safe_name}_{company_name.replace(' ', '_')}.pdf",
+                "filename": pdf_file["name"],
                 "content": pdf_bytes,
                 "mimetype": "application/pdf",
             })
 
-    # Also get the XLSX workbook if available (check any phase)
-    xlsx_rows = (
-        sb.table("phase_output_content")
-        .select("xlsx_path, xlsx_link, output_name")
-        .eq("engagement_id", engagement_id)
-        .not_.is_("xlsx_path", "null")
-        .order("version", desc=True)
-        .limit(1)
-        .execute()
-    )
-    xlsx_drive_id = None
-    xlsx_name = "Profit_Leak_Quantification_Workbook"
-    if xlsx_rows.data:
-        xlsx_drive_id = xlsx_rows.data[0].get("xlsx_path")
-        xlsx_name = xlsx_rows.data[0].get("output_name", xlsx_name).replace(" ", "_")
-
-    if xlsx_drive_id and not xlsx_drive_id.startswith("http"):
-        xlsx_bytes = await download_file_by_id(xlsx_drive_id)
+    # Also attach XLSX workbook if present
+    for xlsx_file in xlsx_drive_files:
+        xlsx_bytes = await download_file_by_id(xlsx_file["id"])
         if xlsx_bytes:
             attachments.append({
-                "filename": f"{xlsx_name}_{company_name.replace(' ', '_')}.xlsx",
+                "filename": xlsx_file["name"],
                 "content": xlsx_bytes,
                 "mimetype": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             })
