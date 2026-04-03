@@ -32,7 +32,7 @@ from services.google_drive_engagement import (
     upload_file_to_drive_folder,
     download_all_files_from_folder,
 )
-from services.gmail_service import create_gmail_draft_with_attachments
+from services.email_service import get_email_service
 
 logger = logging.getLogger("baxterlabs.pdf_conversion")
 
@@ -314,20 +314,25 @@ george@baxterlabs.ai</p>"""
 
     subject = f"BaxterLabs Advisory - Diagnostic Deliverables - {company_name}"
 
-    try:
-        draft_id = create_gmail_draft_with_attachments(
-            to_email=client_email,
-            to_name=client_name,
-            subject=subject,
-            body_html=body_html,
-            attachments=attachments,
-        )
-    except Exception as e:
-        logger.error("Gmail draft creation failed: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Gmail draft creation failed: {e}")
+    # Send via SMTP (same email service used by all other system emails)
+    email_svc = get_email_service()
+    result = email_svc.send_email_with_attachments(
+        to_email=client_email,
+        subject=subject,
+        html_body=body_html,
+        attachments=attachments,
+        from_email="george@baxterlabs.ai",
+        from_name="George DeVries",
+    )
+
+    if not result.get("success"):
+        error_msg = result.get("error", "Unknown error")
+        logger.error("Deliverables email failed: %s", error_msg)
+        raise HTTPException(status_code=500, detail=f"Email send failed: {error_msg}")
 
     # Update engagement
     now_iso = datetime.now(timezone.utc).isoformat()
+    sb = get_supabase()
     sb.table("engagements").update({
         "status": "deliverables_sent",
         "deliverables_sent_at": now_iso,
@@ -336,14 +341,12 @@ george@baxterlabs.ai</p>"""
     }).eq("id", engagement_id).execute()
 
     log_activity(engagement_id, "partner", "deliverables_sent", {
-        "draft_id": draft_id,
         "to_email": client_email,
         "attachment_count": len(attachments),
     })
 
     return {
         "success": True,
-        "draft_id": draft_id,
         "to_email": client_email,
         "attachment_count": len(attachments),
     }

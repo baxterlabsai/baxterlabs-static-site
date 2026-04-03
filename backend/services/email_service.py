@@ -5,8 +5,10 @@ import re
 import smtplib
 import logging
 import urllib.parse
-from typing import Optional
+from typing import List, Optional
 from datetime import datetime, timezone
+from email import encoders
+from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -222,6 +224,65 @@ class EmailService:
             }
         except Exception as e:
             logger.error(f"Email failed to={to_email}: {e}")
+            return {"success": False, "error": str(e)}
+
+    def send_email_with_attachments(
+        self,
+        to_email: str,
+        subject: str,
+        html_body: str,
+        attachments: Optional[List[dict]] = None,
+        from_email: Optional[str] = None,
+        from_name: Optional[str] = None,
+    ) -> dict:
+        """Send an email with file attachments via SMTP.
+
+        Args:
+            attachments: List of dicts with keys: filename (str), content (bytes), mimetype (str).
+        """
+        sender_email = from_email or self.from_email
+        html_body = html_body + SIGNATURE_HTML
+        full_html = self._wrap_html(html_body)
+        sender_name = from_name or self.from_name
+
+        if self.development_mode:
+            logger.info(
+                "[DEV MODE] Email with %d attachments from=%s <%s> to=%s subject='%s'",
+                len(attachments or []), sender_name, sender_email, to_email, subject,
+            )
+            return {"success": True, "mode": "development", "to": to_email, "subject": subject}
+
+        try:
+            msg = MIMEMultipart("mixed")
+            msg["Subject"] = subject
+            msg["From"] = f"{sender_name} <{sender_email}>"
+            msg["To"] = to_email
+            msg["Reply-To"] = sender_email
+
+            # Text/HTML body as a sub-part
+            body_part = MIMEMultipart("alternative")
+            body_part.attach(MIMEText(self._html_to_plain(html_body), "plain"))
+            body_part.attach(MIMEText(full_html, "html"))
+            msg.attach(body_part)
+
+            # File attachments
+            for att in (attachments or []):
+                maintype, subtype = att["mimetype"].split("/", 1) if "/" in att["mimetype"] else ("application", "octet-stream")
+                part = MIMEBase(maintype, subtype)
+                part.set_payload(att["content"])
+                encoders.encode_base64(part)
+                part.add_header("Content-Disposition", "attachment", filename=att["filename"])
+                msg.attach(part)
+
+            with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
+                server.starttls()
+                server.login(self.smtp_username, self.smtp_password)
+                server.sendmail(self.smtp_username, [to_email], msg.as_string())
+
+            logger.info("Email with %d attachments sent to=%s subject='%s'", len(attachments or []), to_email, subject)
+            return {"success": True, "mode": "production", "to": to_email, "subject": subject}
+        except Exception as e:
+            logger.error("Email with attachments failed to=%s: %s", to_email, e)
             return {"success": False, "error": str(e)}
 
     # ── Notification Templates ──────────────────────────────────────
