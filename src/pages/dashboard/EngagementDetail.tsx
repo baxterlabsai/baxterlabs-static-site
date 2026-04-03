@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { apiGet, apiPost, apiPut, apiPatch, apiUpload, apiDelete, apiFetchBlob } from '../../lib/api'
+import { apiGet, apiPost, apiPut, apiPatch, apiDelete, apiFetchBlob } from '../../lib/api'
 import { useToast } from '../../components/Toast'
 import SEO from '../../components/SEO'
 import ResearchModal from '../../components/ResearchModal'
@@ -54,6 +54,9 @@ interface PhaseOutputContent {
   pptx_path_url: string | null
   xlsx_path: string | null
   xlsx_link: string | null
+  final_pdf_path: string | null
+  final_pdf_approved: boolean
+  final_pdf_preview_url: string | null
 }
 
 interface DocumentRecord {
@@ -130,6 +133,8 @@ interface EngagementData {
     created_at: string
   }>
   debrief_complete: boolean
+  deliverables_sent_at: string | null
+  deliverables_sent_to: string | null
   phase_outputs: PhaseOutput[]
   deliverables: Array<{
     id: string
@@ -149,11 +154,15 @@ interface EngagementData {
   }>
 }
 
+// ── STATUS TRACKER PILL STRIP ──────────────────────────────────────────
+// DO NOT re-add phase_0, phases_complete, debrief, wave_1_released, or wave_2_released.
+// Those statuses are legacy. The new pipeline is:
+//   … → Phase 7 → Deck Complete → PDFs Complete → Deliverables Sent → Phase 8 → Closed
 const ALL_STATUSES = [
   'intake', 'discovery_done', 'agreement_pending', 'agreement_signed',
   'documents_pending', 'documents_received',
-  'phase_1', 'phase_2', 'phase_3', 'phase_4', 'phase_5', 'phase_6', 'phase_7', 'phase_8', 'phases_complete',
-  'debrief', 'wave_1_released', 'wave_2_released', 'closed',
+  'phase_1', 'phase_2', 'phase_3', 'phase_4', 'phase_5', 'phase_6', 'phase_7',
+  'deck_complete', 'pdfs_complete', 'deliverables_sent', 'phase_8', 'closed',
 ]
 
 const PHASE_INFO = [
@@ -184,19 +193,6 @@ const FILE_TYPE_ICONS: Record<string, string> = {
   docx: 'W', xlsx: 'X', pptx: 'P', md: 'M', pdf: 'PDF',
 }
 
-const DELIVERABLE_LABELS: Record<string, string> = {
-  exec_summary: 'Executive Summary',
-  full_report: 'Full Diagnostic Report',
-  workbook: 'Profit Leak Workbook',
-  roadmap: '90-Day Implementation Roadmap',
-  deck: 'Presentation Deck',
-  retainer_proposal: 'Phase 2 Retainer Proposal',
-}
-
-const DELIVERABLE_STATUSES_SHOWING = new Set([
-  'phase_5', 'phase_6', 'phase_7', 'phase_8', 'phases_complete',
-  'debrief', 'wave_1_released', 'wave_2_released', 'closed',
-])
 
 const CATEGORY_LABELS: Record<string, string> = {
   financial: 'A. Financial Statements',
@@ -231,7 +227,12 @@ const REQUIRED_ITEM_NAMES: Record<string, string> = {
   ar_aging: 'Accounts Receivable Aging',
 }
 
-function statusLabel(s: string) { return s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) }
+const STATUS_DISPLAY_LABELS: Record<string, string> = {
+  deck_complete: 'Deck Complete',
+  pdfs_complete: 'PDFs Complete',
+  deliverables_sent: 'Deliverables Sent',
+}
+function statusLabel(s: string) { return STATUS_DISPLAY_LABELS[s] ?? s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) }
 
 function formatDate(d: string | null) {
   if (!d) return '—'
@@ -259,11 +260,6 @@ export default function EngagementDetail() {
   const [copiedCommand, setCopiedCommand] = useState<number | null>(null)
   const [beginLoading, setBeginLoading] = useState(false)
   const [phase7Complete, setPhase7Complete] = useState(false)
-  const [uploadingDeliverableId, setUploadingDeliverableId] = useState<string | null>(null)
-  const [approvingDeliverableId, setApprovingDeliverableId] = useState<string | null>(null)
-  const [releasingWave, setReleasingWave] = useState<1 | 2 | null>(null)
-  const [debriefLoading, setDebriefLoading] = useState(false)
-  const [ensuringDeliverables, setEnsuringDeliverables] = useState(false)
   const [archiveDialog, setArchiveDialog] = useState(false)
   const [activityLogOpen, setActivityLogOpen] = useState(false)
   const [dossierOpen, setDossierOpen] = useState(false)
@@ -361,6 +357,10 @@ export default function EngagementDetail() {
 
   const [renderingPhase7, setRenderingPhase7] = useState(false)
   const [copiedDeckCommand, setCopiedDeckCommand] = useState(false)
+  const [convertingPdfs, setConvertingPdfs] = useState(false)
+  const [sendingDeliverables, setSendingDeliverables] = useState(false)
+  const [archivingPhase8, setArchivingPhase8] = useState(false)
+  const [archivePhase8Dialog, setArchivePhase8Dialog] = useState(false)
 
   // Blob URLs for PDF previews (iframes can't send Authorization headers)
   const [pdfBlobUrls, setPdfBlobUrls] = useState<Record<string, string>>({})
@@ -393,7 +393,6 @@ export default function EngagementDetail() {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null)
   const navigate = useNavigate()
   const { toast } = useToast()
-  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   // Pipeline source and referrals
   const [pipelineSource, setPipelineSource] = useState<{ id: string; company_id: string } | null>(null)
@@ -539,74 +538,6 @@ export default function EngagementDetail() {
       setData(d)
     } catch {}
     setBeginLoading(false)
-  }
-
-  const ensureDeliverables = async () => {
-    if (!id) return
-    setEnsuringDeliverables(true)
-    try {
-      await apiPost(`/api/engagements/${id}/deliverables/ensure`)
-      const d = await apiGet<EngagementData>(`/api/engagements/${id}`)
-      setData(d)
-    } catch {}
-    setEnsuringDeliverables(false)
-  }
-
-  const uploadDeliverable = async (deliverableId: string, file: File) => {
-    if (!id) return
-    setUploadingDeliverableId(deliverableId)
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      await apiUpload(`/api/engagements/${id}/deliverables/${deliverableId}/upload`, formData)
-      const d = await apiGet<EngagementData>(`/api/engagements/${id}`)
-      setData(d)
-    } catch {}
-    setUploadingDeliverableId(null)
-  }
-
-  const approveDeliverable = async (deliverableId: string) => {
-    if (!id) return
-    setApprovingDeliverableId(deliverableId)
-    try {
-      await apiPut(`/api/deliverables/${deliverableId}/approve`)
-      const d = await apiGet<EngagementData>(`/api/engagements/${id}`)
-      setData(d)
-    } catch {}
-    setApprovingDeliverableId(null)
-  }
-
-  const releaseWave1 = async () => {
-    if (!id) return
-    setReleasingWave(1)
-    try {
-      await apiPost(`/api/engagements/${id}/release-wave1`)
-      const d = await apiGet<EngagementData>(`/api/engagements/${id}`)
-      setData(d)
-    } catch {}
-    setReleasingWave(null)
-  }
-
-  const markDebriefComplete = async () => {
-    if (!id) return
-    setDebriefLoading(true)
-    try {
-      await apiPost(`/api/engagements/${id}/debrief-complete`)
-      const d = await apiGet<EngagementData>(`/api/engagements/${id}`)
-      setData(d)
-    } catch {}
-    setDebriefLoading(false)
-  }
-
-  const releaseWave2 = async () => {
-    if (!id) return
-    setReleasingWave(2)
-    try {
-      await apiPost(`/api/engagements/${id}/release-deck`)
-      const d = await apiGet<EngagementData>(`/api/engagements/${id}`)
-      setData(d)
-    } catch {}
-    setReleasingWave(null)
   }
 
   const archiveEngagement = async () => {
@@ -1018,7 +949,7 @@ export default function EngagementDetail() {
       </section>
 
       {/* Phase Tracker Timeline */}
-      {(isInPhases || data.status === 'phases_complete' || data.status === 'debrief' || ALL_STATUSES.indexOf(data.status) > ALL_STATUSES.indexOf('documents_received')) && (
+      {(isInPhases || ALL_STATUSES.indexOf(data.status) > ALL_STATUSES.indexOf('documents_received')) && (
         <section className="bg-white rounded-lg border border-gray-light p-5 mb-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xs font-semibold text-gray-warm uppercase tracking-wider">Phase Progress</h3>
@@ -1125,40 +1056,212 @@ export default function EngagementDetail() {
               )
             })}
 
+            {/* ── DELIVERABLE PIPELINE BUTTONS ──────────────────────────── */}
             {/* Build Presentation Deck — visible after Phase 7 render completes */}
-            {completedPhases.includes(7) && data && (
+            {completedPhases.includes(7) && data && (() => {
+              const deckDone = phaseOutputContent.some(o => o.phase_number === 5 && o.output_number === 3 && o.pptx_path)
+              return (
+                <button
+                  onClick={async () => {
+                    if (deckDone) return
+                    const folder = data.clients.company_name.replace(/\s+/g, '_') + '_' + new Date(data.start_date || Date.now()).getFullYear()
+                    const cmd = `/baxterlabs-delivery:run-phase 7 ${folder}`
+                    try {
+                      await navigator.clipboard.writeText(cmd)
+                    } catch {
+                      const ta = document.createElement('textarea')
+                      ta.value = cmd
+                      document.body.appendChild(ta)
+                      ta.select()
+                      document.execCommand('copy')
+                      document.body.removeChild(ta)
+                    }
+                    setCopiedDeckCommand(true)
+                    toast(`Copied: ${cmd}`)
+                    setTimeout(() => setCopiedDeckCommand(false), 2000)
+                  }}
+                  className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    deckDone
+                      ? 'bg-gray-light text-gray-warm opacity-40 cursor-default border border-transparent'
+                      : copiedDeckCommand
+                      ? 'bg-teal/10 text-teal border border-teal'
+                      : 'bg-white text-teal border border-teal hover:bg-teal/5'
+                  }`}
+                  title={deckDone ? 'Deck built' : 'Opens in Cowork — creates the branded presentation deck'}
+                >
+                  {deckDone ? (
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  ) : (
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                  )}
+                  {deckDone ? 'Deck Built' : copiedDeckCommand ? 'Copied!' : 'Build Deck'}
+                </button>
+              )
+            })()}
+
+            {/* Create PDFs — visible after deck is built */}
+            {completedPhases.includes(7) && data && (() => {
+              const deckDone = phaseOutputContent.some(o => o.phase_number === 5 && o.output_number === 3 && o.pptx_path)
+              const pdfsDone = phaseOutputContent.some(o => o.phase_number === 5 && o.final_pdf_path)
+              if (!deckDone) return null
+              return (
+                <button
+                  disabled={convertingPdfs}
+                  onClick={async () => {
+                    if (pdfsDone && !convertingPdfs) return
+                    setConvertingPdfs(true)
+                    try {
+                      const res = await apiPost<{ success: boolean; converted: Array<{ source: string }>; errors: Array<{ file: string; error: string }> }>(`/api/engagements/${data.id}/convert-pdfs`)
+                      if (res.success) {
+                        toast(`Converted ${res.converted.length} file${res.converted.length !== 1 ? 's' : ''} to PDF`, 'success')
+                        // Refresh phase output content
+                        const refreshed = await apiGet<{ outputs: PhaseOutputContent[] }>(`/api/engagements/${data.id}/phase-output-content`)
+                        setPhaseOutputContent(refreshed.outputs || [])
+                        const d = await apiGet<EngagementData>(`/api/engagements/${data.id}`)
+                        setData(d)
+                      }
+                      if (res.errors?.length) {
+                        toast(`${res.errors.length} file${res.errors.length !== 1 ? 's' : ''} failed to convert`, 'error')
+                      }
+                    } catch (err: unknown) {
+                      toast((err as Error).message || 'PDF conversion failed', 'error')
+                    } finally {
+                      setConvertingPdfs(false)
+                    }
+                  }}
+                  className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    pdfsDone
+                      ? 'bg-gray-light text-gray-warm opacity-40 cursor-default border border-transparent'
+                      : convertingPdfs
+                      ? 'bg-teal/10 text-teal border border-teal'
+                      : 'bg-white text-teal border border-teal hover:bg-teal/5'
+                  }`}
+                  title={pdfsDone ? 'PDFs created' : 'Convert all deliverables to PDF'}
+                >
+                  {pdfsDone ? (
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  ) : convertingPdfs ? (
+                    <span className="w-3.5 h-3.5 border-2 border-teal border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                    </svg>
+                  )}
+                  {pdfsDone ? 'PDFs Created' : convertingPdfs ? 'Converting…' : 'Create PDFs'}
+                </button>
+              )
+            })()}
+
+            {/* Send Deliverables — visible after all final PDFs are approved */}
+            {data && (() => {
+              const finalPdfOutputs = phaseOutputContent.filter(o => o.phase_number === 5 && o.final_pdf_path)
+              const allApproved = finalPdfOutputs.length > 0 && finalPdfOutputs.every(o => o.final_pdf_approved)
+              const alreadySent = !!data.deliverables_sent_at
+              if (!allApproved && !alreadySent) return null
+              return (
+                <button
+                  disabled={sendingDeliverables}
+                  onClick={async () => {
+                    if (alreadySent) return
+                    setSendingDeliverables(true)
+                    try {
+                      const res = await apiPost<{ success: boolean; draft_id: string; to_email: string }>(`/api/engagements/${data.id}/send-deliverables`)
+                      if (res.success) {
+                        toast(`Draft created in Gmail → ${res.to_email}`, 'success')
+                        const d = await apiGet<EngagementData>(`/api/engagements/${data.id}`)
+                        setData(d)
+                      }
+                    } catch (err: unknown) {
+                      toast((err as Error).message || 'Failed to create draft', 'error')
+                    } finally {
+                      setSendingDeliverables(false)
+                    }
+                  }}
+                  className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    alreadySent
+                      ? 'bg-gray-light text-gray-warm opacity-40 cursor-default border border-transparent'
+                      : sendingDeliverables
+                      ? 'bg-teal/10 text-teal border border-teal'
+                      : 'bg-crimson text-white border border-crimson hover:bg-crimson/90'
+                  }`}
+                  title={alreadySent ? `Sent to ${data.deliverables_sent_to}` : 'Create Gmail draft with deliverables attached'}
+                >
+                  {alreadySent ? (
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  ) : sendingDeliverables ? (
+                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                    </svg>
+                  )}
+                  {alreadySent ? 'Deliverables Sent' : sendingDeliverables ? 'Creating Draft…' : 'Send Deliverables'}
+                </button>
+              )
+            })()}
+
+            {/* Phase 8 Archive — visible after deliverables sent */}
+            {data && data.deliverables_sent_at && data.status !== 'closed' && (
               <button
-                onClick={async () => {
-                  const folder = data.clients.company_name.replace(/\s+/g, '_') + '_' + new Date(data.start_date || Date.now()).getFullYear()
-                  const cmd = `/baxterlabs-delivery:run-phase 7 ${folder}`
-                  try {
-                    await navigator.clipboard.writeText(cmd)
-                  } catch {
-                    const ta = document.createElement('textarea')
-                    ta.value = cmd
-                    document.body.appendChild(ta)
-                    ta.select()
-                    document.execCommand('copy')
-                    document.body.removeChild(ta)
-                  }
-                  setCopiedDeckCommand(true)
-                  toast(`Copied: ${cmd}`)
-                  setTimeout(() => setCopiedDeckCommand(false), 2000)
-                }}
+                disabled={archivingPhase8}
+                onClick={() => setArchivePhase8Dialog(true)}
                 className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                  copiedDeckCommand
+                  archivingPhase8
                     ? 'bg-teal/10 text-teal border border-teal'
                     : 'bg-white text-teal border border-teal hover:bg-teal/5'
                 }`}
-                title="Opens in Cowork — creates the branded presentation deck"
+                title="Archive engagement and create follow-up schedule"
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-                {copiedDeckCommand ? 'Copied!' : 'Build Deck'}
+                {archivingPhase8 ? (
+                  <span className="w-3.5 h-3.5 border-2 border-teal border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                  </svg>
+                )}
+                {archivingPhase8 ? 'Archiving…' : 'Archive'}
               </button>
             )}
           </div>
+
+          {/* Phase 8 Archive Confirmation Dialog */}
+          {archivePhase8Dialog && (
+            <div className="mt-4 p-4 bg-ivory rounded-lg border border-gold/20">
+              <p className="text-sm font-semibold text-charcoal mb-2">Archive this engagement?</p>
+              <p className="text-xs text-gray-warm mb-3">This will create a ZIP backup of all Drive files, upload to storage, and close the engagement. 30/60/90-day follow-ups will be scheduled automatically.</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={async () => {
+                    setArchivePhase8Dialog(false)
+                    setArchivingPhase8(true)
+                    try {
+                      const res = await apiPost<{ success: boolean; file_count: number }>(`/api/engagements/${data!.id}/archive`)
+                      if (res.success) {
+                        toast(`Archived ${res.file_count} files — engagement closed`, 'success')
+                        const d = await apiGet<EngagementData>(`/api/engagements/${data!.id}`)
+                        setData(d)
+                      }
+                    } catch (err: unknown) {
+                      toast((err as Error).message || 'Archive failed', 'error')
+                    } finally {
+                      setArchivingPhase8(false)
+                    }
+                  }}
+                  className="px-4 py-2 bg-crimson text-white text-sm font-semibold rounded-lg hover:bg-crimson/90"
+                >
+                  Yes, Archive & Close
+                </button>
+                <button
+                  onClick={() => setArchivePhase8Dialog(false)}
+                  className="px-4 py-2 bg-white text-charcoal text-sm font-semibold rounded-lg border border-gray-light hover:bg-ivory"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </section>
       )}
 
@@ -1698,176 +1801,140 @@ export default function EngagementDetail() {
         )
       })()}
 
-      {/* Deliverables Section */}
-      {data && DELIVERABLE_STATUSES_SHOWING.has(data.status) && (() => {
-        const wave1 = data.deliverables.filter(d => d.wave === 1)
-        const wave2 = data.deliverables.filter(d => d.wave === 2)
-        const allWave1Approved = wave1.length === 4 && wave1.every(d => d.status === 'approved')
-        const allWave1Released = wave1.length > 0 && wave1.every(d => d.status === 'released')
-        const allWave2Approved = wave2.length === 2 && wave2.every(d => d.status === 'approved')
-        const allWave2Released = wave2.length > 0 && wave2.every(d => d.status === 'released')
-        const showDebriefButton = (data.status === 'wave_1_released' || allWave1Released) && !data.debrief_complete
-        const showReleaseWave2 = data.debrief_complete && allWave2Approved && !allWave2Released
+      {/* ── FINAL DELIVERABLES RIBBON ─────────────────────────────────── */}
+      {/* DO NOT remove — replaces the legacy Wave 1/Wave 2 deliverables section */}
+      {data && (() => {
+        const finalPdfOutputs = phaseOutputContent.filter(o => o.phase_number === 5 && o.final_pdf_path)
+        if (finalPdfOutputs.length === 0) return null
 
-        const renderDeliverableRow = (d: typeof data.deliverables[0]) => (
-          <div key={d.id} className="flex items-center gap-3 py-3 px-4 bg-ivory rounded-lg">
-            {/* Status icon */}
-            <div className="flex-shrink-0">
-              {d.status === 'released' ? (
-                <span className="w-7 h-7 rounded-full bg-gold/10 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                </span>
-              ) : d.status === 'approved' ? (
-                <span className="w-7 h-7 rounded-full bg-green/10 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-green" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                </span>
-              ) : (
-                <span className="w-7 h-7 rounded-full bg-gray-light flex items-center justify-center">
-                  <svg className="w-4 h-4 text-gray-warm" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
-                </span>
-              )}
-            </div>
-
-            {/* Info */}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-charcoal">{DELIVERABLE_LABELS[d.type] || d.type}</p>
-              <p className="text-xs text-gray-warm">
-                {d.filename ? d.filename : d.storage_path ? d.storage_path.split('/').pop() : 'No file uploaded'}
-              </p>
-            </div>
-
-            {/* Status badge */}
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${
-              d.status === 'released' ? 'bg-gold/10 text-gold' :
-              d.status === 'approved' ? 'bg-green/10 text-green' :
-              'bg-gray-light text-gray-warm'
-            }`}>
-              {d.status === 'released' ? 'Released' : d.status === 'approved' ? 'Approved' : 'Draft'}
-            </span>
-
-            {/* Actions */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {/* Upload button */}
-              {d.status === 'draft' && (
-                <>
-                  <input
-                    type="file"
-                    ref={el => { fileInputRefs.current[d.id] = el }}
-                    className="hidden"
-                    accept=".pdf,.docx,.xlsx,.pptx,.csv"
-                    onChange={e => {
-                      const file = e.target.files?.[0]
-                      if (file) uploadDeliverable(d.id, file)
-                      e.target.value = ''
-                    }}
-                  />
-                  <button
-                    onClick={() => fileInputRefs.current[d.id]?.click()}
-                    disabled={uploadingDeliverableId === d.id}
-                    className="text-xs text-teal font-semibold hover:underline disabled:opacity-50"
-                  >
-                    {uploadingDeliverableId === d.id ? 'Uploading...' : d.storage_path ? 'Replace' : 'Upload'}
-                  </button>
-                </>
-              )}
-
-              {/* Approve button */}
-              {d.status === 'draft' && d.storage_path && (
-                <button
-                  onClick={() => approveDeliverable(d.id)}
-                  disabled={approvingDeliverableId === d.id}
-                  className="text-xs bg-teal text-white px-3 py-1 rounded font-semibold hover:bg-teal/90 disabled:opacity-50"
-                >
-                  {approvingDeliverableId === d.id ? '...' : 'Approve'}
-                </button>
-              )}
-            </div>
-          </div>
-        )
+        // Also get the XLSX workbook row (output with xlsx_link)
+        const xlsxOutput = phaseOutputContent.find(o => o.phase_number === 5 && o.xlsx_link)
 
         return (
           <section className="bg-white rounded-lg border border-gray-light p-5 mb-6">
-            {data.deliverables.length === 0 ? (
-              <div className="text-center py-6">
-                <p className="text-gray-warm text-sm mb-3">No deliverable records yet.</p>
-                <button
-                  onClick={ensureDeliverables}
-                  disabled={ensuringDeliverables}
-                  className="px-5 py-2.5 bg-crimson text-white font-semibold rounded-lg hover:bg-crimson/90 text-sm disabled:opacity-50"
-                >
-                  {ensuringDeliverables ? 'Creating...' : 'Create Deliverable Records'}
-                </button>
-              </div>
-            ) : (
-              <>
-                {/* Wave 1 */}
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-display text-lg font-bold text-teal">Wave 1 — Core Deliverables</h3>
-                    {allWave1Approved && !allWave1Released && (
-                      <button
-                        onClick={releaseWave1}
-                        disabled={releasingWave === 1}
-                        className="px-4 py-2 bg-crimson text-white text-sm font-semibold rounded-lg hover:bg-crimson/90 disabled:opacity-50"
-                      >
-                        {releasingWave === 1 ? 'Releasing...' : 'Release Wave 1 to Client'}
-                      </button>
-                    )}
-                    {allWave1Released && (
-                      <span className="text-xs font-semibold text-gold bg-gold/10 px-3 py-1 rounded-full">Wave 1 Released</span>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    {wave1.map(renderDeliverableRow)}
-                  </div>
-                </div>
-
-                {/* Debrief Complete */}
-                {showDebriefButton && (
-                  <div className="mb-6 p-4 bg-ivory rounded-lg border border-gold/20 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-charcoal">Executive Debrief</p>
-                      <p className="text-xs text-gray-warm">Mark as complete after the client debrief meeting to unlock Wave 2 release.</p>
-                    </div>
+            <div className="flex items-center gap-2 mb-4">
+              <svg className="w-5 h-5 text-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+              </svg>
+              <h3 className="font-display text-lg font-bold text-teal">Final Deliverables</h3>
+              {finalPdfOutputs.length > 0 && finalPdfOutputs.every(o => o.final_pdf_approved) && (
+                <span className="text-xs font-semibold text-green bg-green/10 px-2 py-0.5 rounded-full ml-auto">All Approved</span>
+              )}
+            </div>
+            <div className="space-y-2">
+              {finalPdfOutputs.map(output => {
+                const isExpanded = pocExpandedPhases.has(-(output.output_number + 100))
+                const blobKey = `final_${output.id}`
+                return (
+                  <div key={output.id} className="border border-gray-light rounded-lg overflow-hidden">
+                    {/* Collapsed row */}
                     <button
-                      onClick={markDebriefComplete}
-                      disabled={debriefLoading}
-                      className="px-4 py-2 bg-teal text-white text-sm font-semibold rounded-lg hover:bg-teal/90 disabled:opacity-50"
+                      onClick={() => {
+                        setPocExpandedPhases(prev => {
+                          const next = new Set(prev)
+                          const key = -(output.output_number + 100)
+                          if (next.has(key)) next.delete(key)
+                          else {
+                            next.add(key)
+                            // Pre-fetch blob URL for iframe
+                            if (output.final_pdf_preview_url && !blobUrlsRef.current[blobKey]) {
+                              fetchPdfBlob(output.final_pdf_preview_url, blobKey)
+                            }
+                          }
+                          return next
+                        })
+                      }}
+                      className="w-full flex items-center gap-3 py-3 px-4 bg-ivory hover:bg-ivory/80 transition-colors"
                     >
-                      {debriefLoading ? 'Saving...' : 'Mark Debrief Complete'}
+                      <span className="text-xs font-bold text-teal bg-teal/10 w-6 h-6 rounded flex items-center justify-center flex-shrink-0">
+                        PDF
+                      </span>
+                      <span className="text-sm font-semibold text-charcoal flex-1 text-left">{output.output_name}</span>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                        output.final_pdf_approved ? 'bg-green/10 text-green' : 'bg-amber/10 text-amber'
+                      }`}>
+                        {output.final_pdf_approved ? 'Approved' : 'Pending Review'}
+                      </span>
+                      <svg className={`w-4 h-4 text-gray-warm transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
                     </button>
+                    {/* Expanded preview */}
+                    {isExpanded && (
+                      <div className="p-4 border-t border-gray-light">
+                        {pdfBlobUrls[blobKey] ? (
+                          <iframe
+                            src={pdfBlobUrls[blobKey]}
+                            className="w-full rounded-lg border border-gray-light"
+                            style={{ height: '600px' }}
+                            title={`${output.output_name} PDF preview`}
+                          />
+                        ) : (
+                          <div className="flex items-center justify-center h-32 text-gray-warm text-sm">
+                            <span className="w-4 h-4 border-2 border-teal border-t-transparent rounded-full animate-spin mr-2" />
+                            Loading preview…
+                          </div>
+                        )}
+                        <div className="flex items-center gap-3 mt-3">
+                          {!output.final_pdf_approved && (
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation()
+                                try {
+                                  await apiPatch(`/api/phase-output-content/${output.id}`, { final_pdf_approved: true })
+                                  toast(`Approved: ${output.output_name}`, 'success')
+                                  const refreshed = await apiGet<{ outputs: PhaseOutputContent[] }>(`/api/engagements/${data.id}/phase-output-content`)
+                                  setPhaseOutputContent(refreshed.outputs || [])
+                                } catch (err: unknown) {
+                                  toast((err as Error).message || 'Approval failed', 'error')
+                                }
+                              }}
+                              className="px-4 py-2 bg-green text-white text-sm font-semibold rounded-lg hover:bg-green/90"
+                            >
+                              Approve
+                            </button>
+                          )}
+                          {output.final_pdf_preview_url && (
+                            <a
+                              href={pdfBlobUrls[blobKey] || '#'}
+                              download={`${output.output_name}.pdf`}
+                              className="px-4 py-2 bg-white text-teal text-sm font-semibold rounded-lg border border-teal hover:bg-teal/5"
+                            >
+                              Download PDF
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-                {data.debrief_complete && (
-                  <div className="mb-6 p-4 bg-green/5 rounded-lg border border-green/20 flex items-center gap-2">
-                    <svg className="w-5 h-5 text-green" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                    <span className="text-sm font-semibold text-green">Debrief Completed</span>
-                  </div>
-                )}
+                )
+              })}
 
-                {/* Wave 2 */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-display text-lg font-bold text-teal">Wave 2 — Post-Debrief Materials</h3>
-                    {showReleaseWave2 && (
-                      <button
-                        onClick={releaseWave2}
-                        disabled={releasingWave === 2}
-                        className="px-4 py-2 bg-crimson text-white text-sm font-semibold rounded-lg hover:bg-crimson/90 disabled:opacity-50"
+              {/* XLSX Workbook row */}
+              {xlsxOutput && (
+                <div className="border border-gray-light rounded-lg overflow-hidden">
+                  <div className="flex items-center gap-3 py-3 px-4 bg-ivory">
+                    <span className="text-xs font-bold text-green bg-green/10 w-6 h-6 rounded flex items-center justify-center flex-shrink-0">
+                      X
+                    </span>
+                    <span className="text-sm font-semibold text-charcoal flex-1">Profit Leak Quantification Workbook</span>
+                    {xlsxOutput.xlsx_link && (
+                      <a
+                        href={xlsxOutput.xlsx_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal text-white text-xs font-semibold rounded-lg hover:bg-teal/90 transition-colors"
                       >
-                        {releasingWave === 2 ? 'Releasing...' : 'Release Presentation + Retainer Proposal'}
-                      </button>
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                        </svg>
+                        Open in Excel
+                      </a>
                     )}
-                    {allWave2Released && (
-                      <span className="text-xs font-semibold text-gold bg-gold/10 px-3 py-1 rounded-full">Wave 2 Released</span>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    {wave2.map(renderDeliverableRow)}
                   </div>
                 </div>
-              </>
-            )}
+              )}
+            </div>
           </section>
         )
       })()}

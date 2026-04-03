@@ -37,6 +37,7 @@ class UpsertMdBody(BaseModel):
 
 class PatchOutputBody(BaseModel):
     pdf_approved: Optional[bool] = None
+    final_pdf_approved: Optional[bool] = None
     status: Optional[str] = None
 
 
@@ -240,6 +241,14 @@ async def list_outputs(
                             row[f"{path_field}_url"] = None
                 else:
                     row[f"{path_field}_url"] = None
+
+            # Final PDF preview URL — proxy through backend for iframe embedding
+            final_pdf = row.get("final_pdf_path")
+            if final_pdf and "/" not in final_pdf and "." not in final_pdf:
+                row["final_pdf_preview_url"] = f"{api_base}/api/engagements/{engagement_id}/outputs/{row['id']}/final-pdf-preview"
+            else:
+                row["final_pdf_preview_url"] = None
+
             latest.append(row)
 
     return {"outputs": latest, "count": len(latest)}
@@ -681,6 +690,8 @@ async def patch_output(
 
     if body.pdf_approved is not None:
         update_data["pdf_approved"] = body.pdf_approved
+    if body.final_pdf_approved is not None:
+        update_data["final_pdf_approved"] = body.final_pdf_approved
     if body.status is not None:
         if body.status not in ("draft", "in_review", "approved", "delivered"):
             raise HTTPException(status_code=400, detail=f"Invalid status: {body.status}")
