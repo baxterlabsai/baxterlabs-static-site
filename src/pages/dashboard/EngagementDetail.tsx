@@ -1741,7 +1741,24 @@ export default function EngagementDetail() {
       {/* ── FINAL DELIVERABLES RIBBON ─────────────────────────────────── */}
       {/* Uses Drive PDF files as source of truth (not DB final_pdf_path) */}
       {data && (() => {
-        const pdfFiles = driveDeliverablesStatus.pdf_files
+        // Sort PDFs in canonical deliverable order
+        const PDF_ORDER: Record<string, number> = {
+          executive_summary: 1,
+          full_diagnostic: 2,
+          diagnostic_report: 2,
+          implementation_roadmap: 3,
+          presentation_deck: 4,
+          retainer_proposal: 5,
+          phase_2_retainer: 5,
+        }
+        const getPdfSortKey = (name: string) => {
+          const lower = name.toLowerCase().replace(/[^a-z0-9]/g, '_')
+          for (const [key, order] of Object.entries(PDF_ORDER)) {
+            if (lower.includes(key)) return order
+          }
+          return 99
+        }
+        const pdfFiles = [...driveDeliverablesStatus.pdf_files].sort((a, b) => getPdfSortKey(a.name) - getPdfSortKey(b.name))
         if (pdfFiles.length === 0) return null
 
         // Also get the XLSX workbook row (output with xlsx_link, any phase)

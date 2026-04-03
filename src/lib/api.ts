@@ -111,7 +111,9 @@ export async function apiDelete<T = unknown>(path: string): Promise<T> {
 
 export async function apiFetchBlob(url: string): Promise<Blob> {
   const headers = await getAuthHeaders()
-  const res = await fetch(url, { headers })
+  // Support both relative paths (/api/...) and full URLs (https://...)
+  const fullUrl = url.startsWith('/') ? `${API_URL}${url}` : url
+  const res = await fetch(fullUrl, { headers })
 
   if (res.status === 401) {
     window.location.href = '/dashboard/login'
