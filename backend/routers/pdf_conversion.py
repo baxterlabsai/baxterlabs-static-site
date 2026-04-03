@@ -1,4 +1,4 @@
-"""Router for deliverable pipeline — PDF conversion, send deliverables, archive.
+"""Router for deliverable pipeline — PDF conversion, send deliverables.
 
 PDF CONVERSION STRATEGY: Uses Google Drive's built-in export-as-PDF instead of
 LibreOffice.  The 512MB Render Starter instance cannot run LibreOffice (OOM even
@@ -11,8 +11,7 @@ import gc
 import io
 import logging
 import os
-import zipfile
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -30,7 +29,6 @@ from services.google_drive_engagement import (
     export_file_as_pdf,
     list_files_in_folder,
     upload_file_to_drive_folder,
-    download_all_files_from_folder,
 )
 from services.email_service import get_email_service
 
@@ -358,105 +356,4 @@ async def send_deliverables(
         "success": True,
         "to_email": client_email,
         "attachment_count": len(attachments),
-    }
-
-
-# ============================================================================
-# POST /api/engagements/{id}/archive
-# ZIP all Drive files, upload to Supabase storage, create follow-ups, close.
-# ============================================================================
-@router.post("/engagements/{engagement_id}/archive")
-async def archive_engagement(
-    engagement_id: str,
-    user: dict = Depends(verify_partner_auth),
-):
-    """Archive engagement: ZIP Drive files, upload to storage, create follow-ups, close."""
-    eng = get_engagement_by_id(engagement_id)
-    if not eng:
-        raise HTTPException(status_code=404, detail="Engagement not found")
-
-    if eng.get("status") not in ("deliverables_sent", "phase_8"):
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot archive — engagement status is '{eng.get('status')}', expected 'deliverables_sent' or 'phase_8'",
-        )
-
-    client = eng.get("clients", {})
-    company_name = client.get("company_name", "engagement")
-    safe_company = company_name.replace(" ", "_").replace("/", "_")
-    now = datetime.now(timezone.utc)
-    zip_filename = f"{safe_company}_{now.strftime('%Y-%m')}.zip"
-
-    sb = get_supabase()
-
-    # 1. Download all files from the engagement Drive folder
-    root_folder_id = eng.get("drive_folder_id")
-    if not root_folder_id:
-        raise HTTPException(status_code=400, detail="No Drive folder configured for this engagement")
-
-    logger.info("Downloading all files from Drive folder %s for archive", root_folder_id)
-    all_files = await download_all_files_from_folder(root_folder_id)
-
-    if not all_files:
-        raise HTTPException(status_code=400, detail="No files found in Drive folder to archive")
-
-    # 2. Create ZIP archive
-    zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
-        for f in all_files:
-            zf.writestr(f["path"], f["bytes"])
-
-    zip_bytes = zip_buffer.getvalue()
-    logger.info("Created ZIP archive: %s (%d bytes, %d files)", zip_filename, len(zip_bytes), len(all_files))
-
-    # 3. Upload ZIP to Supabase storage bucket 'archive'
-    archive_path = f"{engagement_id}/{zip_filename}"
-    try:
-        sb.storage.from_("archive").upload(
-            archive_path,
-            zip_bytes,
-            {"content-type": "application/zip"},
-        )
-    except Exception as e:
-        logger.error("Archive upload failed: %s", e)
-        raise HTTPException(status_code=500, detail=f"Archive upload failed: {e}")
-
-    # 4. Update engagement to closed
-    sb.table("engagements").update({
-        "status": "closed",
-        "archived_at": now.isoformat(),
-        "updated_at": now.isoformat(),
-    }).eq("id", engagement_id).execute()
-
-    # 5. Create follow-up records (30/60/90 days)
-    follow_up_ids: List[str] = []
-    client_id = eng.get("client_id")
-    for days in (30, 60, 90):
-        scheduled = (now + timedelta(days=days)).date().isoformat()
-        row = {
-            "engagement_id": engagement_id,
-            "client_id": client_id,
-            "touchpoint": f"{days}_day_follow_up",
-            "scheduled_date": scheduled,
-            "status": "pending",
-            "subject_template": f"BaxterLabs Advisory — {days}-Day Follow-Up — {company_name}",
-            "body_template": f"{days}-day follow-up for {company_name} diagnostic engagement.",
-        }
-        result = sb.table("follow_up_sequences").insert(row).execute()
-        if result.data:
-            follow_up_ids.append(result.data[0]["id"])
-
-    log_activity(engagement_id, "partner", "engagement_archived", {
-        "archive_path": archive_path,
-        "zip_size_bytes": len(zip_bytes),
-        "file_count": len(all_files),
-        "follow_up_ids": follow_up_ids,
-    })
-
-    return {
-        "success": True,
-        "archive_path": archive_path,
-        "file_count": len(all_files),
-        "zip_size_bytes": len(zip_bytes),
-        "follow_up_ids": follow_up_ids,
     }

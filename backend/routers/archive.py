@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import io
 import json
 import logging
+import os
 import re as _re
+import tempfile
 from datetime import datetime, timezone
 from typing import List, Optional
 
@@ -348,29 +349,39 @@ async def archive_engagement(
             if drive_files:
                 import zipfile
 
-                zip_buffer = io.BytesIO()
-                with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
-                    for f in drive_files:
-                        zf.writestr(f["path"], f["bytes"])
-                zip_buffer.seek(0)
-                zip_bytes = zip_buffer.getvalue()
-
                 client = engagement.get("clients", {})
                 company_slug = _re.sub(r'[^a-z0-9]+', '_', (client.get("company_name") or "unknown").lower()).strip('_')
                 zip_date = datetime.now(timezone.utc).strftime("%Y-%m")
                 zip_path = f"{engagement_id}/{company_slug}_{zip_date}.zip"
 
-                sb.storage.from_("archive").upload(
-                    zip_path, zip_bytes, {"content-type": "application/zip"},
-                )
+                # Write ZIP to /tmp to avoid OOM on 512MB instance
+                drive_file_count = len(drive_files)
+                tmp_fd, tmp_zip_path = tempfile.mkstemp(suffix=".zip", prefix="archive_")
+                os.close(tmp_fd)
+                try:
+                    with zipfile.ZipFile(tmp_zip_path, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
+                        for f in drive_files:
+                            zf.writestr(f["path"], f["bytes"])
+                            f["bytes"] = b""
+                    drive_files.clear()
+
+                    zip_size = os.path.getsize(tmp_zip_path)
+                    with open(tmp_zip_path, "rb") as fh:
+                        sb.storage.from_("archive").upload(
+                            zip_path, fh.read(), {"content-type": "application/zip"},
+                        )
+                finally:
+                    if os.path.exists(tmp_zip_path):
+                        os.unlink(tmp_zip_path)
+
                 logger.info(
                     "Archived %d Drive files (%d bytes) to archive/%s",
-                    len(drive_files), len(zip_bytes), zip_path,
+                    drive_file_count, zip_size, zip_path,
                 )
                 log_activity(engagement_id, "system", "drive_files_archived", {
-                    "file_count": len(drive_files),
+                    "file_count": drive_file_count,
                     "zip_path": zip_path,
-                    "zip_size": len(zip_bytes),
+                    "zip_size": zip_size,
                 })
 
             deleted = await delete_drive_folder(drive_folder_id)
@@ -592,10 +603,12 @@ async def archive_engagement(
     # ------------------------------------------------------------------
     # 8. Create post-engagement follow-up sequence
     # ------------------------------------------------------------------
+    follow_up_ids: List[str] = []
     try:
         from services.follow_up_service import create_follow_up_sequence
         client = engagement.get("clients", {})
-        create_follow_up_sequence(engagement, client)
+        created = create_follow_up_sequence(engagement, client)
+        follow_up_ids = [r["id"] for r in created if r.get("id")]
     except Exception as exc:
         logger.warning(
             "Failed to create follow-up sequence for engagement %s: %s",
@@ -610,4 +623,5 @@ async def archive_engagement(
         "success": True,
         "message": f"Engagement archived. {files_moved_count} files moved to archive.",
         "manifest_path": f"{engagement_id}/completion_manifest.json",
+        "follow_up_ids": follow_up_ids,
     }
