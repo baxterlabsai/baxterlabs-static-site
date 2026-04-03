@@ -329,6 +329,82 @@ async def download_file_by_id(
         return None
 
 
+async def export_file_as_pdf(file_id: str) -> Optional[bytes]:
+    """Export a Drive file (uploaded DOCX/PPTX/XLSX) as PDF via Google's converter.
+
+    Google Drive can export any uploaded Office file as PDF without needing
+    LibreOffice on the server.  Returns PDF bytes, or None on failure.
+    Never raises — all exceptions are caught and logged.
+    """
+    try:
+        service = _get_drive_service()
+        # For uploaded Office files, we need to use export with the Google Docs
+        # editor MIME type. But files uploaded as-is (not converted to Google
+        # Docs) don't support export(). Instead, we use get_media() with
+        # alt=media after converting.  The simplest approach: copy the file as
+        # a Google Doc/Slides, export that copy as PDF, then delete the copy.
+
+        # 1. Get the file's MIME type to determine the Google Docs equivalent
+        meta = service.files().get(
+            fileId=file_id,
+            fields="name, mimeType",
+            supportsAllDrives=True,
+        ).execute()
+        original_mime = meta.get("mimeType", "")
+        fname = meta.get("name", "file")
+
+        # Map Office MIME types to Google editor types
+        google_mime_map = {
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "application/vnd.google-apps.document",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation": "application/vnd.google-apps.presentation",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "application/vnd.google-apps.spreadsheet",
+            "application/msword": "application/vnd.google-apps.document",
+            "application/vnd.ms-powerpoint": "application/vnd.google-apps.presentation",
+            "application/vnd.ms-excel": "application/vnd.google-apps.spreadsheet",
+        }
+
+        google_mime = google_mime_map.get(original_mime)
+        if not google_mime:
+            # Already a Google Docs native type — export directly
+            if original_mime.startswith("application/vnd.google-apps"):
+                pdf_bytes = service.files().export(
+                    fileId=file_id,
+                    mimeType="application/pdf",
+                ).execute()
+                logger.info(f"Exported native Google file '{fname}' as PDF ({len(pdf_bytes)} bytes)")
+                return pdf_bytes
+            logger.warning(f"Cannot export '{fname}' (MIME: {original_mime}) as PDF — unsupported type")
+            return None
+
+        # 2. Copy the file as a Google Docs editor type
+        copy_meta = service.files().copy(
+            fileId=file_id,
+            body={"name": f"_pdf_export_{fname}", "mimeType": google_mime},
+            fields="id",
+            supportsAllDrives=True,
+        ).execute()
+        copy_id = copy_meta["id"]
+
+        try:
+            # 3. Export the copy as PDF
+            pdf_bytes = service.files().export(
+                fileId=copy_id,
+                mimeType="application/pdf",
+            ).execute()
+            logger.info(f"Exported '{fname}' as PDF via Google Drive ({len(pdf_bytes)} bytes)")
+            return pdf_bytes
+        finally:
+            # 4. Always delete the temporary copy
+            try:
+                service.files().delete(fileId=copy_id, supportsAllDrives=True).execute()
+            except Exception:
+                logger.warning(f"Failed to delete temp copy {copy_id} for '{fname}'")
+
+    except Exception as e:
+        logger.error(f"Drive PDF export failed for file {file_id}: {e}")
+        return None
+
+
 async def delete_drive_file(file_id: str) -> bool:
     """Delete a file from Drive by file ID. Returns True on success, False on failure.
 
