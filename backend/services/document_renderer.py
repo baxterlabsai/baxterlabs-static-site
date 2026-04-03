@@ -385,32 +385,37 @@ def _replace_text_in_element(element, old: str, new: str) -> None:
 
 def _replace_cover_and_footer_placeholders(
     doc: Document, client_name: str, engagement_date: str,
+    lead_partner_name: str = "George DeVries",
+    second_partner_name: str = "Alfonso Cordon",
 ) -> None:
-    """Replace [CLIENT COMPANY NAME] and [ENGAGEMENT DATE] in the entire document.
+    """Replace bracket placeholders in the entire document (cover page, body, footers).
 
-    This covers the cover page paragraphs, footer XML, and any remaining instances.
+    Covers: [CLIENT COMPANY NAME], [ENGAGEMENT DATE], [LEAD_PARTNER_NAME],
+    [SECOND_PARTNER_NAME], and shorthand variants.
     """
     body = doc.element.body
 
+    replacements = {
+        "[CLIENT COMPANY NAME]": client_name,
+        "[COMPANY NAME]": client_name,
+        "[ENGAGEMENT DATE]": engagement_date,
+        "[DATE]": engagement_date,
+        "[LEAD_PARTNER_NAME]": lead_partner_name,
+        "[SECOND_PARTNER_NAME]": second_partner_name,
+    }
+
     # Replace in all body text elements
-    _replace_text_in_element(body, "[CLIENT COMPANY NAME]", client_name)
-    _replace_text_in_element(body, "[COMPANY NAME]", client_name)
-    _replace_text_in_element(body, "[ENGAGEMENT DATE]", engagement_date)
-    _replace_text_in_element(body, "[DATE]", engagement_date)
+    for placeholder, value in replacements.items():
+        _replace_text_in_element(body, placeholder, value)
 
     # Replace in headers and footers (separate XML parts)
     for section in doc.sections:
         for rel_type in ("header", "footer"):
             try:
-                if rel_type == "header":
-                    part = section.header
-                else:
-                    part = section.footer
+                part = section.header if rel_type == "header" else section.footer
                 if part and part._element is not None:
-                    _replace_text_in_element(part._element, "[CLIENT COMPANY NAME]", client_name)
-                    _replace_text_in_element(part._element, "[COMPANY NAME]", client_name)
-                    _replace_text_in_element(part._element, "[ENGAGEMENT DATE]", engagement_date)
-                    _replace_text_in_element(part._element, "[DATE]", engagement_date)
+                    for placeholder, value in replacements.items():
+                        _replace_text_in_element(part._element, placeholder, value)
             except Exception:
                 pass
 
@@ -634,6 +639,8 @@ def render_docx(
     client_name: str,
     engagement_date: str,
     output_number: int,
+    lead_partner_name: str = "George DeVries",
+    second_partner_name: str = "Alfonso Cordon",
 ) -> bytes:
     """Render a .docx by extracting the template cover page and appending markdown content.
 
@@ -650,7 +657,7 @@ def render_docx(
     body = doc.element.body
 
     # Step 1: Replace placeholders on cover page and in footer
-    _replace_cover_and_footer_placeholders(doc, client_name, engagement_date)
+    _replace_cover_and_footer_placeholders(doc, client_name, engagement_date, lead_partner_name, second_partner_name)
 
     # Step 2: Find cover page boundary
     cover_boundary = _find_cover_boundary(body)
@@ -1044,6 +1051,24 @@ async def render_engagement_deliverables(engagement_id: str) -> dict:
         except (ValueError, TypeError):
             engagement_date = str(eng["start_date"])
 
+    # Look up partner names from pipeline_partners (both appear on cover pages)
+    lead_partner_name = "George DeVries"
+    second_partner_name = "Alfonso Cordon"
+    try:
+        partners = sb.table("pipeline_partners").select("name").order("created_at").execute()
+        if partners.data:
+            partner_lead = eng.get("partner_lead", "")
+            for p in partners.data:
+                if p["name"] == partner_lead:
+                    lead_partner_name = p["name"]
+                    break
+            for p in partners.data:
+                if p["name"] != lead_partner_name:
+                    second_partner_name = p["name"]
+                    break
+    except Exception as e:
+        logger.warning("Failed to look up partners: %s — using defaults", e)
+
     # List .md files in the deliverables folder
     md_files = await list_files_in_folder(deliverables_folder_id, extension=".md")
     if not md_files:
@@ -1087,6 +1112,7 @@ async def render_engagement_deliverables(engagement_id: str) -> dict:
             rendered_bytes = render_docx(
                 template_path, markdown_content, engagement_id,
                 client_name, engagement_date, output_number,
+                lead_partner_name, second_partner_name,
             )
         except Exception as e:
             logger.error("Render failed for %s: %s", output_name, e, exc_info=True)
