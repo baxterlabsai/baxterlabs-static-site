@@ -339,7 +339,6 @@ export default function EngagementDetail() {
   const [qcResults, setQcResults] = useState<Record<string, { status: string; figures_checked: number; corrections_made: number; corrections: Array<{ location: string; was: string; now: string }>; re_render_needed?: boolean }>>({})
   const [expandedQcId, setExpandedQcId] = useState<string | null>(null)
   const [copiedEdit, setCopiedEdit] = useState<string | null>(null)
-  const [copiedSendDeliverables, setCopiedSendDeliverables] = useState(false)
   const [viewingVersionsId, setViewingVersionsId] = useState<string | null>(null)
   const [versionHistory, setVersionHistory] = useState<Array<{ id: string; version: number; status: string; content_md: string | null; created_at: string }>>([])
   const [viewingVersionContent, setViewingVersionContent] = useState<string | null>(null)
@@ -729,22 +728,6 @@ export default function EngagementDetail() {
     setTimeout(() => setCopiedDeliveryCmd(null), 2000)
   }
 
-  const copySendDeliverablesCommand = () => {
-    const clientName = data?.clients?.company_name || id
-    const cmd = `/send-deliverables ${clientName}`
-    navigator.clipboard.writeText(cmd).catch(() => {
-      const ta = document.createElement('textarea')
-      ta.value = cmd
-      document.body.appendChild(ta)
-      ta.select()
-      document.execCommand('copy')
-      document.body.removeChild(ta)
-    })
-    setCopiedSendDeliverables(true)
-    toast('Copied send-deliverables command')
-    setTimeout(() => setCopiedSendDeliverables(false), 2000)
-  }
-
   const resendInterviewEmail = async (contactId: string, contactName: string, contactEmail: string) => {
     if (!id) return
     setResendingInterviewId(contactId)
@@ -841,17 +824,6 @@ export default function EngagementDetail() {
           <p className="text-gray-warm text-sm">{client.primary_contact_name} · {nextPhase ? `Phase ${nextPhase} in Progress` : 'Phases Complete'}</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {!isClosed && (
-            <button
-              onClick={copySendDeliverablesCommand}
-              className={`inline-flex items-center gap-1.5 px-4 py-2.5 border text-sm font-semibold rounded-lg transition-colors ${
-                copiedSendDeliverables ? 'border-teal bg-teal/10 text-teal' : 'border-teal text-teal hover:bg-teal/5'
-              }`}
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
-              {copiedSendDeliverables ? 'Copied \u2713' : 'Send Deliverables'}
-            </button>
-          )}
           {!isClosed && data.status === 'discovery_done' && (
             <Link to={`/dashboard/engagement/${id}/start`} className="px-5 py-2.5 bg-crimson text-white font-semibold rounded-lg hover:bg-crimson/90 text-sm">
               Start Engagement &rarr;
@@ -1115,7 +1087,7 @@ export default function EngagementDetail() {
             {/* Create PDFs — visible only after PPTX detected in Drive */}
             {completedPhases.includes(7) && data && (() => {
               const deckDone = driveDeliverablesStatus.has_pptx
-              const pdfsDone = phaseOutputContent.some(o => o.phase_number === 5 && o.final_pdf_path)
+              const pdfsDone = phaseOutputContent.some(o => o.final_pdf_path)
               if (!deckDone) return null
               return (
                 <button
@@ -1171,7 +1143,7 @@ export default function EngagementDetail() {
 
             {/* Send Deliverables — visible after all final PDFs are approved */}
             {data && (() => {
-              const finalPdfOutputs = phaseOutputContent.filter(o => o.phase_number === 5 && o.final_pdf_path)
+              const finalPdfOutputs = phaseOutputContent.filter(o => o.final_pdf_path)
               const allApproved = finalPdfOutputs.length > 0 && finalPdfOutputs.every(o => o.final_pdf_approved)
               const alreadySent = !!data.deliverables_sent_at
               if (!allApproved && !alreadySent) return null
@@ -1394,25 +1366,6 @@ export default function EngagementDetail() {
                           </div>
                         )}
 
-                        {/* Send to Client button for Phase 5 when all deliverables approved */}
-                        {phase === 5 && pocOutputs.length > 0 && (() => {
-                          const allApproved = pocOutputs.every(o => o.status === 'approved')
-                          if (!allApproved) return null
-                          return (
-                            <div className="px-4 py-3 bg-green/5 border-b border-green/20 flex items-center justify-between">
-                              <p className="text-sm font-semibold text-green">All deliverables approved</p>
-                              <button
-                                onClick={copySendDeliverablesCommand}
-                                className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-semibold transition-colors ${
-                                  copiedSendDeliverables ? 'bg-teal/10 text-teal' : 'bg-teal text-white hover:bg-teal/90'
-                                }`}
-                              >
-                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
-                                {copiedSendDeliverables ? 'Copied!' : 'Copy Send to Client Command'}
-                              </button>
-                            </div>
-                          )
-                        })()}
 
                         {/* Drive-sourced outputs */}
                         {drivePhaseOutputs.length > 0 && (
@@ -1819,11 +1772,11 @@ export default function EngagementDetail() {
       {/* ── FINAL DELIVERABLES RIBBON ─────────────────────────────────── */}
       {/* DO NOT remove — replaces the legacy Wave 1/Wave 2 deliverables section */}
       {data && (() => {
-        const finalPdfOutputs = phaseOutputContent.filter(o => o.phase_number === 5 && o.final_pdf_path)
+        const finalPdfOutputs = phaseOutputContent.filter(o => o.final_pdf_path)
         if (finalPdfOutputs.length === 0) return null
 
-        // Also get the XLSX workbook row (output with xlsx_link)
-        const xlsxOutput = phaseOutputContent.find(o => o.phase_number === 5 && o.xlsx_link)
+        // Also get the XLSX workbook row (output with xlsx_link, any phase)
+        const xlsxOutput = phaseOutputContent.find(o => o.xlsx_link)
 
         return (
           <section className="bg-white rounded-lg border border-gray-light p-5 mb-6">

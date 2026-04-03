@@ -170,12 +170,13 @@ def _update_final_pdf_path(sb, engagement_id: str, source_filename: str, pdf_dri
     """Find the phase_output_content row matching this source file and set final_pdf_path.
 
     Matches by checking if source_filename appears in docx_path or pptx_path.
+    Searches ALL phases — deliverables are stored under their original phase number
+    (1, 2, 3, 4, etc.), not grouped under phase 5.
     """
     rows = (
         sb.table("phase_output_content")
-        .select("id, docx_path, pptx_path, output_name")
+        .select("id, phase_number, docx_path, pptx_path, output_name")
         .eq("engagement_id", engagement_id)
-        .eq("phase_number", 5)
         .order("version", desc=True)
         .execute()
     )
@@ -265,13 +266,13 @@ async def send_deliverables(
 
     sb = get_supabase()
 
-    # Get final PDF deliverables (Phase 5 outputs with final_pdf_path)
+    # Get final PDF deliverables (any phase with final_pdf_path populated)
     pdf_rows = (
         sb.table("phase_output_content")
-        .select("id, output_name, output_number, final_pdf_path")
+        .select("id, output_name, output_number, phase_number, final_pdf_path")
         .eq("engagement_id", engagement_id)
-        .eq("phase_number", 5)
         .not_.is_("final_pdf_path", "null")
+        .order("phase_number")
         .order("output_number")
         .execute()
     )
@@ -299,13 +300,11 @@ async def send_deliverables(
                 "mimetype": "application/pdf",
             })
 
-    # Also get the XLSX workbook if available
-    # Check phase_output_content for xlsx first, then engagement-level
+    # Also get the XLSX workbook if available (check any phase)
     xlsx_rows = (
         sb.table("phase_output_content")
         .select("xlsx_path, xlsx_link, output_name")
         .eq("engagement_id", engagement_id)
-        .eq("phase_number", 5)
         .not_.is_("xlsx_path", "null")
         .order("version", desc=True)
         .limit(1)
