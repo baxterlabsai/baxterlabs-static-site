@@ -1,9 +1,20 @@
-"""Router for deliverable pipeline — PDF conversion, send deliverables, archive."""
+"""Router for deliverable pipeline — PDF conversion, send deliverables, archive.
+
+MEMORY SAFETY: The convert-pdfs endpoint runs on a 512MB Render Starter instance.
+LibreOffice needs ~200-300MB to launch.  NEVER hold multiple file byte-arrays in
+memory simultaneously.  Process one file at a time, write to disk, and clean up
+before starting the next file.  Skip PPTX conversion entirely (too large for this
+instance — handled by Cowork instead).
+"""
 from __future__ import annotations
 
+import gc
 import io
 import logging
 import os
+import shutil
+import subprocess
+import tempfile
 import zipfile
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
@@ -20,12 +31,10 @@ from services.supabase_client import (
 )
 from services.google_drive_engagement import (
     download_file_by_id,
-    download_file_by_name,
     list_files_in_folder,
     upload_file_to_drive_folder,
     download_all_files_from_folder,
 )
-from services.pdf_converter import convert_to_pdf, ConversionError
 from services.gmail_service import create_gmail_draft_with_attachments
 
 logger = logging.getLogger("baxterlabs.pdf_conversion")
@@ -82,14 +91,16 @@ async def deliverables_status(
 
 # ============================================================================
 # POST /api/engagements/{id}/convert-pdfs
-# Download DOCX/PPTX from Drive 04_Deliverables, convert to PDF, upload back.
+# Convert DOCX files to PDF one at a time using disk-based temp files.
+# PPTX is SKIPPED (too large for 512MB instance) — look for existing deck PDF
+# that Cowork uploaded instead.
 # ============================================================================
 @router.post("/engagements/{engagement_id}/convert-pdfs")
 async def convert_pdfs(
     engagement_id: str,
     user: dict = Depends(verify_partner_auth),
 ):
-    """Convert all DOCX and PPTX files in 04_Deliverables to PDF."""
+    """Convert DOCX files in 04_Deliverables to PDF. Skips PPTX (handled by Cowork)."""
     eng = get_engagement_by_id(engagement_id)
     if not eng:
         raise HTTPException(status_code=404, detail="Engagement not found")
@@ -100,76 +111,129 @@ async def convert_pdfs(
 
     # List all files in the deliverables folder
     all_files = await list_files_in_folder(folder_id)
-    convertible = [
-        f for f in all_files
-        if f["name"].lower().endswith((".docx", ".pptx"))
-    ]
 
-    if not convertible:
+    # Separate DOCX (convert), PPTX (skip), and existing PDFs (link deck)
+    docx_files = [f for f in all_files if f["name"].lower().endswith(".docx")]
+    pptx_files = [f for f in all_files if f["name"].lower().endswith(".pptx")]
+    existing_pdfs = {f["name"]: f for f in all_files if f["name"].lower().endswith(".pdf")}
+
+    if not docx_files and not pptx_files:
         raise HTTPException(status_code=400, detail="No DOCX or PPTX files found in deliverables folder")
 
     sb = get_supabase()
-    results: List[dict] = []
-    errors: List[dict] = []
+    converted: List[dict] = []
+    skipped: List[str] = []
+    linked_existing: List[str] = []
+    failed: List[dict] = []
 
-    for drive_file in convertible:
+    # --- Process DOCX files one at a time (disk-based, memory-safe) ---
+    for drive_file in docx_files:
         fname = drive_file["name"]
+        tmp_dir = None
         try:
-            # 1. Download from Drive
+            # 1. Download to disk (not memory)
+            tmp_dir = tempfile.mkdtemp(prefix="bl_pdf_")
+            source_path = os.path.join(tmp_dir, fname)
+
             source_bytes = await download_file_by_id(drive_file["id"])
             if not source_bytes:
-                errors.append({"file": fname, "error": "Download failed"})
+                failed.append({"file": fname, "error": "Download failed"})
                 continue
 
-            # 2. Convert to PDF via LibreOffice
-            ext = os.path.splitext(fname)[1].lower()
-            pdf_bytes = await convert_to_pdf(source_bytes, ext)
+            with open(source_path, "wb") as f:
+                f.write(source_bytes)
+            del source_bytes  # release memory immediately
+            gc.collect()
 
-            # 3. Upload PDF back to same Drive folder
+            # 2. Convert via LibreOffice with timeout protection
+            result = subprocess.run(
+                ["soffice", "--headless", "--convert-to", "pdf", "--outdir", tmp_dir, source_path],
+                timeout=120,
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                logger.error("LibreOffice failed for %s: %s", fname, result.stderr)
+                failed.append({"file": fname, "error": f"LibreOffice exit code {result.returncode}"})
+                continue
+
             pdf_filename = os.path.splitext(fname)[0] + ".pdf"
+            pdf_path = os.path.join(tmp_dir, pdf_filename)
+            if not os.path.exists(pdf_path):
+                failed.append({"file": fname, "error": "LibreOffice produced no output"})
+                continue
+
+            # 3. Read PDF and upload to Drive
+            with open(pdf_path, "rb") as f:
+                pdf_bytes = f.read()
+
             pdf_file_id = await upload_file_to_drive_folder(
                 folder_id, pdf_filename, pdf_bytes, "application/pdf",
             )
+            del pdf_bytes
+            gc.collect()
+
             if not pdf_file_id:
-                errors.append({"file": fname, "error": "PDF upload to Drive failed"})
+                failed.append({"file": fname, "error": "Drive upload failed"})
                 continue
 
-            # 4. Update phase_output_content row — match by docx_path or pptx_path filename
+            # 4. Link to phase_output_content row
             _update_final_pdf_path(sb, engagement_id, fname, pdf_file_id)
 
-            results.append({
-                "source": fname,
-                "pdf": pdf_filename,
-                "drive_file_id": pdf_file_id,
-            })
+            converted.append({"source": fname, "pdf": pdf_filename, "drive_file_id": pdf_file_id})
             logger.info("Converted %s → %s (Drive ID: %s)", fname, pdf_filename, pdf_file_id)
 
-        except ConversionError as e:
-            logger.error("Conversion failed for %s: %s", fname, e)
-            errors.append({"file": fname, "error": str(e)})
+        except subprocess.TimeoutExpired:
+            logger.error("LibreOffice timed out (120s) converting %s", fname)
+            failed.append({"file": fname, "error": "Conversion timed out (120s)"})
         except Exception as e:
             logger.error("Unexpected error converting %s: %s", fname, e, exc_info=True)
-            errors.append({"file": fname, "error": str(e)})
+            failed.append({"file": fname, "error": str(e)})
+        finally:
+            # Always clean up temp files before processing the next file
+            if tmp_dir and os.path.exists(tmp_dir):
+                shutil.rmtree(tmp_dir, ignore_errors=True)
+            gc.collect()
 
-    # Update engagement status
-    if results:
+    # --- Handle PPTX: skip conversion, look for existing deck PDF in Drive ---
+    for pptx_file in pptx_files:
+        pptx_name = pptx_file["name"]
+        skipped.append(pptx_name)
+        logger.info("Skipping PPTX conversion (handled by Cowork): %s", pptx_name)
+
+        # Check if a PDF with the same base name already exists in Drive
+        deck_pdf_name = os.path.splitext(pptx_name)[0] + ".pdf"
+        if deck_pdf_name in existing_pdfs:
+            deck_pdf_id = existing_pdfs[deck_pdf_name]["id"]
+            _update_final_pdf_path(sb, engagement_id, pptx_name, deck_pdf_id)
+            linked_existing.append(deck_pdf_name)
+            logger.info("Found existing deck PDF: %s (Drive ID: %s)", deck_pdf_name, deck_pdf_id)
+
+    # Update engagement status if at least the DOCX conversions succeeded
+    if converted:
         update_engagement_status(engagement_id, "pdfs_complete")
         log_activity(engagement_id, "partner", "pdfs_converted", {
-            "converted_count": len(results),
-            "error_count": len(errors),
-            "files": [r["source"] for r in results],
+            "converted_count": len(converted),
+            "skipped_count": len(skipped),
+            "linked_count": len(linked_existing),
+            "error_count": len(failed),
+            "files": [r["source"] for r in converted],
         })
 
     return {
-        "success": len(results) > 0,
-        "converted": results,
-        "errors": errors,
+        "success": len(converted) > 0,
+        "converted": converted,
+        "skipped": skipped,
+        "linked_existing": linked_existing,
+        "errors": failed,
     }
 
 
 def _update_final_pdf_path(sb, engagement_id: str, source_filename: str, pdf_drive_id: str):
-    """Find the phase_output_content row matching this source file and set final_pdf_path."""
-    # Match by docx_path or pptx_path containing the filename
+    """Find the phase_output_content row matching this source file and set final_pdf_path.
+
+    Matches by checking if source_filename appears in docx_path or pptx_path.
+    """
     rows = (
         sb.table("phase_output_content")
         .select("id, docx_path, pptx_path, output_name")
@@ -188,7 +252,6 @@ def _update_final_pdf_path(sb, engagement_id: str, source_filename: str, pdf_dri
 
         docx = row.get("docx_path") or ""
         pptx = row.get("pptx_path") or ""
-        # Match if the source filename appears in either path
         if source_filename in docx or source_filename in pptx or \
            source_filename == os.path.basename(docx) or source_filename == os.path.basename(pptx):
             sb.table("phase_output_content").update({
