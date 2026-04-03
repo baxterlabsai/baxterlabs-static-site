@@ -1130,7 +1130,7 @@ export default function EngagementDetail() {
               <button
                 onClick={async () => {
                   const folder = data.clients.company_name.replace(/\s+/g, '_') + '_' + new Date(data.start_date || Date.now()).getFullYear()
-                  const cmd = `/baxterlabs-delivery:build-deck ${folder}`
+                  const cmd = `/baxterlabs-delivery:run-phase 7 ${folder}`
                   try {
                     await navigator.clipboard.writeText(cmd)
                   } catch {
