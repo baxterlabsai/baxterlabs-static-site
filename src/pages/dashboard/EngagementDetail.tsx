@@ -321,8 +321,8 @@ export default function EngagementDetail() {
     }
 
     // Phase 7 (Document Packaging) is complete when render has run successfully
-    // Only check if engagement is actually at phase 7+ to avoid stale activity_log entries after reset
-    const hasRendered = (data?.phase ?? 0) >= 7 && (phase7Complete || (data?.activity_log?.some(l => l.action === 'deliverables_rendered') ?? false))
+    // Check local state (current session) OR activity_log (persisted across reloads)
+    const hasRendered = phase7Complete || (data?.activity_log?.some(l => l.action === 'deliverables_rendered') ?? false)
     if (hasRendered && !completed.includes(7)) completed.push(7)
 
     return completed.sort((a, b) => a - b)

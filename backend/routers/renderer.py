@@ -6,7 +6,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 
 from middleware.auth import verify_partner_auth
-from services.supabase_client import get_engagement_by_id
+from services.supabase_client import get_engagement_by_id, get_supabase, log_activity
 from services.document_renderer import render_engagement_deliverables
 
 logger = logging.getLogger("baxterlabs.renderer")
@@ -45,6 +45,20 @@ async def trigger_render(
 
     rendered = result.get("rendered", [])
     skipped = result.get("skipped", [])
+
+    # Advance engagement to deck_complete (Phase 7 DOCX render done, next: Build Deck)
+    if rendered:
+        prev_phase = eng.get("phase", 0)
+        sb = get_supabase()
+        sb.table("engagements").update({
+            "phase": 7,
+            "status": "deck_complete",
+        }).eq("id", engagement_id).execute()
+        log_activity(engagement_id, "system", "phase_advanced", {
+            "from_phase": prev_phase,
+            "to_phase": 7,
+            "new_status": "deck_complete",
+        })
 
     return {
         "success": True,
