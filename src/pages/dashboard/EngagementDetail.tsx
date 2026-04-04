@@ -1105,7 +1105,6 @@ export default function EngagementDetail() {
                 // Phase 5: dropdown with sub-sessions
                 if (isPhase5) {
                   const p5Check = (n: number) => phase5OutputExists(n)
-                  const allP5Done = [1, 2, 3, 4, 5].every(p5Check)
                   return (
                     <div key={num} className="relative">
                       <button
