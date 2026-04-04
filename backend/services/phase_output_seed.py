@@ -34,6 +34,7 @@ PHASE_OUTPUTS_SEED: List[dict] = [
     {"phase": 5, "output_number": 3, "name": "Presentation Deck", "file_prefix": "Presentation_Deck", "file_type": "md", "destination_folder": "04_Deliverables", "is_review_gate": False, "is_client_deliverable": False, "wave": None},
     {"phase": 5, "output_number": 4, "name": "Implementation Roadmap", "file_prefix": "Implementation_Roadmap", "file_type": "md", "destination_folder": "04_Deliverables", "is_review_gate": False, "is_client_deliverable": False, "wave": None},
     {"phase": 5, "output_number": 5, "name": "Phase 2 Retainer Proposal", "file_prefix": "Phase_2_Retainer_Proposal", "file_type": "md", "destination_folder": "04_Deliverables", "is_review_gate": False, "is_client_deliverable": False, "wave": None},
+    {"phase": 5, "output_number": 5, "name": "Phase 2 Retainer Proposal", "file_prefix": "Retainer_Proposal", "file_type": "md", "destination_folder": "04_Deliverables", "is_review_gate": False, "is_client_deliverable": False, "wave": None},
     # Phase 6 — Quality Control [REVIEW GATE]
     {"phase": 6, "output_number": 1, "name": "Citation Audit Report", "file_prefix": "Citation_Audit_Report", "file_type": "md", "destination_folder": "05_QC", "is_review_gate": True, "is_client_deliverable": False, "wave": None},
     # Phase 7 — Document Packaging (Python renderer → docx/pptx from QC-approved markdown)
@@ -42,6 +43,7 @@ PHASE_OUTPUTS_SEED: List[dict] = [
     {"phase": 7, "output_number": 3, "name": "Presentation Deck", "file_prefix": "Presentation_Deck", "file_type": "pptx", "destination_folder": "04_Deliverables", "is_review_gate": False, "is_client_deliverable": True, "wave": 2},
     {"phase": 7, "output_number": 4, "name": "Implementation Roadmap", "file_prefix": "Implementation_Roadmap", "file_type": "docx", "destination_folder": "04_Deliverables", "is_review_gate": False, "is_client_deliverable": True, "wave": 1},
     {"phase": 7, "output_number": 5, "name": "Phase 2 Retainer Proposal", "file_prefix": "Phase_2_Retainer_Proposal", "file_type": "docx", "destination_folder": "04_Deliverables", "is_review_gate": False, "is_client_deliverable": True, "wave": 2},
+    {"phase": 7, "output_number": 5, "name": "Phase 2 Retainer Proposal", "file_prefix": "Retainer_Proposal", "file_type": "docx", "destination_folder": "04_Deliverables", "is_review_gate": False, "is_client_deliverable": True, "wave": 2},
     # Phase 8 — Archive & Close Engagement [REVIEW GATE]
     {"phase": 8, "output_number": 1, "name": "Engagement Completion Manifest", "file_prefix": "Engagement_Completion_Manifest", "file_type": "md", "destination_folder": "05_QC", "is_review_gate": True, "is_client_deliverable": False, "wave": None},
     {"phase": 8, "output_number": 2, "name": "Lessons Learned Memo", "file_prefix": "Lessons_Learned_Memo", "file_type": "md", "destination_folder": "03_Working_Papers", "is_review_gate": True, "is_client_deliverable": False, "wave": None},
