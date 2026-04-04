@@ -262,7 +262,8 @@ export default function EngagementDetail() {
   const [error, setError] = useState('')
   const [researchLoading, setResearchLoading] = useState('')
   const [downloadingDocId, setDownloadingDocId] = useState<string | null>(null)
-  const [copiedCommand, setCopiedCommand] = useState<number | null>(null)
+  const [copiedCommand, setCopiedCommand] = useState<number | string | null>(null)
+  const [phase5Open, setPhase5Open] = useState(false)
   const [beginLoading, setBeginLoading] = useState(false)
   const [phase7Complete, setPhase7Complete] = useState(false)
   const [archiveDialog, setArchiveDialog] = useState(false)
@@ -521,12 +522,28 @@ export default function EngagementDetail() {
 
   const isInPhases = data && /^phase_\d$/.test(data.status)
 
-  const getPhaseCommand = (phase: number) => {
+  const getPhaseCommand = (phase: number | string) => {
     if (!data) return ''
-    return `/run-phase ${data.clients.company_name} ${phase}`
+    const company = data.clients.company_name
+    if (typeof phase === 'string') {
+      // Phase 5 sub-session commands
+      return `/baxterlabs-delivery:run-phase ${phase} ${company}`
+    }
+    return `/run-phase ${company} ${phase}`
   }
 
-  const copyPhaseCommand = async (phase: number) => {
+  const PHASE5_SESSIONS = [
+    { key: '5a', label: '5a: Narrative Spine', arg: '5a' },
+    { key: '5.2', label: '5.2: Full Report', arg: '5 output 2' },
+    { key: '5.3', label: '5.3: Presentation Deck', arg: '5 output 3' },
+    { key: '5.1,5', label: '5.1,5: Exec Summary + Retainer', arg: '5 output 1,5' },
+    { key: '5.4', label: '5.4: Roadmap', arg: '5 output 4' },
+  ] as const
+
+  const phase5OutputExists = (outputNum: number) =>
+    phaseOutputContent.some(o => o.phase_number === 5 && o.output_number === outputNum)
+
+  const copyPhaseCommand = async (phase: number | string) => {
     const cmd = getPhaseCommand(phase)
     try {
       await navigator.clipboard.writeText(cmd)
@@ -540,6 +557,25 @@ export default function EngagementDetail() {
     }
     setCopiedCommand(phase)
     toast(`Copied: ${cmd}`)
+    setTimeout(() => setCopiedCommand(null), 2000)
+  }
+
+  const copyAllPhase5Commands = async () => {
+    if (!data) return
+    const company = data.clients.company_name
+    const allCmds = PHASE5_SESSIONS.map(s => `/baxterlabs-delivery:run-phase ${s.arg} ${company}`).join('\n')
+    try {
+      await navigator.clipboard.writeText(allCmds)
+    } catch {
+      const ta = document.createElement('textarea')
+      ta.value = allCmds
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    setCopiedCommand('5all')
+    toast('Copied all Phase 5 commands')
     setTimeout(() => setCopiedCommand(null), 2000)
   }
 
@@ -1064,6 +1100,82 @@ export default function EngagementDetail() {
                 const done = stepDone[i]
                 const isActive = i === activeIdx
                 const isPhase7 = num === 7
+                const isPhase5 = num === 5
+
+                // Phase 5: dropdown with sub-sessions
+                if (isPhase5) {
+                  const p5Check = (n: number) => phase5OutputExists(n)
+                  const allP5Done = [1, 2, 3, 4, 5].every(p5Check)
+                  return (
+                    <div key={num} className="relative">
+                      <button
+                        onClick={() => setPhase5Open(prev => !prev)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${btnClass(i, false, false)}`}
+                        title={done ? 'Phase 5 complete' : 'Expand Phase 5 sub-sessions'}
+                      >
+                        {done ? checkSvg : <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>}
+                        Phase 5
+                      </button>
+                      {phase5Open && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setPhase5Open(false)} />
+                          <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-gray-light rounded-lg shadow-lg py-1 w-72">
+                            {PHASE5_SESSIONS.map(session => {
+                              // Map session keys to output numbers for checkmarks
+                              const outputNums: number[] =
+                                session.key === '5a' ? [] :
+                                session.key === '5.1,5' ? [1, 5] :
+                                session.key === '5.2' ? [2] :
+                                session.key === '5.3' ? [3] :
+                                session.key === '5.4' ? [4] : []
+                              const sessionDone = outputNums.length > 0 && outputNums.every(p5Check)
+                              const isCopied = copiedCommand === session.key
+                              return (
+                                <button
+                                  key={session.key}
+                                  onClick={async () => {
+                                    const cmd = `/baxterlabs-delivery:run-phase ${session.arg} ${data.clients.company_name}`
+                                    try { await navigator.clipboard.writeText(cmd) } catch {
+                                      const ta = document.createElement('textarea'); ta.value = cmd; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta)
+                                    }
+                                    setCopiedCommand(session.key)
+                                    toast(`Copied: ${cmd}`)
+                                    setTimeout(() => setCopiedCommand(null), 2000)
+                                  }}
+                                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-ivory transition-colors"
+                                >
+                                  <span className="w-4 flex-shrink-0">
+                                    {sessionDone
+                                      ? <svg className="w-3.5 h-3.5 text-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                      : null}
+                                  </span>
+                                  <span className={`flex-1 ${sessionDone ? 'text-gray-warm' : 'text-charcoal'}`}>
+                                    {isCopied ? 'Copied!' : session.label}
+                                  </span>
+                                  <svg className="w-3.5 h-3.5 text-gray-warm flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                                </button>
+                              )
+                            })}
+                            <div className="border-t border-gray-light mt-1 pt-1">
+                              <button
+                                onClick={() => {
+                                  copyAllPhase5Commands()
+                                  setPhase5Open(false)
+                                }}
+                                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-ivory transition-colors font-semibold text-teal"
+                              >
+                                <span className="w-4 flex-shrink-0" />
+                                <span className="flex-1">{copiedCommand === '5all' ? 'Copied!' : 'Copy All (sequential)'}</span>
+                                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                              </button>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )
+                }
+
                 return (
                   <button
                     key={num}
