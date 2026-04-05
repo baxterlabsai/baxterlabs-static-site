@@ -34,7 +34,7 @@ const WAVE_1_LABELS: Record<string, string> = {
 
 const WAVE_2_LABELS: Record<string, string> = {
   deck: 'Executive Presentation Deck',
-  retainer_proposal: 'Phase 2 Retainer Proposal',
+  retainer_proposal: 'Retainer Proposal',
 }
 
 function formatDate(dateStr: string): string {

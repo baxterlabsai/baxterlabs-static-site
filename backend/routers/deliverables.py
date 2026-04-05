@@ -33,7 +33,7 @@ DELIVERABLE_TYPES = {
     ],
     2: [
         ("deck", "Presentation Deck"),
-        ("retainer_proposal", "Phase 2 Retainer Proposal"),
+        ("retainer_proposal", "Retainer Proposal"),
     ],
 }
 

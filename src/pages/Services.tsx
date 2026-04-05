@@ -7,7 +7,7 @@ const deliverables = [
   { icon: 'architecture', label: 'Implementation Roadmap' },
   { icon: 'calculate', label: 'Profit Leak Quantification Workbook' },
   { icon: 'present_to_all', label: 'Executive Presentation Deck' },
-  { icon: 'handshake', label: 'Phase 2 Retainer Proposal' },
+  { icon: 'handshake', label: 'Retainer Proposal' },
 ]
 
 const deliverableDetails = [
@@ -43,7 +43,7 @@ const deliverableDetails = [
   },
   {
     icon: 'handshake',
-    label: 'Phase 2 Retainer Proposal',
+    label: 'Retainer Proposal',
     what: 'A scoped proposal for ongoing advisory and implementation support, included optionally with every engagement.',
     why: 'Provides a clear path forward for firms that want external governance during execution — with no obligation.',
   },
@@ -226,7 +226,7 @@ export default function Services() {
           <span className="text-secondary font-bold uppercase tracking-[0.3em] text-xs mb-8 block">Continuous Excellence</span>
           <h2 className="text-5xl font-headline text-secondary mb-8 italic">Strategic Post-Diagnostic Execution.</h2>
           <p className="text-on-surface-variant text-xl leading-relaxed mb-16">
-            While the diagnostic provides a standalone roadmap for internal execution, we offer a <span className="text-secondary font-bold">Phase 2 Retainer</span> for firms requiring external governance and technical advisory during implementation.
+            While the diagnostic provides a standalone roadmap for internal execution, we offer a <span className="text-secondary font-bold">Retainer</span> for firms requiring external governance and technical advisory during implementation.
           </p>
           <div className="grid md:grid-cols-3 gap-8 mb-16 text-left">
             <div className="flex items-start gap-3">

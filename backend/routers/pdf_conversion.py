@@ -307,12 +307,12 @@ async def send_deliverables(
     <li>90-Day Implementation Roadmap</li>
     <li>Presentation Deck</li>
     <li>Profit Leak Quantification Workbook</li>
-    <li>Phase 2 Retainer Proposal</li>
+    <li>Retainer Proposal</li>
 </ul>
 
 <p>These documents contain the full analytical foundation, prioritized recommendations, and implementation timeline we reviewed together. The Profit Leak Quantification Workbook is the living reference for all financial figures and scenario analyses.</p>
 
-<p>We have also included a Phase 2 Retainer Proposal outlining how BaxterLabs can support {company_name} through the implementation phase. If you would like to discuss implementation support or have any questions about the findings, I am happy to schedule a follow-up conversation at your convenience.</p>
+<p>We have also included a Retainer Proposal outlining how BaxterLabs can support {company_name} through the implementation phase. If you would like to discuss implementation support or have any questions about the findings, I am happy to schedule a follow-up conversation at your convenience.</p>
 
 <p>Best regards,<br>
 {partner_full_name}<br>

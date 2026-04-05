@@ -544,7 +544,7 @@ class EmailService:
         <p>Additional materials from your Executive Debrief are now available in your deliverable portal:</p>
         <ul style="margin:16px 0;padding-left:20px;">
           <li>Executive Presentation Deck</li>
-          <li>Phase 2 Retainer Proposal</li>
+          <li>Retainer Proposal</li>
         </ul>
         <p style="margin:24px 0;text-align:center;">
           <a href="{self.frontend_url}/deliverables/{deliverable_token}"
@@ -569,7 +569,7 @@ class EmailService:
         items = (
             "Executive Summary, Full Diagnostic Report, Profit Leak Workbook, 90-Day Roadmap"
             if wave == 1
-            else "Presentation Deck, Phase 2 Retainer Proposal"
+            else "Presentation Deck, Retainer Proposal"
         )
         body = f"""
         <h2 style="color:{CRIMSON};font-family:Georgia,serif;margin-top:0;">Deliverables Ready — {wave_label}</h2>

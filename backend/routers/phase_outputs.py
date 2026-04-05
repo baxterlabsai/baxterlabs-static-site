@@ -255,7 +255,7 @@ def _sync_deliverable_approval(sb, engagement_id: str, output: dict) -> None:
         "Full Diagnostic Report": "full_report",
         "Presentation Deck": "deck",
         "90-Day Implementation Roadmap": "roadmap",
-        "Phase 2 Retainer Proposal": "retainer_proposal",
+        "Retainer Proposal": "retainer_proposal",
     }
     deliv_type = name_to_type.get(output["name"])
     if not deliv_type:

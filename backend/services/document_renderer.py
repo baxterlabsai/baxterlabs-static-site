@@ -63,9 +63,9 @@ _TEMPLATE_LIST: List[Tuple[str, str, str, str, int]] = [
     ("Full_Diagnostic_Report", "Full Diagnostic Report", "09_Full_Diagnostic_Report.docx", "docx", 2),
     ("Presentation_Deck", "Presentation Deck", "11_Presentation_Deck.pptx", "pptx", 3),
     ("Implementation_Roadmap", "Implementation Roadmap", "26_90_Day_Implementation_Roadmap.docx", "docx", 4),
-    ("Phase_2_Retainer_Proposal", "Phase 2 Retainer Proposal", "17_Phase2_Retainer_Proposal.docx", "docx", 5),
+    ("Phase_2_Retainer_Proposal", "Retainer Proposal", "17_Phase2_Retainer_Proposal.docx", "docx", 5),
     # Alternate prefix — Cowork saves as Retainer_Proposal_* not Phase_2_Retainer_Proposal_*
-    ("Retainer_Proposal", "Phase 2 Retainer Proposal", "17_Phase2_Retainer_Proposal.docx", "docx", 5),
+    ("Retainer_Proposal", "Retainer Proposal", "17_Phase2_Retainer_Proposal.docx", "docx", 5),
 ]
 _TEMPLATE_LIST.sort(key=lambda t: len(t[0]), reverse=True)
 
@@ -156,17 +156,14 @@ def _parse_table_lines(lines: List[str]) -> List[List[str]]:
 def _strip_title_frontmatter(md: str) -> str:
     """Strip the title/front-matter block from the start of markdown.
 
-    The markdown files start with a title block that duplicates the cover page:
+    The markdown files start with a metadata block that duplicates the cover
+    page: title, subtitle, "Prepared for/by", author names, date,
+    CONFIDENTIAL, horizontal rules, etc.  This must all be removed so the
+    body starts with the first real content heading.
 
-        # Document Title Here
-        ## Client Name (optional)
-        **Prepared by BaxterLabs Advisory | April 2026**
-        ---
-        ## First Real Section Heading
-
-    Strategy: find the first ``---`` / ``***`` / ``___`` horizontal rule in
-    the first ~50 lines and strip everything up to and including it.  Also
-    handles YAML frontmatter (``---`` delimited blocks at the very start).
+    Strategy: scan lines from the top.  A line is metadata if it matches
+    known patterns (title duplicates, bylines, classification, dates,
+    horizontal rules, blank lines).  Stop at the first real section heading.
     """
     content = md.strip()
 
@@ -176,20 +173,119 @@ def _strip_title_frontmatter(md: str) -> str:
         if end != -1:
             content = content[end + 3:].strip()
 
-    # Find the first horizontal rule in the first ~50 lines.
-    # Everything before it (title, byline, date) is front-matter.
     lines = content.split("\n")
-    for i, line in enumerate(lines):
-        if i > 50:
-            break
-        if line.strip() in ("---", "***", "___"):
-            content = "\n".join(lines[i + 1:]).strip()
-            return content
 
-    # No horizontal rule found — fallback: if the markdown starts with
-    # an H1 heading, skip it (the title line duplicates the cover page).
-    if lines and re.match(r"^#\s+", lines[0].strip()):
-        content = "\n".join(lines[1:]).strip()
+    # Patterns that mark a line as metadata (case-insensitive check)
+    _META_PATTERNS = [
+        r"(?i)prepared\s+for",
+        r"(?i)prepared\s+by",
+        r"(?i)george\s+devries",
+        r"(?i)alfonso\s+cordon",
+        r"(?i)baxterlabs\s+advisory",
+        r"(?i)profit\s+leak",
+        r"(?i)operational\s+efficiency\s+diagnostic",
+        r"(?i)confidential",
+        r"(?i)classification\s*:",
+        r"(?i)date\s*:",
+        r"(?i)phase\s+\d+\s+deliverable",
+        r"(?i)retainer\s+proposal",
+        # Standalone date like "April 4, 2026"
+        r"(?i)^(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2},?\s+\d{4}$",
+    ]
+    _meta_res = [re.compile(p) for p in _META_PATTERNS]
+
+    def _is_real_heading(line: str) -> bool:
+        """Return True if the line is a real content heading (not just the doc title)."""
+        s = line.strip()
+        # H1/H2 heading that isn't the document title (first non-blank line)
+        if re.match(r"^#{1,2}\s+", s):
+            heading_text = re.sub(r"^#{1,2}\s+", "", s)
+            # Real content headings: "Section N:", numbered sections,
+            # or known first-section headings
+            if re.match(r"(?i)section\s+\d", heading_text):
+                return True
+            if re.match(r"\d+[.)]\s+", heading_text):
+                return True
+            _content_starts = [
+                "purpose of this document",
+                "context",
+                "executive context",
+                "roadmap overview",
+                "executive summary",
+                "introduction",
+                "overview",
+                "background",
+                "scope",
+                "methodology",
+                "key findings",
+                "engagement overview",
+                "investment summary",
+                "about baxterlabs",
+                "retainer structure",
+                "why a retainer",
+            ]
+            if any(heading_text.strip().lower().startswith(k) for k in _content_starts):
+                return True
+            # Bracketed placeholder headings like ## [SECTION 1: PURPOSE]
+            if heading_text.strip().startswith("["):
+                return True
+            # Numbered heading like "## 1. Roadmap Overview"
+            if re.match(r"\d+[.)]\s+", heading_text.strip()):
+                return True
+        # Non-heading numbered section start
+        if re.match(r"^Section\s+\d", s, re.IGNORECASE):
+            return True
+        if re.match(r"^\d+[.)]\s+\w", s):
+            return True
+        return False
+
+    def _is_metadata_line(line: str) -> bool:
+        """Return True if the line looks like metadata / front-matter."""
+        s = line.strip()
+        if not s:
+            return True  # blank lines between metadata
+        # Horizontal rules
+        if re.match(r"^[-*_]{3,}\s*$", s):
+            return True
+        # Heading that is just the document title or subtitle
+        if re.match(r"^#{1,3}\s+", s):
+            heading_text = re.sub(r"^#{1,3}\s+", "", s)
+            # If it matches a meta pattern, it's metadata
+            for pat in _meta_res:
+                if pat.search(heading_text):
+                    return True
+            # Short title headings (the title line itself) — metadata
+            # unless it's a real content heading
+            if _is_real_heading(line):
+                return False
+            return True  # other headings at the top are title/subtitle
+        # Bold bylines like **Prepared by ...**
+        if s.startswith("**") and s.endswith("**"):
+            return True
+        # Check against known metadata patterns
+        for pat in _meta_res:
+            if pat.search(s):
+                return True
+        return False
+
+    # Scan from top: skip metadata lines until we hit a real content heading
+    cut_index = 0
+    for i, line in enumerate(lines):
+        if i > 60:
+            # Safety limit — don't scan forever
+            break
+        if _is_real_heading(line):
+            cut_index = i
+            break
+        if _is_metadata_line(line):
+            cut_index = i + 1  # skip this line
+            continue
+        # Non-metadata, non-heading line in the first few lines — could be
+        # stray content; stop stripping
+        break
+
+    if cut_index > 0:
+        content = "\n".join(lines[cut_index:]).strip()
 
     return content
 
@@ -217,7 +313,7 @@ def _tokenize_markdown(md: str) -> List[_Token]:
             continue
 
         # Horizontal rule — skip entirely (don't render as text)
-        if stripped in ("---", "***", "___"):
+        if re.match(r"^[-*_]{3,}\s*$", stripped):
             i += 1
             continue
 
@@ -240,6 +336,10 @@ def _tokenize_markdown(md: str) -> List[_Token]:
 
         # --- Inside the Endnotes section: every line is a plain paragraph ---
         if in_endnotes:
+            # Still skip horizontal rules in endnotes
+            if re.match(r"^[-*_]{3,}\s*$", stripped):
+                i += 1
+                continue
             tokens.append(_Token(
                 type="paragraph", text=stripped,
                 children=_parse_inline(stripped),
@@ -300,6 +400,8 @@ def _tokenize_markdown(md: str) -> List[_Token]:
             if re.match(r"^[-*+]\s+", l):
                 break
             if re.match(r"^\d+[.)]\s+", l):
+                break
+            if re.match(r"^[-*_]{3,}\s*$", l):
                 break
             para_lines.append(l)
             i += 1
@@ -1200,7 +1302,7 @@ async def render_engagement_deliverables(engagement_id: str) -> dict:
     if eng.get("start_date"):
         try:
             d = date.fromisoformat(str(eng["start_date"])[:10])
-            engagement_date = d.strftime("%B %Y")
+            engagement_date = d.strftime("%B %-d, %Y")
         except (ValueError, TypeError):
             engagement_date = str(eng["start_date"])
 
