@@ -197,11 +197,15 @@ def _strip_title_frontmatter(md: str) -> str:
     _meta_res = [re.compile(p) for p in _META_PATTERNS]
 
     def _is_real_heading(line: str) -> bool:
-        """Return True if the line is a real content heading (not just the doc title)."""
+        """Return True if the line is a real content heading (not just the doc title).
+
+        Only matches H2+ headings.  H1 headings in the first lines are always
+        the document title (already on the cover page) and must be stripped.
+        """
         s = line.strip()
-        # H1/H2 heading that isn't the document title (first non-blank line)
-        if re.match(r"^#{1,2}\s+", s):
-            heading_text = re.sub(r"^#{1,2}\s+", "", s)
+        # H2/H3 heading — H1 is always the document title, not content
+        if re.match(r"^#{2,3}\s+", s):
+            heading_text = re.sub(r"^#{2,3}\s+", "", s)
             # Real content headings: "Section N:", numbered sections,
             # or known first-section headings
             if re.match(r"(?i)section\s+\d", heading_text):

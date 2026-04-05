@@ -91,6 +91,10 @@ interface EngagementData {
   document_contact_email: string | null
   document_contact_phone: string | null
   phase_started_at: string | null
+  phase_7_completed_at: string | null
+  deck_built_at: string | null
+  pdfs_converted_at: string | null
+  archived_at: string | null
   created_at: string
   clients: {
     company_name: string
@@ -321,18 +325,9 @@ export default function EngagementDetail() {
       }
     }
 
-    // Phase 7 (Document Packaging) is complete when render has run successfully.
-    // Activity log signals are only valid if they occurred AFTER the current
-    // phase_started_at timestamp — stale entries from a prior (reset) run are ignored.
-    const phaseStartedAt = data?.phase_started_at ? new Date(data.phase_started_at) : null
-    const isLogFresh = (entry: { created_at: string }) =>
-      phaseStartedAt ? new Date(entry.created_at) > phaseStartedAt : true
-
-    const renderedEntries = data?.activity_log?.filter(l => l.action === 'deliverables_rendered') ?? []
-    const latestRender = renderedEntries.sort((a, b) =>
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    )[0]
-    const hasRendered = phase7Complete || (latestRender != null && isLogFresh(latestRender))
+    // Phase 7 (Document Packaging) is complete when the timestamp column is set.
+    // phase7Complete is a session-local flag set when the render API call succeeds.
+    const hasRendered = phase7Complete || data?.phase_7_completed_at != null
     if (hasRendered && !completed.includes(7)) completed.push(7)
 
     return completed.sort((a, b) => a - b)
@@ -978,9 +973,11 @@ export default function EngagementDetail() {
 
       {/* Phase Tracker Timeline — phases 1-7, then Deck, PDFs, Archive */}
       {(isInPhases || ALL_STATUSES.indexOf(data.status) > ALL_STATUSES.indexOf('documents_received')) && (() => {
-        const deckDone = driveDeliverablesStatus.has_pptx
-        const pdfsDone = driveDeliverablesStatus.has_pdfs
-        const archiveDone = data.status === 'closed'
+        // Timestamp columns are authoritative; Drive checks are fallback for
+        // engagements that predate the timestamp migration.
+        const deckDone = data.deck_built_at != null || driveDeliverablesStatus.has_pptx
+        const pdfsDone = data.pdfs_converted_at != null || driveDeliverablesStatus.has_pdfs
+        const archiveDone = data.archived_at != null || data.status === 'closed'
 
         // Build unified steps array: phases 1-7 + deck + pdfs + archive
         const allSteps: Array<{ label: string; display: string | number; completed: boolean; current: boolean; reviewGate?: boolean }> = [
@@ -1065,11 +1062,12 @@ export default function EngagementDetail() {
            DO NOT reorder or add Phase 8 as a copy-command — Archive is an
            action button, not a Cowork command. */}
       {!isClosed && data && (() => {
-        const deckDone = driveDeliverablesStatus.has_pptx
-        const pdfsDone = driveDeliverablesStatus.has_pdfs
-        // Send Deliverables is available once PDFs exist in Drive (approval happens in ribbon)
+        // Timestamp columns are authoritative; Drive checks are fallback for
+        // engagements that predate the timestamp migration.
+        const deckDone = data.deck_built_at != null || driveDeliverablesStatus.has_pptx
+        const pdfsDone = data.pdfs_converted_at != null || driveDeliverablesStatus.has_pdfs
         const alreadySent = !!data.deliverables_sent_at
-        const archiveDone = data.status === 'closed'
+        const archiveDone = data.archived_at != null || data.status === 'closed'
 
         // Determine which step index is "next" (0-based across the full chain)
         // Steps: Phase 1(0)..Phase 7(6), Build Deck(7), Create PDFs(8), Send(9), Archive(10)

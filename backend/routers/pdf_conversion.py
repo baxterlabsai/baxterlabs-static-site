@@ -70,7 +70,11 @@ async def deliverables_status(
 
     # Auto-advance: if PPTX exists and status is still phase_7, move to deck_complete
     if has_pptx and eng.get("status") == "phase_7":
-        update_engagement_status(engagement_id, "deck_complete")
+        sb = get_supabase()
+        sb.table("engagements").update({
+            "status": "deck_complete",
+            "deck_built_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("id", engagement_id).execute()
         log_activity(engagement_id, "system", "deck_complete_auto", {
             "pptx_filename": pptx_filename,
         })
@@ -150,7 +154,11 @@ async def convert_pdfs(
             failed.append({"file": fname, "error": str(e)})
 
     if converted:
-        update_engagement_status(engagement_id, "pdfs_complete")
+        sb = get_supabase()
+        sb.table("engagements").update({
+            "status": "pdfs_complete",
+            "pdfs_converted_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("id", engagement_id).execute()
         log_activity(engagement_id, "partner", "pdfs_converted", {
             "converted_count": len(converted),
             "error_count": len(failed),
