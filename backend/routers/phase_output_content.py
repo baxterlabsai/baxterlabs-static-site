@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from middleware.auth import verify_partner_auth
 from services.supabase_client import get_supabase, get_engagement_by_id, log_activity
+from services.output_mapping import output_number_for_name
 from services.pdf_converter import convert_to_pdf, convert_phase_output_to_pdf, ConversionError
 from fastapi.responses import Response
 from services.google_drive_engagement import download_file_by_id, download_file_by_name, upload_file_to_drive_folder
@@ -80,6 +81,9 @@ async def upsert_output(
     else:
         new_version = 1
 
+    # Derive canonical output_number from the output name
+    out_num = output_number_for_name(body.output_name)
+
     row = {
         "engagement_id": engagement_id,
         "phase_number": body.phase_number,
@@ -89,6 +93,8 @@ async def upsert_output(
         "version": new_version,
         "status": "draft",
     }
+    if out_num is not None:
+        row["output_number"] = out_num
     result = sb.table("phase_output_content").insert(row).execute()
     created = result.data[0] if result.data else row
 
@@ -96,6 +102,7 @@ async def upsert_output(
         "output_name": body.output_name,
         "phase_number": body.phase_number,
         "version": new_version,
+        "output_number": out_num,
         "type": "md",
     })
 
@@ -157,6 +164,9 @@ async def upsert_binary_output(
         sb, storage_path, engagement_id, output_name, new_version,
     )
 
+    # Derive canonical output_number from the output name
+    out_num = output_number_for_name(output_name)
+
     row = {
         "engagement_id": engagement_id,
         "phase_number": phase_number,
@@ -167,6 +177,8 @@ async def upsert_binary_output(
         "version": new_version,
         "status": "draft",
     }
+    if out_num is not None:
+        row["output_number"] = out_num
     result = sb.table("phase_output_content").insert(row).execute()
     created = result.data[0] if result.data else row
 
@@ -174,6 +186,7 @@ async def upsert_binary_output(
         "output_name": output_name,
         "phase_number": phase_number,
         "version": new_version,
+        "output_number": out_num,
         "type": output_type,
     })
 

@@ -56,16 +56,18 @@ ASSETS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets")
 LOGO_PATH = os.path.join(ASSETS_DIR, "baxterlabs-logo.png")
 
 # Map file_prefix to template filenames, output format, and output_number.
-# output_number matches Phase 5 seed numbering for chart placement filtering.
+# output_number is derived from the canonical mapping in output_mapping.py.
+from services.output_mapping import output_number_for_name as _onum
+
 _TEMPLATE_LIST: List[Tuple[str, str, str, str, int]] = [
     # (file_prefix, display_name, template_filename, output_extension, output_number)
-    ("Executive_Summary", "Executive Summary", "10_Executive_Summary.docx", "docx", 1),
-    ("Full_Diagnostic_Report", "Full Diagnostic Report", "09_Full_Diagnostic_Report.docx", "docx", 2),
-    ("Presentation_Deck", "Presentation Deck", "11_Presentation_Deck.pptx", "pptx", 3),
-    ("Implementation_Roadmap", "Implementation Roadmap", "26_90_Day_Implementation_Roadmap.docx", "docx", 4),
-    ("Phase_2_Retainer_Proposal", "Retainer Proposal", "17_Phase2_Retainer_Proposal.docx", "docx", 5),
+    ("Executive_Summary", "Executive Summary", "10_Executive_Summary.docx", "docx", _onum("Executive_Summary") or 1),
+    ("Full_Diagnostic_Report", "Full Diagnostic Report", "09_Full_Diagnostic_Report.docx", "docx", _onum("Full_Diagnostic_Report") or 2),
+    ("Presentation_Deck", "Presentation Deck", "11_Presentation_Deck.pptx", "pptx", _onum("Presentation_Deck") or 3),
+    ("Implementation_Roadmap", "Implementation Roadmap", "26_90_Day_Implementation_Roadmap.docx", "docx", _onum("Implementation_Roadmap") or 4),
+    ("Phase_2_Retainer_Proposal", "Retainer Proposal", "17_Phase2_Retainer_Proposal.docx", "docx", _onum("Phase_2_Retainer_Proposal") or 5),
     # Alternate prefix — Cowork saves as Retainer_Proposal_* not Phase_2_Retainer_Proposal_*
-    ("Retainer_Proposal", "Retainer Proposal", "17_Phase2_Retainer_Proposal.docx", "docx", 5),
+    ("Retainer_Proposal", "Retainer Proposal", "17_Phase2_Retainer_Proposal.docx", "docx", _onum("Retainer_Proposal") or 5),
 ]
 _TEMPLATE_LIST.sort(key=lambda t: len(t[0]), reverse=True)
 
