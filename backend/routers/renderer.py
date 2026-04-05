@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -53,6 +54,7 @@ async def trigger_render(
         sb.table("engagements").update({
             "phase": 7,
             "status": "deck_complete",
+            "phase_started_at": datetime.now(timezone.utc).isoformat(),
         }).eq("id", engagement_id).execute()
         log_activity(engagement_id, "system", "phase_advanced", {
             "from_phase": prev_phase,

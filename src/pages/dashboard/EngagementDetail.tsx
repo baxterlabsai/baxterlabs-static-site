@@ -90,6 +90,7 @@ interface EngagementData {
   document_contact_title: string | null
   document_contact_email: string | null
   document_contact_phone: string | null
+  phase_started_at: string | null
   created_at: string
   clients: {
     company_name: string
@@ -320,9 +321,18 @@ export default function EngagementDetail() {
       }
     }
 
-    // Phase 7 (Document Packaging) is complete when render has run successfully
-    // Check local state (current session) OR activity_log (persisted across reloads)
-    const hasRendered = phase7Complete || (data?.activity_log?.some(l => l.action === 'deliverables_rendered') ?? false)
+    // Phase 7 (Document Packaging) is complete when render has run successfully.
+    // Activity log signals are only valid if they occurred AFTER the current
+    // phase_started_at timestamp — stale entries from a prior (reset) run are ignored.
+    const phaseStartedAt = data?.phase_started_at ? new Date(data.phase_started_at) : null
+    const isLogFresh = (entry: { created_at: string }) =>
+      phaseStartedAt ? new Date(entry.created_at) > phaseStartedAt : true
+
+    const renderedEntries = data?.activity_log?.filter(l => l.action === 'deliverables_rendered') ?? []
+    const latestRender = renderedEntries.sort((a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )[0]
+    const hasRendered = phase7Complete || (latestRender != null && isLogFresh(latestRender))
     if (hasRendered && !completed.includes(7)) completed.push(7)
 
     return completed.sort((a, b) => a - b)

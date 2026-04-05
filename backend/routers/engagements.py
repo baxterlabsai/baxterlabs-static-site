@@ -300,6 +300,7 @@ async def advance_phase(
     sb.table("engagements").update({
         "phase": new_phase,
         "status": new_status,
+        "phase_started_at": datetime.now(timezone.utc).isoformat(),
     }).eq("id", engagement_id).execute()
 
     # Log activity
@@ -384,6 +385,7 @@ async def begin_phases(
     sb.table("engagements").update({
         "status": "phase_0",
         "phase": 0,
+        "phase_started_at": datetime.now(timezone.utc).isoformat(),
     }).eq("id", engagement_id).execute()
 
     # Create phase_execution record for phase 0
