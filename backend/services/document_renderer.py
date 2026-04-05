@@ -39,11 +39,21 @@ logger = logging.getLogger("baxterlabs.document_renderer")
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
 
-# Brand constants for table styling (headings/body use template styles)
+# Brand constants
+CRIMSON = RGBColor(0x66, 0x15, 0x1C)
 CRIMSON_HEX = "66151C"
-CHARCOAL = RGBColor(0x33, 0x33, 0x33)
+DARK_TEAL = RGBColor(0x1A, 0x5C, 0x5E)
+DARK_TEAL_HEX = "1A5C5E"
+CHARCOAL = RGBColor(0x2D, 0x34, 0x36)
+GOLD = RGBColor(0xC9, 0xA8, 0x4C)
+GOLD_HEX = "C9A84C"
 WHITE = RGBColor(0xFF, 0xFF, 0xFF)
-BODY_FONT = "Calibri"
+CREAM_HEX = "FAF8F5"
+HEADING_FONT = "Georgia"
+BODY_FONT = "Arial"
+
+ASSETS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets")
+LOGO_PATH = os.path.join(ASSETS_DIR, "baxterlabs-logo.png")
 
 # Map file_prefix to template filenames, output format, and output_number.
 # output_number matches Phase 5 seed numbering for chart placement filtering.
@@ -453,8 +463,8 @@ def _delete_body_stubs(body_element, cover_boundary) -> object:
 def _add_styled_runs(paragraph, spans: List[_InlineSpan]) -> None:
     """Add inline spans to a paragraph, preserving bold/italic formatting.
 
-    Does NOT apply font/color — lets the paragraph style handle it.
-    Only sets bold/italic on runs that need it.
+    Does NOT apply font/color — lets the caller handle it via
+    _apply_heading_format or _apply_body_format.
     """
     for span in spans:
         run = paragraph.add_run(span.text)
@@ -462,6 +472,37 @@ def _add_styled_runs(paragraph, spans: List[_InlineSpan]) -> None:
             run.bold = True
         if span.italic:
             run.italic = True
+
+
+def _apply_heading_format(paragraph, level: int) -> None:
+    """Apply brand heading formatting to all runs in a paragraph."""
+    font_size = {1: 18, 2: 14, 3: 12}.get(level, 12)
+    color = CRIMSON if level <= 2 else DARK_TEAL
+    space_before = {1: 24, 2: 18, 3: 12}.get(level, 12)
+    space_after = {1: 6, 2: 4, 3: 4}.get(level, 4)
+
+    pf = paragraph.paragraph_format
+    pf.space_before = Pt(space_before)
+    pf.space_after = Pt(space_after)
+    pf.keep_with_next = True
+
+    for run in paragraph.runs:
+        run.font.name = HEADING_FONT
+        run.font.size = Pt(font_size)
+        run.font.bold = True
+        run.font.color.rgb = color
+
+
+def _apply_body_format(paragraph) -> None:
+    """Apply brand body formatting to all runs in a paragraph."""
+    pf = paragraph.paragraph_format
+    pf.space_after = Pt(6)
+    pf.line_spacing = 1.15
+
+    for run in paragraph.runs:
+        run.font.name = BODY_FONT
+        run.font.size = Pt(11)
+        run.font.color.rgb = CHARCOAL
 
 
 def _insert_chart_image(
@@ -540,11 +581,13 @@ def _append_tokens_to_body(
             except KeyError:
                 pass
             _add_styled_runs(para, token.children or [_InlineSpan(token.text)])
+            _apply_heading_format(para, level)
             insert_before.addprevious(para._element)
 
         elif token.type == "paragraph":
             para = doc.add_paragraph()
             _add_styled_runs(para, token.children or [_InlineSpan(token.text)])
+            _apply_body_format(para)
             insert_before.addprevious(para._element)
 
         elif token.type == "bullet":
@@ -566,6 +609,7 @@ def _append_tokens_to_body(
             pPr.append(numPr)
 
             _add_styled_runs(para, token.children or [_InlineSpan(token.text)])
+            _apply_body_format(para)
             insert_before.addprevious(para._element)
 
         elif token.type == "numbered":
@@ -575,6 +619,7 @@ def _append_tokens_to_body(
             except KeyError:
                 pass
             _add_styled_runs(para, token.children or [_InlineSpan(token.text)])
+            _apply_body_format(para)
             insert_before.addprevious(para._element)
 
         elif token.type == "table":
@@ -615,7 +660,9 @@ def _append_tokens_to_body(
                                 run.italic = True
 
                     if row_idx == 0:
-                        _set_cell_shading(cell, CRIMSON_HEX)
+                        _set_cell_shading(cell, DARK_TEAL_HEX)
+                    elif row_idx % 2 == 0:
+                        _set_cell_shading(cell, CREAM_HEX)
 
             # Move table from end of document to correct position
             insert_before.addprevious(tbl._tbl)
@@ -630,6 +677,108 @@ def _append_tokens_to_body(
             # Add spacing after chart
             spacer = OxmlElement("w:p")
             insert_before.addprevious(spacer)
+
+
+def _add_border_bottom(paragraph, color_hex: str, sz: str = "6") -> None:
+    """Add a bottom border (horizontal rule) to a paragraph."""
+    pPr = paragraph._element.get_or_add_pPr()
+    pBdr = OxmlElement("w:pBdr")
+    bottom = OxmlElement("w:bottom")
+    bottom.set(qn("w:val"), "single")
+    bottom.set(qn("w:sz"), sz)
+    bottom.set(qn("w:space"), "1")
+    bottom.set(qn("w:color"), color_hex)
+    pBdr.append(bottom)
+    pPr.append(pBdr)
+
+
+def _apply_branded_header(doc: Document) -> None:
+    """Add branded header to body pages: logo right-aligned with crimson rule."""
+    # Use the last section (body section after cover page)
+    section = doc.sections[-1]
+    header = section.header
+    header.is_linked_to_previous = False
+
+    # Clear default empty paragraph
+    for p in header.paragraphs:
+        p.clear()
+
+    para = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
+    para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+
+    if os.path.exists(LOGO_PATH):
+        run = para.add_run()
+        run.add_picture(LOGO_PATH, width=Inches(0.8))
+    else:
+        logger.warning("Logo not found at %s — skipping header logo", LOGO_PATH)
+
+    _add_border_bottom(para, CRIMSON_HEX)
+
+
+def _apply_branded_footer(doc: Document) -> None:
+    """Add branded footer to body pages: gold rule, CONFIDENTIAL left, page number right."""
+    section = doc.sections[-1]
+    footer = section.footer
+    footer.is_linked_to_previous = False
+
+    # Clear default empty paragraph
+    for p in footer.paragraphs:
+        p.clear()
+
+    para = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
+
+    # Gold rule above the footer text
+    _add_border_bottom(para, GOLD_HEX, sz="4")
+
+    # Set tab stop at right margin for right-aligned page number
+    pPr = para._element.get_or_add_pPr()
+    tabs = OxmlElement("w:tabs")
+    tab = OxmlElement("w:tab")
+    tab.set(qn("w:val"), "right")
+    tab.set(qn("w:pos"), "9360")  # ~6.5 inches in twips
+    tabs.append(tab)
+    pPr.append(tabs)
+
+    # CONFIDENTIAL (left)
+    conf_run = para.add_run("CONFIDENTIAL")
+    conf_run.font.name = BODY_FONT
+    conf_run.font.size = Pt(8)
+    conf_run.font.color.rgb = GOLD
+    # Letter spacing via XML
+    rPr = conf_run._element.get_or_add_rPr()
+    spacing = OxmlElement("w:spacing")
+    spacing.set(qn("w:val"), "40")
+    rPr.append(spacing)
+
+    # Tab to right
+    tab_run = para.add_run("\t")
+    tab_run.font.size = Pt(8)
+
+    # Page number field
+    page_run = para.add_run()
+    page_run.font.name = BODY_FONT
+    page_run.font.size = Pt(8)
+    page_run.font.color.rgb = CHARCOAL
+    fldChar_begin = OxmlElement("w:fldChar")
+    fldChar_begin.set(qn("w:fldCharType"), "begin")
+    page_run._element.append(fldChar_begin)
+
+    instr_run = para.add_run()
+    instr_run.font.name = BODY_FONT
+    instr_run.font.size = Pt(8)
+    instr_run.font.color.rgb = CHARCOAL
+    instrText = OxmlElement("w:instrText")
+    instrText.set(qn("xml:space"), "preserve")
+    instrText.text = " PAGE "
+    instr_run._element.append(instrText)
+
+    end_run = para.add_run()
+    end_run.font.name = BODY_FONT
+    end_run.font.size = Pt(8)
+    end_run.font.color.rgb = CHARCOAL
+    fldChar_end = OxmlElement("w:fldChar")
+    fldChar_end.set(qn("w:fldCharType"), "end")
+    end_run._element.append(fldChar_end)
 
 
 def render_docx(
@@ -683,6 +832,10 @@ def render_docx(
     else:
         # No final sectPr — append at end (shouldn't happen with our templates)
         _append_tokens_to_body(doc, body[-1], tokens, charts)
+
+    # Step 7: Add branded header and footer on body pages
+    _apply_branded_header(doc)
+    _apply_branded_footer(doc)
 
     # Save to bytes
     buf = io.BytesIO()
