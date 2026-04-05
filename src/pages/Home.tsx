@@ -120,7 +120,7 @@ export default function Home() {
                 <span className="text-5xl font-display italic text-secondary/20 mb-6 block">03</span>
                 <h3 className="font-headline text-2xl font-bold text-secondary mb-4">Executive Recovery Roadmap</h3>
                 <p className="text-on-surface-variant leading-relaxed">
-                  You receive a direct executive summary. No fluff. Just specific actions to recover significant EBITDA within 90 days.
+                  You receive a profit leak diagnostic and implementation package. No fluff. Just specific actions to recover significant EBITDA within 90 days.
                 </p>
               </div>
               <div className="mt-8 flex items-center gap-2 text-secondary font-bold text-sm uppercase tracking-tighter">
@@ -194,7 +194,7 @@ export default function Home() {
             </div>
             <div className="bg-surface-container-lowest p-8 rounded-sm shadow-sm border-b-4 border-secondary transition-transform hover:-translate-y-2">
               <p className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-6 leading-tight">
-                Time from data intake to full executive recovery roadmap.
+                Time from completion of last stakeholder interview to full executive recovery roadmap.
               </p>
               <h3 className="font-display text-4xl text-secondary mb-2">14 Days</h3>
               <p className="text-xs text-secondary font-bold uppercase">TOTAL DURATION</p>
