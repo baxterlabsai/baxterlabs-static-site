@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
+import ExecutiveSummaryLightbox from '../components/ExecutiveSummaryLightbox'
 
 const deliverables = [
   { icon: 'analytics', label: 'Executive Summary' },
@@ -50,6 +52,7 @@ const deliverableDetails = [
 ]
 
 export default function Services() {
+  const [showSample, setShowSample] = useState(false)
   return (
     <>
       <SEO
@@ -156,7 +159,7 @@ export default function Services() {
             </p>
             <div className="p-8 border-l-4 border-secondary bg-surface-container-low shadow-sm">
               <span className="text-xs font-bold text-secondary uppercase tracking-[0.2em] mb-4 block">Primary Preview</span>
-              <Link to="/get-started" className="flex flex-col text-left group">
+              <button onClick={() => setShowSample(true)} className="flex flex-col text-left group cursor-pointer">
                 <span className="flex items-center gap-3 text-2xl font-headline italic font-bold text-secondary transition-colors group-hover:text-primary">
                   View Sample Executive Summary
                   <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
@@ -164,7 +167,7 @@ export default function Services() {
                 <span className="text-sm text-on-surface-variant mt-2 font-medium opacity-80">
                   Representative output illustrating the structure and depth of the diagnostic. No downloads required.
                 </span>
-              </Link>
+              </button>
             </div>
           </div>
           <div className="relative">
@@ -267,6 +270,8 @@ export default function Services() {
           </div>
         </div>
       </section>
+
+      <ExecutiveSummaryLightbox isOpen={showSample} onClose={() => setShowSample(false)} />
     </>
   )
 }

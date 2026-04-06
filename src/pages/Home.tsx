@@ -1,7 +1,11 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import SEO from '../components/SEO'
+import ExecutiveSummaryLightbox from '../components/ExecutiveSummaryLightbox'
 
 export default function Home() {
+  const [showSample, setShowSample] = useState(false)
+
   return (
     <>
       <SEO
@@ -32,12 +36,12 @@ export default function Home() {
               Start Your Diagnostic
             </Link>
             <div className="flex flex-col items-center">
-              <Link
-                to="/get-started"
-                className="border-b border-secondary text-secondary px-6 py-3 font-label text-sm uppercase tracking-widest font-bold hover:text-primary hover:border-primary transition-all"
+              <button
+                onClick={() => setShowSample(true)}
+                className="border-b border-secondary text-secondary px-6 py-3 font-label text-sm uppercase tracking-widest font-bold hover:text-primary hover:border-primary transition-all cursor-pointer"
               >
                 View Sample Executive Summary
-              </Link>
+              </button>
               <p className="mt-2 text-[10px] text-on-surface/60 uppercase tracking-tighter">
                 Representative output illustrating the structure and depth of the 14-day diagnostic.
               </p>
@@ -256,6 +260,8 @@ export default function Home() {
           </p>
         </div>
       </section>
+
+      <ExecutiveSummaryLightbox isOpen={showSample} onClose={() => setShowSample(false)} />
     </>
   )
 }
