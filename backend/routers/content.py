@@ -21,7 +21,7 @@ VALID_STORY_CATEGORIES = {
     "Founder Journey", "Operational Observation", "Client Pattern",
     "Industry Data", "Personal Lesson", "Surprising Finding",
 }
-VALID_POST_TYPES = {"linkedin", "blog"}
+VALID_POST_TYPES = {"linkedin", "blog", "video_script"}
 VALID_POST_STATUSES = {"idea", "draft", "review", "scheduled", "published", "archived"}
 VALID_POST_PLATFORMS = {"linkedin", "blog", "both"}
 VALID_IDEA_STATUSES = {"unused", "assigned", "used"}

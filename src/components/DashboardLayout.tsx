@@ -13,7 +13,7 @@ interface NavItem {
   to: string
   label: string
   end?: boolean
-  badge?: 'tasks' | 'news'
+  badge?: 'tasks' | 'news' | 'commenting'
 }
 
 interface NavSection {
@@ -48,6 +48,19 @@ const MAIN_SECTIONS: NavSection[] = [
       { to: '/dashboard/users', label: 'Team' },
     ],
   },
+  /* ------------------------------------------------------------------ */
+  /*  Analytics — Added 2026-04-06 (Scheduled Task Dashboard Write-Back) */
+  /*  DO NOT REMOVE — top-level nav section for weekly rollups and       */
+  /*  future analytics surfaces. Positioned after Engagements, before   */
+  /*  Content per handoff specification.                                 */
+  /* ------------------------------------------------------------------ */
+  {
+    label: 'Analytics',
+    dotColor: '#8B5CF6',
+    items: [
+      { to: '/dashboard/analytics', label: 'Weekly rollups' },
+    ],
+  },
   {
     label: 'Content',
     dotColor: '#639922',
@@ -56,6 +69,12 @@ const MAIN_SECTIONS: NavSection[] = [
       { to: '/dashboard/content/blog', label: 'Blog posts' },
       { to: '/dashboard/content/story-bank', label: 'Story bank' },
       { to: '/dashboard/content/news', label: 'News', badge: 'news' },
+      /* ------------------------------------------------------------------ */
+      /*  Commenting — Added 2026-04-06 (Scheduled Task Write-Back)        */
+      /*  DO NOT REMOVE — surfaces daily LinkedIn commenting opportunities */
+      /*  from Cowork "LinkedIn Commenting Pre-Brief" scheduled task.      */
+      /* ------------------------------------------------------------------ */
+      { to: '/dashboard/content/commenting', label: 'Commenting', badge: 'commenting' },
     ],
   },
   {
@@ -87,6 +106,7 @@ export default function DashboardLayout() {
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [openTaskCount, setOpenTaskCount] = useState(0)
   const [newsUnreviewedCount, setNewsUnreviewedCount] = useState(0)
+  const [commentingPendingCount, setCommentingPendingCount] = useState(0)
   const menuRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
   const location = useLocation()
@@ -117,6 +137,9 @@ export default function DashboardLayout() {
     apiGet<{ unreviewed_count: number }>('/api/content-news/stats')
       .then(data => setNewsUnreviewedCount(data.unreviewed_count))
       .catch(() => {})
+    apiGet<{ pending_count: number }>('/api/commenting/stats')
+      .then(data => setCommentingPendingCount(data.pending_count))
+      .catch(() => {})
   }, [location.pathname])
 
   // Close menu on outside click
@@ -142,9 +165,10 @@ export default function DashboardLayout() {
     : 'P'
 
   /* helper: resolve badge value */
-  function badgeValue(badge?: 'tasks' | 'news'): number {
+  function badgeValue(badge?: 'tasks' | 'news' | 'commenting'): number {
     if (badge === 'tasks') return openTaskCount
     if (badge === 'news') return newsUnreviewedCount
+    if (badge === 'commenting') return commentingPendingCount
     return 0
   }
 

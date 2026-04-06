@@ -14,6 +14,7 @@ dist-ssr
 
 # Python
 backend/.venv/
+backend/.venv-arm64/
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -25,7 +26,8 @@ __pycache__/
 master.env
 
 # Docs (internal, not deployed)
-docs/
+docs/*
+!docs/handoffs/
 !backend/docs/
 
 # Claude Code

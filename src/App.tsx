@@ -48,6 +48,8 @@ import MdEditor from './pages/dashboard/deliverables/MdEditor'
 import PdfReview from './pages/dashboard/deliverables/PdfReview'
 import ExcelReview from './pages/dashboard/deliverables/ExcelReview'
 import DeliveryView from './pages/dashboard/deliverables/DeliveryView'
+import Analytics from './pages/dashboard/Analytics'
+import Commenting from './pages/dashboard/content/Commenting'
 import NotFound from './pages/NotFound'
 
 function ScrollToTop() {
@@ -107,6 +109,8 @@ export default function App() {
             <Route path="/dashboard/content/commands" element={<ContentCommands />} />
             <Route path="/dashboard/content/posts" element={<ContentPosts />} />
             <Route path="/dashboard/content/news" element={<News />} />
+            <Route path="/dashboard/content/commenting" element={<Commenting />} />
+            <Route path="/dashboard/analytics" element={<Analytics />} />
             <Route path="/dashboard/content/news-legacy" element={<ContentNews />} />
             <Route path="/dashboard/pipeline" element={<PipelineBoard />} />
             <Route path="/dashboard/pipeline/companies" element={<PipelineCompanies />} />

@@ -28,7 +28,14 @@ interface Post {
   updated_at: string
 }
 
-const POST_TYPES = ['linkedin', 'blog']
+/* ------------------------------------------------------------------ */
+/*  POST_TYPES — Added 'video_script' on 2026-04-06 handoff           */
+/*  DO NOT REMOVE 'video_script' — Cowork "Video Script Prep"         */
+/*  scheduled task (Tuesdays) writes content_posts rows with           */
+/*  type='video_script'. Removing it hides those posts from calendar.  */
+/*  Color: purple #7C3AED (distinct from blue=linkedin, green=blog).   */
+/* ------------------------------------------------------------------ */
+const POST_TYPES = ['linkedin', 'blog', 'video_script']
 const POST_STATUSES = ['idea', 'draft', 'review', 'scheduled', 'published', 'archived']
 const POST_PLATFORMS = ['linkedin', 'blog', 'both']
 
@@ -44,6 +51,7 @@ const STATUS_COLORS: Record<string, string> = {
 const TYPE_COLORS: Record<string, string> = {
   linkedin: 'bg-blue-500',
   blog: 'bg-emerald-500',
+  video_script: 'bg-purple-500',
 }
 
 const EMPTY_FORM = {
@@ -325,7 +333,7 @@ export default function ContentCalendar() {
           className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
         >
           <option value="">All Types</option>
-          {POST_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+          {POST_TYPES.map(t => <option key={t} value={t}>{t.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>)}
         </select>
         <select
           value={filterStatus}
@@ -447,7 +455,7 @@ export default function ContentCalendar() {
                   >
                     <td className="px-4 py-3 font-medium text-[#2D3436] max-w-[200px] truncate">{p.title}</td>
                     <td className="px-4 py-3">
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold text-white ${TYPE_COLORS[p.type]}`}>{p.type}</span>
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold text-white ${TYPE_COLORS[p.type]}`}>{p.type.replace(/_/g, ' ')}</span>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[p.status]}`}>{p.status}</span>
@@ -473,7 +481,7 @@ export default function ContentCalendar() {
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold text-white ${TYPE_COLORS[detailPost.type]}`}>{detailPost.type}</span>
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold text-white ${TYPE_COLORS[detailPost.type]}`}>{detailPost.type.replace(/_/g, ' ')}</span>
                     <select
                       value={detailPost.status}
                       onChange={e => handleStatusChange(detailPost.id, e.target.value)}
@@ -646,7 +654,7 @@ export default function ContentCalendar() {
                   <div>
                     <label className="block text-sm font-medium text-[#2D3436] mb-1">Type *</label>
                     <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                      {POST_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+                      {POST_TYPES.map(t => <option key={t} value={t}>{t.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>)}
                     </select>
                   </div>
                   <div>
