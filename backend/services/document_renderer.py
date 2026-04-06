@@ -925,6 +925,128 @@ def _apply_branded_footer(doc: Document) -> None:
     end_run._element.append(fldChar_end)
 
 
+# ---------------------------------------------------------------------------
+# Post-render verification gate
+# ---------------------------------------------------------------------------
+# ADDED 2026-04-06 after the Scion Phase 7 endnote leakage incident.
+# DO NOT REMOVE. DO NOT "simplify" by collapsing patterns.
+# New inline-markdown features in the renderer must add a corresponding
+# pattern here so the gate catches any future leakage.
+#
+# This gate runs AFTER doc.save() and BEFORE file upload. If any residual
+# inline-markdown patterns survive the render, it raises RendererVerificationError
+# which aborts the Phase 7 step for that deliverable. The bad file is NOT
+# deleted (for inspection) but is NOT uploaded or written to the database.
+# ---------------------------------------------------------------------------
+
+class RendererVerificationError(Exception):
+    """Raised when residual inline markdown is detected in a rendered file."""
+    pass
+
+
+# Module-level pattern registry — named keys for error messages
+RESIDUAL_MARKDOWN_PATTERNS: Dict[str, re.Pattern] = {
+    "pandoc_superscript": re.compile(r"\^\d{1,3}\^"),
+    "markdown_footnote": re.compile(r"\[\^\d{1,3}\]"),
+    "markdown_bold": re.compile(r"\*\*[^*\n]{1,200}\*\*"),
+    "markdown_italic": re.compile(r"(?<!\*)\*[^*\n]{1,200}\*(?!\*)"),
+    "markdown_header": re.compile(r"(?:^|\n)#{1,6}\s"),
+    "markdown_bullet": re.compile(r"(?:^|\n)[-*+]\s"),
+    "code_span": re.compile(r"`[^`\n]+`"),
+    "markdown_link": re.compile(r"\[[^\]]+\]\([^)]+\)"),
+}
+
+
+def _verify_docx_no_residual_markdown(docx_bytes: bytes, deliverable_name: str) -> None:
+    """Walk every text element in a rendered DOCX and fail if markdown leaked.
+
+    Checks paragraphs, table cells, headers, footers, and falls back to raw
+    XML grep for text boxes that python-docx may not expose.
+    """
+    doc = Document(io.BytesIO(docx_bytes))
+    all_text_parts: List[str] = []
+
+    # Body paragraphs
+    for para in doc.paragraphs:
+        all_text_parts.append(para.text)
+
+    # Table cells
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                all_text_parts.append(cell.text)
+
+    # Headers and footers
+    for section in doc.sections:
+        if section.header:
+            for para in section.header.paragraphs:
+                all_text_parts.append(para.text)
+        if section.footer:
+            for para in section.footer.paragraphs:
+                all_text_parts.append(para.text)
+
+    # Fallback: grep raw document.xml for text boxes python-docx may miss
+    with zipfile.ZipFile(io.BytesIO(docx_bytes), "r") as z:
+        if "word/document.xml" in z.namelist():
+            raw_xml = z.read("word/document.xml").decode("utf-8", errors="replace")
+            # Extract text between <w:t> tags
+            for t_match in re.finditer(r"<w:t[^>]*>([^<]+)</w:t>", raw_xml):
+                all_text_parts.append(t_match.group(1))
+
+    full_text = "\n".join(all_text_parts)
+    _check_text_for_residual_markdown(full_text, deliverable_name)
+
+
+def _verify_pptx_no_residual_markdown(pptx_bytes: bytes, deliverable_name: str) -> None:
+    """Walk every text element in a rendered PPTX and fail if markdown leaked.
+
+    Checks all slides (shapes, text frames, tables, notes slides) via raw XML
+    parsing since the renderer uses zipfile-level manipulation, not python-pptx.
+    """
+    all_text_parts: List[str] = []
+
+    with zipfile.ZipFile(io.BytesIO(pptx_bytes), "r") as z:
+        for fname in z.namelist():
+            # Slide content, notes slides, and slide layouts
+            if re.match(r"ppt/(slides|notesSlides)/.*\.xml$", fname):
+                xml_data = z.read(fname).decode("utf-8", errors="replace")
+                # Extract text from DrawingML <a:t> elements
+                for t_match in re.finditer(r"<a:t>([^<]+)</a:t>", xml_data):
+                    all_text_parts.append(t_match.group(1))
+
+    full_text = "\n".join(all_text_parts)
+    _check_text_for_residual_markdown(full_text, deliverable_name)
+
+
+def _check_text_for_residual_markdown(full_text: str, deliverable_name: str) -> None:
+    """Shared check: scan concatenated text for residual markdown patterns."""
+    violations: List[Tuple[str, int, List[str]]] = []
+
+    for pattern_name, pattern in RESIDUAL_MARKDOWN_PATTERNS.items():
+        matches = pattern.findall(full_text)
+        if matches:
+            # Get first 3 matches with ~40 chars of context
+            samples: List[str] = []
+            for m in pattern.finditer(full_text):
+                start = max(0, m.start() - 20)
+                end = min(len(full_text), m.end() + 20)
+                context = full_text[start:end].replace("\n", " ")
+                samples.append(f"...{context}...")
+                if len(samples) >= 3:
+                    break
+            violations.append((pattern_name, len(matches), samples))
+
+    if violations:
+        lines = [f"Residual markdown detected in '{deliverable_name}':"]
+        for pattern_name, count, samples in violations:
+            lines.append(f"  [{pattern_name}] {count} occurrence(s):")
+            for s in samples:
+                lines.append(f"    {s}")
+        msg = "\n".join(lines)
+        logger.error(msg)
+        raise RendererVerificationError(msg)
+
+
 def render_docx(
     template_path: str,
     markdown_content: str,
@@ -984,7 +1106,13 @@ def render_docx(
     # Save to bytes
     buf = io.BytesIO()
     doc.save(buf)
-    return buf.getvalue()
+    rendered_bytes = buf.getvalue()
+
+    # Post-render verification gate — abort if inline markdown leaked
+    output_name = os.path.basename(template_path).rsplit(".", 1)[0]
+    _verify_docx_no_residual_markdown(rendered_bytes, output_name)
+
+    return rendered_bytes
 
 
 # ---------------------------------------------------------------------------
@@ -1111,7 +1239,13 @@ def render_pptx(
 
             zout.writestr(item, data)
 
-    return buf_out.getvalue()
+    rendered_bytes = buf_out.getvalue()
+
+    # Post-render verification gate — abort if inline markdown leaked
+    output_name = os.path.basename(template_path).rsplit(".", 1)[0]
+    _verify_pptx_no_residual_markdown(rendered_bytes, output_name)
+
+    return rendered_bytes
 
 
 def _render_pptx_slide(
