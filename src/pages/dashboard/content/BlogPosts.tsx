@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiGet } from '../../../lib/api'
+import { useRealtimeRefresh } from '../../../hooks/useRealtimeRefresh'
 import SEO from '../../../components/SEO'
 
 interface Post {
@@ -38,7 +39,7 @@ export default function BlogPosts() {
   const [sortBy, setSortBy] = useState<SortKey>('created_at')
   const navigate = useNavigate()
 
-  useEffect(() => {
+  const reload = useCallback(() => {
     const params = new URLSearchParams({ type: 'blog' })
     if (filterStatus) params.set('status', filterStatus)
     apiGet<Post[]>(`/api/content-posts?${params}`)
@@ -46,6 +47,10 @@ export default function BlogPosts() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [filterStatus])
+
+  useEffect(() => { reload() }, [reload])
+
+  useRealtimeRefresh('blog-posts', reload, ['content_posts'])
 
   const sorted = [...posts].sort((a, b) => {
     if (sortBy === 'title') return (a.title || '').localeCompare(b.title || '')

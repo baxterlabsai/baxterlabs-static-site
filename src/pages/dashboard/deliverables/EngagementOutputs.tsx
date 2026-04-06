@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../../lib/supabase'
 import { apiGet, apiPut } from '../../../lib/api'
+import { useRealtimeRefresh } from '../../../hooks/useRealtimeRefresh'
 import SEO from '../../../components/SEO'
 import MarkdownContent from '../../../components/MarkdownContent'
 
@@ -74,6 +75,9 @@ export default function EngagementOutputs() {
   useEffect(() => {
     if (engagementId) load()
   }, [engagementId])
+
+  useRealtimeRefresh('engagement-outputs', () => { if (engagementId) load() },
+    ['engagements', 'phase_output_content', 'phase_outputs'])
 
   async function load() {
     const [engRes, outRes] = await Promise.all([

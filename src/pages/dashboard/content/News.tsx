@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { apiGet, apiPut } from '../../../lib/api'
+import { useRealtimeRefresh } from '../../../hooks/useRealtimeRefresh'
 
 interface NewsItem {
   id: string
@@ -33,12 +34,16 @@ export default function News() {
   const [loading, setLoading] = useState(true)
   const [flagging, setFlagging] = useState<string | null>(null)
 
-  useEffect(() => {
+  const reload = useCallback(() => {
     apiGet<NewsItem[]>('/api/content-news')
       .then(setItems)
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => { reload() }, [reload])
+
+  useRealtimeRefresh('news', reload, ['content_news'])
 
   async function flagAsCandidate(id: string) {
     setFlagging(id)

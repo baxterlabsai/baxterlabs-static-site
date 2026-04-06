@@ -8,8 +8,9 @@
  *  up to 8 weeks with expand/collapse.
  * ============================================================================ */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { apiGet } from '../../lib/api'
+import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh'
 import SEO from '../../components/SEO'
 
 interface WeeklyRollup {
@@ -26,7 +27,7 @@ export default function Analytics() {
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
-  useEffect(() => {
+  const reload = useCallback(() => {
     apiGet<WeeklyRollup[]>('/api/analytics/rollups?limit=8')
       .then(data => {
         setRollups(data)
@@ -35,6 +36,10 @@ export default function Analytics() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => { reload() }, [reload])
+
+  useRealtimeRefresh('analytics', reload, ['weekly_metrics_rollups'])
 
   return (
     <>

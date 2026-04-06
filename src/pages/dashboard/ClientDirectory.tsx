@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiGet } from '../../lib/api'
+import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh'
 import SEO from '../../components/SEO'
 
 interface Engagement {
@@ -189,6 +190,8 @@ export default function ClientDirectory() {
   useEffect(() => {
     fetchClients()
   }, [fetchClients])
+
+  useRealtimeRefresh('clients', fetchClients, ['clients', 'engagements'])
 
   // Client-side sort by company name
   const sorted = [...clients].sort((a, b) => {

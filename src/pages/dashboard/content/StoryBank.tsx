@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { apiGet } from '../../../lib/api'
+import { useRealtimeRefresh } from '../../../hooks/useRealtimeRefresh'
 
 interface StoryEntry {
   id: string
@@ -38,13 +39,17 @@ export default function StoryBank() {
   const [categoryFilter, setCategoryFilter] = useState('All')
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
-  useEffect(() => {
+  const reload = useCallback(() => {
     const params = categoryFilter !== 'All' ? `?category=${encodeURIComponent(categoryFilter)}` : ''
     apiGet<StoryEntry[]>(`/api/story-bank${params}`)
       .then(setStories)
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [categoryFilter])
+
+  useEffect(() => { reload() }, [reload])
+
+  useRealtimeRefresh('story-bank', reload, ['story_bank'])
 
   return (
     <div>

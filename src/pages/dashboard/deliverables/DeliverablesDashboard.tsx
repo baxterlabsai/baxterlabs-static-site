@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../../lib/supabase'
+import { useRealtimeRefresh } from '../../../hooks/useRealtimeRefresh'
 import SEO from '../../../components/SEO'
 
 interface EngagementRow {
@@ -46,6 +47,8 @@ export default function DeliverablesDashboard() {
   useEffect(() => {
     loadEngagements()
   }, [])
+
+  useRealtimeRefresh('deliverables-dash', loadEngagements, ['engagements', 'phase_output_content'])
 
   async function loadEngagements() {
     const { data: engs } = await supabase

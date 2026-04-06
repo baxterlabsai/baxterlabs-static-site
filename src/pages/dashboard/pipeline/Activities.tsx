@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { apiGet, apiPost, apiPut } from '../../../lib/api'
+import { useRealtimeRefresh } from '../../../hooks/useRealtimeRefresh'
 import MarkdownContent from '../../../components/MarkdownContent'
 import SEO from '../../../components/SEO'
 
@@ -173,7 +174,7 @@ export default function PipelineActivities() {
   const [draftCreating, setDraftCreating] = useState<string | null>(null)
   const [draftResult, setDraftResult] = useState<Record<string, 'success' | 'error'>>({})
 
-  useEffect(() => {
+  const reloadActivities = useCallback(() => {
     Promise.all([
       apiGet<{ activities: Activity[] }>('/api/pipeline/activities'),
       apiGet<{ companies: Company[] }>('/api/pipeline/companies'),
@@ -189,6 +190,10 @@ export default function PipelineActivities() {
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => { reloadActivities() }, [reloadActivities])
+
+  useRealtimeRefresh('pipeline-activities', reloadActivities, ['pipeline_activities'])
 
   // Client-side filtering
   const filtered = activities.filter(act => {

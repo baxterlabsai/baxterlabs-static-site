@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api'
+import { useRealtimeRefresh } from '../../../hooks/useRealtimeRefresh'
 import MarkdownContent from '../../../components/MarkdownContent'
 import SEO from '../../../components/SEO'
 
@@ -189,7 +190,7 @@ export default function PipelineBoard() {
   const stageMenuRef = useRef<HTMLDivElement>(null)
 
   // Load data
-  useEffect(() => {
+  const reloadBoard = useCallback(() => {
     Promise.all([
       apiGet<{ opportunities: Opportunity[] }>('/api/pipeline/opportunities'),
       apiGet<{ companies: Company[] }>('/api/pipeline/companies'),
@@ -203,6 +204,12 @@ export default function PipelineBoard() {
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => { reloadBoard() }, [reloadBoard])
+
+  useRealtimeRefresh('pipeline-board', reloadBoard, [
+    'pipeline_opportunities', 'pipeline_companies', 'pipeline_contacts', 'pipeline_activities',
+  ])
 
   // Fetch connector contacts when tab activates
   useEffect(() => {

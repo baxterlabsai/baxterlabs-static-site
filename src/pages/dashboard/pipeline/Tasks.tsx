@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api'
+import { useRealtimeRefresh } from '../../../hooks/useRealtimeRefresh'
 import MarkdownContent from '../../../components/MarkdownContent'
 import SEO from '../../../components/SEO'
 
@@ -246,6 +247,8 @@ export default function PipelineTasks() {
   useEffect(() => {
     loadData()
   }, [])
+
+  useRealtimeRefresh('pipeline-tasks', loadData, ['pipeline_tasks'])
 
   async function loadData() {
     try {

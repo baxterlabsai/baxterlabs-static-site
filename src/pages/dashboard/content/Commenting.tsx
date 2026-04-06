@@ -11,6 +11,7 @@
 
 import { useEffect, useState } from 'react'
 import { apiGet, apiPatch } from '../../../lib/api'
+import { useRealtimeRefresh } from '../../../hooks/useRealtimeRefresh'
 
 interface CommentingOpp {
   id: string
@@ -47,6 +48,8 @@ export default function Commenting() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }
+
+  useRealtimeRefresh('commenting', load, ['commenting_opportunities'])
 
   async function updateStatus(id: string, status: string) {
     setUpdating(id)

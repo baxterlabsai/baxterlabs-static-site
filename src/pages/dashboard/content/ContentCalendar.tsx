@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api'
 import { useToast } from '../../../components/Toast'
+import { useRealtimeRefresh } from '../../../hooks/useRealtimeRefresh'
 import SEO from '../../../components/SEO'
 
 interface Post {
@@ -128,6 +129,8 @@ export default function ContentCalendar() {
   }
 
   useEffect(() => { fetchPosts() }, [filterType, filterStatus])
+
+  useRealtimeRefresh('content-calendar', fetchPosts, ['content_posts'])
 
   const postsByDate = useMemo(() => {
     const map: Record<string, Post[]> = {}

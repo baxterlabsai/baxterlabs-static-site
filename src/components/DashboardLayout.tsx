@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { apiGet } from '../lib/api'
+import { useRealtimeRefresh } from '../hooks/useRealtimeRefresh'
 import ChangePasswordModal from './ChangePasswordModal'
 import ProfileModal from './ProfileModal'
 
@@ -130,7 +131,7 @@ export default function DashboardLayout() {
   }, [])
 
   // Fetch badge counts
-  useEffect(() => {
+  const refreshBadges = useCallback(() => {
     apiGet<{ tasks: unknown[]; count: number }>('/api/pipeline/tasks?status=pending')
       .then(data => setOpenTaskCount(data.count))
       .catch(() => {})
@@ -140,7 +141,14 @@ export default function DashboardLayout() {
     apiGet<{ pending_count: number }>('/api/commenting/stats')
       .then(data => setCommentingPendingCount(data.pending_count))
       .catch(() => {})
-  }, [location.pathname])
+  }, [])
+
+  useEffect(() => { refreshBadges() }, [location.pathname, refreshBadges])
+
+  // Realtime: refresh all badge counts when relevant tables change
+  useRealtimeRefresh('sidebar-badges', refreshBadges, [
+    'pipeline_tasks', 'content_news', 'commenting_opportunities',
+  ])
 
   // Close menu on outside click
   useEffect(() => {

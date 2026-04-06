@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { apiGet } from '../../lib/api'
 import { supabase } from '../../lib/supabase'
+import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh'
 import SEO from '../../components/SEO'
 
 /* ------------------------------------------------------------------ */
@@ -181,54 +182,55 @@ export default function Overview() {
   }, [])
 
   // Fetch all data
-  useEffect(() => {
-    async function load() {
-      setLoading(true)
-      const [stats, tasks, engs, content, drafts, scheduled, briefingRes, rollupRes] = await Promise.all([
-        apiGet<PipelineStats>('/api/pipeline/stats').catch(() => null),
-        apiGet<{ tasks: PipelineTask[]; count: number }>('/api/pipeline/tasks?status=pending').catch(() => null),
-        apiGet<{ engagements: Engagement[] }>('/api/engagements').catch(() => null),
-        apiGet<ContentPerformance>('/api/content/performance').catch(() => null),
-        apiGet<ContentPost[]>('/api/content-posts?status=draft').catch(() => null),
-        apiGet<ContentPost[]>('/api/content-posts?status=scheduled').catch(() => null),
-        apiGet<PipelineBriefing | null>('/api/pipeline/briefings/latest').catch(() => null),
-        apiGet<WeeklyRollup | null>('/api/analytics/rollups/latest').catch(() => null),
-      ])
+  const reload = useCallback(async () => {
+    const [stats, tasks, engs, content, drafts, scheduled, briefingRes, rollupRes] = await Promise.all([
+      apiGet<PipelineStats>('/api/pipeline/stats').catch(() => null),
+      apiGet<{ tasks: PipelineTask[]; count: number }>('/api/pipeline/tasks?status=pending').catch(() => null),
+      apiGet<{ engagements: Engagement[] }>('/api/engagements').catch(() => null),
+      apiGet<ContentPerformance>('/api/content/performance').catch(() => null),
+      apiGet<ContentPost[]>('/api/content-posts?status=draft').catch(() => null),
+      apiGet<ContentPost[]>('/api/content-posts?status=scheduled').catch(() => null),
+      apiGet<PipelineBriefing | null>('/api/pipeline/briefings/latest').catch(() => null),
+      apiGet<WeeklyRollup | null>('/api/analytics/rollups/latest').catch(() => null),
+    ])
 
-      if (stats) setPipelineStats(stats)
+    if (stats) setPipelineStats(stats)
 
-      // Filter to actionable task types, sort by due_date
-      if (tasks?.tasks) {
-        const actionable = tasks.tasks
-          .filter(t => ['follow_up', 'email', 'linkedin_dm', 'linkedin_audio', 'linkedin_comment',
-            'linkedin_inmail', 'phone_warm', 'phone_cold', 'referral_intro',
-            'lead_gen', 'prep', 'video_call', 'review_draft'].includes(t.task_type))
-          .sort((a, b) => {
-            if (!a.due_date) return 1
-            if (!b.due_date) return -1
-            return a.due_date.localeCompare(b.due_date)
-          })
-          .slice(0, 3)
-        setPipelineTasks(actionable)
-      }
-
-      if (engs?.engagements) {
-        const active = engs.engagements.filter(
-          e => !['completed', 'archived', 'closed'].includes(e.status)
-        )
-        setEngagements(active)
-      }
-
-      if (content) setContentPerf(content)
-      if (drafts) setDraftPosts(drafts)
-      if (scheduled) setScheduledCount(scheduled.length)
-      if (briefingRes) setBriefing(briefingRes)
-      if (rollupRes) setRollup(rollupRes)
-
-      setLoading(false)
+    // Filter to actionable task types, sort by due_date
+    if (tasks?.tasks) {
+      const actionable = tasks.tasks
+        .filter(t => ['follow_up', 'email', 'linkedin_dm', 'linkedin_audio', 'linkedin_comment',
+          'linkedin_inmail', 'phone_warm', 'phone_cold', 'referral_intro',
+          'lead_gen', 'prep', 'video_call', 'review_draft'].includes(t.task_type))
+        .sort((a, b) => {
+          if (!a.due_date) return 1
+          if (!b.due_date) return -1
+          return a.due_date.localeCompare(b.due_date)
+        })
+        .slice(0, 3)
+      setPipelineTasks(actionable)
     }
-    load()
+
+    if (engs?.engagements) {
+      const active = engs.engagements.filter(
+        e => !['completed', 'archived', 'closed'].includes(e.status)
+      )
+      setEngagements(active)
+    }
+
+    if (content) setContentPerf(content)
+    if (drafts) setDraftPosts(drafts)
+    if (scheduled) setScheduledCount(scheduled.length)
+    if (briefingRes) setBriefing(briefingRes)
+    if (rollupRes) setRollup(rollupRes)
+
+    setLoading(false)
   }, [])
+
+  useEffect(() => { setLoading(true); reload() }, [reload])
+
+  // Realtime: auto-refresh Overview when any dashboard table changes
+  useRealtimeRefresh('overview', reload)
 
   const show = (section: FilterTab) => activeTab === 'all' || activeTab === section
 
