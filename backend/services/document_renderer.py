@@ -90,12 +90,13 @@ def _match_template(filename: str) -> Optional[Tuple[str, str, str, int, str]]:
 
 class _InlineSpan:
     """An inline text span with formatting flags."""
-    __slots__ = ("text", "bold", "italic")
+    __slots__ = ("text", "bold", "italic", "superscript")
 
-    def __init__(self, text: str, bold: bool = False, italic: bool = False):
+    def __init__(self, text: str, bold: bool = False, italic: bool = False, superscript: bool = False):
         self.text = text
         self.bold = bold
         self.italic = italic
+        self.superscript = superscript
 
 
 class _Token:
@@ -120,23 +121,46 @@ class _Token:
 
 
 def _parse_inline(text: str) -> List[_InlineSpan]:
-    """Parse **bold** and *italic* markers into spans."""
+    """Parse inline markdown markers into spans.
+
+    # ========================================================================
+    # INLINE MARKDOWN NORMALIZER — Added 2026-04-06 (Scion Phase 7 fix)
+    # ========================================================================
+    # Handles TWO superscript/endnote dialects because Phase 5 skills emit
+    # different formats:
+    #   - Spine, Executive Summary, Full Report, Retainer → ^N^ (Pandoc)
+    #   - Implementation Roadmap → [^N] (Markdown footnote)
+    # Both must be converted to Word superscript runs. Do NOT simplify to one
+    # pattern — both dialects are actively produced by different skills.
+    #
+    # Also handles: **bold**, *italic*, ***bold-italic***
+    # Future extensions (bold, italic normalizer improvements) should add
+    # patterns to this regex — this is the single inline-formatting chokepoint
+    # for both body paragraphs AND table cells.
+    # ========================================================================
+    """
     spans: List[_InlineSpan] = []
     pattern = re.compile(
-        r"(\*\*\*(.+?)\*\*\*)"
-        r"|(\*\*(.+?)\*\*)"
-        r"|(\*(.+?)\*)"
-        r"|([^*]+)"
+        r"(\*\*\*(.+?)\*\*\*)"          # group 1,2: bold-italic
+        r"|(\*\*(.+?)\*\*)"             # group 3,4: bold
+        r"|(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)"  # group 5: italic (not ** or ***)
+        r"|(\[\^(\d{1,3})\])"           # group 6,7: markdown footnote [^N]
+        r"|(\^(\d{1,3})\^)"             # group 8,9: pandoc superscript ^N^
+        r"|([^*^\[]+|\*{3,}|[*^\[])"    # group 10: plain text (including literal chars)
     )
     for m in pattern.finditer(text):
         if m.group(2):
             spans.append(_InlineSpan(m.group(2), bold=True, italic=True))
         elif m.group(4):
             spans.append(_InlineSpan(m.group(4), bold=True))
-        elif m.group(6):
-            spans.append(_InlineSpan(m.group(6), italic=True))
+        elif m.group(5):
+            spans.append(_InlineSpan(m.group(5), italic=True))
         elif m.group(7):
-            spans.append(_InlineSpan(m.group(7)))
+            spans.append(_InlineSpan(m.group(7), superscript=True))
+        elif m.group(9):
+            spans.append(_InlineSpan(m.group(9), superscript=True))
+        elif m.group(10):
+            spans.append(_InlineSpan(m.group(10)))
     return spans
 
 
@@ -568,18 +592,37 @@ def _delete_body_stubs(body_element, cover_boundary) -> object:
     return final_sect_pr
 
 
-def _add_styled_runs(paragraph, spans: List[_InlineSpan]) -> None:
-    """Add inline spans to a paragraph, preserving bold/italic formatting.
+def _add_styled_runs(
+    paragraph,
+    spans: List[_InlineSpan],
+    font_name: Optional[str] = None,
+    font_size: Optional[int] = None,
+    font_color: Optional[RGBColor] = None,
+    force_bold: bool = False,
+) -> None:
+    """Add inline spans to a paragraph, preserving bold/italic/superscript.
 
-    Does NOT apply font/color — lets the caller handle it via
-    _apply_heading_format or _apply_body_format.
+    When font_name/font_size/font_color are provided, they are applied to
+    every run (used by table cells). When omitted, the caller handles
+    formatting via _apply_heading_format or _apply_body_format.
+
+    force_bold=True makes all runs bold regardless of span flags (table
+    header rows).
     """
     for span in spans:
         run = paragraph.add_run(span.text)
-        if span.bold:
+        if font_name:
+            run.font.name = font_name
+        if font_size:
+            run.font.size = Pt(font_size)
+        if font_color:
+            run.font.color.rgb = font_color
+        if force_bold or span.bold:
             run.bold = True
         if span.italic:
             run.italic = True
+        if span.superscript:
+            run.font.superscript = True
 
 
 def _apply_heading_format(paragraph, level: int) -> None:
@@ -751,21 +794,14 @@ def _append_tokens_to_body(
                     cell.text = ""
                     p = cell.paragraphs[0]
 
-                    # Parse **bold** and *italic* markdown in cell text
+                    # Parse inline markdown and add runs via shared chokepoint
                     spans = _parse_inline(cell_text)
-                    for span in spans:
-                        run = p.add_run(span.text)
-                        run.font.name = BODY_FONT
-                        run.font.size = Pt(10)
-                        if row_idx == 0:
-                            run.font.color.rgb = WHITE
-                            run.bold = True
-                        else:
-                            run.font.color.rgb = CHARCOAL
-                            if span.bold:
-                                run.bold = True
-                            if span.italic:
-                                run.italic = True
+                    if row_idx == 0:
+                        _add_styled_runs(p, spans, font_name=BODY_FONT,
+                                         font_size=10, font_color=WHITE, force_bold=True)
+                    else:
+                        _add_styled_runs(p, spans, font_name=BODY_FONT,
+                                         font_size=10, font_color=CHARCOAL)
 
                     if row_idx == 0:
                         _set_cell_shading(cell, DARK_TEAL_HEX)
