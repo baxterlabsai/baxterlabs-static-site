@@ -171,26 +171,52 @@ export default function Services() {
             </div>
           </div>
           <div className="relative">
-            <div className="aspect-[4/5] bg-surface-container-highest rounded-sm shadow-2xl p-1 relative overflow-hidden border border-outline-variant/10">
-              <div className="absolute inset-0 bg-white/60 backdrop-blur-md flex items-center justify-center z-10">
-                <div className="text-center">
-                  <span className="material-symbols-outlined text-7xl text-secondary/30 mb-4 block">lock</span>
-                  <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant/40">Secured Document Preview</p>
+            <button
+              onClick={() => setShowSample(true)}
+              className="aspect-[4/5] w-full bg-[#FAF8F2] rounded-sm shadow-2xl p-8 sm:p-10 relative overflow-hidden border border-outline-variant/10 text-left cursor-pointer group transition-shadow hover:shadow-3xl"
+              aria-label="Preview Sample Executive Summary"
+            >
+              {/* Fade-out overlay at bottom */}
+              <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#FAF8F2] to-transparent z-10 pointer-events-none" />
+              {/* Hover prompt */}
+              <div className="absolute inset-0 flex items-center justify-center z-20 opacity-0 group-hover:opacity-100 transition-opacity bg-black/5">
+                <span className="bg-white/95 shadow-lg rounded-sm px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-secondary flex items-center gap-2">
+                  <span className="material-symbols-outlined text-base">visibility</span>
+                  Preview Document
+                </span>
+              </div>
+              {/* Mini title page replica */}
+              <div className="text-center">
+                <p className="text-[7px] uppercase tracking-[0.2em] text-[#C9A84C] font-bold mb-3">Sample Deliverable</p>
+                <img
+                  src="/images/sample-deliverables/exec-summary/logo-mascot.png"
+                  alt=""
+                  className="h-10 w-auto mx-auto mb-4 opacity-80"
+                />
+                <p className="font-label text-[7px] uppercase tracking-[0.25em] text-secondary mb-1">BaxterLabs Advisory</p>
+                <p className="font-headline text-lg sm:text-xl text-primary leading-tight mb-1">Executive Summary</p>
+                <p className="font-headline italic text-[11px] text-secondary mb-4">Profit Leak &amp; Operational Efficiency Diagnostic</p>
+                <div className="w-8 h-px bg-[#C9A84C] mx-auto mb-4" />
+                <p className="text-[8px] uppercase tracking-wider text-on-surface-variant/50 mb-1">Prepared for</p>
+                <p className="font-headline text-xs text-on-surface/80 mb-6">Regional Staffing Firm (Illustrative Example)</p>
+              </div>
+              {/* Mini content hint */}
+              <div className="space-y-3 mt-2">
+                <p className="font-headline text-[10px] text-primary font-bold">Headline Finding</p>
+                <div className="border-l-2 border-secondary/30 pl-3">
+                  <p className="text-[8px] leading-relaxed text-on-surface/60">
+                    BaxterLabs Advisory has identified <span className="font-bold text-primary">$2,784,000</span> to <span className="font-bold text-primary">$4,384,000</span> in annual profit leak opportunity&hellip;
+                  </p>
+                </div>
+                <div className="mt-3">
+                  <img
+                    src="/images/sample-deliverables/exec-summary/chart-profit-leak-by-category.png"
+                    alt=""
+                    className="w-full rounded-sm opacity-70"
+                  />
                 </div>
               </div>
-              <div className="p-12 space-y-8 opacity-40">
-                <div className="h-10 w-2/3 bg-secondary/10" />
-                <div className="space-y-3">
-                  <div className="h-4 w-full bg-on-surface-variant/10" />
-                  <div className="h-4 w-full bg-on-surface-variant/10" />
-                  <div className="h-4 w-4/5 bg-on-surface-variant/10" />
-                </div>
-                <div className="grid grid-cols-2 gap-6 mt-16">
-                  <div className="h-32 bg-secondary/5 border border-secondary/10" />
-                  <div className="h-32 bg-secondary/5 border border-secondary/10" />
-                </div>
-              </div>
-            </div>
+            </button>
             <div className="absolute -bottom-12 -right-12 w-64 h-64 bg-secondary/5 rounded-full blur-[80px] -z-10" />
           </div>
         </div>
