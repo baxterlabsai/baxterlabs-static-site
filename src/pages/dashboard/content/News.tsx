@@ -33,6 +33,7 @@ export default function News() {
   const [items, setItems] = useState<NewsItem[]>([])
   const [loading, setLoading] = useState(true)
   const [flagging, setFlagging] = useState<string | null>(null)
+  const [dismissing, setDismissing] = useState<string | null>(null)
 
   const reload = useCallback(() => {
     apiGet<NewsItem[]>('/api/content-news')
@@ -52,6 +53,15 @@ export default function News() {
       setItems(prev => prev.map(n => n.id === id ? { ...n, status: 'queued' } : n))
     } catch { /* ignore */ }
     setFlagging(null)
+  }
+
+  async function dismiss(id: string) {
+    setDismissing(id)
+    try {
+      await apiPut(`/api/content-news/${id}`, { status: 'dismissed' })
+      setItems(prev => prev.filter(n => n.id !== id))
+    } catch { /* ignore */ }
+    setDismissing(null)
   }
 
   return (
@@ -83,7 +93,21 @@ export default function News() {
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   {/* Headline */}
-                  <h3 className="text-sm font-bold text-charcoal mb-1">{item.headline}</h3>
+                  <h3 className="text-sm font-bold text-charcoal mb-1">
+                    {item.article_url ? (
+                      <a
+                        href={item.article_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:underline inline-flex items-center gap-1"
+                      >
+                        {item.headline}
+                        <span className="material-symbols-outlined text-[14px] text-charcoal/30">open_in_new</span>
+                      </a>
+                    ) : (
+                      item.headline
+                    )}
+                  </h3>
 
                   {/* Source + time */}
                   <p className="text-[11px] text-charcoal/40 mb-2">
@@ -119,13 +143,22 @@ export default function News() {
                       Candidate
                     </span>
                   ) : (
-                    <button
-                      disabled={flagging === item.id}
-                      onClick={() => flagAsCandidate(item.id)}
-                      className="text-[11px] font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-charcoal/60 hover:border-teal hover:text-teal transition-colors disabled:opacity-50"
-                    >
-                      {flagging === item.id ? 'Flagging…' : 'Flag as candidate'}
-                    </button>
+                    <div className="flex flex-col items-end gap-1.5">
+                      <button
+                        disabled={flagging === item.id}
+                        onClick={() => flagAsCandidate(item.id)}
+                        className="text-[11px] font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-charcoal/60 hover:border-teal hover:text-teal transition-colors disabled:opacity-50"
+                      >
+                        {flagging === item.id ? 'Flagging…' : 'Flag as candidate'}
+                      </button>
+                      <button
+                        disabled={dismissing === item.id}
+                        onClick={() => dismiss(item.id)}
+                        className="text-[11px] font-medium px-3 py-1.5 rounded-lg text-charcoal/40 hover:text-red-soft hover:bg-red-soft/5 transition-colors disabled:opacity-50"
+                      >
+                        {dismissing === item.id ? 'Dismissing…' : 'Dismiss'}
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>

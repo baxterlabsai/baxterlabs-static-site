@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import os
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -342,6 +342,7 @@ async def list_news(
     status: Optional[str] = Query(None),
     min_relevance: Optional[int] = Query(None),
     alert_topic: Optional[str] = Query(None),
+    include_all: bool = Query(False),
     user: dict = Depends(verify_partner_auth),
 ):
     sb = get_supabase()
@@ -350,8 +351,12 @@ async def list_news(
         if status not in VALID_NEWS_STATUSES:
             raise HTTPException(400, f"Invalid status: {status}")
         query = query.eq("status", status)
-    else:
-        query = query.neq("status", "dismissed")
+    elif not include_all:
+        # Exclude dismissed rows and auto-hide stale (>30 day) non-queued rows
+        cutoff = (datetime.utcnow() - timedelta(days=30)).isoformat()
+        query = query.neq("status", "dismissed").or_(
+            f"status.eq.queued,fetched_at.gte.{cutoff}"
+        )
     if min_relevance is not None:
         query = query.gte("relevance_score", min_relevance)
     if alert_topic:
