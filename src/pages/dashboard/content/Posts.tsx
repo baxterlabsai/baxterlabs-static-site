@@ -1,5 +1,6 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { apiGet, apiPatch, apiPost } from '../../../lib/api'
+import { useRealtimeRefresh } from '../../../hooks/useRealtimeRefresh'
 import MarkdownContent from '../../../components/MarkdownContent'
 
 interface UnsplashResult {
@@ -61,12 +62,16 @@ export default function Posts() {
   const [imageSearching, setImageSearching] = useState(false)
   const imageSuggestFired = useRef<string | null>(null)
 
-  useEffect(() => {
+  const reload = useCallback(() => {
     apiGet<Post[]>('/api/content/posts')
       .then(setPosts)
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => { reload() }, [reload])
+
+  useRealtimeRefresh('content-posts', reload, ['content_posts'])
 
   const filtered = activeTab === 'all'
     ? posts

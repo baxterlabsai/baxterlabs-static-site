@@ -26,7 +26,6 @@ import ContentCalendar from './pages/dashboard/content/ContentCalendar'
 import BlogPosts from './pages/dashboard/content/BlogPosts'
 import BlogEditor from './pages/dashboard/content/BlogEditor'
 import ContentCommands from './pages/dashboard/content/ContentCommands'
-import ContentNews from './pages/dashboard/content/ContentNews'
 import ContentPosts from './pages/dashboard/content/Posts'
 import News from './pages/dashboard/content/News'
 import BlogIndex from './pages/BlogIndex'
@@ -111,7 +110,6 @@ export default function App() {
             <Route path="/dashboard/content/news" element={<News />} />
             <Route path="/dashboard/content/commenting" element={<Commenting />} />
             <Route path="/dashboard/analytics" element={<Analytics />} />
-            <Route path="/dashboard/content/news-legacy" element={<ContentNews />} />
             <Route path="/dashboard/pipeline" element={<PipelineBoard />} />
             <Route path="/dashboard/pipeline/companies" element={<PipelineCompanies />} />
             <Route path="/dashboard/pipeline/contacts" element={<PipelineContacts />} />

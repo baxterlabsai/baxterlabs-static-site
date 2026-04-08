@@ -35,6 +35,7 @@ const ALL_DASHBOARD_TABLES = [
   // Content
   'content_posts',
   'content_news',
+  'content_ideas',
   'story_bank',
   // Scheduled task write-backs
   'pipeline_briefings',

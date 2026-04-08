@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api'
+import { apiGet, apiPost, apiPatch, apiDelete } from '../../../lib/api'
 import { useToast } from '../../../components/Toast'
 import { supabase } from '../../../lib/supabase'
 
@@ -126,7 +126,7 @@ export default function BlogEditor() {
   // Load existing post
   useEffect(() => {
     if (!isNew && id) {
-      apiGet<Post>(`/api/content-posts/${id}`)
+      apiGet<Post>(`/api/content/posts/${id}`)
         .then(p => {
           setTitle(p.title)
           setBody(p.body || '')
@@ -148,7 +148,7 @@ export default function BlogEditor() {
 
   // Load LinkedIn posts for source dropdown
   useEffect(() => {
-    apiGet<LinkedInPost[]>('/api/content-posts?type=linkedin')
+    apiGet<LinkedInPost[]>('/api/content/posts?type=linkedin')
       .then(setLinkedInPosts)
       .catch(() => {})
   }, [])
@@ -185,10 +185,10 @@ export default function BlogEditor() {
         published_date: publishedDate || undefined,
       }
       if (isNew) {
-        const result = await apiPost<Post>('/api/content-posts', payload)
+        const result = await apiPost<Post>('/api/content/posts', payload)
         navigate(`/dashboard/content/blog/${result.id}`, { replace: true })
       } else {
-        await apiPut(`/api/content-posts/${id}`, payload)
+        await apiPatch(`/api/content/posts/${id}`, payload)
       }
       toast('Draft saved', 'success')
     } catch (err) {
@@ -219,10 +219,10 @@ export default function BlogEditor() {
         published_date: now,
       }
       if (isNew) {
-        const result = await apiPost<Post>('/api/content-posts', payload)
+        const result = await apiPost<Post>('/api/content/posts', payload)
         navigate(`/dashboard/content/blog/${result.id}`, { replace: true })
       } else {
-        await apiPut(`/api/content-posts/${id}`, payload)
+        await apiPatch(`/api/content/posts/${id}`, payload)
       }
       setPublished(true)
       setPublishedDate(now)
@@ -239,7 +239,7 @@ export default function BlogEditor() {
   const handleUnpublish = async () => {
     setSaving(true)
     try {
-      await apiPut(`/api/content-posts/${id}`, { published: false, status: 'draft' })
+      await apiPatch(`/api/content/posts/${id}`, { published: false, status: 'draft' })
       setPublished(false)
       setStatus('draft')
       toast('Post unpublished', 'success')
@@ -254,7 +254,7 @@ export default function BlogEditor() {
   const handleDelete = async () => {
     setDeleteConfirm(false)
     try {
-      await apiDelete(`/api/content-posts/${id}`)
+      await apiDelete(`/api/content/posts/${id}`)
       toast('Post deleted', 'success')
       navigate('/dashboard/content/blog')
     } catch (err) {

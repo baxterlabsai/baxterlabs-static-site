@@ -42,7 +42,7 @@ export default function BlogPosts() {
   const reload = useCallback(() => {
     const params = new URLSearchParams({ type: 'blog' })
     if (filterStatus) params.set('status', filterStatus)
-    apiGet<Post[]>(`/api/content-posts?${params}`)
+    apiGet<Post[]>(`/api/content/posts?${params}`)
       .then(setPosts)
       .catch(() => {})
       .finally(() => setLoading(false))

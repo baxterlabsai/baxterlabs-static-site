@@ -67,6 +67,7 @@ const MAIN_SECTIONS: NavSection[] = [
     dotColor: '#639922',
     items: [
       { to: '/dashboard/content/posts', label: 'Posts' },
+      { to: '/dashboard/content/calendar', label: 'Calendar' },
       { to: '/dashboard/content/blog', label: 'Blog posts' },
       { to: '/dashboard/content/story-bank', label: 'Story bank' },
       { to: '/dashboard/content/news', label: 'News', badge: 'news' },

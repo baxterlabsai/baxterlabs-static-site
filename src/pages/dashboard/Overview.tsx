@@ -188,8 +188,8 @@ export default function Overview() {
       apiGet<{ tasks: PipelineTask[]; count: number }>('/api/pipeline/tasks?status=pending').catch(() => null),
       apiGet<{ engagements: Engagement[] }>('/api/engagements').catch(() => null),
       apiGet<ContentPerformance>('/api/content/performance').catch(() => null),
-      apiGet<ContentPost[]>('/api/content-posts?status=draft').catch(() => null),
-      apiGet<ContentPost[]>('/api/content-posts?status=scheduled').catch(() => null),
+      apiGet<ContentPost[]>('/api/content/posts?status=draft').catch(() => null),
+      apiGet<ContentPost[]>('/api/content/posts?status=scheduled').catch(() => null),
       apiGet<PipelineBriefing | null>('/api/pipeline/briefings/latest').catch(() => null),
       apiGet<WeeklyRollup | null>('/api/analytics/rollups/latest').catch(() => null),
     ])

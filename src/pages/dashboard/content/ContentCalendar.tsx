@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
-import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api'
+import { apiGet, apiPost, apiPatch, apiDelete } from '../../../lib/api'
 import { useToast } from '../../../components/Toast'
 import { useRealtimeRefresh } from '../../../hooks/useRealtimeRefresh'
 import SEO from '../../../components/SEO'
@@ -119,7 +119,7 @@ export default function ContentCalendar() {
       if (filterType) params.set('type', filterType)
       if (filterStatus) params.set('status', filterStatus)
       const qs = params.toString()
-      const data = await apiGet<Post[]>(`/api/content-posts${qs ? `?${qs}` : ''}`)
+      const data = await apiGet<Post[]>(`/api/content/posts${qs ? `?${qs}` : ''}`)
       setPosts(data)
     } catch {
       // ignore
@@ -200,9 +200,9 @@ export default function ContentCalendar() {
         blog_slug: form.blog_slug || undefined,
       }
       if (editingId) {
-        await apiPut(`/api/content-posts/${editingId}`, payload)
+        await apiPatch(`/api/content/posts/${editingId}`, payload)
       } else {
-        await apiPost('/api/content-posts', payload)
+        await apiPost('/api/content/posts', payload)
       }
       setModalOpen(false)
       fetchPosts()
@@ -215,7 +215,7 @@ export default function ContentCalendar() {
 
   const handleStatusChange = async (postId: string, newStatus: string) => {
     try {
-      await apiPut(`/api/content-posts/${postId}`, { status: newStatus })
+      await apiPatch(`/api/content/posts/${postId}`, { status: newStatus })
       if (detailPost && detailPost.id === postId) {
         setDetailPost({ ...detailPost, status: newStatus })
       }
@@ -227,7 +227,7 @@ export default function ContentCalendar() {
 
   const handleDelete = async (id: string) => {
     try {
-      await apiDelete(`/api/content-posts/${id}`)
+      await apiDelete(`/api/content/posts/${id}`)
       setDeleteConfirm(null)
       setDetailPost(null)
       fetchPosts()
@@ -271,7 +271,7 @@ export default function ContentCalendar() {
         const impressions = row.impressions ? parseInt(row.impressions) : undefined
         const likes = row.likes ? parseInt(row.likes) : undefined
         const comments = row.comments ? parseInt(row.comments) : undefined
-        await apiPut(`/api/content-posts/${row.id}`, {
+        await apiPatch(`/api/content/posts/${row.id}`, {
           impressions,
           likes,
           comments,
@@ -398,6 +398,7 @@ export default function ContentCalendar() {
               <div className="flex items-center gap-4 mt-3 text-xs text-[#2D3436]/50">
                 <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-full bg-blue-500" /> LinkedIn</div>
                 <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Blog</div>
+                <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-full bg-purple-500" /> Video Script</div>
               </div>
             </div>
           </div>

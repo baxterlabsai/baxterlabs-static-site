@@ -25,7 +25,7 @@ VALID_POST_TYPES = {"linkedin", "blog", "video_script"}
 VALID_POST_STATUSES = {"idea", "draft", "review", "scheduled", "published", "archived"}
 VALID_POST_PLATFORMS = {"linkedin", "blog", "both"}
 VALID_IDEA_STATUSES = {"unused", "assigned", "used"}
-VALID_NEWS_STATUSES = {"unreviewed", "queued", "used", "dismissed", "candidate"}
+VALID_NEWS_STATUSES = {"unreviewed", "queued", "used", "dismissed"}
 
 
 # ── Pydantic Models ─────────────────────────────────────────────────────
@@ -47,48 +47,6 @@ class StoryUpdate(BaseModel):
     slay_outline: Optional[dict] = None
     used_in_post: Optional[bool] = None
     used_in_post_id: Optional[str] = None
-
-class PostCreate(BaseModel):
-    type: str
-    title: str
-    body: Optional[str] = None
-    status: Optional[str] = "draft"
-    platform: Optional[str] = None
-    scheduled_date: Optional[str] = None
-    published_date: Optional[str] = None
-    impressions: Optional[int] = None
-    engagement_rate: Optional[float] = None
-    comments: Optional[int] = None
-    likes: Optional[int] = None
-    quality_score: Optional[int] = None
-    score_notes: Optional[str] = None
-    seo_title: Optional[str] = None
-    seo_description: Optional[str] = None
-    featured_image_url: Optional[str] = None
-    blog_slug: Optional[str] = None
-    published: Optional[bool] = False
-    source_post_id: Optional[str] = None
-
-class PostUpdate(BaseModel):
-    type: Optional[str] = None
-    title: Optional[str] = None
-    body: Optional[str] = None
-    status: Optional[str] = None
-    platform: Optional[str] = None
-    scheduled_date: Optional[str] = None
-    published_date: Optional[str] = None
-    impressions: Optional[int] = None
-    engagement_rate: Optional[float] = None
-    comments: Optional[int] = None
-    likes: Optional[int] = None
-    quality_score: Optional[int] = None
-    score_notes: Optional[str] = None
-    seo_title: Optional[str] = None
-    seo_description: Optional[str] = None
-    featured_image_url: Optional[str] = None
-    blog_slug: Optional[str] = None
-    published: Optional[bool] = None
-    source_post_id: Optional[str] = None
 
 class IdeaCreate(BaseModel):
     title: str
@@ -173,93 +131,6 @@ async def delete_story(
     result = sb.table("story_bank").delete().eq("id", story_id).execute()
     if not result.data:
         raise HTTPException(404, "Story not found")
-    return {"ok": True}
-
-
-# ==========================================================================
-# Content Posts
-# ==========================================================================
-
-@router.get("/content-posts")
-async def list_posts(
-    type: Optional[str] = Query(None),
-    status: Optional[str] = Query(None),
-    platform: Optional[str] = Query(None),
-    user: dict = Depends(verify_partner_auth),
-):
-    sb = get_supabase()
-    query = sb.table("content_posts").select("*").order("created_at", desc=True)
-    if type:
-        if type not in VALID_POST_TYPES:
-            raise HTTPException(400, f"Invalid type: {type}")
-        query = query.eq("type", type)
-    if status:
-        if status not in VALID_POST_STATUSES:
-            raise HTTPException(400, f"Invalid status: {status}")
-        query = query.eq("status", status)
-    if platform:
-        if platform not in VALID_POST_PLATFORMS:
-            raise HTTPException(400, f"Invalid platform: {platform}")
-        query = query.eq("platform", platform)
-    result = query.execute()
-    return result.data
-
-
-@router.get("/content-posts/{post_id}")
-async def get_post(
-    post_id: str,
-    user: dict = Depends(verify_partner_auth),
-):
-    sb = get_supabase()
-    result = sb.table("content_posts").select("*").eq("id", post_id).execute()
-    if not result.data:
-        raise HTTPException(404, "Post not found")
-    return result.data[0]
-
-
-@router.post("/content-posts")
-async def create_post(
-    payload: PostCreate,
-    user: dict = Depends(verify_partner_auth),
-):
-    if payload.type not in VALID_POST_TYPES:
-        raise HTTPException(400, f"Invalid type: {payload.type}")
-    if payload.status and payload.status not in VALID_POST_STATUSES:
-        raise HTTPException(400, f"Invalid status: {payload.status}")
-    sb = get_supabase()
-    data = payload.model_dump(exclude_none=True)
-    result = sb.table("content_posts").insert(data).execute()
-    return result.data[0]
-
-
-@router.put("/content-posts/{post_id}")
-async def update_post(
-    post_id: str,
-    payload: PostUpdate,
-    user: dict = Depends(verify_partner_auth),
-):
-    if payload.type and payload.type not in VALID_POST_TYPES:
-        raise HTTPException(400, f"Invalid type: {payload.type}")
-    if payload.status and payload.status not in VALID_POST_STATUSES:
-        raise HTTPException(400, f"Invalid status: {payload.status}")
-    sb = get_supabase()
-    data = payload.model_dump(exclude_none=True)
-    data["updated_at"] = datetime.utcnow().isoformat()
-    result = sb.table("content_posts").update(data).eq("id", post_id).execute()
-    if not result.data:
-        raise HTTPException(404, "Post not found")
-    return result.data[0]
-
-
-@router.delete("/content-posts/{post_id}")
-async def delete_post(
-    post_id: str,
-    user: dict = Depends(verify_partner_auth),
-):
-    sb = get_supabase()
-    result = sb.table("content_posts").delete().eq("id", post_id).execute()
-    if not result.data:
-        raise HTTPException(404, "Post not found")
     return {"ok": True}
 
 
@@ -581,37 +452,92 @@ async def public_get_blog_post(slug: str):
 # ==========================================================================
 
 class ContentPostCreate(BaseModel):
-    post_type: Optional[str] = "linkedin"
+    type: str = "linkedin"
     title: Optional[str] = None
-    body: str
+    body: Optional[str] = None
+    status: Optional[str] = "draft"
+    platform: Optional[str] = None
+    scheduled_date: Optional[str] = None
+    published_date: Optional[str] = None
+    impressions: Optional[int] = None
+    engagement_rate: Optional[float] = None
+    comments: Optional[int] = None
+    likes: Optional[int] = None
+    quality_score: Optional[int] = None
+    score_notes: Optional[str] = None
+    seo_title: Optional[str] = None
+    seo_description: Optional[str] = None
+    featured_image_url: Optional[str] = None
+    blog_slug: Optional[str] = None
+    published: Optional[bool] = False
+    source_post_id: Optional[str] = None
     source_type: Optional[str] = None
     source_id: Optional[str] = None
     voice_notes: Optional[str] = None
-    status: Optional[str] = "draft"
-    scheduled_for: Optional[str] = None
+    image_candidates: Optional[list] = None
     engagement_data: Optional[dict] = None
     plugin_version: Optional[str] = None
 
 
 class ContentPostUpdate(BaseModel):
+    type: Optional[str] = None
+    title: Optional[str] = None
     body: Optional[str] = None
     status: Optional[str] = None
-    scheduled_for: Optional[str] = None
+    platform: Optional[str] = None
+    scheduled_date: Optional[str] = None
+    published_date: Optional[str] = None
+    impressions: Optional[int] = None
+    engagement_rate: Optional[float] = None
+    comments: Optional[int] = None
+    likes: Optional[int] = None
+    quality_score: Optional[int] = None
+    score_notes: Optional[str] = None
+    seo_title: Optional[str] = None
+    seo_description: Optional[str] = None
     featured_image_url: Optional[str] = None
+    blog_slug: Optional[str] = None
+    published: Optional[bool] = None
+    source_post_id: Optional[str] = None
 
 
 @router.get("/content/posts")
 async def list_content_posts(
+    type: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
+    platform: Optional[str] = Query(None),
     user: dict = Depends(verify_partner_auth),
 ):
-    """List content_posts ordered by created_at DESC, optional ?status= filter."""
+    """List content_posts ordered by created_at DESC with optional filters."""
     sb = get_supabase()
     query = sb.table("content_posts").select("*").order("created_at", desc=True)
+    if type:
+        if type not in VALID_POST_TYPES:
+            raise HTTPException(400, f"Invalid type: {type}")
+        query = query.eq("type", type)
     if status:
+        if status not in VALID_POST_STATUSES:
+            raise HTTPException(400, f"Invalid status: {status}")
         query = query.eq("status", status)
+    if platform:
+        if platform not in VALID_POST_PLATFORMS:
+            raise HTTPException(400, f"Invalid platform: {platform}")
+        query = query.eq("platform", platform)
     result = query.execute()
     return result.data
+
+
+@router.get("/content/posts/{post_id}")
+async def get_content_post(
+    post_id: str,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Get a single content_post by ID."""
+    sb = get_supabase()
+    result = sb.table("content_posts").select("*").eq("id", post_id).execute()
+    if not result.data:
+        raise HTTPException(404, "Post not found")
+    return result.data[0]
 
 
 @router.post("/content/posts")
@@ -620,6 +546,10 @@ async def create_content_post(
     user: dict = Depends(verify_partner_auth),
 ):
     """Insert a new content_post row."""
+    if payload.type not in VALID_POST_TYPES:
+        raise HTTPException(400, f"Invalid type: {payload.type}")
+    if payload.status and payload.status not in VALID_POST_STATUSES:
+        raise HTTPException(400, f"Invalid status: {payload.status}")
     sb = get_supabase()
     data = payload.model_dump(exclude_none=True)
     result = sb.table("content_posts").insert(data).execute()
@@ -632,7 +562,11 @@ async def patch_content_post(
     payload: ContentPostUpdate,
     user: dict = Depends(verify_partner_auth),
 ):
-    """Update status, scheduled_for, or body on a content_post."""
+    """Update any field on a content_post."""
+    if payload.type and payload.type not in VALID_POST_TYPES:
+        raise HTTPException(400, f"Invalid type: {payload.type}")
+    if payload.status and payload.status not in VALID_POST_STATUSES:
+        raise HTTPException(400, f"Invalid status: {payload.status}")
     sb = get_supabase()
     data = payload.model_dump(exclude_none=True)
     if not data:
@@ -642,6 +576,19 @@ async def patch_content_post(
     if not result.data:
         raise HTTPException(404, "Post not found")
     return result.data[0]
+
+
+@router.delete("/content/posts/{post_id}")
+async def delete_content_post(
+    post_id: str,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Delete a content_post by ID."""
+    sb = get_supabase()
+    result = sb.table("content_posts").delete().eq("id", post_id).execute()
+    if not result.data:
+        raise HTTPException(404, "Post not found")
+    return {"ok": True}
 
 
 # ==========================================================================
@@ -685,19 +632,60 @@ async def create_story_bank_entry(
 
 
 # ==========================================================================
+# Content Ideas — Promote to Story Bank
+# ==========================================================================
+
+@router.post("/content/ideas/{idea_id}/promote")
+async def promote_idea_to_story_bank(
+    idea_id: str,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Promote a content_idea to a story_bank entry.
+
+    Field mapping (content_ideas → story_bank):
+      title/description → raw_note
+      dollar_hook       → hook_draft
+      insider_detail    → dollar_connection (closest semantic match)
+      (hardcoded)       → category = 'Operational Observation'
+
+    The promoted entry will likely need manual refinement on the Story Bank
+    page — the two tables were designed independently and the mapping is
+    approximate.
+    """
+    sb = get_supabase()
+    idea = sb.table("content_ideas").select("*").eq("id", idea_id).execute()
+    if not idea.data:
+        raise HTTPException(404, "Idea not found")
+    idea = idea.data[0]
+
+    raw_note = idea.get("description") or idea.get("title", "")
+    story_data = {
+        "category": "Operational Observation",
+        "raw_note": raw_note,
+        "hook_draft": idea.get("dollar_hook"),
+        "dollar_connection": idea.get("insider_detail"),
+    }
+    new_entry = sb.table("story_bank").insert(story_data).execute()
+
+    sb.table("content_ideas").update({"status": "used"}).eq("id", idea_id).execute()
+
+    return new_entry.data[0]
+
+
+# ==========================================================================
 # News Items (v2 — /api/content/news)
 # ==========================================================================
 
 @router.get("/content/news")
 async def list_news_items(
-    candidate: Optional[bool] = Query(None),
+    queued: Optional[bool] = Query(None),
     user: dict = Depends(verify_partner_auth),
 ):
-    """List content_news ordered by fetched_at DESC, optional ?candidate=true filter."""
+    """List content_news ordered by fetched_at DESC, optional ?queued=true filter."""
     sb = get_supabase()
     query = sb.table("content_news").select("*")
-    if candidate is True:
-        query = query.eq("status", "candidate")
+    if queued is True:
+        query = query.eq("status", "queued")
     else:
         query = query.neq("status", "dismissed")
     query = query.order("relevance_score", desc=True).order("created_at", desc=True)
@@ -710,11 +698,11 @@ async def flag_news_item(
     news_id: str,
     user: dict = Depends(verify_partner_auth),
 ):
-    """Set status = 'candidate' on a content_news item."""
+    """Set status = 'queued' on a content_news item."""
     sb = get_supabase()
     result = (
         sb.table("content_news")
-        .update({"status": "candidate"})
+        .update({"status": "queued"})
         .eq("id", news_id)
         .execute()
     )
