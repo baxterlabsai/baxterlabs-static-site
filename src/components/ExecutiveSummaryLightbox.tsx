@@ -48,7 +48,7 @@ export default function ExecutiveSummaryLightbox({ isOpen, onClose }: Props) {
           <div className="mx-8 sm:mx-14 mt-10 mb-0 border-t border-b border-[#C9A84C]/30 bg-[#F6E7C8]/25 px-6 py-5">
             <p className="text-[12px] sm:text-[13px] leading-relaxed text-[#2D3436]/80">
               <span className="font-bold italic text-[#2D3436]/90 tracking-wide text-[11px] uppercase">Disclaimer:</span>{' '}
-              This document is a sanitized and anonymized version of an actual BaxterLabs Advisory Profit Leak &amp; Operational Efficiency Diagnostic. All company names, individual names, and identifying details have been modified to protect client confidentiality. The analytical structures, methodologies, deliverable format, and depth of findings reflect the rigor of a standard BaxterLabs engagement.
+              This document is a sanitized and anonymized version of an actual BaxterLabs Advisory engagement deliverable. It does not represent any specific company, individual, or financial data. The analytical structures, methodologies, deliverable format, and depth of findings reflect the rigor of a standard BaxterLabs engagement.
             </p>
           </div>
 
@@ -229,7 +229,7 @@ export default function ExecutiveSummaryLightbox({ isOpen, onClose }: Props) {
 
             {/* ═══════════════ ENDNOTES ═══════════════ */}
             <section>
-              <SectionHeading>Endnotes</SectionHeading>
+              <SectionHeading>Endnotes (Audit Trail &amp; Source Validation)</SectionHeading>
               <div className="space-y-3 text-[12px] sm:text-[13px] leading-relaxed text-[#2D3436]/70">
                 <En n={1}>[Verified: Source Document Registry, the Firm. Engagement deliverable package comprises: Executive Summary, Full Diagnostic Report, Profit Leak Quantification Workbook, Presentation Deck, Implementation Roadmap, and Retainer Proposal.]</En>
                 <En n={2}>[Verified: Profit Leak Quantification Workbook, Summary, Row 33. Conservative $2,784,000; Moderate $3,585,000; Aggressive $4,384,000.]</En>
