@@ -1,9 +1,15 @@
-import ReactMarkdown from 'react-markdown'
+import { useState, useEffect } from 'react'
+import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import type { PluggableList } from 'unified'
 
 interface MarkdownContentProps {
   content: string
   className?: string
+  /** When true, adds rehype-slug and rehype-autolink-headings for TOC anchor support */
+  withTocAnchors?: boolean
+  /** Custom react-markdown component overrides (e.g. for search highlighting) */
+  components?: Partial<Components>
 }
 
 /**
@@ -63,10 +69,31 @@ function fixMarkdownTables(text: string): string {
   return result.join('\n')
 }
 
-export default function MarkdownContent({ content, className = '' }: MarkdownContentProps) {
+export default function MarkdownContent({ content, className = '', withTocAnchors = false, components }: MarkdownContentProps) {
+  const [rehypePlugins, setRehypePlugins] = useState<PluggableList>([])
+
+  useEffect(() => {
+    if (!withTocAnchors) {
+      setRehypePlugins([])
+      return
+    }
+    // Lazy-load rehype plugins only when needed
+    Promise.all([
+      import('rehype-slug'),
+      import('rehype-autolink-headings'),
+    ]).then(([slugMod, autolinkMod]) => {
+      setRehypePlugins([
+        slugMod.default,
+        [autolinkMod.default, { behavior: 'wrap' }],
+      ])
+    })
+  }, [withTocAnchors])
+
   return (
     <div className={`prose-bl ${className}`}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{fixMarkdownTables(content)}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={rehypePlugins} components={components}>
+        {fixMarkdownTables(content)}
+      </ReactMarkdown>
     </div>
   )
 }
