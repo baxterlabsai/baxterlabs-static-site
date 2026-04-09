@@ -1,12 +1,17 @@
 """LinkedIn Commenting Opportunities — read-only + status PATCH endpoints.
 
 # ============================================================================
-# COWORK WRITE-BACK CONTRACT — DO NOT ADD POST/PUT/DELETE (except PATCH status)
+# COWORK WRITE-BACK CONTRACT — DO NOT ADD POST/PUT/DELETE
+# EXCEPTIONS:
+# - PATCH /{opp_id} status update (existing)
+# - PATCH /{opp_id}/draft user-edited draft persistence (P6 comment drafter)
+# - POST /{opp_id}/redraft live comment regeneration (P6 comment drafter)
+# Any further exceptions require explicit design review.
 # ============================================================================
 # commenting_opportunities rows are written exclusively by the Cowork scheduled
 # task "LinkedIn Commenting Pre-Brief" via Supabase MCP (service_role key).
 # 5 rows per weekday, ranked 1-5, with UNIQUE(briefing_date, rank) constraint.
-# This router provides read-only access + status PATCH for the dashboard.
+# This router provides read-only access + status/draft PATCH for the dashboard.
 # Added: 2026-04-06 (Scheduled Task Dashboard Write-Back handoff)
 # ============================================================================
 """
@@ -18,6 +23,7 @@ from datetime import date as date_cls, datetime, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from middleware.auth import verify_partner_auth
 from services.supabase_client import get_supabase
 
@@ -26,6 +32,10 @@ logger = logging.getLogger("baxterlabs.commenting")
 router = APIRouter(prefix="/api/commenting", tags=["commenting"])
 
 VALID_COMMENTING_STATUSES = {"pending", "acted_on", "skipped", "saved"}
+
+
+class DraftUpdate(BaseModel):
+    draft_comment: str
 
 
 @router.get("")
@@ -117,3 +127,84 @@ async def update_commenting_status(
     if not result.data:
         raise HTTPException(404, "Commenting opportunity not found")
     return result.data[0]
+
+
+@router.patch("/{opp_id}/draft")
+async def update_draft(
+    opp_id: str,
+    body: DraftUpdate,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Persist user edits to a comment draft.
+
+    Called by the Commenting page Save Edits button on the draft block.
+    Writes draft_comment and bumps draft_generated_at. Does NOT touch status,
+    acted_at, or any other column.
+    """
+    sb = get_supabase()
+
+    # Validate the row exists
+    check = (
+        sb.table("commenting_opportunities")
+        .select("id")
+        .eq("id", opp_id)
+        .execute()
+    )
+    if not check.data:
+        raise HTTPException(404, "Commenting opportunity not found")
+
+    result = (
+        sb.table("commenting_opportunities")
+        .update({
+            "draft_comment": body.draft_comment,
+            "draft_generated_at": datetime.utcnow().isoformat(),
+        })
+        .eq("id", opp_id)
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(404, "Commenting opportunity not found")
+    return result.data[0]
+
+
+@router.post("/{opp_id}/redraft")
+async def redraft(
+    opp_id: str,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Regenerate a comment draft from scratch using the live comment drafter service.
+
+    Called by the Commenting page Redraft button on the draft block.
+    Overwrites draft_comment with a freshly generated draft and bumps
+    draft_generated_at. Does NOT touch status, acted_at, or any other column.
+
+    This is the live path (Architecture 1 from P6 design). The scheduled task
+    batch path uses a Cowork skill that mirrors this logic.
+    """
+    from services.comment_drafter import (
+        CommentDraftError,
+        DriveReadError,
+        draft_comment_for_opportunity,
+    )
+
+    try:
+        result = draft_comment_for_opportunity(opp_id)
+    except DriveReadError as e:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Brand voice or prompt template unavailable: {e}",
+        )
+    except CommentDraftError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    # Re-fetch the row so we return the same shape as PATCH /{opp_id}
+    sb = get_supabase()
+    row = (
+        sb.table("commenting_opportunities")
+        .select("*")
+        .eq("id", opp_id)
+        .execute()
+    )
+    if not row.data:
+        raise HTTPException(404, "Commenting opportunity not found")
+    return row.data[0]
