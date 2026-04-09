@@ -190,11 +190,13 @@ async def redraft(
     try:
         result = draft_comment_for_opportunity(opp_id)
     except DriveReadError as e:
+        logger.exception("DriveReadError during redraft for opp %s", opp_id)
         raise HTTPException(
             status_code=503,
             detail=f"Brand voice or prompt template unavailable: {e}",
         )
     except CommentDraftError as e:
+        logger.exception("CommentDraftError during redraft for opp %s", opp_id)
         raise HTTPException(status_code=404, detail=str(e))
 
     # Re-fetch the row so we return the same shape as PATCH /{opp_id}

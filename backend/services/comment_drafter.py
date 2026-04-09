@@ -156,14 +156,37 @@ def draft_comment_for_opportunity(opp_id: str) -> dict:
 
     # 2-3. Read prompt template and brand voice spec from Drive (fail-closed)
     service = _get_drive_service()
-    drive_id = _find_shared_drive_id(service)
 
-    prompt_template = _download_file_from_standards(
-        service, drive_id, PROMPT_TEMPLATE_FILENAME
-    )
-    brand_voice = _download_file_from_standards(
-        service, drive_id, BRAND_VOICE_FILENAME
-    )
+    logger.info("Looking up shared drive '%s'", SHARED_DRIVE_NAME)
+    try:
+        drive_id = _find_shared_drive_id(service)
+    except Exception as e:
+        logger.exception("Failed to find shared drive '%s'", SHARED_DRIVE_NAME)
+        raise DriveReadError(f"Shared drive lookup failed: {e}") from e
+
+    logger.info("Looking up 'Standards' folder on shared drive %s", drive_id)
+    try:
+        prompt_template = _download_file_from_standards(
+            service, drive_id, PROMPT_TEMPLATE_FILENAME
+        )
+    except DriveReadError:
+        raise
+    except Exception as e:
+        logger.exception("Failed to download '%s'", PROMPT_TEMPLATE_FILENAME)
+        raise DriveReadError(f"Drive read failed for {PROMPT_TEMPLATE_FILENAME}: {e}") from e
+    logger.info("Downloaded '%s' (%d bytes)", PROMPT_TEMPLATE_FILENAME, len(prompt_template))
+
+    logger.info("Downloading 'Standards/%s'", BRAND_VOICE_FILENAME)
+    try:
+        brand_voice = _download_file_from_standards(
+            service, drive_id, BRAND_VOICE_FILENAME
+        )
+    except DriveReadError:
+        raise
+    except Exception as e:
+        logger.exception("Failed to download '%s'", BRAND_VOICE_FILENAME)
+        raise DriveReadError(f"Drive read failed for {BRAND_VOICE_FILENAME}: {e}") from e
+    logger.info("Downloaded '%s' (%d bytes)", BRAND_VOICE_FILENAME, len(brand_voice))
 
     # 4. Build messages
     system_prompt = (

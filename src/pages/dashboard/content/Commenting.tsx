@@ -302,22 +302,22 @@ export default function Commenting() {
                             {saving[item.id] ? 'Saving...' : 'Save Edits'}
                           </button>
                         </div>
-
-                        {/* Error display */}
-                        {draftErrors[item.id] && (
-                          <div className="flex items-center gap-1.5 mt-1.5">
-                            <span className="text-[11px] text-red-600">{draftErrors[item.id]}</span>
-                            <button
-                              onClick={() => setDraftErrors(prev => ({ ...prev, [item.id]: null }))}
-                              className="text-red-400 hover:text-red-600"
-                            >
-                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
-                          </div>
-                        )}
                       </>
+                    )}
+
+                    {/* Error display — outside the ternary so it renders in both empty and populated states */}
+                    {draftErrors[item.id] && (
+                      <div className="flex items-center gap-1.5 mt-1.5">
+                        <span className="text-[11px] text-red-600">{draftErrors[item.id]}</span>
+                        <button
+                          onClick={() => setDraftErrors(prev => ({ ...prev, [item.id]: null }))}
+                          className="text-red-400 hover:text-red-600"
+                        >
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
                     )}
                   </div>
 
