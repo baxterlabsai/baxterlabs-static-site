@@ -72,17 +72,26 @@ async def list_commenting_opportunities(
 async def commenting_stats(
     user: dict = Depends(verify_partner_auth),
 ):
-    """Return today's pending count for sidebar badge."""
+    """Return today's commenting counts by status.
+
+    Consumers:
+    - DashboardLayout sidebar badge reads ``pending_count``.
+    - Overview Content card reads ``acted_count`` and ``total_count``.
+    """
     sb = get_supabase()
     today = date_cls.today().isoformat()
     result = (
         sb.table("commenting_opportunities")
-        .select("id")
+        .select("status")
         .eq("briefing_date", today)
-        .eq("status", "pending")
         .execute()
     )
-    return {"pending_count": len(result.data)}
+    rows = result.data or []
+    return {
+        "pending_count": sum(1 for r in rows if r.get("status") == "pending"),
+        "acted_count": sum(1 for r in rows if r.get("status") == "acted_on"),
+        "total_count": len(rows),
+    }
 
 
 @router.get("/{opp_id}")

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { Component, useEffect, useState, useCallback, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { apiGet } from '../../lib/api'
 import { supabase } from '../../lib/supabase'
@@ -86,6 +86,42 @@ interface WeeklyRollup {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Commenting stats type                                              */
+/*  Returned by GET /api/commenting/stats. Drives the sidebar badge    */
+/*  (pending_count) and the Content card commenting row (acted_count   */
+/*  / total_count). Scoped to today's briefing_date.                   */
+/* ------------------------------------------------------------------ */
+interface CommentingStats {
+  pending_count: number
+  acted_count: number
+  total_count: number
+}
+
+/* ------------------------------------------------------------------ */
+/*  PROTECTED: SectionErrorBoundary                                    */
+/*  Prevents a single malformed row (e.g. a Cowork scheduled task      */
+/*  writing a nested object into weekly_metrics_rollups.metrics) from  */
+/*  white-screening the entire Overview page via React's "Objects are  */
+/*  not valid as a React child" error. Wraps sections that render      */
+/*  Cowork write-back data. Do not remove.                             */
+/* ------------------------------------------------------------------ */
+class SectionErrorBoundary extends Component<
+  { fallback: ReactNode; children: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  componentDidCatch(error: Error) {
+    console.error('[Overview] Section crashed, showing fallback:', error)
+  }
+  render() {
+    return this.state.hasError ? this.props.fallback : this.props.children
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
@@ -168,6 +204,9 @@ export default function Overview() {
   // Weekly Rollup (Cowork write-back: weekly_metrics_rollups)
   const [rollup, setRollup] = useState<WeeklyRollup | null>(null)
 
+  // Commenting stats (commenting_opportunities — today's counts by status)
+  const [commentingStats, setCommentingStats] = useState<CommentingStats | null>(null)
+
   const [loading, setLoading] = useState(true)
 
   // Get user first name
@@ -183,7 +222,7 @@ export default function Overview() {
 
   // Fetch all data
   const reload = useCallback(async () => {
-    const [stats, tasks, engs, content, drafts, scheduled, briefingRes, rollupRes] = await Promise.all([
+    const [stats, tasks, engs, content, drafts, scheduled, briefingRes, rollupRes, commentingStatsRes] = await Promise.all([
       apiGet<PipelineStats>('/api/pipeline/stats').catch(() => null),
       apiGet<{ tasks: PipelineTask[]; count: number }>('/api/pipeline/tasks?status=pending').catch(() => null),
       apiGet<{ engagements: Engagement[] }>('/api/engagements').catch(() => null),
@@ -192,6 +231,7 @@ export default function Overview() {
       apiGet<ContentPost[]>('/api/content/posts?status=scheduled').catch(() => null),
       apiGet<PipelineBriefing | null>('/api/pipeline/briefings/latest').catch(() => null),
       apiGet<WeeklyRollup | null>('/api/analytics/rollups/latest').catch(() => null),
+      apiGet<CommentingStats>('/api/commenting/stats').catch(() => null),
     ])
 
     if (stats) setPipelineStats(stats)
@@ -223,6 +263,7 @@ export default function Overview() {
     if (scheduled) setScheduledCount(scheduled.length)
     if (briefingRes) setBriefing(briefingRes)
     if (rollupRes) setRollup(rollupRes)
+    if (commentingStatsRes) setCommentingStats(commentingStatsRes)
 
     setLoading(false)
   }, [])
@@ -555,6 +596,25 @@ export default function Overview() {
                 ))}
               </div>
 
+              {/* ============================================================ */}
+              {/*  Commenting stats row — pulls from /api/commenting/stats     */}
+              {/*  Shows acted_on count from commenting_opportunities table.   */}
+              {/*  Hidden when no opportunities for today (weekends, skipped   */}
+              {/*  Cowork run). Do not remove.                                 */}
+              {/* ============================================================ */}
+              {commentingStats && commentingStats.total_count > 0 && (
+                <Link
+                  to="/dashboard/content/commenting"
+                  className="block text-center py-3 bg-ivory rounded-lg mb-5 hover:bg-cream transition-colors"
+                >
+                  <div className="text-xl font-bold text-charcoal">
+                    {commentingStats.acted_count}
+                    <span className="text-base font-medium text-charcoal/50"> of {commentingStats.total_count}</span>
+                  </div>
+                  <div className="text-[11px] text-charcoal/50 font-medium">Comments acted today</div>
+                </Link>
+              )}
+
               {/* Next action — most recent draft */}
               {draftPosts.length > 0 ? (
                 <div>
@@ -585,6 +645,19 @@ export default function Overview() {
           {/*  Full rollup history at /dashboard/analytics.                */}
           {/* ============================================================ */}
           {activeTab === 'all' && (
+            <SectionErrorBoundary
+              fallback={
+                <section className="bg-white rounded-xl border border-gray-light p-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: '#8B5CF6' }} />
+                    <h2 className="text-lg font-display font-semibold text-charcoal">Weekly Rollup</h2>
+                  </div>
+                  <p className="text-sm text-charcoal/40 italic py-2">
+                    Weekly rollup data could not be displayed
+                  </p>
+                </section>
+              }
+            >
             <section className="bg-white rounded-xl border border-gray-light p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -611,28 +684,42 @@ export default function Overview() {
                 <>
                   <p className="text-sm text-charcoal/70 mb-4">{rollup.narrative}</p>
 
-                  {/* Key metrics grid */}
-                  {Object.keys(rollup.metrics).length > 0 && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                      {Object.entries(rollup.metrics).slice(0, 4).map(([key, val]) => (
-                        <div key={key} className="text-center py-2 bg-ivory rounded-lg">
-                          <div className="text-lg font-bold text-charcoal">
-                            {typeof val === 'number' && key.includes('value')
-                              ? `$${(val / 1000).toFixed(0)}K`
-                              : typeof val === 'number' && key.includes('rate')
-                                ? `${val}%`
-                                : val}
+                  {/* ============================================================ */}
+                  {/*  PROTECTED: Shape guard — metrics values must be numbers    */}
+                  {/*  per the WeeklyRollup interface. The Friday Metrics Rollup  */}
+                  {/*  Cowork task sometimes writes nested objects instead of    */}
+                  {/*  flat number values, which crashes React with "Objects are  */}
+                  {/*  not valid as a React child" and blanks the Overview page.  */}
+                  {/*  This filter drops non-number entries so a malformed row    */}
+                  {/*  degrades to fewer metric tiles instead of a white screen.  */}
+                  {/*  Do not remove.                                              */}
+                  {/* ============================================================ */}
+                  {(() => {
+                    const numericMetrics = Object.entries(rollup.metrics).filter(
+                      ([, val]) => typeof val === 'number' && Number.isFinite(val)
+                    ) as Array<[string, number]>
+                    return numericMetrics.length > 0 && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                        {numericMetrics.slice(0, 4).map(([key, val]) => (
+                          <div key={key} className="text-center py-2 bg-ivory rounded-lg">
+                            <div className="text-lg font-bold text-charcoal">
+                              {key.includes('value')
+                                ? `$${(val / 1000).toFixed(0)}K`
+                                : key.includes('rate')
+                                  ? `${val}%`
+                                  : val}
+                            </div>
+                            <div className="text-[10px] text-charcoal/50 font-medium">
+                              {key.replace(/_/g, ' ')}
+                            </div>
                           </div>
-                          <div className="text-[10px] text-charcoal/50 font-medium">
-                            {key.replace(/_/g, ' ')}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    )
+                  })()}
 
                   {/* Highlights */}
-                  {rollup.highlights.length > 0 && (
+                  {Array.isArray(rollup.highlights) && rollup.highlights.length > 0 && (
                     <div className="space-y-1.5">
                       {rollup.highlights.map((h, i) => (
                         <div key={i} className="flex items-start gap-2">
@@ -649,6 +736,7 @@ export default function Overview() {
                 </>
               )}
             </section>
+            </SectionErrorBoundary>
           )}
 
         </div>
