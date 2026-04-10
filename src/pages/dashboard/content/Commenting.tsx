@@ -19,6 +19,7 @@ interface CommentingOpp {
   rank: number
   profile_name: string
   profile_url: string
+  post_url: string | null
   post_summary: string
   relevance_reason: string
   suggested_angle: string
@@ -199,15 +200,29 @@ export default function Commenting() {
                   <h3 className="text-sm font-bold text-charcoal flex-1 min-w-0 truncate">
                     {item.profile_name}
                   </h3>
-                  {isNotToday && (
-                    <span className="text-[10px] text-charcoal/40 flex-shrink-0">{item.briefing_date}</span>
-                  )}
                   <a
                     href={item.profile_url}
                     target="_blank"
                     rel="noopener noreferrer"
+                    className="flex-shrink-0 text-charcoal/30 hover:text-teal transition-colors"
+                    title="View author profile on LinkedIn"
+                    aria-label="View author profile on LinkedIn"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <circle cx="12" cy="8" r="4" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M20 21a8 8 0 10-16 0" />
+                    </svg>
+                  </a>
+                  {isNotToday && (
+                    <span className="text-[10px] text-charcoal/40 flex-shrink-0">{item.briefing_date}</span>
+                  )}
+                  <a
+                    href={item.post_url || item.profile_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="flex-shrink-0 text-charcoal/40 hover:text-teal transition-colors"
-                    title="Open in LinkedIn"
+                    title={item.post_url ? "Open post on LinkedIn" : "Author profile (post link not available for this row)"}
+                    aria-label="Open post on LinkedIn"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
