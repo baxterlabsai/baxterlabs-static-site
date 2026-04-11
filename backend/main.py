@@ -14,7 +14,7 @@ from fastapi import FastAPI
 from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import intake, engagements, docusign, upload, deliverables, research, prompts, clients, archive, users, reminders, phase_outputs, phase_output_content, pipeline, invoices, webhooks, follow_ups, onboarding, content, documents, drive_outputs, renderer, pdf_conversion, briefings, analytics, commenting, operations_manual
+from routers import intake, engagements, docusign, upload, deliverables, research, prompts, clients, archive, users, reminders, phase_outputs, phase_output_content, pipeline, invoices, webhooks, follow_ups, onboarding, content, documents, drive_outputs, renderer, pdf_conversion, briefings, analytics, commenting, operations_manual, engagement_graphics
 from services.supabase_client import get_supabase
 from models.schemas import HealthResponse
 
@@ -72,6 +72,7 @@ app.include_router(briefings.router)
 app.include_router(analytics.router)
 app.include_router(commenting.router)
 app.include_router(operations_manual.router)
+app.include_router(engagement_graphics.router)
 
 # Startup confirmation — helps verify correct code is deployed
 logger.info("DocuSign webhook handler ready — XML+JSON support active")

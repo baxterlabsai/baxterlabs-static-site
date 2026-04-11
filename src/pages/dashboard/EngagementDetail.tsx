@@ -6,6 +6,7 @@ import SEO from '../../components/SEO'
 import ResearchModal from '../../components/ResearchModal'
 import EngagementContactSlideOver from './EngagementContactSlideOver'
 import MarkdownContent from '../../components/MarkdownContent'
+import GraphicsReview from '../../components/GraphicsReview'
 
 interface PhaseOutput {
   id: string
@@ -1859,6 +1860,13 @@ export default function EngagementDetail() {
           </section>
         )
       })()}
+
+      {/* ── GRAPHICS REVIEW ───────────────────────────────────────────── */}
+      {/* Renders engagement_graphics rows from Phase 3b. The component     */}
+      {/* returns null when no rows exist, so this injection is safe       */}
+      {/* before graphics have been generated. Wrapped in its own          */}
+      {/* SectionErrorBoundary so a render bug can't kill the detail page. */}
+      {data && <GraphicsReview engagementId={data.id} />}
 
       {/* ── FINAL DELIVERABLES RIBBON ─────────────────────────────────── */}
       {/* Uses Drive PDF files as source of truth (not DB final_pdf_path) */}

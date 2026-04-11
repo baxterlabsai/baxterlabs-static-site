@@ -1,9 +1,10 @@
-import { Component, useEffect, useState, useCallback, type ReactNode } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { apiGet } from '../../lib/api'
 import { supabase } from '../../lib/supabase'
 import { useRealtimeRefresh } from '../../hooks/useRealtimeRefresh'
 import SEO from '../../components/SEO'
+import SectionErrorBoundary from '../../components/SectionErrorBoundary'
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -95,30 +96,6 @@ interface CommentingStats {
   pending_count: number
   acted_count: number
   total_count: number
-}
-
-/* ------------------------------------------------------------------ */
-/*  PROTECTED: SectionErrorBoundary                                    */
-/*  Prevents a single malformed row (e.g. a Cowork scheduled task      */
-/*  writing a nested object into weekly_metrics_rollups.metrics) from  */
-/*  white-screening the entire Overview page via React's "Objects are  */
-/*  not valid as a React child" error. Wraps sections that render      */
-/*  Cowork write-back data. Do not remove.                             */
-/* ------------------------------------------------------------------ */
-class SectionErrorBoundary extends Component<
-  { fallback: ReactNode; children: ReactNode },
-  { hasError: boolean }
-> {
-  state = { hasError: false }
-  static getDerivedStateFromError() {
-    return { hasError: true }
-  }
-  componentDidCatch(error: Error) {
-    console.error('[Overview] Section crashed, showing fallback:', error)
-  }
-  render() {
-    return this.state.hasError ? this.props.fallback : this.props.children
-  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -646,6 +623,7 @@ export default function Overview() {
           {/* ============================================================ */}
           {activeTab === 'all' && (
             <SectionErrorBoundary
+              label="Overview.WeeklyRollup"
               fallback={
                 <section className="bg-white rounded-xl border border-gray-light p-6">
                   <div className="flex items-center gap-3 mb-2">
