@@ -94,17 +94,19 @@ export default function GraphicsReview({ engagementId }: Props) {
     <SectionErrorBoundary
       label="EngagementDetail.GraphicsReview"
       fallback={
-        <section className="bg-white rounded-lg border border-gray-light p-5 mb-6">
-          <div className="flex items-center gap-2 mb-2">
-            <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M4.93 19h14.14a2 2 0 001.73-3l-7.07-12a2 2 0 00-3.46 0l-7.07 12a2 2 0 001.73 3z" />
-            </svg>
-            <h3 className="font-display text-lg font-bold text-charcoal">Graphics Review</h3>
+        <div className="border rounded-lg overflow-hidden border-gray-light">
+          <div className="w-full px-4 py-3 flex items-center gap-3">
+            <span className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-amber-100 text-amber-600">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M4.93 19h14.14a2 2 0 001.73-3l-7.07-12a2 2 0 00-3.46 0l-7.07 12a2 2 0 001.73 3z" />
+              </svg>
+            </span>
+            <div className="min-w-0">
+              <span className="font-semibold text-charcoal text-sm">Graphics Review</span>
+              <p className="text-xs text-gray-warm mt-0.5 italic">Could not be displayed — reload the page to try again.</p>
+            </div>
           </div>
-          <p className="text-sm text-gray-warm italic">
-            Graphics review could not be displayed. Reload the page to try again.
-          </p>
-        </section>
+        </div>
       }
     >
       <GraphicsReviewInner engagementId={engagementId} />
@@ -215,36 +217,16 @@ function GraphicsReviewInner({ engagementId }: Props) {
     // navigator.clipboard.writeText requires has already been consumed by the
     // prior await (e.g. apiPatch) and the modern API throws. Do not reorder.
     const command = buildFixCommand(id, instructions)
-
-    // ============================================================
-    // DIAG: temporary console instrumentation for clipboard debug.
-    // Remove once the clipboard copy is confirmed working in prod.
-    // ============================================================
-    console.log('[GraphicsReview DIAG] handleSubmitFix reached')
-    console.log('[GraphicsReview DIAG] command:', command)
-    console.log('[GraphicsReview DIAG] navigator.clipboard:', typeof navigator.clipboard, !!navigator.clipboard?.writeText)
-    console.log('[GraphicsReview DIAG] document.hasFocus():', document.hasFocus())
-    console.log('[GraphicsReview DIAG] window.isSecureContext:', window.isSecureContext)
-    console.log('[GraphicsReview DIAG] document.activeElement:', document.activeElement?.tagName, (document.activeElement as HTMLElement)?.className)
-
     try {
       await navigator.clipboard.writeText(command)
-      console.log('[GraphicsReview DIAG] navigator.clipboard.writeText RESOLVED (no throw)')
-    } catch (clipErr) {
-      console.log('[GraphicsReview DIAG] navigator.clipboard.writeText THREW:', clipErr)
-      try {
-        const ta = document.createElement('textarea')
-        ta.value = command
-        document.body.appendChild(ta)
-        ta.select()
-        const r = document.execCommand('copy')
-        document.body.removeChild(ta)
-        console.log('[GraphicsReview DIAG] execCommand("copy") returned:', r)
-      } catch (fallbackErr) {
-        console.log('[GraphicsReview DIAG] fallback threw:', fallbackErr)
-      }
+    } catch {
+      const ta = document.createElement('textarea')
+      ta.value = command
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
     }
-    console.log('[GraphicsReview DIAG] CLIPBOARD DONE — proceeding to PATCH')
 
     setSubmittingFix(true)
     try {
@@ -261,45 +243,6 @@ function GraphicsReviewInner({ engagementId }: Props) {
       setSubmittingFix(false)
     }
   }, [fixText, patchLocal, fetchGraphics, toast])
-
-  // ============================================================
-  // DIAG: standalone clipboard-only handler. Calls navigator.clipboard
-  // directly from the click, with NO API call, NO setState, NO awaits
-  // before the write. If this button works and handleSubmitFix doesn't,
-  // the problem is specific to handleSubmitFix's structure. If this
-  // button ALSO fails, the problem is environmental (CSP, permissions,
-  // extension, browser setting). Remove once debugged.
-  // ============================================================
-  const handleDiagCopy = useCallback(async (id: string) => {
-    const command = buildFixCommand(id, fixText.trim() || 'DIAG_PLACEHOLDER_INSTRUCTIONS')
-    console.log('[GraphicsReview DIAG-BTN] click reached')
-    console.log('[GraphicsReview DIAG-BTN] command:', command)
-    console.log('[GraphicsReview DIAG-BTN] navigator.clipboard:', typeof navigator.clipboard, !!navigator.clipboard?.writeText)
-    console.log('[GraphicsReview DIAG-BTN] document.hasFocus():', document.hasFocus())
-    console.log('[GraphicsReview DIAG-BTN] window.isSecureContext:', window.isSecureContext)
-    let method = 'unknown'
-    try {
-      await navigator.clipboard.writeText(command)
-      method = 'navigator.clipboard'
-      console.log('[GraphicsReview DIAG-BTN] navigator.clipboard.writeText RESOLVED')
-    } catch (clipErr) {
-      console.log('[GraphicsReview DIAG-BTN] navigator.clipboard.writeText THREW:', clipErr)
-      try {
-        const ta = document.createElement('textarea')
-        ta.value = command
-        document.body.appendChild(ta)
-        ta.select()
-        const r = document.execCommand('copy')
-        document.body.removeChild(ta)
-        console.log('[GraphicsReview DIAG-BTN] execCommand("copy") returned:', r)
-        method = r ? 'execCommand(true)' : 'execCommand(false)'
-      } catch (fallbackErr) {
-        console.log('[GraphicsReview DIAG-BTN] fallback threw:', fallbackErr)
-        method = 'both_failed'
-      }
-    }
-    toast(`DIAG copy via ${method} — paste to verify`, 'info', 8000)
-  }, [fixText, toast])
 
   const handleApproveAll = useCallback(async () => {
     setApprovingAll(true)
@@ -348,69 +291,86 @@ function GraphicsReviewInner({ engagementId }: Props) {
     return null
   }
 
+  const allApproved = !!summary && summary.total > 0 && summary.pending === 0 && summary.fix_requested === 0
+  const subtitle = summary
+    ? `${summary.approved} of ${summary.total} approved${summary.fix_requested > 0 ? ` · ${summary.fix_requested} fix requested` : ''}${summary.pending > 0 ? ` · ${summary.pending} pending` : ''}`
+    : 'Loading…'
+
   return (
     <>
-      <section className="bg-white rounded-lg border border-gray-light p-5 mb-6">
-        {/* Header bar */}
-        <div className="flex items-center gap-2 mb-4">
-          <svg className="w-5 h-5 text-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-          </svg>
-          <h3 className="font-display text-lg font-bold text-charcoal">Graphics Review</h3>
-          {summary && (
-            <span className="text-xs font-semibold text-gray-warm bg-ivory px-2.5 py-1 rounded-full">
-              {summary.approved} / {summary.total} approved
-              {summary.fix_requested > 0 && (
-                <span className="ml-2 text-amber-600">{summary.fix_requested} fix requested</span>
+      <div className="border rounded-lg overflow-hidden border-gray-light">
+        {/* Header — matches the phase accordion item style */}
+        <button
+          onClick={() => setCollapsed(c => !c)}
+          className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-ivory/50 transition-colors cursor-pointer"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <span className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+              allApproved ? 'bg-teal text-white' : 'bg-crimson text-white'
+            }`}>
+              {allApproved ? (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                </svg>
               )}
             </span>
-          )}
-          <div className="ml-auto flex items-center gap-2">
-            {summary && summary.pending > 0 && !collapsed && (
-              approveAllConfirm ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-warm">Approve all {summary.pending} pending?</span>
-                  <button
-                    onClick={handleApproveAll}
-                    disabled={approvingAll}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-green text-white text-xs font-semibold rounded-lg hover:bg-green/90 disabled:opacity-50 transition-colors"
-                  >
-                    {approvingAll ? 'Approving...' : 'Yes'}
-                  </button>
-                  <button
-                    onClick={() => setApproveAllConfirm(false)}
-                    disabled={approvingAll}
-                    className="px-2.5 py-1 text-xs font-semibold text-gray-warm hover:text-charcoal"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setApproveAllConfirm(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green text-white text-xs font-semibold rounded-lg hover:bg-green/90 transition-colors"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                  Approve All Pending
-                </button>
-              )
-            )}
-            <button
-              onClick={() => setCollapsed(c => !c)}
-              className="p-1.5 text-gray-warm hover:text-charcoal rounded-lg hover:bg-ivory transition-colors"
-              aria-label={collapsed ? 'Expand' : 'Collapse'}
-            >
-              <svg className={`w-4 h-4 transition-transform ${collapsed ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-semibold text-charcoal text-sm">Graphics Review</span>
+              </div>
+              <p className="text-xs text-gray-warm mt-0.5">{subtitle}</p>
+            </div>
           </div>
-        </div>
+          <svg className={`flex-shrink-0 w-4 h-4 text-gray-warm transition-transform ${collapsed ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
 
         {!collapsed && (
-          <>
+          <div className="border-t border-gray-light p-4 space-y-4">
+            {/* Approve All Pending toolbar — mirrors the "Generate Graphics" */}
+            {/* toolbar row inside Phase 3's expanded content.                */}
+            {summary && summary.pending > 0 && (
+              <div className="bg-ivory rounded-lg px-4 py-3 flex items-center justify-between">
+                <p className="text-sm text-charcoal">
+                  <span className="font-semibold">{summary.pending}</span> chart{summary.pending === 1 ? '' : 's'} pending review
+                </p>
+                {approveAllConfirm ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-warm">Approve all {summary.pending}?</span>
+                    <button
+                      onClick={handleApproveAll}
+                      disabled={approvingAll}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-green text-white text-xs font-semibold rounded-lg hover:bg-green/90 disabled:opacity-50 transition-colors"
+                    >
+                      {approvingAll ? 'Approving…' : 'Yes'}
+                    </button>
+                    <button
+                      onClick={() => setApproveAllConfirm(false)}
+                      disabled={approvingAll}
+                      className="px-2.5 py-1 text-xs font-semibold text-gray-warm hover:text-charcoal"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setApproveAllConfirm(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green text-white text-xs font-semibold rounded-lg hover:bg-green/90 transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Approve All Pending
+                  </button>
+                )}
+              </div>
+            )}
+
             {loading && <GraphicsSkeletonGrid />}
 
             {loadError && !loading && (
@@ -449,9 +409,9 @@ function GraphicsReviewInner({ engagementId }: Props) {
                 ))}
               </div>
             )}
-          </>
+          </div>
         )}
-      </section>
+      </div>
 
       {modalGraphic && graphics && (
         <GraphicModal
@@ -489,7 +449,6 @@ function GraphicsReviewInner({ engagementId }: Props) {
           onChangeFixText={setFixText}
           onSubmitFix={() => handleSubmitFix(modalGraphic.id)}
           onReset={() => handleReset(modalGraphic.id)}
-          onDiagCopy={() => handleDiagCopy(modalGraphic.id)}
         />
       )}
     </>
@@ -608,7 +567,6 @@ interface GraphicModalProps {
   onChangeFixText: (v: string) => void
   onSubmitFix: () => void
   onReset: () => void
-  onDiagCopy: () => void
 }
 
 function GraphicModal(props: GraphicModalProps) {
@@ -735,14 +693,6 @@ function GraphicModal(props: GraphicModalProps) {
                 autoFocus
               />
               <div className="flex items-center justify-end gap-2 mt-2">
-                {/* DIAG: standalone clipboard test button. Remove once fixed. */}
-                <button
-                  onClick={props.onDiagCopy}
-                  className="px-3 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 transition-colors"
-                  title="Diagnostic: copies the Cowork command with no API call, no setState, no awaits before the write."
-                >
-                  DIAG Copy
-                </button>
                 <button
                   onClick={props.onHideFixForm}
                   disabled={submittingFix}
