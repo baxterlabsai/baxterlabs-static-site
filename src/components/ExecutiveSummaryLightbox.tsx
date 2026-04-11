@@ -56,7 +56,7 @@ export default function ExecutiveSummaryLightbox({ isOpen, onClose }: Props) {
           <div className="px-10 sm:px-16 pt-10 pb-16 text-center border-b border-[#C9A84C]/30">
             {/* Logo */}
             <img
-              src={`${IMG}/logo-mascot.png`}
+              src="/images/baxterlabs-logo.png"
               alt="BaxterLabs"
               className="h-20 w-auto mx-auto mb-8 opacity-90"
             />
