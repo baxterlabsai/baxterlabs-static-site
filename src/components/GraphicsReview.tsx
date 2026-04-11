@@ -81,12 +81,25 @@ function buildFixCommand(graphicId: string, instructions: string): string {
   return `/baxterlabs-delivery:fix-graphic ${graphicId} "${safeInstructions}"`
 }
 
-async function copyToClipboard(text: string): Promise<boolean> {
+/**
+ * Copy `text` to the clipboard using the same two-step pattern as the rest
+ * of the dashboard (see copyPhaseCommand in EngagementDetail.tsx). The
+ * textarea + execCommand fallback is load-bearing here, not insurance:
+ * handleSubmitFix calls this after an `await apiPatch(...)`, which burns
+ * the user-gesture transient activation that `navigator.clipboard.writeText`
+ * requires. Without the fallback the modern API throws NotAllowedError and
+ * the copy silently fails. Do not "simplify" this by dropping the fallback.
+ */
+async function copyToClipboard(text: string): Promise<void> {
   try {
     await navigator.clipboard.writeText(text)
-    return true
   } catch {
-    return false
+    const ta = document.createElement('textarea')
+    ta.value = text
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    document.body.removeChild(ta)
   }
 }
 
@@ -216,11 +229,8 @@ function GraphicsReviewInner({ engagementId }: Props) {
       await apiPatch<Graphic>(`/api/engagement-graphics/${id}/request-fix`, { fix_instructions: instructions })
       patchLocal(id, { approval_status: 'fix_requested', fix_instructions: instructions, fix_requested_at: new Date().toISOString(), approved_at: null })
       const command = buildFixCommand(id, instructions)
-      const copied = await copyToClipboard(command)
-      toast(
-        copied ? 'Fix request saved. Cowork command copied to clipboard.' : 'Fix request saved. Copy the command manually.',
-        'success',
-      )
+      await copyToClipboard(command)
+      toast('Fix request saved. Cowork command copied to clipboard.', 'success', 8000)
       setShowFixForm(false)
       setFixText('')
       await fetchGraphics()

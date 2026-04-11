@@ -4,11 +4,14 @@ interface ToastMessage {
   id: number
   text: string
   type: 'success' | 'error' | 'info'
+  duration: number
 }
 
 interface ToastContextType {
-  toast: (text: string, type?: 'success' | 'error' | 'info') => void
+  toast: (text: string, type?: 'success' | 'error' | 'info', duration?: number) => void
 }
+
+const DEFAULT_TOAST_DURATION_MS = 4000
 
 const ToastContext = createContext<ToastContextType>({ toast: () => {} })
 
@@ -21,9 +24,13 @@ let nextId = 0
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<ToastMessage[]>([])
 
-  const toast = useCallback((text: string, type: 'success' | 'error' | 'info' = 'info') => {
+  const toast = useCallback((
+    text: string,
+    type: 'success' | 'error' | 'info' = 'info',
+    duration: number = DEFAULT_TOAST_DURATION_MS,
+  ) => {
     const id = ++nextId
-    setMessages(prev => [...prev, { id, text, type }])
+    setMessages(prev => [...prev, { id, text, type, duration }])
   }, [])
 
   const dismiss = useCallback((id: number) => {
@@ -45,9 +52,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
 function ToastItem({ message, onDismiss }: { message: ToastMessage; onDismiss: () => void }) {
   useEffect(() => {
-    const timer = setTimeout(onDismiss, 4000)
+    const timer = setTimeout(onDismiss, message.duration)
     return () => clearTimeout(timer)
-  }, [onDismiss])
+  }, [onDismiss, message.duration])
 
   const colors = {
     success: 'bg-teal text-white',
