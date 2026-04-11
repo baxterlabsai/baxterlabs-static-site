@@ -126,7 +126,7 @@ export default function GraphicsReview({ engagementId }: Props) {
 /* ------------------------------------------------------------------ */
 
 function GraphicsReviewInner({ engagementId }: Props) {
-  const toast = useToast()
+  const { toast } = useToast()
 
   const [graphics, setGraphics] = useState<Graphic[] | null>(null)
   const [summary, setSummary] = useState<Summary | null>(null)
