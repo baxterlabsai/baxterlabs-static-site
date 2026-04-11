@@ -1133,47 +1133,6 @@ async def render_deliverable(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/engagements/{engagement_id}/graphics")
-async def get_engagement_graphics(
-    engagement_id: str,
-    user: dict = Depends(verify_partner_auth),
-):
-    """Return all verified/generated graphics with signed URLs."""
-    sb = get_supabase()
-    result = sb.table("engagement_graphics") \
-        .select("*") \
-        .eq("engagement_id", engagement_id) \
-        .in_("status", ["verified", "generated"]) \
-        .execute()
-
-    graphics = []
-    for row in result.data:
-        signed_url = None
-        if row.get("storage_path"):
-            try:
-                url_result = sb.storage \
-                    .from_(row["storage_bucket"]) \
-                    .create_signed_url(
-                        row["storage_path"],
-                        expires_in=3600
-                    )
-                signed_url = url_result.get("signedURL") or url_result.get("signedUrl")
-            except Exception:
-                pass
-
-        graphics.append({
-            "id": row["id"],
-            "chart_type": row["chart_type"],
-            "storage_path": row["storage_path"],
-            "storage_bucket": row["storage_bucket"],
-            "status": row["status"],
-            "phase_number": row["phase_number"],
-            "signed_url": signed_url,
-        })
-
-    return {"graphics": graphics}
-
-
 @router.post("/engagements/{engagement_id}/graphics")
 async def upsert_engagement_graphic(
     engagement_id: str,
