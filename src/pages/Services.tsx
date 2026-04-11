@@ -189,7 +189,7 @@ export default function Services() {
               <div className="text-center">
                 <p className="text-[7px] uppercase tracking-[0.2em] text-[#C9A84C] font-bold mb-3">Sample Deliverable</p>
                 <img
-                  src="/images/sample-deliverables/exec-summary/logo-mascot.png"
+                  src="/images/baxterlabs-logo.png"
                   alt=""
                   className="h-10 w-auto mx-auto mb-4 opacity-80"
                 />
