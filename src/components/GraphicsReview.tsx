@@ -81,28 +81,6 @@ function buildFixCommand(graphicId: string, instructions: string): string {
   return `/baxterlabs-delivery:fix-graphic ${graphicId} "${safeInstructions}"`
 }
 
-/**
- * Copy `text` to the clipboard using the same two-step pattern as the rest
- * of the dashboard (see copyPhaseCommand in EngagementDetail.tsx). The
- * textarea + execCommand fallback is load-bearing here, not insurance:
- * handleSubmitFix calls this after an `await apiPatch(...)`, which burns
- * the user-gesture transient activation that `navigator.clipboard.writeText`
- * requires. Without the fallback the modern API throws NotAllowedError and
- * the copy silently fails. Do not "simplify" this by dropping the fallback.
- */
-async function copyToClipboard(text: string): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(text)
-  } catch {
-    const ta = document.createElement('textarea')
-    ta.value = text
-    document.body.appendChild(ta)
-    ta.select()
-    document.execCommand('copy')
-    document.body.removeChild(ta)
-  }
-}
-
 /* ------------------------------------------------------------------ */
 /*  Main component (wraps inner in error boundary)                     */
 /* ------------------------------------------------------------------ */
@@ -224,19 +202,35 @@ function GraphicsReviewInner({ engagementId }: Props) {
   const handleSubmitFix = useCallback(async (id: string) => {
     const instructions = fixText.trim()
     if (!instructions) return
+
+    // Copy to clipboard FIRST — mirrors copyPhaseCommand in EngagementDetail.tsx.
+    // The clipboard write MUST be the first await in the function chain from the
+    // click handler, otherwise the user-gesture transient activation that
+    // navigator.clipboard.writeText requires has already been consumed by the
+    // prior await (e.g. apiPatch) and the modern API throws. Do not reorder.
+    const command = buildFixCommand(id, instructions)
+    try {
+      await navigator.clipboard.writeText(command)
+    } catch {
+      const ta = document.createElement('textarea')
+      ta.value = command
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+
     setSubmittingFix(true)
     try {
       await apiPatch<Graphic>(`/api/engagement-graphics/${id}/request-fix`, { fix_instructions: instructions })
       patchLocal(id, { approval_status: 'fix_requested', fix_instructions: instructions, fix_requested_at: new Date().toISOString(), approved_at: null })
-      const command = buildFixCommand(id, instructions)
-      await copyToClipboard(command)
       toast('Fix request saved. Cowork command copied to clipboard.', 'success', 8000)
       setShowFixForm(false)
       setFixText('')
       await fetchGraphics()
     } catch (e) {
       console.error('[GraphicsReview] fix request failed:', e)
-      toast('Failed to submit fix request', 'error')
+      toast('Fix request failed to save (command still copied to clipboard).', 'error')
     } finally {
       setSubmittingFix(false)
     }
