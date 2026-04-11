@@ -91,7 +91,6 @@ const HELP_SECTION: NavSection = {
   label: 'Help',
   items: [
     { to: '/dashboard/help/manual', label: 'Operations manual' },
-    { to: '/dashboard/help/videos', label: 'Video walkthroughs' },
     { to: '/dashboard/help/releases', label: 'Release notes' },
   ],
 }
