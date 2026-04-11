@@ -123,8 +123,11 @@ function GraphicsReviewInner({ engagementId }: Props) {
   const [summary, setSummary] = useState<Summary | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [collapsed, setCollapsed] = useState(false)
-  const hasAutoCollapsed = useRef(false)
+  // Default: closed. Auto-open ONCE on first load if review work exists so
+  // the user sees newly-generated graphics as they finish Phase 3; after that
+  // the user's manual toggle state is preserved across refetches.
+  const [collapsed, setCollapsed] = useState(true)
+  const hasAutoExpanded = useRef(false)
 
   const [modalIdx, setModalIdx] = useState<number | null>(null)
   const [showFixForm, setShowFixForm] = useState(false)
@@ -142,12 +145,15 @@ function GraphicsReviewInner({ engagementId }: Props) {
       setGraphics(data.graphics || [])
       setSummary(data.summary || null)
       setLoadError(null)
-      // Auto-collapse on first load if everything is already approved.
-      if (!hasAutoCollapsed.current && data.summary && data.summary.total > 0) {
-        if (data.summary.pending === 0 && data.summary.fix_requested === 0) {
-          setCollapsed(true)
+      // Auto-open once on first load IF there is review work to do. Otherwise
+      // stay closed (the default). This mirrors how the Phase Outputs
+      // accordion auto-expands the active phase only when it's the one that
+      // just finished.
+      if (!hasAutoExpanded.current && data.summary && data.summary.total > 0) {
+        if (data.summary.pending > 0 || data.summary.fix_requested > 0) {
+          setCollapsed(false)
         }
-        hasAutoCollapsed.current = true
+        hasAutoExpanded.current = true
       }
     } catch (e) {
       console.error('[GraphicsReview] fetch failed:', e)
@@ -159,7 +165,7 @@ function GraphicsReviewInner({ engagementId }: Props) {
 
   useEffect(() => {
     setLoading(true)
-    hasAutoCollapsed.current = false
+    hasAutoExpanded.current = false
     fetchGraphics()
   }, [fetchGraphics])
 
@@ -209,16 +215,36 @@ function GraphicsReviewInner({ engagementId }: Props) {
     // navigator.clipboard.writeText requires has already been consumed by the
     // prior await (e.g. apiPatch) and the modern API throws. Do not reorder.
     const command = buildFixCommand(id, instructions)
+
+    // ============================================================
+    // DIAG: temporary console instrumentation for clipboard debug.
+    // Remove once the clipboard copy is confirmed working in prod.
+    // ============================================================
+    console.log('[GraphicsReview DIAG] handleSubmitFix reached')
+    console.log('[GraphicsReview DIAG] command:', command)
+    console.log('[GraphicsReview DIAG] navigator.clipboard:', typeof navigator.clipboard, !!navigator.clipboard?.writeText)
+    console.log('[GraphicsReview DIAG] document.hasFocus():', document.hasFocus())
+    console.log('[GraphicsReview DIAG] window.isSecureContext:', window.isSecureContext)
+    console.log('[GraphicsReview DIAG] document.activeElement:', document.activeElement?.tagName, (document.activeElement as HTMLElement)?.className)
+
     try {
       await navigator.clipboard.writeText(command)
-    } catch {
-      const ta = document.createElement('textarea')
-      ta.value = command
-      document.body.appendChild(ta)
-      ta.select()
-      document.execCommand('copy')
-      document.body.removeChild(ta)
+      console.log('[GraphicsReview DIAG] navigator.clipboard.writeText RESOLVED (no throw)')
+    } catch (clipErr) {
+      console.log('[GraphicsReview DIAG] navigator.clipboard.writeText THREW:', clipErr)
+      try {
+        const ta = document.createElement('textarea')
+        ta.value = command
+        document.body.appendChild(ta)
+        ta.select()
+        const r = document.execCommand('copy')
+        document.body.removeChild(ta)
+        console.log('[GraphicsReview DIAG] execCommand("copy") returned:', r)
+      } catch (fallbackErr) {
+        console.log('[GraphicsReview DIAG] fallback threw:', fallbackErr)
+      }
     }
+    console.log('[GraphicsReview DIAG] CLIPBOARD DONE — proceeding to PATCH')
 
     setSubmittingFix(true)
     try {
@@ -235,6 +261,45 @@ function GraphicsReviewInner({ engagementId }: Props) {
       setSubmittingFix(false)
     }
   }, [fixText, patchLocal, fetchGraphics, toast])
+
+  // ============================================================
+  // DIAG: standalone clipboard-only handler. Calls navigator.clipboard
+  // directly from the click, with NO API call, NO setState, NO awaits
+  // before the write. If this button works and handleSubmitFix doesn't,
+  // the problem is specific to handleSubmitFix's structure. If this
+  // button ALSO fails, the problem is environmental (CSP, permissions,
+  // extension, browser setting). Remove once debugged.
+  // ============================================================
+  const handleDiagCopy = useCallback(async (id: string) => {
+    const command = buildFixCommand(id, fixText.trim() || 'DIAG_PLACEHOLDER_INSTRUCTIONS')
+    console.log('[GraphicsReview DIAG-BTN] click reached')
+    console.log('[GraphicsReview DIAG-BTN] command:', command)
+    console.log('[GraphicsReview DIAG-BTN] navigator.clipboard:', typeof navigator.clipboard, !!navigator.clipboard?.writeText)
+    console.log('[GraphicsReview DIAG-BTN] document.hasFocus():', document.hasFocus())
+    console.log('[GraphicsReview DIAG-BTN] window.isSecureContext:', window.isSecureContext)
+    let method = 'unknown'
+    try {
+      await navigator.clipboard.writeText(command)
+      method = 'navigator.clipboard'
+      console.log('[GraphicsReview DIAG-BTN] navigator.clipboard.writeText RESOLVED')
+    } catch (clipErr) {
+      console.log('[GraphicsReview DIAG-BTN] navigator.clipboard.writeText THREW:', clipErr)
+      try {
+        const ta = document.createElement('textarea')
+        ta.value = command
+        document.body.appendChild(ta)
+        ta.select()
+        const r = document.execCommand('copy')
+        document.body.removeChild(ta)
+        console.log('[GraphicsReview DIAG-BTN] execCommand("copy") returned:', r)
+        method = r ? 'execCommand(true)' : 'execCommand(false)'
+      } catch (fallbackErr) {
+        console.log('[GraphicsReview DIAG-BTN] fallback threw:', fallbackErr)
+        method = 'both_failed'
+      }
+    }
+    toast(`DIAG copy via ${method} — paste to verify`, 'info', 8000)
+  }, [fixText, toast])
 
   const handleApproveAll = useCallback(async () => {
     setApprovingAll(true)
@@ -424,6 +489,7 @@ function GraphicsReviewInner({ engagementId }: Props) {
           onChangeFixText={setFixText}
           onSubmitFix={() => handleSubmitFix(modalGraphic.id)}
           onReset={() => handleReset(modalGraphic.id)}
+          onDiagCopy={() => handleDiagCopy(modalGraphic.id)}
         />
       )}
     </>
@@ -542,6 +608,7 @@ interface GraphicModalProps {
   onChangeFixText: (v: string) => void
   onSubmitFix: () => void
   onReset: () => void
+  onDiagCopy: () => void
 }
 
 function GraphicModal(props: GraphicModalProps) {
@@ -668,6 +735,14 @@ function GraphicModal(props: GraphicModalProps) {
                 autoFocus
               />
               <div className="flex items-center justify-end gap-2 mt-2">
+                {/* DIAG: standalone clipboard test button. Remove once fixed. */}
+                <button
+                  onClick={props.onDiagCopy}
+                  className="px-3 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 transition-colors"
+                  title="Diagnostic: copies the Cowork command with no API call, no setState, no awaits before the write."
+                >
+                  DIAG Copy
+                </button>
                 <button
                   onClick={props.onHideFixForm}
                   disabled={submittingFix}

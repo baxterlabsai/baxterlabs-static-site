@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { Fragment, useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete, apiFetchBlob } from '../../lib/api'
 import { useToast } from '../../components/Toast'
@@ -1398,7 +1398,8 @@ export default function EngagementDetail() {
                 const isPocExpanded = pocExpandedPhases.has(phase) || (isActive && !pocExpandedPhases.has(-(phase + 1)))
 
                 return (
-                  <div key={phase} className={`border rounded-lg overflow-hidden ${isActive ? 'border-teal' : 'border-gray-light'}`}>
+                  <Fragment key={phase}>
+                  <div className={`border rounded-lg overflow-hidden ${isActive ? 'border-teal' : 'border-gray-light'}`}>
                     {/* Phase header */}
                     <button
                       onClick={() => togglePocPhase(phase)}
@@ -1854,19 +1855,18 @@ export default function EngagementDetail() {
                       </div>
                     )}
                   </div>
+                  {/* Graphics Review injected inline after Phase 3 so the */}
+                  {/* review flow sits between Profit Leak Quantification  */}
+                  {/* and Optimization Analysis. Component returns null    */}
+                  {/* when no engagement_graphics rows exist.              */}
+                  {phase === 3 && data && <GraphicsReview engagementId={data.id} />}
+                  </Fragment>
                 )
               })}
             </div>
           </section>
         )
       })()}
-
-      {/* ── GRAPHICS REVIEW ───────────────────────────────────────────── */}
-      {/* Renders engagement_graphics rows from Phase 3b. The component     */}
-      {/* returns null when no rows exist, so this injection is safe       */}
-      {/* before graphics have been generated. Wrapped in its own          */}
-      {/* SectionErrorBoundary so a render bug can't kill the detail page. */}
-      {data && <GraphicsReview engagementId={data.id} />}
 
       {/* ── FINAL DELIVERABLES RIBBON ─────────────────────────────────── */}
       {/* Uses Drive PDF files as source of truth (not DB final_pdf_path) */}
