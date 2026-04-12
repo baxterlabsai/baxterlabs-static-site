@@ -479,7 +479,15 @@ export default function Posts() {
                             <button
                               onClick={async () => {
                                 const id = selected.id
+                                const srcType = selected.source_type
+                                const srcId = selected.source_id
                                 await patchStatus(id, { status: 'archived' })
+                                if (srcType && srcId) {
+                                  await apiPatch('/api/content/queue/dismiss-reset', {
+                                    source_type: srcType,
+                                    source_id: srcId,
+                                  }).catch(() => {})
+                                }
                                 setDismissingDraftId(null)
                                 setSelectedId(null)
                               }}
