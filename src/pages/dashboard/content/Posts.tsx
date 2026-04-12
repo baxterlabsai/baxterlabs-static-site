@@ -71,6 +71,7 @@ export default function Posts() {
   const imageSuggestFired = useRef<string | null>(null)
   const [queue, setQueue] = useState<QueueItem[]>([])
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [dismissingId, setDismissingId] = useState<string | null>(null)
 
   const reloadQueue = useCallback(() => {
     apiGet<QueueItem[]>('/api/content/queue')
@@ -82,10 +83,18 @@ export default function Posts() {
 
   useRealtimeRefresh('content-queue', reloadQueue, ['content_news', 'story_bank', 'content_posts'])
 
-  async function copyCommand(sourceId: string) {
-    await navigator.clipboard.writeText(`/baxterlabs-content:content-draft ${sourceId}`)
+  async function copyCommand(sourceType: string, sourceId: string) {
+    const skill = (sourceType === 'news' || sourceType === 'content_news')
+      ? 'news-commentary'
+      : 'content-draft'
+    await navigator.clipboard.writeText(`/baxterlabs-content:${skill} ${sourceId}`)
     setCopiedId(sourceId)
     setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  async function dismissQueueItem(sourceType: string, sourceId: string) {
+    await apiPatch('/api/content/queue/dismiss', { source_type: sourceType, source_id: sourceId })
+    setDismissingId(null)
   }
 
   const reload = useCallback(() => {
@@ -132,7 +141,7 @@ export default function Posts() {
       // Fallback to simple heuristic if AI fails
       if (!selected) return
       const fallback = selected.source_type === 'story_bank' ? 'professional services office'
-        : selected.source_type === 'content_news' ? 'business finance'
+        : (selected.source_type === 'news' || selected.source_type === 'content_news') ? 'business finance'
         : 'professional services'
       setImageQuery(fallback)
     })
@@ -226,16 +235,42 @@ export default function Posts() {
                       </div>
                       <p className="text-sm text-charcoal truncate">{item.title}</p>
                     </div>
-                    <button
-                      onClick={() => copyCommand(item.source_id)}
-                      className="flex-shrink-0 inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-semibold text-white transition-colors"
-                      style={{ backgroundColor: copiedId === item.source_id ? '#2D3436' : '#005454' }}
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                      </svg>
-                      {copiedId === item.source_id ? 'Copied!' : 'Copy command'}
-                    </button>
+                    <div className="flex-shrink-0 flex items-center gap-2">
+                      <button
+                        onClick={() => copyCommand(item.source_type, item.source_id)}
+                        className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-semibold text-white transition-colors"
+                        style={{ backgroundColor: copiedId === item.source_id ? '#2D3436' : '#005454' }}
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                        </svg>
+                        {copiedId === item.source_id ? 'Copied!' : 'Copy command'}
+                      </button>
+                      {dismissingId === item.source_id ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs">
+                          <span className="text-charcoal/50">Dismiss?</span>
+                          <button
+                            onClick={() => dismissQueueItem(item.source_type, item.source_id)}
+                            className="font-semibold text-red-600 hover:text-red-700 transition-colors"
+                          >
+                            Yes
+                          </button>
+                          <button
+                            onClick={() => setDismissingId(null)}
+                            className="font-semibold text-charcoal/40 hover:text-charcoal/60 transition-colors"
+                          >
+                            No
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setDismissingId(item.source_id)}
+                          className="text-xs text-charcoal/40 hover:text-red-600 transition-colors"
+                        >
+                          Dismiss
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -278,7 +313,13 @@ export default function Posts() {
                     </span>
                   </div>
                   <p className="text-sm font-medium text-charcoal truncate">
-                    {post.title || '(untitled)'}
+                    {post.title || (() => {
+                      const body = (post.body || '').trim()
+                      if (!body) return '(untitled)'
+                      if (body.length <= 60) return body
+                      const cut = body.lastIndexOf(' ', 60)
+                      return (cut > 20 ? body.slice(0, cut) : body.slice(0, 60)) + '...'
+                    })()}
                   </p>
                   <div className="flex items-center gap-3 mt-1.5 text-[11px] text-charcoal/40">
                     <span>{(post.body || '').length} chars</span>

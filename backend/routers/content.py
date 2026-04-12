@@ -168,7 +168,16 @@ async def content_queue(
 
     # Fetch all content_posts source mappings to filter out already-drafted items
     drafted = sb.table("content_posts").select("source_type, source_id").not_.is_("source_id", "null").execute()
-    drafted_set = {(r["source_type"], r["source_id"]) for r in drafted.data}
+    drafted_set = set()
+    for r in drafted.data:
+        st = r["source_type"]
+        sid = r["source_id"]
+        drafted_set.add((st, sid))
+        # Treat 'content_news' as equivalent to 'news' (legacy source_type value)
+        if st == "content_news":
+            drafted_set.add(("news", sid))
+        elif st == "news":
+            drafted_set.add(("content_news", sid))
 
     items: List[dict] = []
 
@@ -207,6 +216,28 @@ async def content_queue(
 
     items.sort(key=lambda x: x["created_at"] or "", reverse=True)
     return items
+
+
+@router.patch("/content/queue/dismiss")
+async def dismiss_queue_item(
+    payload: dict,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Dismiss a queued item — sets news status to 'dismissed' or story_bank queued_for_draft to false."""
+    sb = get_supabase()
+    source_type = payload.get("source_type")
+    source_id = payload.get("source_id")
+    if not source_type or not source_id:
+        raise HTTPException(400, "source_type and source_id required")
+
+    if source_type in ("news", "content_news"):
+        sb.table("content_news").update({"status": "dismissed"}).eq("id", source_id).execute()
+    elif source_type == "story_bank":
+        sb.table("story_bank").update({"queued_for_draft": False}).eq("id", source_id).execute()
+    else:
+        raise HTTPException(400, f"Unknown source_type: {source_type}")
+
+    return {"ok": True}
 
 
 # ==========================================================================
