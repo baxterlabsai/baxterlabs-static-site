@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { apiGet, apiPost } from '../../../lib/api'
+import { apiGet, apiPatch, apiPost } from '../../../lib/api'
 import { useRealtimeRefresh } from '../../../hooks/useRealtimeRefresh'
 
 interface StoryEntry {
@@ -11,6 +11,7 @@ interface StoryEntry {
   slay_outline: { S?: string; L?: string; A?: string; Y?: string } | null
   used_in_post: boolean
   used_in_post_id: string | null
+  queued_for_draft: boolean
   created_at: string
 }
 
@@ -66,6 +67,7 @@ export default function StoryBank() {
   const [ideasLoading, setIdeasLoading] = useState(true)
   const [ideasFilter, setIdeasFilter] = useState('all')
   const [promoting, setPromoting] = useState<string | null>(null)
+  const [queueing, setQueueing] = useState<string | null>(null)
 
   const reloadStories = useCallback(() => {
     const params = categoryFilter !== 'All' ? `?category=${encodeURIComponent(categoryFilter)}` : ''
@@ -97,6 +99,15 @@ export default function StoryBank() {
       reloadStories()
     } catch { /* ignore */ }
     setPromoting(null)
+  }
+
+  async function toggleQueue(storyId: string) {
+    setQueueing(storyId)
+    try {
+      const updated = await apiPatch<StoryEntry>(`/api/story-bank/${storyId}/queue`, {})
+      setStories(prev => prev.map(s => s.id === storyId ? { ...s, queued_for_draft: updated.queued_for_draft } : s))
+    } catch { /* ignore */ }
+    setQueueing(null)
   }
 
   const tabs: { key: Tab; label: string }[] = [
@@ -172,9 +183,16 @@ export default function StoryBank() {
                     <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${CATEGORY_COLORS[s.category] || 'bg-gray-100 text-gray-600'}`}>
                       {s.category}
                     </span>
-                    {s.used_in_post && (
+                    {s.used_in_post ? (
                       <span className="text-[10px] font-medium text-emerald-600">Used</span>
-                    )}
+                    ) : s.queued_for_draft ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-green/10 text-green">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        Queued
+                      </span>
+                    ) : null}
                   </div>
 
                   {/* Hook draft as title if present */}
@@ -195,6 +213,21 @@ export default function StoryBank() {
                     <p className="text-sm text-teal font-medium leading-relaxed border-l-2 border-teal/30 pl-3">
                       {s.dollar_connection}
                     </p>
+                  )}
+
+                  {/* Queue / unqueue button */}
+                  {!s.used_in_post && (
+                    <button
+                      disabled={queueing === s.id}
+                      onClick={() => toggleQueue(s.id)}
+                      className={`mt-auto self-start text-[11px] font-medium px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-50 ${
+                        s.queued_for_draft
+                          ? 'border-gray-200 text-charcoal/40 hover:text-red-soft hover:border-red-soft/30'
+                          : 'border-gray-200 text-charcoal/60 hover:border-teal hover:text-teal'
+                      }`}
+                    >
+                      {queueing === s.id ? (s.queued_for_draft ? 'Removing…' : 'Queueing…') : s.queued_for_draft ? 'Remove from queue' : 'Queue for draft'}
+                    </button>
                   )}
                 </div>
               ))}

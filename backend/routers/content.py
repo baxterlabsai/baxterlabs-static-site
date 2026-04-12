@@ -47,6 +47,7 @@ class StoryUpdate(BaseModel):
     slay_outline: Optional[dict] = None
     used_in_post: Optional[bool] = None
     used_in_post_id: Optional[str] = None
+    queued_for_draft: Optional[bool] = None
 
 class IdeaCreate(BaseModel):
     title: str
@@ -132,6 +133,80 @@ async def delete_story(
     if not result.data:
         raise HTTPException(404, "Story not found")
     return {"ok": True}
+
+
+@router.patch("/story-bank/{story_id}/queue")
+async def toggle_story_queue(
+    story_id: str,
+    user: dict = Depends(verify_partner_auth),
+):
+    """Toggle queued_for_draft on a story_bank row."""
+    sb = get_supabase()
+    current = sb.table("story_bank").select("queued_for_draft").eq("id", story_id).execute()
+    if not current.data:
+        raise HTTPException(404, "Story not found")
+    new_val = not current.data[0].get("queued_for_draft", False)
+    result = (
+        sb.table("story_bank")
+        .update({"queued_for_draft": new_val, "updated_at": datetime.utcnow().isoformat()})
+        .eq("id", story_id)
+        .execute()
+    )
+    return result.data[0]
+
+
+# ==========================================================================
+# Content Queue (union of queued news + queued story bank)
+# ==========================================================================
+
+@router.get("/content/queue")
+async def content_queue(
+    user: dict = Depends(verify_partner_auth),
+):
+    """Return queued news + queued story bank entries that don't yet have a draft."""
+    sb = get_supabase()
+
+    # Fetch all content_posts source mappings to filter out already-drafted items
+    drafted = sb.table("content_posts").select("source_type, source_id").not_.is_("source_id", "null").execute()
+    drafted_set = {(r["source_type"], r["source_id"]) for r in drafted.data}
+
+    items: List[dict] = []
+
+    # Queued news
+    news = sb.table("content_news").select("id, headline, source_publication, created_at").eq("status", "queued").execute()
+    for row in news.data:
+        if ("news", row["id"]) not in drafted_set:
+            items.append({
+                "source_type": "news",
+                "source_id": row["id"],
+                "title": row["headline"],
+                "subtitle": row.get("source_publication"),
+                "created_at": row["created_at"],
+            })
+
+    # Queued story bank
+    stories = (
+        sb.table("story_bank")
+        .select("id, hook_draft, raw_note, category, created_at")
+        .eq("queued_for_draft", True)
+        .execute()
+    )
+    for row in stories.data:
+        title = row.get("hook_draft") or ""
+        if not title:
+            raw = row.get("raw_note") or ""
+            title = (raw[:77] + "...") if len(raw) > 80 else raw
+        if ("story_bank", row["id"]) not in drafted_set:
+            items.append({
+                "source_type": "story_bank",
+                "source_id": row["id"],
+                "title": title,
+                "subtitle": row.get("category"),
+                "created_at": row["created_at"],
+            })
+
+    items.sort(key=lambda x: x["created_at"] or "", reverse=True)
+    return items
 
 
 # ==========================================================================
