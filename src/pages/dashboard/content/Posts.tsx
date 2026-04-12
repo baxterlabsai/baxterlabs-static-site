@@ -72,6 +72,7 @@ export default function Posts() {
   const [queue, setQueue] = useState<QueueItem[]>([])
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [dismissingId, setDismissingId] = useState<string | null>(null)
+  const [dismissingDraftId, setDismissingDraftId] = useState<string | null>(null)
 
   const reloadQueue = useCallback(() => {
     apiGet<QueueItem[]>('/api/content/queue')
@@ -109,7 +110,7 @@ export default function Posts() {
   useRealtimeRefresh('content-posts', reload, ['content_posts'])
 
   const filtered = activeTab === 'all'
-    ? posts
+    ? posts.filter(p => p.status !== 'archived')
     : posts.filter(p => p.status === activeTab)
 
   const selected = posts.find(p => p.id === selectedId) ?? null
@@ -462,14 +463,47 @@ export default function Posts() {
                 {/* Action buttons */}
                 <div className="border-t border-gray-100 pt-3">
                   {selected.status === 'draft' && (
-                    <button
-                      disabled={patching}
-                      onClick={() => patchStatus(selected.id, { status: 'approved' })}
-                      className="w-full py-2 text-sm font-medium rounded-lg text-white transition-colors disabled:opacity-50"
-                      style={{ backgroundColor: '#378ADD' }}
-                    >
-                      {patching ? 'Updating…' : 'Approve'}
-                    </button>
+                    <div className="space-y-2">
+                      <button
+                        disabled={patching}
+                        onClick={() => patchStatus(selected.id, { status: 'approved' })}
+                        className="w-full py-2 text-sm font-medium rounded-lg text-white transition-colors disabled:opacity-50"
+                        style={{ backgroundColor: '#378ADD' }}
+                      >
+                        {patching ? 'Updating…' : 'Approve'}
+                      </button>
+                      <div className="flex justify-center">
+                        {dismissingDraftId === selected.id ? (
+                          <span className="inline-flex items-center gap-2 text-xs">
+                            <span className="text-charcoal/50">Dismiss draft?</span>
+                            <button
+                              onClick={async () => {
+                                const id = selected.id
+                                await patchStatus(id, { status: 'archived' })
+                                setDismissingDraftId(null)
+                                setSelectedId(null)
+                              }}
+                              className="font-semibold text-red-600 hover:text-red-700 transition-colors"
+                            >
+                              Yes
+                            </button>
+                            <button
+                              onClick={() => setDismissingDraftId(null)}
+                              className="font-semibold text-charcoal/40 hover:text-charcoal/60 transition-colors"
+                            >
+                              No
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => setDismissingDraftId(selected.id)}
+                            className="text-xs text-charcoal/40 hover:text-red-600 transition-colors"
+                          >
+                            Dismiss draft
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   )}
 
                   {selected.status === 'approved' && (
