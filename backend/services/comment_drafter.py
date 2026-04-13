@@ -195,9 +195,18 @@ def draft_comment_for_opportunity(opp_id: str) -> dict:
         + brand_voice
     )
 
+    post_body = opp.get("post_body")
+    post_summary = opp.get("post_summary", "")
+    if post_body:
+        post_text_label = "Post body"
+        post_text_value = post_body
+    else:
+        post_text_label = "Post summary (full text not available)"
+        post_text_value = post_summary
+
     user_message = (
         f"profile_name: {opp.get('profile_name', '')}\n"
-        f"post_summary: {opp.get('post_summary', '')}\n"
+        f"{post_text_label}: {post_text_value}\n"
         f"relevance_reason: {opp.get('relevance_reason', '')}\n"
         f"suggested_angle: {opp.get('suggested_angle', '')}"
     )
