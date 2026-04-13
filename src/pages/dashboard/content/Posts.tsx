@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { apiGet, apiPatch, apiPost } from '../../../lib/api'
+import { useToast } from '../../../components/Toast'
 import { useRealtimeRefresh } from '../../../hooks/useRealtimeRefresh'
 import MarkdownContent from '../../../components/MarkdownContent'
 
@@ -35,11 +36,10 @@ interface Post {
   created_at: string
 }
 
-const STATUS_TABS = ['all', 'draft', 'approved', 'scheduled', 'published'] as const
+const STATUS_TABS = ['all', 'draft', 'scheduled', 'published'] as const
 
 const STATUS_COLORS: Record<string, string> = {
   draft: '#6B7280',
-  approved: '#378ADD',
   scheduled: '#BA7517',
   published: '#639922',
   archived: '#9CA3AF',
@@ -73,6 +73,7 @@ export default function Posts() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [dismissingId, setDismissingId] = useState<string | null>(null)
   const [dismissingDraftId, setDismissingDraftId] = useState<string | null>(null)
+  const { toast } = useToast()
 
   const reloadQueue = useCallback(() => {
     apiGet<QueueItem[]>('/api/content/queue')
@@ -165,7 +166,9 @@ export default function Posts() {
     try {
       const updated = await apiPatch<Post>(`/api/content/posts/${id}`, body)
       setPosts(prev => prev.map(p => p.id === id ? { ...p, ...updated } : p))
-    } catch { /* ignore */ }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Failed to update post', 'error')
+    }
     setPatching(false)
   }
 
@@ -174,7 +177,7 @@ export default function Posts() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-charcoal font-display">Posts</h1>
-          <p className="text-sm text-charcoal/60 mt-1">Review, approve, and schedule content posts</p>
+          <p className="text-sm text-charcoal/60 mt-1">Review and schedule content posts</p>
         </div>
       </div>
 
@@ -464,13 +467,22 @@ export default function Posts() {
                 <div className="border-t border-gray-100 pt-3">
                   {selected.status === 'draft' && (
                     <div className="space-y-2">
+                      <input
+                        type="datetime-local"
+                        value={scheduleDate}
+                        onChange={e => setScheduleDate(e.target.value)}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-charcoal"
+                      />
                       <button
-                        disabled={patching}
-                        onClick={() => patchStatus(selected.id, { status: 'approved' })}
+                        disabled={patching || !scheduleDate}
+                        onClick={() => patchStatus(selected.id, {
+                          status: 'scheduled',
+                          scheduled_date: new Date(scheduleDate).toISOString(),
+                        })}
                         className="w-full py-2 text-sm font-medium rounded-lg text-white transition-colors disabled:opacity-50"
-                        style={{ backgroundColor: '#378ADD' }}
+                        style={{ backgroundColor: '#BA7517' }}
                       >
-                        {patching ? 'Updating…' : 'Approve'}
+                        {patching ? 'Updating…' : 'Schedule post'}
                       </button>
                       <div className="flex justify-center">
                         {dismissingDraftId === selected.id ? (
@@ -511,28 +523,6 @@ export default function Posts() {
                           </button>
                         )}
                       </div>
-                    </div>
-                  )}
-
-                  {selected.status === 'approved' && (
-                    <div className="space-y-2">
-                      <input
-                        type="datetime-local"
-                        value={scheduleDate}
-                        onChange={e => setScheduleDate(e.target.value)}
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-charcoal"
-                      />
-                      <button
-                        disabled={patching || !scheduleDate}
-                        onClick={() => patchStatus(selected.id, {
-                          status: 'scheduled',
-                          scheduled_date: new Date(scheduleDate).toISOString(),
-                        })}
-                        className="w-full py-2 text-sm font-medium rounded-lg text-white transition-colors disabled:opacity-50"
-                        style={{ backgroundColor: '#BA7517' }}
-                      >
-                        {patching ? 'Updating…' : 'Schedule'}
-                      </button>
                     </div>
                   )}
 
