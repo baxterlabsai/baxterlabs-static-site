@@ -6,7 +6,7 @@ This is the canonical "live" implementation called by the Commenting page
 Redraft endpoint. A parallel Cowork skill (baxterlabs-content/draft-comment)
 mirrors this for the scheduled task batch path. Both read the same prompt
 template from Drive (Standards/comment-draft-prompt.md) and the same brand
-voice spec (Standards/brand-voice-guidelines.md) so they stay in sync.
+voice spec (Standards/BaxterLabs_Brand_Voice.md) so they stay in sync.
 
 Architecture: this is Architecture 1 from the P6 design — the live path goes
 through FastAPI directly to the Anthropic API, the batch path goes through
@@ -31,7 +31,7 @@ logger = logging.getLogger("baxterlabs.comment_drafter")
 SHARED_DRIVE_NAME = "BaxterLabs - Cowork"
 FOLDER_MIME = "application/vnd.google-apps.folder"
 PROMPT_TEMPLATE_FILENAME = "comment-draft-prompt.md"
-BRAND_VOICE_FILENAME = "brand-voice-guidelines.md"
+BRAND_VOICE_FILENAME = "BaxterLabs_Brand_Voice.md"
 MODEL = "claude-opus-4-6"  # Opus for public-facing content (LinkedIn comments are read by external audience)
 MAX_TOKENS = 400
 
