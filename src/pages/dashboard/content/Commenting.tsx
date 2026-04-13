@@ -26,6 +26,7 @@ interface CommentingOpp {
   status: string
   acted_at: string | null
   created_at: string
+  post_body: string | null
   draft_comment: string | null
   draft_generated_at: string | null
 }
@@ -41,6 +42,25 @@ function timeAgo(iso: string): string {
   if (days < 30) return `${days}d ago`
   const months = Math.floor(days / 30)
   return `${months}mo ago`
+}
+
+function PostBodyDisclosure({ postBody }: { postBody: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="mb-1.5">
+      <button
+        onClick={() => setOpen(!open)}
+        className="text-[11px] font-medium text-teal hover:text-teal/80 transition-colors"
+      >
+        {open ? 'Hide full post' : 'Show full post'}
+      </button>
+      {open && (
+        <div className="mt-1.5 max-h-[400px] overflow-y-auto bg-white border border-gray-200 rounded-md px-3 py-2">
+          <p className="text-xs text-charcoal/70 whitespace-pre-wrap">{postBody}</p>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function Commenting() {
@@ -239,6 +259,10 @@ export default function Commenting() {
                   >
                     {item.post_summary}
                   </p>
+
+                  {item.post_body && (
+                    <PostBodyDisclosure postBody={item.post_body} />
+                  )}
 
                   {/* Relevance reason (italic small text) */}
                   <p className="text-xs text-charcoal/40 italic mb-2">
