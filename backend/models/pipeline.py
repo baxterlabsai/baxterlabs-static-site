@@ -80,7 +80,7 @@ class OpportunityCreate(BaseModel):
     estimated_close_date: Optional[date] = None
     loss_reason: Optional[str] = None
     notes: Optional[str] = None
-    assigned_to: Optional[str] = None
+    assigned_to_user_id: Optional[str] = None
     referred_by_engagement_id: Optional[str] = None
     referred_by_contact_name: Optional[str] = None
     referred_by_company_id: Optional[str] = None
@@ -101,7 +101,7 @@ class OpportunityUpdate(BaseModel):
     estimated_close_date: Optional[date] = None
     loss_reason: Optional[str] = None
     notes: Optional[str] = None
-    assigned_to: Optional[str] = None
+    assigned_to_user_id: Optional[str] = None
     referred_by_engagement_id: Optional[str] = None
     referred_by_contact_name: Optional[str] = None
     referred_by_company_id: Optional[str] = None
@@ -194,7 +194,7 @@ class TaskCreate(BaseModel):
     scheduled_time: Optional[str] = None      # "HH:MM" or "HH:MM:SS"
     scheduled_end_time: Optional[str] = None   # "HH:MM" or "HH:MM:SS"
     priority: str = "normal"
-    assigned_to: Optional[str] = None
+    assigned_to_user_id: Optional[str] = None
     source_plugin: Optional[str] = None
     plugin_tool: Optional[str] = None
 
@@ -211,7 +211,7 @@ class TaskUpdate(BaseModel):
     scheduled_end_time: Optional[str] = None   # "HH:MM" or "HH:MM:SS"
     priority: Optional[str] = None
     status: Optional[str] = None
-    assigned_to: Optional[str] = None
+    assigned_to_user_id: Optional[str] = None
     outcome_notes: Optional[str] = None
     plugin_tool: Optional[str] = None
 

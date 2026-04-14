@@ -296,7 +296,7 @@ async def delete_contact(contact_id: str, user: dict = Depends(verify_partner_au
 @router.get("/opportunities")
 async def list_opportunities(
     stage: Optional[str] = Query(None),
-    assigned_to: Optional[str] = Query(None),
+    assigned_to_user_id: Optional[str] = Query(None),
     company_type: Optional[str] = Query(None),
     user: dict = Depends(verify_partner_auth),
 ):
@@ -322,8 +322,8 @@ async def list_opportunities(
     )
     if stage:
         query = query.eq("stage", stage)
-    if assigned_to:
-        query = query.eq("assigned_to", assigned_to)
+    if assigned_to_user_id:
+        query = query.eq("assigned_to_user_id", assigned_to_user_id)
     if company_type:
         query = query.in_("company_id", type_ids)
     result = query.order("created_at", desc=True).execute()
@@ -975,7 +975,7 @@ async def website_intake(req: WebsiteIntakeRequest):
             "source": "website",
             "notes": opp_notes,
             "interview_contacts_json": json.dumps(contacts_json) if contacts_json else None,
-            "assigned_to": "George DeVries",
+            "assigned_to_user_id": "9a3603f4-88a9-449d-bba0-809043616d95",  # George — default for system-generated tasks
         }, None)).execute()
         opp = opp_result.data[0]
         opp_id = opp["id"]
@@ -1625,7 +1625,7 @@ async def create_activity_gmail_draft(
 @router.get("/tasks")
 async def list_tasks(
     status: Optional[str] = Query(None),
-    assigned_to: Optional[str] = Query(None),
+    assigned_to_user_id: Optional[str] = Query(None),
     due_before: Optional[date] = Query(None),
     user: dict = Depends(verify_partner_auth),
 ):
@@ -1636,8 +1636,8 @@ async def list_tasks(
     )
     if status:
         query = query.eq("status", status)
-    if assigned_to:
-        query = query.eq("assigned_to", assigned_to)
+    if assigned_to_user_id:
+        query = query.eq("assigned_to_user_id", assigned_to_user_id)
     if due_before:
         query = query.lte("due_date", due_before.isoformat())
     result = query.order("due_date").execute()
