@@ -44,3 +44,12 @@ docs/*
 *.sln
 *.sw?
 backups/
+
+*.bak
+*.backup
+*.orig
+*.rej
+
+# Phased-work scratch files (internal)
+PHASE*_INVENTORY.md
+PHASE*_CLOSEOUT.md
