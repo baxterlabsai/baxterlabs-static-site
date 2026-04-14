@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api'
 import { useRealtimeRefresh } from '../../../hooks/useRealtimeRefresh'
+import { usePartnerProfiles } from '../../../hooks/usePartnerProfiles'
+import { OwnershipToggle } from '../../../components/OwnershipToggle'
+import { supabase } from '../../../lib/supabase'
 import MarkdownContent from '../../../components/MarkdownContent'
 import SEO from '../../../components/SEO'
 
@@ -20,13 +23,6 @@ interface Contact {
   company_id: string | null
 }
 
-interface Partner {
-  id: string
-  name: string
-  email: string
-  is_active: boolean
-}
-
 interface Task {
   id: string
   task_type: string
@@ -42,6 +38,7 @@ interface Task {
   status: string
   completed_at: string | null
   assigned_to: string | null
+  assigned_to_user_id: string | null
   outcome_notes: string | null
   source_plugin: string | null
   plugin_tool: string | null
@@ -227,9 +224,13 @@ export default function PipelineTasks() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
   const [contacts, setContacts] = useState<Contact[]>([])
-  const [partners, setPartners] = useState<Partner[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  const [currentUserAuthId, setCurrentUserAuthId] = useState<string | null>(null)
+  const [ownership, setOwnership] = useState<'mine' | 'all'>(() => {
+    return (localStorage.getItem('baxterlabs.tasks.ownership') as 'mine' | 'all') || 'mine'
+  })
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<'active' | 'all' | 'completed'>('active')
@@ -248,20 +249,24 @@ export default function PipelineTasks() {
     loadData()
   }, [])
 
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) setCurrentUserAuthId(session.user.id)
+    })
+  }, [])
+
   useRealtimeRefresh('pipeline-tasks', loadData, ['pipeline_tasks'])
 
   async function loadData() {
     try {
-      const [taskData, compData, contactData, partnerData] = await Promise.all([
+      const [taskData, compData, contactData] = await Promise.all([
         apiGet<{ tasks: Task[] }>('/api/pipeline/tasks'),
         apiGet<{ companies: Company[] }>('/api/pipeline/companies'),
         apiGet<{ contacts: Contact[] }>('/api/pipeline/contacts'),
-        apiGet<Partner[]>('/api/pipeline/partners'),
       ])
       setTasks(taskData.tasks)
       setCompanies(compData.companies)
       setContacts(contactData.contacts)
-      setPartners(partnerData)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load tasks')
     } finally {
@@ -271,6 +276,7 @@ export default function PipelineTasks() {
 
   // Client-side filtering
   const filtered = tasks.filter(t => {
+    if (ownership === 'mine' && currentUserAuthId && t.assigned_to_user_id !== currentUserAuthId) return false
     if (statusFilter === 'active' && (t.status === 'complete' || t.status === 'skipped')) return false
     if (statusFilter === 'completed' && t.status === 'pending') return false
     if (priorityFilter !== 'all' && t.priority !== priorityFilter) return false
@@ -392,6 +398,15 @@ export default function PipelineTasks() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3 mb-6">
+        {/* Ownership toggle */}
+        {currentUserAuthId && (
+          <OwnershipToggle
+            value={ownership}
+            onChange={v => { setOwnership(v); localStorage.setItem('baxterlabs.tasks.ownership', v) }}
+            currentUserAuthId={currentUserAuthId}
+          />
+        )}
+
         {/* Status pills */}
         <div className="flex rounded-lg border border-gray-light overflow-hidden">
           {(['active', 'all', 'completed'] as const).map(s => (
@@ -473,7 +488,6 @@ export default function PipelineTasks() {
           title="Add Task"
           companies={companies}
           contacts={contacts}
-          partners={partners}
           onSave={handleAddTask}
           onClose={() => setShowAddModal(false)}
         />
@@ -486,7 +500,6 @@ export default function PipelineTasks() {
           task={editTask}
           companies={companies}
           contacts={contacts}
-          partners={partners}
           showStatus
           onSave={data => handleUpdateTask(editTask.id, data)}
           onClose={() => setEditTask(null)}
@@ -522,6 +535,7 @@ function TaskRow({ task, onToggle, onSnooze, onEdit, onDelete }: {
   onDelete: () => void
 }) {
   const [descExpanded, setDescExpanded] = useState(false)
+  const { getDisplayNameByAuthUserId, getColorByAuthUserId } = usePartnerProfiles()
   const isComplete = task.status === 'complete' || task.status === 'skipped'
   const priority = PRIORITY_MAP[task.priority] || PRIORITY_MAP['normal']
   const isOverdue = !isComplete && task.due_date && task.due_date < todayStr()
@@ -588,12 +602,15 @@ function TaskRow({ task, onToggle, onSnooze, onEdit, onDelete }: {
               <span className="text-xs text-gray-warm italic truncate">{task.plugin_tool}</span>
             </>
           )}
-          {task.assigned_to && (
+          {task.assigned_to_user_id && (
             <>
               {(task.pipeline_companies || task.pipeline_contacts || task.pipeline_opportunities || task.plugin_tool) && (
                 <span className="text-xs text-gray-warm">&middot;</span>
               )}
-              <span className="text-xs text-gray-warm truncate">{task.assigned_to}</span>
+              <span className="inline-flex items-center gap-1 text-xs text-gray-warm truncate">
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: getColorByAuthUserId(task.assigned_to_user_id) }} />
+                {getDisplayNameByAuthUserId(task.assigned_to_user_id)}
+              </span>
             </>
           )}
         </div>
@@ -651,12 +668,11 @@ function TaskRow({ task, onToggle, onSnooze, onEdit, onDelete }: {
 // TaskFormModal Component — exported for reuse from Overview cockpit
 // ---------------------------------------------------------------------------
 
-export function TaskFormModal({ title, task, companies, contacts, partners = [], showStatus, onSave, onClose }: {
+export function TaskFormModal({ title, task, companies, contacts, showStatus, onSave, onClose }: {
   title: string
   task?: Task
   companies: Company[]
   contacts: Contact[]
-  partners?: Partner[]
   showStatus?: boolean
   onSave: (data: Record<string, unknown>) => Promise<unknown>
   onClose: () => void
@@ -674,7 +690,8 @@ export function TaskFormModal({ title, task, companies, contacts, partners = [],
   const [companySearch, setCompanySearch] = useState(task?.pipeline_companies?.name || '')
   const [contactSearch, setContactSearch] = useState(task?.pipeline_contacts?.name || '')
   const [pluginTool, setPluginTool] = useState(task?.plugin_tool || '')
-  const [assignedTo, setAssignedTo] = useState(task?.assigned_to || '')
+  const [assignedTo, setAssignedTo] = useState(task?.assigned_to_user_id || '')
+  const { profiles } = usePartnerProfiles()
   const [showCompanyDropdown, setShowCompanyDropdown] = useState(false)
   const [showContactDropdown, setShowContactDropdown] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -708,7 +725,7 @@ export function TaskFormModal({ title, task, companies, contacts, partners = [],
       if (scheduledEndTime) data.scheduled_end_time = scheduledEndTime
       if (description.trim()) data.description = description.trim()
       if (pluginTool.trim()) data.plugin_tool = pluginTool.trim()
-      if (assignedTo) data.assigned_to = assignedTo
+      if (assignedTo) data.assigned_to_user_id = assignedTo
       if (companyId) data.company_id = companyId
       if (contactId) data.contact_id = contactId
       if (showStatus) data.status = status
@@ -721,7 +738,7 @@ export function TaskFormModal({ title, task, companies, contacts, partners = [],
         if (!scheduledEndTime && task.scheduled_end_time) data.scheduled_end_time = null
         if (!description.trim() && task.description) data.description = null
         if (!pluginTool.trim() && task.plugin_tool) data.plugin_tool = null
-        if (!assignedTo && task.assigned_to) data.assigned_to = null
+        if (!assignedTo && task.assigned_to_user_id) data.assigned_to_user_id = null
       }
       await onSave(data)
     } catch (err: unknown) {
@@ -810,8 +827,8 @@ export function TaskFormModal({ title, task, companies, contacts, partners = [],
               <label className="block text-sm font-semibold text-charcoal mb-1">Assigned To</label>
               <select value={assignedTo} onChange={e => setAssignedTo(e.target.value)} className="w-full px-3 py-2 border border-gray-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal">
                 <option value="">Unassigned</option>
-                {partners.map(p => (
-                  <option key={p.id} value={p.name}>{p.name}</option>
+                {profiles.map(p => (
+                  <option key={p.auth_user_id} value={p.auth_user_id}>{p.display_name}</option>
                 ))}
               </select>
             </div>
