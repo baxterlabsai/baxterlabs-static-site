@@ -1134,7 +1134,6 @@ async def get_schedule_page(token: str):
         "company_name": company_name,
         "contact_name": contact_name,
         "contact_email": contact_email,
-        "assigned_to": partner_name,  # backward compat — removed in Chunk D
         "partner_display_name": partner_name,
         "booking_time": opp.get("calendly_booking_time"),
         "stage": opp.get("stage"),
