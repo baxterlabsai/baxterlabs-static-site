@@ -15,6 +15,7 @@ from services.supabase_client import (
 from services.email_service import get_email_service
 from services.firecrawl_service import seed_research_from_enrichment
 from utils.attribution import stamp_created_by
+from utils.partners import resolve_partner_display_name
 from services.research_service import research_company
 
 logger = logging.getLogger("baxterlabs.docusign.router")
@@ -316,7 +317,7 @@ async def _auto_convert_pipeline_opportunity(opp_id: str) -> None:
         "status": "agreement_signed",
         "phase": 0,
         "fee": opp.get("estimated_value") or 12500,
-        "partner_lead": opp.get("assigned_to") or "George DeVries",
+        "partner_lead": resolve_partner_display_name(sb, opp.get("assigned_to_user_id")) or "George DeVries",
         "upload_token": upload_token,
         "onboarding_token": onboarding_token,
     }

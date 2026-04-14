@@ -27,6 +27,7 @@ from models.pipeline import (
 )
 from fastapi.responses import JSONResponse
 from utils.attribution import stamp_created_by
+from utils.partners import resolve_partner_display_name
 
 logger = logging.getLogger("baxterlabs.pipeline")
 
@@ -552,7 +553,7 @@ async def conversion_preview(opp_id: str, user: dict = Depends(verify_partner_au
         "discovery_notes": data["discovery_notes"],
         "pain_points": data["pain_points"],
         "suggested_fee": opp.get("estimated_value") or 12500,
-        "suggested_partner_lead": opp.get("assigned_to") or "George DeVries",
+        "suggested_partner_lead": resolve_partner_display_name(sb, opp.get("assigned_to_user_id")) or "George DeVries",
         "suggested_start_date": data["suggested_start_date"],
         "referral_source": company.get("source"),
         "already_converted": opp.get("converted_engagement_id") is not None,
@@ -1087,7 +1088,7 @@ async def schedule_discovery(opp_id: str, user: dict = Depends(verify_partner_au
         contact_name=contact["name"],
         company_name=company_name,
         scheduling_link=schedule_url,
-        partner_lead=opp.get("assigned_to") or "George DeVries",
+        partner_lead=resolve_partner_display_name(sb, opp.get("assigned_to_user_id")) or "George DeVries",
     )
 
     sb.table("pipeline_opportunities").update({
@@ -1104,7 +1105,7 @@ async def get_schedule_page(token: str):
     sb = get_supabase()
     opp = (
         sb.table("pipeline_opportunities")
-        .select("id, title, stage, calendly_booking_time, company_id, primary_contact_id, assigned_to")
+        .select("id, title, stage, calendly_booking_time, company_id, primary_contact_id, assigned_to_user_id")
         .eq("schedule_token", token)
         .eq("is_deleted", False)
         .execute()
@@ -1127,11 +1128,14 @@ async def get_schedule_page(token: str):
     # Return Calendly URL for embed
     calendly_url = os.getenv("CALENDLY_SCHEDULING_URL", "https://calendly.com/george-baxterlabs")
 
+    partner_name = resolve_partner_display_name(sb, opp.get("assigned_to_user_id"))
+
     return {
         "company_name": company_name,
         "contact_name": contact_name,
         "contact_email": contact_email,
-        "assigned_to": opp.get("assigned_to"),
+        "assigned_to": partner_name,  # backward compat — removed in Chunk D
+        "partner_display_name": partner_name,
         "booking_time": opp.get("calendly_booking_time"),
         "stage": opp.get("stage"),
         "calendly_url": calendly_url,
@@ -1176,7 +1180,7 @@ async def send_pipeline_agreement(
     req = body or {}
     fee = req.get("fee") or opp.get("estimated_value") or 12500
     preferred_start_date = req.get("preferred_start_date", "TBD")
-    partner_lead = req.get("partner_lead") or opp.get("assigned_to") or "George DeVries"
+    partner_lead = req.get("partner_lead") or resolve_partner_display_name(sb, opp.get("assigned_to_user_id")) or "George DeVries"
 
     # Calculate end date (14 business days from start)
     end_date = "14 business days from start"
