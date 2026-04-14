@@ -5,50 +5,8 @@ import Home from './pages/Home'
 import Services from './pages/Services'
 import About from './pages/About'
 import GetStarted from './pages/GetStarted'
-import AuthGuard from './components/AuthGuard'
-import DashboardLayout from './components/DashboardLayout'
-import Login from './pages/dashboard/Login'
-import Overview from './pages/dashboard/Overview'
-import EngagementDetail from './pages/dashboard/EngagementDetail'
-import StartEngagement from './pages/dashboard/StartEngagement'
-import ClientDirectory from './pages/dashboard/ClientDirectory'
-import Calendar from './pages/dashboard/Calendar'
-import UserManagement from './pages/dashboard/UserManagement'
-import PipelineBoard from './pages/dashboard/pipeline/Board'
-import PipelineCompanies from './pages/dashboard/pipeline/Companies'
-import PipelineContacts from './pages/dashboard/pipeline/Contacts'
-import PipelineActivities from './pages/dashboard/pipeline/Activities'
-import PipelineTasks from './pages/dashboard/pipeline/Tasks'
-import ConversionReview from './pages/dashboard/pipeline/ConversionReview'
-import BulkImport from './pages/dashboard/pipeline/BulkImport'
-import StoryBank from './pages/dashboard/content/StoryBank'
-import ContentCalendar from './pages/dashboard/content/ContentCalendar'
-import BlogPosts from './pages/dashboard/content/BlogPosts'
-import BlogEditor from './pages/dashboard/content/BlogEditor'
-import ContentCommands from './pages/dashboard/content/ContentCommands'
-import ContentPosts from './pages/dashboard/content/Posts'
-import News from './pages/dashboard/content/News'
 import BlogIndex from './pages/BlogIndex'
 import BlogPost from './pages/BlogPost'
-import ScheduleDiscovery from './pages/ScheduleDiscovery'
-import Onboard from './pages/Onboard'
-import UploadPortal from './pages/UploadPortal'
-import DeliverablePortal from './pages/DeliverablePortal'
-import PaymentSuccess from './pages/PaymentSuccess'
-import PaymentCancelled from './pages/PaymentCancelled'
-import ForgotPassword from './pages/ForgotPassword'
-import ResetPassword from './pages/ResetPassword'
-import HelpManual from './pages/dashboard/help/Manual'
-import HelpVideos from './pages/dashboard/help/Videos'
-import HelpReleases from './pages/dashboard/help/Releases'
-import DeliverablesDashboard from './pages/dashboard/deliverables/DeliverablesDashboard'
-import EngagementOutputs from './pages/dashboard/deliverables/EngagementOutputs'
-import MdEditor from './pages/dashboard/deliverables/MdEditor'
-import PdfReview from './pages/dashboard/deliverables/PdfReview'
-import ExcelReview from './pages/dashboard/deliverables/ExcelReview'
-import DeliveryView from './pages/dashboard/deliverables/DeliveryView'
-import Analytics from './pages/dashboard/Analytics'
-import Commenting from './pages/dashboard/content/Commenting'
 import NotFound from './pages/NotFound'
 
 function ScrollToTop() {
@@ -64,7 +22,6 @@ export default function App() {
     <>
       <ScrollToTop />
       <Routes>
-        {/* Public pages */}
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
           <Route path="/services" element={<Services />} />
@@ -74,62 +31,6 @@ export default function App() {
           <Route path="/insights/:slug" element={<BlogPost />} />
         </Route>
 
-        {/* Public portals (token-based, no auth) */}
-        <Route path="/schedule/:token" element={<ScheduleDiscovery />} />
-        <Route path="/onboard/:token" element={<Onboard />} />
-        <Route path="/upload/:token" element={<UploadPortal />} />
-        <Route path="/deliverables/:token" element={<DeliverablePortal />} />
-
-        {/* Payment result pages (no auth) */}
-        <Route path="/payment/success" element={<PaymentSuccess />} />
-        <Route path="/payment/cancelled" element={<PaymentCancelled />} />
-
-        {/* Password reset (public, no auth) */}
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-
-        {/* Dashboard login (no auth) */}
-        <Route path="/dashboard/login" element={<Login />} />
-
-        {/* Dashboard (auth protected) */}
-        <Route element={<AuthGuard />}>
-          <Route element={<DashboardLayout />}>
-            <Route path="/dashboard" element={<Overview />} />
-            <Route path="/dashboard/engagement/:id" element={<EngagementDetail />} />
-            <Route path="/dashboard/engagement/:id/start" element={<StartEngagement />} />
-            <Route path="/dashboard/clients" element={<ClientDirectory />} />
-            <Route path="/dashboard/calendar" element={<Calendar />} />
-            <Route path="/dashboard/users" element={<UserManagement />} />
-            <Route path="/dashboard/content/stories" element={<StoryBank />} />
-            <Route path="/dashboard/content/story-bank" element={<StoryBank />} />
-            <Route path="/dashboard/content/calendar" element={<ContentCalendar />} />
-            <Route path="/dashboard/content/blog" element={<BlogPosts />} />
-            <Route path="/dashboard/content/blog/:id" element={<BlogEditor />} />
-            <Route path="/dashboard/content/commands" element={<ContentCommands />} />
-            <Route path="/dashboard/content/posts" element={<ContentPosts />} />
-            <Route path="/dashboard/content/news" element={<News />} />
-            <Route path="/dashboard/content/commenting" element={<Commenting />} />
-            <Route path="/dashboard/analytics" element={<Analytics />} />
-            <Route path="/dashboard/pipeline" element={<PipelineBoard />} />
-            <Route path="/dashboard/pipeline/companies" element={<PipelineCompanies />} />
-            <Route path="/dashboard/pipeline/contacts" element={<PipelineContacts />} />
-            <Route path="/dashboard/pipeline/activities" element={<PipelineActivities />} />
-            <Route path="/dashboard/pipeline/tasks" element={<PipelineTasks />} />
-            <Route path="/dashboard/pipeline/import" element={<BulkImport />} />
-            <Route path="/dashboard/pipeline/convert/:opportunityId" element={<ConversionReview />} />
-            <Route path="/dashboard/deliverables" element={<DeliverablesDashboard />} />
-            <Route path="/dashboard/deliverables/:engagementId" element={<EngagementOutputs />} />
-            <Route path="/dashboard/deliverables/:engagementId/edit/:outputId" element={<MdEditor />} />
-            <Route path="/dashboard/deliverables/:engagementId/pdf/:outputId" element={<PdfReview />} />
-            <Route path="/dashboard/deliverables/:engagementId/excel/:outputId" element={<ExcelReview />} />
-            <Route path="/dashboard/deliverables/:engagementId/delivery" element={<DeliveryView />} />
-            <Route path="/dashboard/help/manual" element={<HelpManual />} />
-            <Route path="/dashboard/help/videos" element={<HelpVideos />} />
-            <Route path="/dashboard/help/releases" element={<HelpReleases />} />
-          </Route>
-        </Route>
-
-        {/* 404 catch-all */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>
