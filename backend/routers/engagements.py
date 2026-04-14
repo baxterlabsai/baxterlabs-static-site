@@ -16,6 +16,7 @@ from services.docusign_service import get_docusign_service
 from services.research_service import research_contacts
 from services.transcript_service import extract_text, analyze_transcript, get_transcript_intelligence
 from services.google_drive_engagement import upload_file_to_drive_folder, delete_drive_file, move_file_to_folder
+from utils.attribution import stamp_created_by
 
 logger = logging.getLogger("baxterlabs.engagements")
 
@@ -152,13 +153,13 @@ async def start_engagement(
                 end_date=body.target_end_date or "14 days from start",
             )
             if result.get("success"):
-                sb.table("legal_documents").insert({
+                sb.table("legal_documents").insert(stamp_created_by({
                     "engagement_id": engagement_id,
                     "type": "agreement",
                     "docusign_envelope_id": result["envelope_id"],
                     "status": "sent",
                     "sent_at": "now()",
-                }).execute()
+                }, user.get("sub"))).execute()
                 agreement_sent = True
                 logger.info(f"Agreement sent for engagement {engagement_id}")
     except Exception as e:
@@ -284,12 +285,12 @@ async def advance_phase(
         logger.warning(f"Could not fetch prompt version for phase {current_phase}: {e}")
 
     # Create phase_execution record
-    sb.table("phase_executions").insert({
+    sb.table("phase_executions").insert(stamp_created_by({
         "engagement_id": engagement_id,
         "phase": current_phase,
         "prompt_version": prompt_version,
         "notes": body.notes,
-    }).execute()
+    }, user.get("sub"))).execute()
 
     # Determine next status
     new_status = PHASE_STATUSES.get(current_phase, "phases_complete")
@@ -389,10 +390,10 @@ async def begin_phases(
     }).eq("id", engagement_id).execute()
 
     # Create phase_execution record for phase 0
-    sb.table("phase_executions").insert({
+    sb.table("phase_executions").insert(stamp_created_by({
         "engagement_id": engagement_id,
         "phase": 0,
-    }).execute()
+    }, user.get("sub"))).execute()
 
     # Log activity
     log_activity(engagement_id, "partner", "phases_began", {
@@ -529,7 +530,7 @@ async def upload_interview_transcript(
         if not drive_file_id:
             raise HTTPException(status_code=502, detail="Failed to upload transcript to Google Drive.")
 
-        doc_result = sb.table("documents").insert({
+        doc_result = sb.table("documents").insert(stamp_created_by({
             "engagement_id": engagement_id,
             "category": "transcript",
             "filename": filename,
@@ -539,13 +540,13 @@ async def upload_interview_transcript(
             "uploaded_by": "analyst",
             "storage_backend": "drive",
             "status": "uploaded",
-        }).execute()
+        }, user.get("sub"))).execute()
     else:
         sb.storage.from_("engagements").upload(
             storage_path, content, {"content-type": mimetype}
         )
 
-        doc_result = sb.table("documents").insert({
+        doc_result = sb.table("documents").insert(stamp_created_by({
             "engagement_id": engagement_id,
             "category": "transcript",
             "filename": filename,
@@ -556,7 +557,7 @@ async def upload_interview_transcript(
             "storage_bucket": "engagements",
             "storage_backend": "supabase",
             "status": "uploaded",
-        }).execute()
+        }, user.get("sub"))).execute()
 
     doc_id = doc_result.data[0]["id"]
 
@@ -705,7 +706,7 @@ async def upload_interview_transcript_gdoc(
         sb.table("documents").delete().eq("id", old_doc_id).execute()
 
     # Create documents record (no file in storage — source is GDoc)
-    doc_result = sb.table("documents").insert({
+    doc_result = sb.table("documents").insert(stamp_created_by({
         "engagement_id": engagement_id,
         "category": "transcript",
         "filename": filename,
@@ -717,7 +718,7 @@ async def upload_interview_transcript_gdoc(
         "status": "uploaded",
         "extracted_text": extracted_text,
         "gdoc_url": body.gdoc_url,
-    }).execute()
+    }, user.get("sub"))).execute()
 
     doc_id = doc_result.data[0]["id"]
     logger.info(f"GDoc transcript imported — doc={doc_id} chars={len(extracted_text)}")
@@ -1171,7 +1172,7 @@ async def upsert_engagement_graphic(
             "phase_number": payload.get("phase_number", 5),
         })
         result = sb.table("engagement_graphics") \
-            .insert(record) \
+            .insert(stamp_created_by(record, user.get("sub"))) \
             .execute()
 
     return {"success": True, "id": result.data[0]["id"]}

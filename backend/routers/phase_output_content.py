@@ -17,6 +17,7 @@ from services.output_mapping import output_number_for_name
 from services.pdf_converter import convert_to_pdf, convert_phase_output_to_pdf, ConversionError
 from fastapi.responses import Response
 from services.google_drive_engagement import download_file_by_id, download_file_by_name, upload_file_to_drive_folder
+from utils.attribution import stamp_created_by
 
 logger = logging.getLogger("baxterlabs.phase_output_content")
 
@@ -95,6 +96,7 @@ async def upsert_output(
     }
     if out_num is not None:
         row["output_number"] = out_num
+    row = stamp_created_by(row, user.get("sub"))
     result = sb.table("phase_output_content").insert(row).execute()
     created = result.data[0] if result.data else row
 
@@ -179,6 +181,7 @@ async def upsert_binary_output(
     }
     if out_num is not None:
         row["output_number"] = out_num
+    row = stamp_created_by(row, user.get("sub"))
     result = sb.table("phase_output_content").insert(row).execute()
     created = result.data[0] if result.data else row
 

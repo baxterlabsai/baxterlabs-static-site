@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from middleware.auth import verify_partner_auth
 from services.supabase_client import get_supabase
+from utils.attribution import stamp_created_by
 
 logger = logging.getLogger("baxterlabs.content")
 
@@ -101,7 +102,7 @@ async def create_story(
     if payload.category not in VALID_STORY_CATEGORIES:
         raise HTTPException(400, f"Invalid category: {payload.category}")
     sb = get_supabase()
-    data = payload.model_dump(exclude_none=True)
+    data = stamp_created_by(payload.model_dump(exclude_none=True), user.get("sub"))
     result = sb.table("story_bank").insert(data).execute()
     return result.data[0]
 
@@ -287,7 +288,7 @@ async def create_idea(
     user: dict = Depends(verify_partner_auth),
 ):
     sb = get_supabase()
-    data = payload.model_dump(exclude_none=True)
+    data = stamp_created_by(payload.model_dump(exclude_none=True), user.get("sub"))
     result = sb.table("content_ideas").insert(data).execute()
     return result.data[0]
 
@@ -679,7 +680,7 @@ async def create_content_post(
     if payload.status and payload.status not in VALID_POST_STATUSES:
         raise HTTPException(400, f"Invalid status: {payload.status}")
     sb = get_supabase()
-    data = payload.model_dump(exclude_none=True)
+    data = stamp_created_by(payload.model_dump(exclude_none=True), user.get("sub"))
     result = sb.table("content_posts").insert(data).execute()
     return result.data[0]
 
@@ -754,7 +755,7 @@ async def create_story_bank_entry(
 ):
     """Insert a new story_bank row."""
     sb = get_supabase()
-    data = payload.model_dump(exclude_none=True)
+    data = stamp_created_by(payload.model_dump(exclude_none=True), user.get("sub"))
     result = sb.table("story_bank").insert(data).execute()
     return result.data[0]
 
@@ -793,7 +794,7 @@ async def promote_idea_to_story_bank(
         "hook_draft": idea.get("dollar_hook"),
         "dollar_connection": idea.get("insider_detail"),
     }
-    new_entry = sb.table("story_bank").insert(story_data).execute()
+    new_entry = sb.table("story_bank").insert(stamp_created_by(story_data, user.get("sub"))).execute()
 
     sb.table("content_ideas").update({"status": "used"}).eq("id", idea_id).execute()
 

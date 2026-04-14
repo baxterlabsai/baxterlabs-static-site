@@ -17,6 +17,7 @@ from services.supabase_client import (
 )
 from services.email_service import get_email_service
 from services.pdf_converter import convert_and_upload_pdf, ConversionError
+from utils.attribution import stamp_created_by
 
 logger = logging.getLogger("baxterlabs.deliverables")
 
@@ -157,12 +158,12 @@ async def ensure_deliverables(
         rows = []
         for wave_num, types in DELIVERABLE_TYPES.items():
             for dtype, display_name in types:
-                rows.append({
+                rows.append(stamp_created_by({
                     "engagement_id": engagement_id,
                     "type": dtype,
                     "wave": wave_num,
                     "status": "draft",
-                })
+                }, user.get("sub")))
 
         result = sb.table("deliverables").insert(rows).execute()
         logger.info(f"Created {len(result.data)} deliverables for engagement {engagement_id}")
