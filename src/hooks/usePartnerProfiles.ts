@@ -15,21 +15,21 @@ const NEUTRAL_GRAY = '#9CA3AF'
 let cachedPromise: Promise<PartnerProfile[]> | null = null
 let cachedProfiles: PartnerProfile[] | null = null
 
-function fetchProfiles(): Promise<PartnerProfile[]> {
+async function fetchProfiles(): Promise<PartnerProfile[]> {
   if (!cachedPromise) {
-    cachedPromise = supabase
-      .from('pipeline_partners')
-      .select('id, auth_user_id, display_name, role, is_active, card_color')
-      .eq('is_active', true)
-      .eq('role', 'partner')
-      .then(({ data, error }) => {
-        if (error) {
-          cachedPromise = null
-          throw error
-        }
-        cachedProfiles = data as PartnerProfile[]
-        return cachedProfiles
-      })
+    cachedPromise = (async () => {
+      const { data, error } = await supabase
+        .from('pipeline_partners')
+        .select('id, auth_user_id, display_name, role, is_active, card_color')
+        .eq('is_active', true)
+        .eq('role', 'partner')
+      if (error) {
+        cachedPromise = null
+        throw error
+      }
+      cachedProfiles = data as PartnerProfile[]
+      return cachedProfiles
+    })()
   }
   return cachedPromise
 }
