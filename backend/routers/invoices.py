@@ -13,6 +13,7 @@ from services.supabase_client import get_supabase, get_engagement_by_id, log_act
 from services.stripe_service import create_checkout_session
 from services.invoice_pdf import generate_invoice_pdf
 from services.email_service import get_email_service
+from utils.attribution import stamp_created_by
 
 logger = logging.getLogger("baxterlabs.invoices")
 
@@ -55,6 +56,7 @@ def create_and_send_invoice(
     engagement_id: str,
     invoice_type: str,
     send_email: bool = True,
+    user_id: Optional[str] = None,
 ) -> dict:
     """Create an invoice record, generate PDF, create Stripe session, send email.
 
@@ -144,7 +146,7 @@ def create_and_send_invoice(
         "issued_at": issued_at,
         "due_date": due_date,
     }
-    result = sb.table("invoices").insert(invoice_row).execute()
+    result = sb.table("invoices").insert(stamp_created_by(invoice_row, user_id)).execute()
     invoice = result.data[0]
 
     # 5. Update Stripe session metadata with real invoice ID
@@ -178,7 +180,7 @@ def create_and_send_invoice(
             "type": invoice_type,
             "to": client.get("primary_contact_email"),
             "result": email_result,
-        })
+        }, user_id=user_id)
 
     # 7. Log activity
     log_activity(engagement_id, "system", "invoice_created", {
@@ -186,7 +188,7 @@ def create_and_send_invoice(
         "type": invoice_type,
         "amount": amount,
         "payment_link": payment_link,
-    })
+    }, user_id=user_id)
 
     logger.info(f"Invoice created: {invoice_number} ({invoice_type}) for engagement {engagement_id}")
     return invoice
@@ -256,7 +258,7 @@ async def check_overdue(user: dict = Depends(verify_partner_auth)):
             "invoice_number": inv["invoice_number"],
             "due_date": inv["due_date"],
             "amount": float(inv["amount"]),
-        })
+        }, user_id=user.get("sub"))
         updated.append(inv["invoice_number"])
 
     return {
@@ -339,7 +341,7 @@ async def resend_invoice(invoice_id: str, user: dict = Depends(verify_partner_au
     log_activity(invoice["engagement_id"], "partner", "invoice_resent", {
         "invoice_number": invoice["invoice_number"],
         "result": email_result,
-    })
+    }, user_id=user.get("sub"))
 
     return {"success": True, "email_result": email_result}
 
@@ -365,7 +367,7 @@ async def void_invoice(invoice_id: str, user: dict = Depends(verify_partner_auth
 
     log_activity(invoice["engagement_id"], "partner", "invoice_voided", {
         "invoice_number": invoice["invoice_number"],
-    })
+    }, user_id=user.get("sub"))
 
     return {"success": True, "message": f"Invoice {invoice['invoice_number']} voided"}
 
@@ -393,7 +395,7 @@ async def mark_paid(invoice_id: str, user: dict = Depends(verify_partner_auth)):
         "invoice_number": invoice["invoice_number"],
         "amount": float(invoice["amount"]),
         "method": "manual",
-    })
+    }, user_id=user.get("sub"))
 
     # Send payment confirmation to partner
     engagement = get_engagement_by_id(invoice["engagement_id"])
@@ -457,6 +459,7 @@ async def generate_invoice(
             engagement_id=engagement_id,
             invoice_type=body.invoice_type,
             send_email=body.send_email,
+            user_id=user.get("sub"),
         )
         return {"success": True, "invoice": invoice}
     except ValueError as e:

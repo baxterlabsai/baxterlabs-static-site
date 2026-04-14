@@ -258,7 +258,7 @@ async def upload_deliverable(
         "deliverable_id": deliverable_id,
         "deliverable_type": deliverable_type,
         "filename": filename,
-    })
+    }, user_id=user.get("sub"))
 
     logger.info(f"Uploaded deliverable {deliverable_type} for engagement {engagement_id}: {filename}")
     return {"success": True, "deliverable": updated.data[0] if updated.data else deliverable}
@@ -309,6 +309,7 @@ async def approve_deliverable(
             "deliverable_id": deliverable_id,
             "deliverable_type": updated.get("type", ""),
         },
+        user_id=user.get("sub"),
     )
 
     return {"success": True, "deliverable": updated}
@@ -356,7 +357,7 @@ async def release_wave1(
             except ConversionError as e:
                 log_activity(engagement_id, "system", "pdf_conversion_failed", {
                     "type": d["type"], "error": str(e),
-                })
+                }, user_id=user.get("sub"))
                 raise HTTPException(
                     status_code=500,
                     detail=f"PDF conversion failed for {d['type']}. Please check the source file and try again.",
@@ -381,7 +382,7 @@ async def release_wave1(
     # Re-fetch engagement after token update so email has the token
     engagement = get_engagement_by_id(engagement_id)
 
-    log_activity(engagement_id, "partner", "wave1_released", {})
+    log_activity(engagement_id, "partner", "wave1_released", {}, user_id=user.get("sub"))
     email_svc.send_wave1_released(engagement)
     # Notify partner that deliverables have been released
     partner_result = email_svc.send_deliverables_ready_notification(engagement, wave=1)
@@ -389,7 +390,7 @@ async def release_wave1(
         "type": "deliverables_ready_partner",
         "wave": 1,
         "result": partner_result,
-    })
+    }, user_id=user.get("sub"))
 
     return {"success": True, "message": "Wave 1 deliverables released to client."}
 
@@ -412,7 +413,7 @@ async def debrief_complete(
 
     update_engagement_status(engagement_id, "debrief")
 
-    log_activity(engagement_id, "partner", "debrief_complete", {})
+    log_activity(engagement_id, "partner", "debrief_complete", {}, user_id=user.get("sub"))
 
     return {"success": True, "message": "Debrief marked as complete."}
 
@@ -465,7 +466,7 @@ async def release_deck(
             except ConversionError as e:
                 log_activity(engagement_id, "system", "pdf_conversion_failed", {
                     "type": d["type"], "error": str(e),
-                })
+                }, user_id=user.get("sub"))
                 raise HTTPException(
                     status_code=500,
                     detail=f"PDF conversion failed for {d['type']}. Please check the source file and try again.",
@@ -484,7 +485,7 @@ async def release_deck(
     # Re-fetch engagement after status update before sending email
     engagement = get_engagement_by_id(engagement_id)
 
-    log_activity(engagement_id, "partner", "wave2_released", {})
+    log_activity(engagement_id, "partner", "wave2_released", {}, user_id=user.get("sub"))
     email_svc.send_wave2_released(engagement)
     # Notify partner that deliverables have been released
     partner_result = email_svc.send_deliverables_ready_notification(engagement, wave=2)
@@ -492,6 +493,6 @@ async def release_deck(
         "type": "deliverables_ready_partner",
         "wave": 2,
         "result": partner_result,
-    })
+    }, user_id=user.get("sub"))
 
     return {"success": True, "message": "Wave 2 deliverables released to client."}

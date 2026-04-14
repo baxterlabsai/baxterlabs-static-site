@@ -172,7 +172,7 @@ async def start_engagement(
         "fee": body.fee,
         "partner_lead": body.partner_lead,
         "agreement_sent": agreement_sent,
-    })
+    }, user_id=user.get("sub"))
 
     return {
         "success": True,
@@ -311,7 +311,7 @@ async def advance_phase(
         "new_status": new_status,
         "prompt_version": prompt_version,
         "notes": body.notes,
-    })
+    }, user_id=user.get("sub"))
 
     # Trigger interview brief generation when Phase 1 completes (advancing from phase 1 → phase 2)
     if current_phase == 1:
@@ -347,6 +347,7 @@ async def advance_phase(
                 engagement_id=engagement_id,
                 invoice_type="final",
                 send_email=True,
+                user_id=user.get("sub"),
             )
             logger.info(f"Final invoice triggered for engagement {engagement_id}")
         except Exception as inv_err:
@@ -399,7 +400,7 @@ async def begin_phases(
     log_activity(engagement_id, "partner", "phases_began", {
         "phase": 0,
         "status": "phase_0",
-    })
+    }, user_id=user.get("sub"))
 
     # Re-fetch the updated engagement
     updated = get_engagement_by_id(engagement_id)
@@ -435,7 +436,7 @@ async def send_upload_link(engagement_id: str, user: dict = Depends(verify_partn
         "to": engagement.get("clients", {}).get("primary_contact_email"),
         "upload_token": engagement.get("upload_token"),
         "email_result": result,
-    })
+    }, user_id=user.get("sub"))
 
     return {"success": True, "email_result": result}
 
@@ -625,7 +626,7 @@ async def upload_interview_transcript(
         "contact_name": contact["name"],
         "filename": filename,
         "document_id": doc_id,
-    })
+    }, user_id=user.get("sub"))
 
     # Return updated contact
     updated = (
@@ -795,7 +796,7 @@ async def upload_interview_transcript_gdoc(
         "filename": filename,
         "document_id": doc_id,
         "source": "google_doc",
-    })
+    }, user_id=user.get("sub"))
 
     # Return updated contact
     updated = (
@@ -1065,7 +1066,7 @@ async def send_onboarding_email(
         "trigger": "manual_resend",
         "to": contact_email,
         "result": result,
-    })
+    }, user_id=user.get("sub"))
 
     return {"status": "sent", "recipient": contact_email}
 
@@ -1102,7 +1103,7 @@ async def resend_interview_email(
     log_activity(engagement_id, "george", "interview_email_resent", {
         "contact_name": body.contact_name,
         "contact_email": body.contact_email,
-    })
+    }, user_id=user.get("sub"))
 
     return {"status": "sent", "recipient": body.contact_email}
 
@@ -1121,7 +1122,7 @@ async def render_deliverable(
     if not engagement:
         raise HTTPException(status_code=404, detail="Engagement not found")
 
-    log_activity(engagement_id, "george", "render_requested", {"file_type": file_type})
+    log_activity(engagement_id, "george", "render_requested", {"file_type": file_type}, user_id=user.get("sub"))
 
     return JSONResponse(
         status_code=202,

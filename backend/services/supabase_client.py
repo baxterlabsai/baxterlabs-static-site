@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from typing import Optional
 from supabase import create_client, Client
+from utils.attribution import stamp_created_by
 
 _client: Optional[Client] = None
 
@@ -48,7 +49,13 @@ def update_engagement_status(engagement_id: str, new_status: str) -> dict:
     return result.data[0] if result.data else {}
 
 
-def log_activity(engagement_id: Optional[str], actor: str, action: str, details: Optional[dict] = None) -> None:
+def log_activity(
+    engagement_id: Optional[str],
+    actor: str,
+    action: str,
+    details: Optional[dict] = None,
+    user_id: Optional[str] = None,
+) -> None:
     sb = get_supabase()
     row = {
         "actor": actor,
@@ -57,6 +64,7 @@ def log_activity(engagement_id: Optional[str], actor: str, action: str, details:
     }
     if engagement_id:
         row["engagement_id"] = engagement_id
+    row = stamp_created_by(row, user_id)
     sb.table("activity_log").insert(row).execute()
 
 

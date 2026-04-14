@@ -607,7 +607,7 @@ async def archive_engagement(
     try:
         from services.follow_up_service import create_follow_up_sequence
         client = engagement.get("clients", {})
-        created = create_follow_up_sequence(engagement, client)
+        created = create_follow_up_sequence(engagement, client, user_id=user.get("sub"))
         follow_up_ids = [r["id"] for r in created if r.get("id")]
     except Exception as exc:
         logger.warning(

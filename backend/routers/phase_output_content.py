@@ -106,7 +106,7 @@ async def upsert_output(
         "version": new_version,
         "output_number": out_num,
         "type": "md",
-    })
+    }, user_id=user.get("sub"))
 
     return {"success": True, "action": "created", "id": created.get("id"), "version": new_version}
 
@@ -191,7 +191,7 @@ async def upsert_binary_output(
         "version": new_version,
         "output_number": out_num,
         "type": output_type,
-    })
+    }, user_id=user.get("sub"))
 
     return {"success": True, "action": "created", "id": created.get("id"), "version": new_version}
 
@@ -463,7 +463,7 @@ async def generate_preview(
         "output_number": output_number,
         "phase_number": phase_number,
         "pdf_drive_file_id": pdf_file_id,
-    })
+    }, user_id=user.get("sub"))
 
     preview_url = f"/api/engagements/{engagement_id}/outputs/{output_number}/preview-pdf?phase_number={phase_number}"
 
@@ -561,7 +561,7 @@ async def approve_output(
         "output_name": rec["output_name"],
         "phase_number": rec["phase_number"],
         "version": rec["version"],
-    })
+    }, user_id=user.get("sub"))
 
     return {"success": True, "status": "approved", "pdf_storage_path": pdf_path}
 
@@ -737,7 +737,7 @@ async def patch_output(
         "qc_status": qc_result["status"] if qc_result else "skipped",
         "qc_figures_checked": qc_result.get("figures_checked", 0) if qc_result else 0,
         "qc_corrections_made": len(qc_result.get("corrections", [])) if qc_result else 0,
-    })
+    }, user_id=user.get("sub"))
 
     response: dict = {"success": True, "id": output_id, "updated": {
         k: v for k, v in update_data.items() if k not in ("content_md",)

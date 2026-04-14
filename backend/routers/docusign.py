@@ -201,10 +201,12 @@ async def docusign_webhook(request: Request, background_tasks: BackgroundTasks):
             # Trigger deposit invoice generation
             try:
                 from routers.invoices import create_and_send_invoice
+                # DocuSign webhook callback, no auth context
                 create_and_send_invoice(
                     engagement_id=engagement_id,
                     invoice_type="deposit",
                     send_email=True,
+                    user_id=None,
                 )
                 logger.info(f"Deposit invoice triggered for engagement {engagement_id}")
             except Exception as inv_err:
@@ -381,10 +383,12 @@ async def _auto_convert_pipeline_opportunity(opp_id: str) -> None:
     # 7. Send deposit invoice
     try:
         from routers.invoices import create_and_send_invoice
+        # DocuSign webhook auto-conversion, no auth context
         create_and_send_invoice(
             engagement_id=new_engagement_id,
             invoice_type="deposit",
             send_email=True,
+            user_id=None,
         )
         logger.info(f"Auto-convert: deposit invoice sent for engagement {new_engagement_id}")
     except Exception as e:

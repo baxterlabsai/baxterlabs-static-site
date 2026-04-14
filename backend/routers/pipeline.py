@@ -715,6 +715,7 @@ async def convert_opportunity(
             "interview_contacts_count": created_contacts_count,
             "fee": req.fee,
         },
+        user_id=user.get("sub"),
     )
 
     # 10. Send onboarding confirmation email (matching auto-conversion path)
@@ -732,7 +733,7 @@ async def convert_opportunity(
             log_activity(new_engagement_id, "system", "onboarding_email_sent", {
                 "trigger": "manual_conversion",
                 "to": (contact or {}).get("email"),
-            })
+            }, user_id=user.get("sub"))
             logger.info(f"Manual convert: onboarding email sent for engagement {new_engagement_id}")
     except Exception as e:
         logger.error(f"Manual convert: onboarding email failed: {e}")

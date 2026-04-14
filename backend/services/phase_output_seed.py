@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import List
+from typing import List, Optional
+from utils.attribution import stamp_created_by
 
 # Complete seed data for phase outputs across 9 phases (0-8)
 #
@@ -74,7 +75,7 @@ def _is_pipeline_engagement(sb, engagement_id: str) -> bool:
     return bool(result.data)
 
 
-def seed_phase_outputs(sb, engagement_id: str) -> int:
+def seed_phase_outputs(sb, engagement_id: str, user_id: Optional[str] = None) -> int:
     """Seed all 23 phase output records for an engagement. Idempotent.
 
     For pipeline-sourced engagements, Phase 0 only includes the Data Request
@@ -99,7 +100,7 @@ def seed_phase_outputs(sb, engagement_id: str) -> int:
     for output in PHASE_OUTPUTS_SEED:
         if output["phase"] == 0 and output["name"] in skip_phase0:
             continue
-        rows.append({
+        rows.append(stamp_created_by({
             "engagement_id": engagement_id,
             "phase": output["phase"],
             "output_number": output["output_number"],
@@ -110,7 +111,7 @@ def seed_phase_outputs(sb, engagement_id: str) -> int:
             "is_client_deliverable": output["is_client_deliverable"],
             "wave": output["wave"],
             "status": "pending",
-        })
+        }, user_id))
 
     result = sb.table("phase_outputs").insert(rows).execute()
     return len(result.data)

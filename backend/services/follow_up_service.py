@@ -7,6 +7,7 @@ from datetime import date, timedelta
 from typing import Optional, List
 
 from services.supabase_client import get_supabase, log_activity
+from utils.attribution import stamp_created_by
 
 logger = logging.getLogger("baxterlabs.follow_up")
 
@@ -98,7 +99,7 @@ def build_template_variables(engagement: dict, client: dict) -> dict:
 
 # ── Sequence Generation ─────────────────────────────────────────────────
 
-def create_follow_up_sequence(engagement: dict, client: dict) -> List[dict]:
+def create_follow_up_sequence(engagement: dict, client: dict, user_id: Optional[str] = None) -> List[dict]:
     """Create three follow-up records (30/60/90 day) for a closed engagement.
 
     Returns the list of created records. Skips if records already exist.
@@ -143,11 +144,11 @@ def create_follow_up_sequence(engagement: dict, client: dict) -> List[dict]:
 
     created = []
     for tp in touchpoints:
-        row = {
+        row = stamp_created_by({
             "engagement_id": engagement_id,
             "client_id": client_id,
             **tp,
-        }
+        }, user_id)
         result = sb.table("follow_up_sequences").insert(row).execute()
         if result.data:
             created.append(result.data[0])
@@ -155,7 +156,7 @@ def create_follow_up_sequence(engagement: dict, client: dict) -> List[dict]:
     log_activity(engagement_id, "system", "follow_up_sequence_created", {
         "touchpoints": ["30_day", "60_day", "90_day"],
         "message": "Post-engagement follow-up sequence created",
-    })
+    }, user_id=user_id)
 
     logger.info(f"Follow-up sequence created for engagement {engagement_id} — {len(created)} touchpoints")
     return created

@@ -34,10 +34,10 @@ async def seed_outputs(
         raise HTTPException(status_code=404, detail="Engagement not found")
 
     sb = get_supabase()
-    count = seed_phase_outputs(sb, engagement_id)
+    count = seed_phase_outputs(sb, engagement_id, user_id=user.get("sub"))
 
     if count > 0:
-        log_activity(engagement_id, "system", "phase_outputs_seeded", {"count": count})
+        log_activity(engagement_id, "system", "phase_outputs_seeded", {"count": count}, user_id=user.get("sub"))
 
     return {"success": True, "created": count}
 
@@ -194,7 +194,7 @@ async def upload_phase_output(
         "phase": output["phase"],
         "name": output["name"],
         "filename": filename,
-    })
+    }, user_id=user.get("sub"))
 
     return {"success": True, "phase_output": updated.data[0] if updated.data else output}
 
@@ -238,7 +238,7 @@ async def accept_phase_output(
         "output_id": output_id,
         "phase": output["phase"],
         "name": output["name"],
-    })
+    }, user_id=user.get("sub"))
 
     # If this is a Phase 5 client deliverable, sync with the deliverables table
     if output.get("is_client_deliverable") and output["phase"] == 5:
@@ -328,6 +328,6 @@ async def accept_all_phase_outputs(
     log_activity(engagement_id, "partner", "phase_outputs_batch_accepted", {
         "phase": phase,
         "accepted": accepted,
-    })
+    }, user_id=user.get("sub"))
 
     return {"success": True, "accepted_count": len(accepted), "accepted": accepted}
