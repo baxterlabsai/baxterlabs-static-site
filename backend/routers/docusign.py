@@ -14,6 +14,7 @@ from services.supabase_client import (
 )
 from services.email_service import get_email_service
 from services.firecrawl_service import seed_research_from_enrichment
+from utils.attribution import stamp_created_by
 from services.research_service import research_company
 
 logger = logging.getLogger("baxterlabs.docusign.router")
@@ -65,13 +66,14 @@ async def send_agreement(body: DocuSignSendRequest):
         raise HTTPException(status_code=502, detail=result.get("error", "DocuSign send failed"))
 
     sb = get_supabase()
-    sb.table("legal_documents").insert({
+    # public DocuSign send endpoint, no auth context
+    sb.table("legal_documents").insert(stamp_created_by({
         "engagement_id": body.engagement_id,
         "type": "agreement",
         "docusign_envelope_id": result["envelope_id"],
         "status": "sent",
         "sent_at": "now()",
-    }).execute()
+    }, None)).execute()
 
     log_activity(body.engagement_id, "system", "agreement_sent", {
         "envelope_id": result["envelope_id"],
@@ -301,7 +303,8 @@ async def _auto_convert_pipeline_opportunity(opp_id: str) -> None:
         "website_url": company.get("website"),
         "referral_source": company.get("source"),
     }
-    client_result = sb.table("clients").insert(client_row).execute()
+    # DocuSign webhook auto-conversion, no auth context
+    client_result = sb.table("clients").insert(stamp_created_by(client_row, None)).execute()
     new_client_id = client_result.data[0]["id"]
 
     # 3. Create engagement (status = agreement_signed)
@@ -317,7 +320,8 @@ async def _auto_convert_pipeline_opportunity(opp_id: str) -> None:
         "upload_token": upload_token,
         "onboarding_token": onboarding_token,
     }
-    engagement_result = sb.table("engagements").insert(engagement_row).execute()
+    # DocuSign webhook auto-conversion, no auth context
+    engagement_result = sb.table("engagements").insert(stamp_created_by(engagement_row, None)).execute()
     new_engagement = engagement_result.data[0]
     new_engagement_id = new_engagement["id"]
 
@@ -327,7 +331,8 @@ async def _auto_convert_pipeline_opportunity(opp_id: str) -> None:
         import json
         parsed = json.loads(icj) if isinstance(icj, str) else icj
         for i, raw_c in enumerate(parsed[:3], start=1):
-            sb.table("interview_contacts").insert({
+            # DocuSign webhook auto-conversion, no auth context
+            sb.table("interview_contacts").insert(stamp_created_by({
                 "engagement_id": new_engagement_id,
                 "contact_number": i,
                 "name": raw_c["name"],
@@ -335,20 +340,21 @@ async def _auto_convert_pipeline_opportunity(opp_id: str) -> None:
                 "email": raw_c.get("email"),
                 "phone": raw_c.get("phone"),
                 "linkedin_url": raw_c.get("linkedin_url"),
-            }).execute()
+            }, None)).execute()
         logger.info(f"Auto-convert: created {min(len(parsed), 3)} interview contacts from JSON")
 
     # 4b. Create legal_documents record for the signed agreement and store PDF
     envelope_id = opp.get("agreement_envelope_id")
     if envelope_id:
-        legal_row = sb.table("legal_documents").insert({
+        # DocuSign webhook auto-conversion, no auth context
+        legal_row = sb.table("legal_documents").insert(stamp_created_by({
             "engagement_id": new_engagement_id,
             "type": "agreement",
             "docusign_envelope_id": envelope_id,
             "status": "signed",
             "sent_at": "now()",
             "signed_at": "now()",
-        }).execute()
+        }, None)).execute()
         logger.info(f"Auto-convert: created legal_documents record for envelope {envelope_id}")
         _download_and_store_signed_pdf(envelope_id, new_engagement_id)
 

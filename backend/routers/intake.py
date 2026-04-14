@@ -6,6 +6,7 @@ from fastapi import APIRouter
 from models.schemas import IntakeFormInput, IntakeResponse
 from services.supabase_client import get_supabase, log_activity, create_engagement_folders
 from services.email_service import get_email_service
+from utils.attribution import stamp_created_by
 
 logger = logging.getLogger("baxterlabs.intake")
 
@@ -19,8 +20,8 @@ async def submit_intake(form: IntakeFormInput):
     sb = get_supabase()
     email_svc = get_email_service()
 
-    # 1. Create client
-    client_data = {
+    # 1. Create client — public intake form, no auth context
+    client_data = stamp_created_by({
         "company_name": form.company_name,
         "primary_contact_name": form.primary_contact_name,
         "primary_contact_email": form.primary_contact_email,
@@ -30,24 +31,24 @@ async def submit_intake(form: IntakeFormInput):
         "employee_count": form.employee_count,
         "website_url": form.website_url,
         "referral_source": form.referral_source,
-    }
+    }, None)
     client_result = sb.table("clients").insert(client_data).execute()
     client = client_result.data[0]
 
-    # 2. Create engagement (generate upload_token upfront so it's ready when needed)
-    engagement_data = {
+    # 2. Create engagement — public intake form, no auth context
+    engagement_data = stamp_created_by({
         "client_id": client["id"],
         "status": "intake",
         "pain_points": form.pain_points,
         "preferred_start_date": form.preferred_start_date.isoformat() if form.preferred_start_date else None,
         "upload_token": str(uuid.uuid4()),
-    }
+    }, None)
     engagement_result = sb.table("engagements").insert(engagement_data).execute()
     engagement = engagement_result.data[0]
 
-    # 3. Create interview contacts
+    # 3. Create interview contacts — public intake form, no auth context
     for i, contact in enumerate(form.interview_contacts[:3], start=1):
-        contact_data = {
+        contact_data = stamp_created_by({
             "engagement_id": engagement["id"],
             "contact_number": i,
             "name": contact.name,
@@ -55,7 +56,7 @@ async def submit_intake(form: IntakeFormInput):
             "email": contact.email,
             "phone": contact.phone,
             "linkedin_url": contact.linkedin_url,
-        }
+        }, None)
         sb.table("interview_contacts").insert(contact_data).execute()
 
     # 4. Create storage folders

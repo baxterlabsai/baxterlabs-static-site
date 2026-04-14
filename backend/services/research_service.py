@@ -16,6 +16,7 @@ from apify_client import ApifyClient
 
 from services.supabase_client import get_supabase, get_engagement_by_id, log_activity
 from services.email_service import get_email_service
+from utils.attribution import stamp_created_by
 
 logger = logging.getLogger("baxterlabs.research")
 
@@ -442,11 +443,12 @@ async def research_company(engagement_id: str) -> None:
                 "content": dossier_md,
             }).eq("id", existing.data[0]["id"]).execute()
         else:
-            sb.table("research_documents").insert({
+            # background research task, no auth context
+            sb.table("research_documents").insert(stamp_created_by({
                 "engagement_id": engagement_id,
                 "type": "company_dossier",
                 "content": dossier_md,
-            }).execute()
+            }, None)).execute()
 
         # 4. Upload to storage
         storage_path = f"{engagement_id}/research/company_dossier.md"
@@ -551,13 +553,13 @@ async def research_contacts(engagement_id: str, phase1_findings: Optional[str] =
                 company_context=company_context,
             )
 
-            # 3. INSERT to research_documents
-            sb.table("research_documents").insert({
+            # 3. INSERT to research_documents — background research task, no auth context
+            sb.table("research_documents").insert(stamp_created_by({
                 "engagement_id": engagement_id,
                 "type": "interview_brief",
                 "content": brief_md,
                 "contact_name": contact_name,
-            }).execute()
+            }, None)).execute()
 
             # 4. Upload to storage
             storage_path = f"{engagement_id}/research/interview_brief_{contact_number}.md"

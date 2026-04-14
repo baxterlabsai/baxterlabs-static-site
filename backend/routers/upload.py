@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from middleware.auth import verify_upload_token
 from services.supabase_client import get_supabase, get_engagement_by_id, log_activity, update_engagement_status
 from services.email_service import get_email_service
+from utils.attribution import stamp_created_by
 from services.google_drive_engagement import upload_file_to_drive_folder, delete_drive_file
 from config.upload_checklist import (
     UPLOAD_CHECKLIST,
@@ -278,7 +279,8 @@ async def upload_file(
         if not drive_file_id:
             raise HTTPException(status_code=502, detail="Failed to upload file to Google Drive.")
 
-        sb.table("documents").insert({
+        # client upload via token, no auth context
+        sb.table("documents").insert(stamp_created_by({
             "engagement_id": engagement_id,
             "category": category,
             "filename": filename,
@@ -288,13 +290,14 @@ async def upload_file(
             "item_name": item_key,
             "uploaded_by": "client",
             "storage_backend": "drive",
-        }).execute()
+        }, None)).execute()
     else:
         sb.storage.from_("engagements").upload(storage_path, content, {
             "content-type": mimetype,
         })
 
-        sb.table("documents").insert({
+        # client upload via token, no auth context
+        sb.table("documents").insert(stamp_created_by({
             "engagement_id": engagement_id,
             "category": category,
             "filename": filename,
@@ -304,7 +307,7 @@ async def upload_file(
             "item_name": item_key,
             "uploaded_by": "client",
             "storage_backend": "supabase",
-        }).execute()
+        }, None)).execute()
 
     # Batch uploads: add to session instead of per-file email/log
     with _sessions_lock:

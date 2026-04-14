@@ -16,6 +16,7 @@ import httpx
 
 from services.supabase_client import get_supabase, get_engagement_by_id, log_activity
 from services.email_service import get_email_service
+from utils.attribution import stamp_created_by
 
 logger = logging.getLogger("baxterlabs.firecrawl")
 
@@ -569,11 +570,12 @@ async def seed_research_from_enrichment(engagement_id: str, company_id: str) -> 
             "content": content,
         }).eq("id", existing.data[0]["id"]).execute()
     else:
-        sb.table("research_documents").insert({
+        # background research task, no auth context
+        sb.table("research_documents").insert(stamp_created_by({
             "engagement_id": engagement_id,
             "type": "company_dossier",
             "content": content,
-        }).execute()
+        }, None)).execute()
 
     # Upload to storage
     storage_path = f"{engagement_id}/research/company_dossier.md"
@@ -635,14 +637,14 @@ async def research_company(engagement_id: str) -> None:
         # 3. Assemble dossier
         dossier_md = _build_dossier(company_name, contact_name, pages, contact_results, source_urls)
 
-        # 4. Store in research_documents table
+        # 4. Store in research_documents table — background research task, no auth context
         sb = get_supabase()
-        sb.table("research_documents").insert({
+        sb.table("research_documents").insert(stamp_created_by({
             "engagement_id": engagement_id,
             "type": "company_dossier",
             "content": dossier_md,
             "source_urls": source_urls[:20],
-        }).execute()
+        }, None)).execute()
 
         # 5. Upload to storage
         storage_path = f"{engagement_id}/research/company_dossier.md"
@@ -717,8 +719,8 @@ async def research_contacts(engagement_id: str) -> None:
             # Build brief
             brief_md = _build_interview_brief(contact_name, title, company_name, search_results)
 
-            # Store in research_documents
-            sb.table("research_documents").insert({
+            # Store in research_documents — background research task, no auth context
+            sb.table("research_documents").insert(stamp_created_by({
                 "engagement_id": engagement_id,
                 "type": "interview_brief",
                 "content": brief_md,
@@ -728,7 +730,7 @@ async def research_contacts(engagement_id: str) -> None:
                     for r in search_results
                     if r.get("url") or r.get("metadata", {}).get("sourceURL")
                 ],
-            }).execute()
+            }, None)).execute()
 
             # Upload to storage
             storage_path = f"{engagement_id}/research/interview_brief_{contact_number}.md"

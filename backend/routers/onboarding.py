@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from middleware.auth import verify_onboarding_token
 from services.supabase_client import get_supabase, get_engagement_by_id, log_activity
 from services.email_service import get_email_service, DEFAULT_PARTNER_EMAIL
+from utils.attribution import stamp_created_by
 
 logger = logging.getLogger("baxterlabs.onboarding")
 
@@ -130,9 +131,9 @@ async def submit_onboarding(token: str, body: OnboardSubmission):
     # Delete existing contacts for this engagement (in case of partial prior state)
     sb.table("interview_contacts").delete().eq("engagement_id", engagement_id).execute()
 
-    # Insert new interview contacts
+    # Insert new interview contacts — client onboarding form, no auth context
     for i, contact in enumerate(body.contacts, start=1):
-        sb.table("interview_contacts").insert({
+        sb.table("interview_contacts").insert(stamp_created_by({
             "engagement_id": engagement_id,
             "contact_number": i,
             "name": contact.name,
@@ -141,7 +142,7 @@ async def submit_onboarding(token: str, body: OnboardSubmission):
             "phone": contact.phone,
             "linkedin_url": contact.linkedin_url or linkedin_map.get(contact.name.strip().lower()),
             "context_notes": contact.context_notes,
-        }).execute()
+        }, None)).execute()
 
     # Save document contact + mark onboarding completed
     dc = body.document_contact
