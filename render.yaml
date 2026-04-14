@@ -8,6 +8,10 @@ services:
     buildCommand: npm run build
     staticPublishPath: ./dist
     plan: starter
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     redirects:
       - source: /index.html
         destination: /
