@@ -26,6 +26,7 @@ from models.pipeline import (
     EnrichmentPatch,
 )
 from fastapi.responses import JSONResponse
+from utils.attribution import stamp_created_by
 
 logger = logging.getLogger("baxterlabs.pipeline")
 
@@ -138,8 +139,7 @@ async def create_company(body: CompanyCreate, user: dict = Depends(verify_partne
     if body.company_type and body.company_type not in VALID_COMPANY_TYPES:
         raise HTTPException(status_code=400, detail=f"Invalid company_type: {body.company_type}")
     sb = get_supabase()
-    row = body.model_dump(exclude_none=True)
-    row["created_by"] = user.get("sub")
+    row = stamp_created_by(body.model_dump(exclude_none=True), user.get("sub"))
     result = sb.table("pipeline_companies").insert(row).execute()
     return result.data[0]
 
@@ -238,8 +238,7 @@ async def create_contact(body: ContactCreate, user: dict = Depends(verify_partne
     if body.lead_tier and body.lead_tier not in VALID_LEAD_TIERS:
         raise HTTPException(status_code=400, detail=f"Invalid lead_tier: {body.lead_tier}")
     sb = get_supabase()
-    row = body.model_dump(exclude_none=True)
-    row["created_by"] = user.get("sub")
+    row = stamp_created_by(body.model_dump(exclude_none=True), user.get("sub"))
     result = sb.table("pipeline_contacts").insert(row).execute()
     return result.data[0]
 
@@ -340,7 +339,7 @@ async def create_opportunity(body: OpportunityCreate, user: dict = Depends(verif
     # Serialize date to ISO string for JSON transport
     if body.estimated_close_date:
         row["estimated_close_date"] = body.estimated_close_date.isoformat()
-    row["created_by"] = user.get("sub")
+    row = stamp_created_by(row, user.get("sub"))
     result = sb.table("pipeline_opportunities").insert(row).execute()
     return result.data[0]
 
@@ -410,12 +409,12 @@ async def update_opportunity(opp_id: str, body: OpportunityUpdate, user: dict = 
     # Log stage transition (non-blocking)
     if "stage" in updates and from_stage and from_stage != updates["stage"]:
         try:
-            sb.table("pipeline_stage_transitions").insert({
+            sb.table("pipeline_stage_transitions").insert(stamp_created_by({
                 "opportunity_id": opp_id,
                 "from_stage": from_stage,
                 "to_stage": updates["stage"],
                 "transitioned_by": user.get("sub"),
-            }).execute()
+            }, user.get("sub"))).execute()
         except Exception as e:
             logger.warning(f"Stage transition log failed (non-blocking): {e}")
 
@@ -603,7 +602,7 @@ async def convert_opportunity(
         "website_url": company.get("website"),
         "referral_source": req.referral_source or company.get("source"),
     }
-    client_result = sb.table("clients").insert(client_row).execute()
+    client_result = sb.table("clients").insert(stamp_created_by(client_row, user.get("sub"))).execute()
     new_client_id = client_result.data[0]["id"]
 
     # 5. Create engagement record
@@ -624,7 +623,7 @@ async def convert_opportunity(
     }
     if req.preferred_start_date:
         engagement_row["preferred_start_date"] = req.preferred_start_date
-    engagement_result = sb.table("engagements").insert(engagement_row).execute()
+    engagement_result = sb.table("engagements").insert(stamp_created_by(engagement_row, user.get("sub"))).execute()
     new_engagement = engagement_result.data[0]
     new_engagement_id = new_engagement["id"]
 
@@ -636,7 +635,7 @@ async def convert_opportunity(
             pc = sb.table("pipeline_contacts").select("*").eq("id", mapping.pipeline_contact_id).execute()
             if pc.data:
                 pc = pc.data[0]
-                sb.table("interview_contacts").insert({
+                sb.table("interview_contacts").insert(stamp_created_by({
                     "engagement_id": new_engagement_id,
                     "contact_number": mapping.contact_number,
                     "name": pc["name"],
@@ -644,7 +643,7 @@ async def convert_opportunity(
                     "email": pc.get("email"),
                     "phone": pc.get("phone"),
                     "linkedin_url": pc.get("linkedin_url"),
-                }).execute()
+                }, user.get("sub"))).execute()
                 created_contacts_count += 1
     else:
         # Auto-select: primary contact first, then decision makers, up to 3
@@ -680,7 +679,7 @@ async def convert_opportunity(
                     })
 
         for i, c in enumerate(selected[:3], start=1):
-            sb.table("interview_contacts").insert({
+            sb.table("interview_contacts").insert(stamp_created_by({
                 "engagement_id": new_engagement_id,
                 "contact_number": i,
                 "name": c["name"],
@@ -688,7 +687,7 @@ async def convert_opportunity(
                 "email": c.get("email"),
                 "phone": c.get("phone"),
                 "linkedin_url": c.get("linkedin_url"),
-            }).execute()
+            }, user.get("sub"))).execute()
             created_contacts_count += 1
 
     # 7. Update pipeline opportunity
@@ -853,7 +852,8 @@ async def website_intake(req: WebsiteIntakeRequest):
             sb.table("pipeline_companies").update(update_payload).eq("id", company_id).execute()
         logger.info(f"Website intake: reusing existing company {company_id}")
     else:
-        company_result = sb.table("pipeline_companies").insert({
+        # public website form, no auth context
+        company_result = sb.table("pipeline_companies").insert(stamp_created_by({
             "name": req.company_name,
             "website": req.website_url,
             "industry": req.industry,
@@ -861,7 +861,7 @@ async def website_intake(req: WebsiteIntakeRequest):
             "employee_count": req.employee_count,
             "source": "website",
             "company_type": "prospect",
-        }).execute()
+        }, None)).execute()
         company_id = company_result.data[0]["id"]
 
     # ------------------------------------------------------------------
@@ -888,7 +888,8 @@ async def website_intake(req: WebsiteIntakeRequest):
             logger.info(f"Website intake: reusing existing contact {contact_id}")
 
     if not contact_id:
-        contact_result = sb.table("pipeline_contacts").insert({
+        # public website form, no auth context
+        contact_result = sb.table("pipeline_contacts").insert(stamp_created_by({
             "company_id": company_id,
             "name": req.primary_contact_name,
             "email": req.primary_contact_email,
@@ -896,7 +897,7 @@ async def website_intake(req: WebsiteIntakeRequest):
             "title": "Decision Maker",
             "is_decision_maker": True,
             "source": "website",
-        }).execute()
+        }, None)).execute()
         contact_id = contact_result.data[0]["id"]
 
     # ------------------------------------------------------------------
@@ -964,7 +965,8 @@ async def website_intake(req: WebsiteIntakeRequest):
         schedule_token = schedule_token_result.data[0].get("schedule_token") if schedule_token_result.data else None
         logger.info(f"Website intake: reusing active opportunity {opp_id}")
     else:
-        opp_result = sb.table("pipeline_opportunities").insert({
+        # public website form, no auth context
+        opp_result = sb.table("pipeline_opportunities").insert(stamp_created_by({
             "company_id": company_id,
             "primary_contact_id": contact_id,
             "title": f"{req.company_name} — Diagnostic Review",
@@ -973,17 +975,17 @@ async def website_intake(req: WebsiteIntakeRequest):
             "notes": opp_notes,
             "interview_contacts_json": json.dumps(contacts_json) if contacts_json else None,
             "assigned_to": "George DeVries",
-        }).execute()
+        }, None)).execute()
         opp = opp_result.data[0]
         opp_id = opp["id"]
         schedule_token = opp.get("schedule_token")
 
-        # Log stage transition
-        sb.table("pipeline_stage_transitions").insert({
+        # Log stage transition — public website form, no auth context
+        sb.table("pipeline_stage_transitions").insert(stamp_created_by({
             "opportunity_id": opp_id,
             "from_stage": None,
             "to_stage": "discovery_scheduled",
-        }).execute()
+        }, None)).execute()
 
     # ------------------------------------------------------------------
     # 7. Log pipeline activity
@@ -1000,14 +1002,15 @@ async def website_intake(req: WebsiteIntakeRequest):
         activity_body_parts.append(f"Diagnostic question: {req.pain_points}")
     activity_body_parts.append("Awaiting discovery scheduling.")
 
-    sb.table("pipeline_activities").insert({
+    # public website form, no auth context
+    sb.table("pipeline_activities").insert(stamp_created_by({
         "opportunity_id": opp_id,
         "company_id": company_id,
         "contact_id": contact_id,
         "type": "note",
         "subject": "Website intake form submitted",
         "body": "\n".join(activity_body_parts),
-    }).execute()
+    }, None)).execute()
 
     # ------------------------------------------------------------------
     # 8. Send partner notification (non-blocking)
@@ -1292,7 +1295,7 @@ async def create_activity(body: ActivityCreate, user: dict = Depends(verify_part
         row["occurred_at"] = body.occurred_at.isoformat()
     if body.next_action_date:
         row["next_action_date"] = body.next_action_date.isoformat()
-    row["created_by"] = user.get("sub")
+    row = stamp_created_by(row, user.get("sub"))
     result = sb.table("pipeline_activities").insert(row).execute()
     activity = result.data[0]
 
@@ -1303,7 +1306,6 @@ async def create_activity(body: ActivityCreate, user: dict = Depends(verify_part
             task_row = {
                 "title": body.next_action,
                 "status": "pending",
-                "created_by": user.get("sub"),
             }
             if body.next_action_date:
                 task_row["due_date"] = body.next_action_date.isoformat()
@@ -1311,6 +1313,7 @@ async def create_activity(body: ActivityCreate, user: dict = Depends(verify_part
                 task_row["contact_id"] = body.contact_id
             if body.opportunity_id:
                 task_row["opportunity_id"] = body.opportunity_id
+            task_row = stamp_created_by(task_row, user.get("sub"))
             task_result = sb.table("pipeline_tasks").insert(task_row).execute()
             task_created = task_result.data[0] if task_result.data else None
         except Exception as e:
@@ -1447,7 +1450,6 @@ async def create_activity_from_notes(body: ActivityFromNotesInput, user: dict = 
         "next_action": parsed["next_action"],
         "next_action_date": parsed["next_action_date"],
         "gemini_raw_notes": body.raw_notes,
-        "created_by": user.get("sub"),
     }
     if body.contact_id:
         row["contact_id"] = body.contact_id
@@ -1457,6 +1459,7 @@ async def create_activity_from_notes(body: ActivityFromNotesInput, user: dict = 
         row["company_id"] = company_id
     if body.occurred_at:
         row["occurred_at"] = body.occurred_at.isoformat()
+    row = stamp_created_by(row, user.get("sub"))
 
     activity_result = sb.table("pipeline_activities").insert(row).execute()
     activity = activity_result.data[0]
@@ -1464,11 +1467,10 @@ async def create_activity_from_notes(body: ActivityFromNotesInput, user: dict = 
     # Auto-create task if next_action was extracted
     task = None
     if parsed["next_action"]:
-        task_row = {
+        task_row = stamp_created_by({
             "title": parsed["next_action"],
             "due_date": parsed["next_action_date"],
-            "created_by": user.get("sub"),
-        }
+        }, user.get("sub"))
         if body.contact_id:
             task_row["contact_id"] = body.contact_id
         if body.opportunity_id:
@@ -1651,7 +1653,7 @@ async def create_task(body: TaskCreate, user: dict = Depends(verify_partner_auth
     row = body.model_dump(exclude_none=True)
     if body.due_date:
         row["due_date"] = body.due_date.isoformat()
-    row["created_by"] = user.get("sub")
+    row = stamp_created_by(row, user.get("sub"))
     result = sb.table("pipeline_tasks").insert(row).execute()
     return result.data[0]
 
@@ -2257,7 +2259,7 @@ async def bulk_import(
                     "company_type": "prospect",
                     "source": "csv_import",
                 }
-                result = sb.table("pipeline_companies").insert(company_row).execute()
+                result = sb.table("pipeline_companies").insert(stamp_created_by(company_row, user.get("sub"))).execute()
                 company_id = result.data[0]["id"]
                 created_companies += 1
 
@@ -2275,7 +2277,7 @@ async def bulk_import(
                     "is_decision_maker": contact.get("is_decision_maker", False),
                     "source": "csv_import",
                 }
-                c_result = sb.table("pipeline_contacts").insert(contact_row).execute()
+                c_result = sb.table("pipeline_contacts").insert(stamp_created_by(contact_row, user.get("sub"))).execute()
                 if first_contact_id is None:
                     first_contact_id = c_result.data[0]["id"]
                 created_contacts += 1
@@ -2288,7 +2290,7 @@ async def bulk_import(
                     "title": f"{company_data['name']} — Prospect",
                     "stage": "identified",
                 }
-                sb.table("pipeline_opportunities").insert(opp_row).execute()
+                sb.table("pipeline_opportunities").insert(stamp_created_by(opp_row, user.get("sub"))).execute()
                 created_opportunities += 1
 
         except Exception as e:
@@ -2389,13 +2391,12 @@ async def upload_discovery_transcript(
     )
 
     # Log pipeline activity
-    sb.table("pipeline_activities").insert({
+    sb.table("pipeline_activities").insert(stamp_created_by({
         "company_id": company_id,
         "type": "note",
         "subject": "Discovery transcript uploaded",
         "body": f"File: {filename} ({len(content)} bytes)",
-        "created_by": user.get("sub"),
-    }).execute()
+    }, user.get("sub"))).execute()
 
     return result.data[0]
 
@@ -2479,13 +2480,12 @@ async def upload_discovery_transcript_gdoc(
     )
 
     # Log pipeline activity
-    sb.table("pipeline_activities").insert({
+    sb.table("pipeline_activities").insert(stamp_created_by({
         "company_id": company_id,
         "type": "note",
         "subject": "Discovery transcript imported from Google Doc",
         "body": f"Source: {body.gdoc_url}",
-        "created_by": user.get("sub"),
-    }).execute()
+    }, user.get("sub"))).execute()
 
     return result.data[0]
 
@@ -2617,7 +2617,6 @@ async def create_call_prep_session(
         row["opportunity_id"] = body.opportunity_id
     if body.contact_id:
         row["contact_id"] = body.contact_id
-    row["created_by"] = user.get("sub")
 
     # Store meeting metadata in notes field
     meta_parts = [f"meeting_type: {body.meeting_type}"]
@@ -2626,6 +2625,7 @@ async def create_call_prep_session(
         meta_parts.append(f"plugin_version: {body.plugin_version}")
     row["notes"] = " | ".join(meta_parts)
 
+    row = stamp_created_by(row, user.get("sub"))
     result = sb.table("call_prep_sessions").insert(row).execute()
     return result.data[0]
 
