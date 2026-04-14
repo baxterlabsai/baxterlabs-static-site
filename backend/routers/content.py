@@ -83,7 +83,8 @@ async def list_stories(
     user: dict = Depends(verify_partner_auth),
 ):
     sb = get_supabase()
-    query = sb.table("story_bank").select("*").order("created_at", desc=True)
+    uid = user.get("sub")
+    query = sb.table("story_bank").select("*").eq("created_by", uid).order("created_at", desc=True)
     if category:
         if category not in VALID_STORY_CATEGORIES:
             raise HTTPException(400, f"Invalid category: {category}")
@@ -116,9 +117,10 @@ async def update_story(
     if payload.category and payload.category not in VALID_STORY_CATEGORIES:
         raise HTTPException(400, f"Invalid category: {payload.category}")
     sb = get_supabase()
+    uid = user.get("sub")
     data = payload.model_dump(exclude_none=True)
     data["updated_at"] = datetime.utcnow().isoformat()
-    result = sb.table("story_bank").update(data).eq("id", story_id).execute()
+    result = sb.table("story_bank").update(data).eq("id", story_id).eq("created_by", uid).execute()
     if not result.data:
         raise HTTPException(404, "Story not found")
     return result.data[0]
@@ -130,7 +132,8 @@ async def delete_story(
     user: dict = Depends(verify_partner_auth),
 ):
     sb = get_supabase()
-    result = sb.table("story_bank").delete().eq("id", story_id).execute()
+    uid = user.get("sub")
+    result = sb.table("story_bank").delete().eq("id", story_id).eq("created_by", uid).execute()
     if not result.data:
         raise HTTPException(404, "Story not found")
     return {"ok": True}
@@ -143,7 +146,8 @@ async def toggle_story_queue(
 ):
     """Toggle queued_for_draft on a story_bank row."""
     sb = get_supabase()
-    current = sb.table("story_bank").select("queued_for_draft").eq("id", story_id).execute()
+    uid = user.get("sub")
+    current = sb.table("story_bank").select("queued_for_draft").eq("id", story_id).eq("created_by", uid).execute()
     if not current.data:
         raise HTTPException(404, "Story not found")
     new_val = not current.data[0].get("queued_for_draft", False)
@@ -151,6 +155,7 @@ async def toggle_story_queue(
         sb.table("story_bank")
         .update({"queued_for_draft": new_val, "updated_at": datetime.utcnow().isoformat()})
         .eq("id", story_id)
+        .eq("created_by", uid)
         .execute()
     )
     return result.data[0]
@@ -166,9 +171,10 @@ async def content_queue(
 ):
     """Return queued news + queued story bank entries that don't yet have a draft."""
     sb = get_supabase()
+    uid = user.get("sub")
 
     # Fetch all content_posts source mappings to filter out already-drafted items
-    drafted = sb.table("content_posts").select("source_type, source_id").not_.is_("source_id", "null").neq("status", "archived").execute()
+    drafted = sb.table("content_posts").select("source_type, source_id").eq("created_by", uid).not_.is_("source_id", "null").neq("status", "archived").execute()
     drafted_set = set()
     for r in drafted.data:
         st = r["source_type"]
@@ -183,7 +189,7 @@ async def content_queue(
     items: List[dict] = []
 
     # Queued news
-    news = sb.table("content_news").select("id, headline, source_publication, created_at").eq("status", "queued").execute()
+    news = sb.table("content_news").select("id, headline, source_publication, created_at").eq("created_by", uid).eq("status", "queued").execute()
     for row in news.data:
         if ("news", row["id"]) not in drafted_set:
             items.append({
@@ -198,6 +204,7 @@ async def content_queue(
     stories = (
         sb.table("story_bank")
         .select("id, hook_draft, raw_note, category, created_at")
+        .eq("created_by", uid)
         .eq("queued_for_draft", True)
         .execute()
     )
@@ -226,15 +233,16 @@ async def dismiss_queue_item(
 ):
     """Dismiss a queued item — sets news status to 'dismissed' or story_bank queued_for_draft to false."""
     sb = get_supabase()
+    uid = user.get("sub")
     source_type = payload.get("source_type")
     source_id = payload.get("source_id")
     if not source_type or not source_id:
         raise HTTPException(400, "source_type and source_id required")
 
     if source_type in ("news", "content_news"):
-        sb.table("content_news").update({"status": "dismissed"}).eq("id", source_id).execute()
+        sb.table("content_news").update({"status": "dismissed"}).eq("id", source_id).eq("created_by", uid).execute()
     elif source_type == "story_bank":
-        sb.table("story_bank").update({"queued_for_draft": False}).eq("id", source_id).execute()
+        sb.table("story_bank").update({"queued_for_draft": False}).eq("id", source_id).eq("created_by", uid).execute()
     else:
         raise HTTPException(400, f"Unknown source_type: {source_type}")
 
@@ -248,15 +256,16 @@ async def dismiss_reset_source(
 ):
     """Reset source item after a draft is dismissed — returns news to 'unreviewed' or story_bank queued_for_draft to false."""
     sb = get_supabase()
+    uid = user.get("sub")
     source_type = payload.get("source_type")
     source_id = payload.get("source_id")
     if not source_type or not source_id:
         raise HTTPException(400, "source_type and source_id required")
 
     if source_type in ("news", "content_news"):
-        sb.table("content_news").update({"status": "unreviewed"}).eq("id", source_id).execute()
+        sb.table("content_news").update({"status": "unreviewed"}).eq("id", source_id).eq("created_by", uid).execute()
     elif source_type == "story_bank":
-        sb.table("story_bank").update({"queued_for_draft": False}).eq("id", source_id).execute()
+        sb.table("story_bank").update({"queued_for_draft": False}).eq("id", source_id).eq("created_by", uid).execute()
     else:
         raise HTTPException(400, f"Unknown source_type: {source_type}")
 
@@ -273,7 +282,8 @@ async def list_ideas(
     user: dict = Depends(verify_partner_auth),
 ):
     sb = get_supabase()
-    query = sb.table("content_ideas").select("*").order("created_at", desc=True)
+    uid = user.get("sub")
+    query = sb.table("content_ideas").select("*").eq("created_by", uid).order("created_at", desc=True)
     if status:
         if status not in VALID_IDEA_STATUSES:
             raise HTTPException(400, f"Invalid status: {status}")
@@ -302,8 +312,9 @@ async def update_idea(
     if payload.status and payload.status not in VALID_IDEA_STATUSES:
         raise HTTPException(400, f"Invalid status: {payload.status}")
     sb = get_supabase()
+    uid = user.get("sub")
     data = payload.model_dump(exclude_none=True)
-    result = sb.table("content_ideas").update(data).eq("id", idea_id).execute()
+    result = sb.table("content_ideas").update(data).eq("id", idea_id).eq("created_by", uid).execute()
     if not result.data:
         raise HTTPException(404, "Idea not found")
     return result.data[0]
@@ -319,7 +330,8 @@ async def news_stats(
 ):
     """Return aggregate stats for content news items."""
     sb = get_supabase()
-    all_news = sb.table("content_news").select("status, relevance_score, fetched_at").execute()
+    uid = user.get("sub")
+    all_news = sb.table("content_news").select("status, relevance_score, fetched_at").eq("created_by", uid).execute()
     rows = all_news.data
     unreviewed = sum(1 for r in rows if r.get("status") == "unreviewed")
     queued = sum(1 for r in rows if r.get("status") == "queued")
@@ -346,7 +358,8 @@ async def list_news(
     user: dict = Depends(verify_partner_auth),
 ):
     sb = get_supabase()
-    query = sb.table("content_news").select("*")
+    uid = user.get("sub")
+    query = sb.table("content_news").select("*").eq("created_by", uid)
     if status:
         if status not in VALID_NEWS_STATUSES:
             raise HTTPException(400, f"Invalid status: {status}")
@@ -375,8 +388,9 @@ async def update_news(
     if payload.status and payload.status not in VALID_NEWS_STATUSES:
         raise HTTPException(400, f"Invalid status: {payload.status}")
     sb = get_supabase()
+    uid = user.get("sub")
     data = payload.model_dump(exclude_none=True)
-    result = sb.table("content_news").update(data).eq("id", news_id).execute()
+    result = sb.table("content_news").update(data).eq("id", news_id).eq("created_by", uid).execute()
     if not result.data:
         raise HTTPException(404, "News item not found")
     return result.data[0]
@@ -388,7 +402,8 @@ async def delete_news(
     user: dict = Depends(verify_partner_auth),
 ):
     sb = get_supabase()
-    result = sb.table("content_news").delete().eq("id", news_id).execute()
+    uid = user.get("sub")
+    result = sb.table("content_news").delete().eq("id", news_id).eq("created_by", uid).execute()
     if not result.data:
         raise HTTPException(404, "News item not found")
     return {"ok": True}
@@ -402,11 +417,13 @@ async def delete_news(
 async def metrics_rollup(
     user: dict = Depends(verify_partner_auth),
 ):
-    """Recalculate engagement_rate for all published posts with impressions."""
+    """Recalculate engagement_rate for the caller's published posts with impressions."""
     sb = get_supabase()
+    uid = user.get("sub")
     result = (
         sb.table("content_posts")
         .select("id, impressions, likes, comments, engagement_rate")
+        .eq("created_by", uid)
         .eq("status", "published")
         .gt("impressions", 0)
         .execute()
@@ -426,7 +443,7 @@ async def metrics_rollup(
         sb.table("content_posts").update({
             "engagement_rate": rate,
             "updated_at": datetime.utcnow().isoformat(),
-        }).eq("id", row["id"]).execute()
+        }).eq("id", row["id"]).eq("created_by", uid).execute()
         posts_updated += 1
         rates.append(rate)
         if rate > top_rate:
@@ -435,7 +452,7 @@ async def metrics_rollup(
 
     # Fetch title for top post
     if top_post:
-        title_result = sb.table("content_posts").select("title").eq("id", top_post["id"]).execute()
+        title_result = sb.table("content_posts").select("title").eq("id", top_post["id"]).eq("created_by", uid).execute()
         if title_result.data:
             top_post["title"] = title_result.data[0]["title"]
 
@@ -458,6 +475,7 @@ async def content_performance(
 ):
     """Return content performance metrics for the current month."""
     sb = get_supabase()
+    uid = user.get("sub")
     now = datetime.utcnow()
     month_start = now.strftime("%Y-%m-01")
     if now.month == 12:
@@ -469,6 +487,7 @@ async def content_performance(
     pub_result = (
         sb.table("content_posts")
         .select("id, title, engagement_rate, impressions, published_date")
+        .eq("created_by", uid)
         .eq("status", "published")
         .gte("published_date", month_start)
         .lt("published_date", next_month_start)
@@ -481,6 +500,7 @@ async def content_performance(
     all_pub = (
         sb.table("content_posts")
         .select("engagement_rate")
+        .eq("created_by", uid)
         .eq("status", "published")
         .not_.is_("engagement_rate", "null")
         .execute()
@@ -492,6 +512,7 @@ async def content_performance(
     stories_result = (
         sb.table("story_bank")
         .select("id", count="exact")
+        .eq("created_by", uid)
         .eq("used_in_post", False)
         .execute()
     )
@@ -639,7 +660,8 @@ async def list_content_posts(
 ):
     """List content_posts ordered by created_at DESC with optional filters."""
     sb = get_supabase()
-    query = sb.table("content_posts").select("*").order("created_at", desc=True)
+    uid = user.get("sub")
+    query = sb.table("content_posts").select("*").eq("created_by", uid).order("created_at", desc=True)
     if type:
         if type not in VALID_POST_TYPES:
             raise HTTPException(400, f"Invalid type: {type}")
@@ -663,7 +685,8 @@ async def get_content_post(
 ):
     """Get a single content_post by ID."""
     sb = get_supabase()
-    result = sb.table("content_posts").select("*").eq("id", post_id).execute()
+    uid = user.get("sub")
+    result = sb.table("content_posts").select("*").eq("id", post_id).eq("created_by", uid).execute()
     if not result.data:
         raise HTTPException(404, "Post not found")
     return result.data[0]
@@ -697,11 +720,12 @@ async def patch_content_post(
     if payload.status and payload.status not in VALID_POST_STATUSES:
         raise HTTPException(400, f"Invalid status: {payload.status}")
     sb = get_supabase()
+    uid = user.get("sub")
     data = payload.model_dump(exclude_none=True)
     if not data:
         raise HTTPException(400, "No fields to update")
     data["updated_at"] = datetime.utcnow().isoformat()
-    result = sb.table("content_posts").update(data).eq("id", post_id).execute()
+    result = sb.table("content_posts").update(data).eq("id", post_id).eq("created_by", uid).execute()
     if not result.data:
         raise HTTPException(404, "Post not found")
     return result.data[0]
@@ -714,7 +738,8 @@ async def delete_content_post(
 ):
     """Delete a content_post by ID."""
     sb = get_supabase()
-    result = sb.table("content_posts").delete().eq("id", post_id).execute()
+    uid = user.get("sub")
+    result = sb.table("content_posts").delete().eq("id", post_id).eq("created_by", uid).execute()
     if not result.data:
         raise HTTPException(404, "Post not found")
     return {"ok": True}
@@ -741,7 +766,8 @@ async def list_story_bank(
 ):
     """List story_bank rows ordered by created_at DESC, optional ?category= filter."""
     sb = get_supabase()
-    query = sb.table("story_bank").select("*").order("created_at", desc=True)
+    uid = user.get("sub")
+    query = sb.table("story_bank").select("*").eq("created_by", uid).order("created_at", desc=True)
     if category:
         query = query.eq("category", category)
     result = query.execute()
@@ -782,7 +808,8 @@ async def promote_idea_to_story_bank(
     approximate.
     """
     sb = get_supabase()
-    idea = sb.table("content_ideas").select("*").eq("id", idea_id).execute()
+    uid = user.get("sub")
+    idea = sb.table("content_ideas").select("*").eq("id", idea_id).eq("created_by", uid).execute()
     if not idea.data:
         raise HTTPException(404, "Idea not found")
     idea = idea.data[0]
@@ -794,9 +821,9 @@ async def promote_idea_to_story_bank(
         "hook_draft": idea.get("dollar_hook"),
         "dollar_connection": idea.get("insider_detail"),
     }
-    new_entry = sb.table("story_bank").insert(stamp_created_by(story_data, user.get("sub"))).execute()
+    new_entry = sb.table("story_bank").insert(stamp_created_by(story_data, uid)).execute()
 
-    sb.table("content_ideas").update({"status": "used"}).eq("id", idea_id).execute()
+    sb.table("content_ideas").update({"status": "used"}).eq("id", idea_id).eq("created_by", uid).execute()
 
     return new_entry.data[0]
 
@@ -812,7 +839,8 @@ async def list_news_items(
 ):
     """List content_news ordered by fetched_at DESC, optional ?queued=true filter."""
     sb = get_supabase()
-    query = sb.table("content_news").select("*")
+    uid = user.get("sub")
+    query = sb.table("content_news").select("*").eq("created_by", uid)
     if queued is True:
         query = query.eq("status", "queued")
     else:
@@ -829,10 +857,12 @@ async def flag_news_item(
 ):
     """Set status = 'queued' on a content_news item."""
     sb = get_supabase()
+    uid = user.get("sub")
     result = (
         sb.table("content_news")
         .update({"status": "queued"})
         .eq("id", news_id)
+        .eq("created_by", uid)
         .execute()
     )
     if not result.data:

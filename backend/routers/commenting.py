@@ -47,7 +47,8 @@ async def list_commenting_opportunities(
 ):
     """List commenting opportunities. Default: today only."""
     sb = get_supabase()
-    query = sb.table("commenting_opportunities").select("*")
+    uid = user.get("sub")
+    query = sb.table("commenting_opportunities").select("*").eq("created_by", uid)
 
     target = date if date else date_cls.today().isoformat()
 
@@ -79,10 +80,12 @@ async def commenting_stats(
     - Overview Content card reads ``acted_count`` and ``total_count``.
     """
     sb = get_supabase()
+    uid = user.get("sub")
     today = date_cls.today().isoformat()
     result = (
         sb.table("commenting_opportunities")
         .select("status")
+        .eq("created_by", uid)
         .eq("briefing_date", today)
         .execute()
     )
@@ -100,10 +103,12 @@ async def get_commenting_opportunity(
     user: dict = Depends(verify_partner_auth),
 ):
     sb = get_supabase()
+    uid = user.get("sub")
     result = (
         sb.table("commenting_opportunities")
         .select("*")
         .eq("id", opp_id)
+        .eq("created_by", uid)
         .execute()
     )
     if not result.data:
@@ -123,6 +128,7 @@ async def update_commenting_status(
         raise HTTPException(400, f"Invalid status. Must be one of: {VALID_COMMENTING_STATUSES}")
 
     sb = get_supabase()
+    uid = user.get("sub")
     update_data: dict = {"status": new_status}
     if new_status == "acted_on":
         update_data["acted_at"] = datetime.utcnow().isoformat()
@@ -131,6 +137,7 @@ async def update_commenting_status(
         sb.table("commenting_opportunities")
         .update(update_data)
         .eq("id", opp_id)
+        .eq("created_by", uid)
         .execute()
     )
     if not result.data:
@@ -151,12 +158,14 @@ async def update_draft(
     acted_at, or any other column.
     """
     sb = get_supabase()
+    uid = user.get("sub")
 
-    # Validate the row exists
+    # Validate the row exists and belongs to the caller
     check = (
         sb.table("commenting_opportunities")
         .select("id")
         .eq("id", opp_id)
+        .eq("created_by", uid)
         .execute()
     )
     if not check.data:
@@ -169,6 +178,7 @@ async def update_draft(
             "draft_generated_at": datetime.utcnow().isoformat(),
         })
         .eq("id", opp_id)
+        .eq("created_by", uid)
         .execute()
     )
     if not result.data:
@@ -210,10 +220,12 @@ async def redraft(
 
     # Re-fetch the row so we return the same shape as PATCH /{opp_id}
     sb = get_supabase()
+    uid = user.get("sub")
     row = (
         sb.table("commenting_opportunities")
         .select("*")
         .eq("id", opp_id)
+        .eq("created_by", uid)
         .execute()
     )
     if not row.data:
