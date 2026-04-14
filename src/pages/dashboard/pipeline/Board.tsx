@@ -3,6 +3,9 @@ import { createPortal } from 'react-dom'
 import { Link, useNavigate } from 'react-router-dom'
 import { apiGet, apiPost, apiPut, apiDelete } from '../../../lib/api'
 import { useRealtimeRefresh } from '../../../hooks/useRealtimeRefresh'
+import { usePartnerProfiles } from '../../../hooks/usePartnerProfiles'
+import { OwnershipToggle } from '../../../components/OwnershipToggle'
+import { supabase } from '../../../lib/supabase'
 import MarkdownContent from '../../../components/MarkdownContent'
 import SEO from '../../../components/SEO'
 
@@ -43,6 +46,7 @@ interface Opportunity {
   loss_reason: string | null
   notes: string | null
   assigned_to: string | null
+  assigned_to_user_id: string | null
   converted_client_id: string | null
   converted_engagement_id: string | null
   referred_by_engagement_id: string | null
@@ -170,7 +174,10 @@ export default function PipelineBoard() {
   const [contacts, setContacts] = useState<Contact[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [filterAssignedTo, setFilterAssignedTo] = useState('')
+  const [currentUserAuthId, setCurrentUserAuthId] = useState<string | null>(null)
+  const [ownership, setOwnership] = useState<'mine' | 'all'>(() => {
+    return (localStorage.getItem('baxterlabs.board.ownership') as 'mine' | 'all') || 'all'
+  })
   const [dormantExpanded, setDormantExpanded] = useState(false)
   const [typeFilter, setTypeFilter] = useState<'prospect' | 'partner' | 'connector' | 'all'>('prospect')
 
@@ -207,6 +214,12 @@ export default function PipelineBoard() {
 
   useEffect(() => { reloadBoard() }, [reloadBoard])
 
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) setCurrentUserAuthId(session.user.id)
+    })
+  }, [])
+
   useRealtimeRefresh('pipeline-board', reloadBoard, [
     'pipeline_opportunities', 'pipeline_companies', 'pipeline_contacts', 'pipeline_activities',
   ])
@@ -239,8 +252,8 @@ export default function PipelineBoard() {
     companyTypeMap[c.id] = c.company_type || 'prospect'
   }
 
-  const filtered = filterAssignedTo
-    ? opportunities.filter(o => o.assigned_to === filterAssignedTo)
+  const filtered = ownership === 'mine' && currentUserAuthId
+    ? opportunities.filter(o => o.assigned_to_user_id === currentUserAuthId)
     : opportunities
 
   // Type-aware filtering
@@ -254,8 +267,6 @@ export default function PipelineBoard() {
     : STAGES
   const boardOpps = typeFiltered.filter(o => o.stage !== dormantKey && o.stage !== (typeFilter === 'partner' ? 'dormant' : 'partner_dormant'))
   const dormantOpps = typeFiltered.filter(o => o.stage === dormantKey)
-
-  const assignedToValues = [...new Set(opportunities.map(o => o.assigned_to).filter(Boolean))] as string[]
 
   const totalValue = boardOpps
     .filter(o => o.stage !== 'lost')
@@ -334,7 +345,7 @@ export default function PipelineBoard() {
     estimated_value: number
     stage: string
     estimated_close_date?: string
-    assigned_to?: string
+    assigned_to_user_id?: string
     notes?: string
     referred_by_engagement_id?: string
     referred_by_contact_name?: string
@@ -371,7 +382,7 @@ export default function PipelineBoard() {
         stage: data.stage,
       }
       if (data.estimated_close_date) oppPayload.estimated_close_date = data.estimated_close_date
-      if (data.assigned_to) oppPayload.assigned_to = data.assigned_to
+      if (data.assigned_to_user_id) oppPayload.assigned_to_user_id = data.assigned_to_user_id
       if (data.notes) oppPayload.notes = data.notes
       if (data.referred_by_engagement_id) oppPayload.referred_by_engagement_id = data.referred_by_engagement_id
       if (data.referred_by_contact_name) oppPayload.referred_by_contact_name = data.referred_by_contact_name
@@ -442,17 +453,12 @@ export default function PipelineBoard() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {assignedToValues.length > 0 && (
-            <select
-              value={filterAssignedTo}
-              onChange={e => setFilterAssignedTo(e.target.value)}
-              className="px-3 py-2 rounded-lg border border-gray-light bg-white text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-teal/30"
-            >
-              <option value="">All owners</option>
-              {assignedToValues.map(v => (
-                <option key={v} value={v}>{v}</option>
-              ))}
-            </select>
+          {currentUserAuthId && (
+            <OwnershipToggle
+              value={ownership}
+              onChange={v => { setOwnership(v); localStorage.setItem('baxterlabs.board.ownership', v) }}
+              currentUserAuthId={currentUserAuthId}
+            />
           )}
           <Link
             to="/dashboard/pipeline/import"
@@ -968,7 +974,7 @@ function QuickAddModal({
 }: {
   companies: Company[]
   contacts: Contact[]
-  onSubmit: (data: { company_name: string; company_id?: string; contact_name?: string; contact_id?: string; title: string; estimated_value: number; stage: string; estimated_close_date?: string; assigned_to?: string; notes?: string; referred_by_engagement_id?: string; referred_by_contact_name?: string; company_type?: string }) => void
+  onSubmit: (data: { company_name: string; company_id?: string; contact_name?: string; contact_id?: string; title: string; estimated_value: number; stage: string; estimated_close_date?: string; assigned_to_user_id?: string; notes?: string; referred_by_engagement_id?: string; referred_by_contact_name?: string; company_type?: string }) => void
   onClose: () => void
   typeFilter: 'prospect' | 'partner' | 'connector' | 'all'
 }) {
@@ -984,6 +990,7 @@ function QuickAddModal({
   const modalStages = typeFilter === 'partner' ? PARTNER_STAGES.filter(s => s.key !== 'partner_dormant') : STAGES
   const [estimatedCloseDate, setEstimatedCloseDate] = useState('')
   const [assignedTo, setAssignedTo] = useState('')
+  const { profiles } = usePartnerProfiles()
   const [oppNotes, setOppNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [showCompanyDropdown, setShowCompanyDropdown] = useState(false)
@@ -1033,7 +1040,7 @@ function QuickAddModal({
       estimated_value: parseFloat(value) || 12500,
       stage,
       estimated_close_date: estimatedCloseDate || undefined,
-      assigned_to: assignedTo || undefined,
+      assigned_to_user_id: assignedTo || undefined,
       notes: oppNotes || undefined,
       referred_by_engagement_id: source === 'referral' && referralEngagementId ? referralEngagementId : undefined,
       referred_by_contact_name: source === 'referral' && referralContactName ? referralContactName : undefined,
@@ -1186,8 +1193,9 @@ function QuickAddModal({
                 className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
               >
                 <option value="">Select...</option>
-                <option value="George DeVries">George DeVries</option>
-                <option value="Alfonso Cordon">Alfonso Cordon</option>
+                {profiles.map(p => (
+                  <option key={p.auth_user_id} value={p.auth_user_id}>{p.display_name}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -1403,6 +1411,7 @@ function OpportunitySlideOver({
   onDelete: (oppId: string) => void
 }) {
   useEscapeKey(onClose)
+  const { getDisplayNameByAuthUserId, getColorByAuthUserId } = usePartnerProfiles()
   const [opp, setOpp] = useState<Opportunity | null>(null)
   const [activities, setActivities] = useState<Activity[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
@@ -1479,7 +1488,10 @@ function OpportunitySlideOver({
                 </div>
                 <div>
                   <p className="text-gray-warm text-xs mb-0.5">Assigned To</p>
-                  <p className="font-medium text-charcoal">{opp.assigned_to || '—'}</p>
+                  <p className="font-medium text-charcoal inline-flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: getColorByAuthUserId(opp.assigned_to_user_id) }} />
+                    {getDisplayNameByAuthUserId(opp.assigned_to_user_id)}
+                  </p>
                 </div>
                 {opp.loss_reason && (
                   <div className="col-span-2">
@@ -1658,7 +1670,8 @@ function SendAgreementModal({
   useEscapeKey(onClose)
   const [fee, setFee] = useState(String(opp.estimated_value || 12500))
   const [startDate, setStartDate] = useState('')
-  const [partnerLead, setPartnerLead] = useState(opp.assigned_to || 'George DeVries')
+  const { profiles, getDisplayNameByAuthUserId } = usePartnerProfiles()
+  const [partnerLead, setPartnerLead] = useState(opp.assigned_to_user_id || '')
   const [submitting, setSubmitting] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
@@ -1667,7 +1680,7 @@ function SendAgreementModal({
     await onSubmit({
       fee: parseFloat(fee) || 12500,
       preferred_start_date: startDate || 'TBD',
-      partner_lead: partnerLead,
+      partner_lead: getDisplayNameByAuthUserId(partnerLead),
     })
     setSubmitting(false)
   }
@@ -1715,8 +1728,9 @@ function SendAgreementModal({
               onChange={e => setPartnerLead(e.target.value)}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-light bg-white text-charcoal text-sm focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal"
             >
-              <option value="George DeVries">George DeVries</option>
-              <option value="Alfonso Cordon">Alfonso Cordon</option>
+              {profiles.map(p => (
+                <option key={p.auth_user_id} value={p.auth_user_id}>{p.display_name}</option>
+              ))}
             </select>
           </div>
           <div className="flex items-center justify-end gap-3 pt-2">
