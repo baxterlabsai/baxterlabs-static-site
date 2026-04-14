@@ -37,7 +37,6 @@ interface Task {
   priority: string
   status: string
   completed_at: string | null
-  assigned_to: string | null
   assigned_to_user_id: string | null
   outcome_notes: string | null
   source_plugin: string | null

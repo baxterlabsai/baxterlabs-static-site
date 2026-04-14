@@ -45,7 +45,6 @@ interface Opportunity {
   estimated_close_date: string | null
   loss_reason: string | null
   notes: string | null
-  assigned_to: string | null
   assigned_to_user_id: string | null
   converted_client_id: string | null
   converted_engagement_id: string | null

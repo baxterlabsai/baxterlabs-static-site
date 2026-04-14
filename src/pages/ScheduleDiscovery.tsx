@@ -7,7 +7,7 @@ interface ScheduleData {
   company_name: string
   contact_name: string | null
   contact_email: string | null
-  assigned_to: string | null
+  partner_display_name: string | null
   booking_time: string | null
   stage: string
   calendly_url: string | null
@@ -153,9 +153,9 @@ export default function ScheduleDiscovery() {
               {data.company_name && <span> — {data.company_name}</span>}
             </p>
           )}
-          {data?.assigned_to && !booked && (
+          {data?.partner_display_name && !booked && (
             <p className="text-sm text-teal font-medium mt-1">
-              with {data.assigned_to}
+              with {data.partner_display_name}
             </p>
           )}
         </div>
