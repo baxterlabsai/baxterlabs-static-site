@@ -7,6 +7,7 @@ import About from './pages/About'
 import GetStarted from './pages/GetStarted'
 import BlogIndex from './pages/BlogIndex'
 import BlogPost from './pages/BlogPost'
+import AlfonsoOnboarding from './pages/AlfonsoOnboarding'
 import NotFound from './pages/NotFound'
 
 function ScrollToTop() {
@@ -30,6 +31,8 @@ export default function App() {
           <Route path="/insights" element={<BlogIndex />} />
           <Route path="/insights/:slug" element={<BlogPost />} />
         </Route>
+
+        <Route path="/alfonso-onboarding" element={<AlfonsoOnboarding />} />
 
         <Route path="*" element={<NotFound />} />
       </Routes>
