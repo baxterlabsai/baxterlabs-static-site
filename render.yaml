@@ -10,12 +10,12 @@ services:
     plan: starter
     routes:
       - type: rewrite
-        source: /partners
-        destination: /partners/index.html
-      - type: rewrite
         source: /*
         destination: /index.html
     redirects:
+      - source: /partners
+        destination: /partners/
+        type: 301
       - source: /index.html
         destination: /
         type: 301
