@@ -52,7 +52,7 @@ export default function Partners() {
           align-items: flex-start;
           gap: 24px;
         }
-        .partners-page .wordmark { display: flex; flex-direction: column; }
+        .partners-page .wordmark { display: flex; flex-direction: column; align-items: flex-start; }
         .partners-page .wordmark img { height: 48px; width: auto; display: block; }
         .partners-page .wordmark-sub {
           font-size: 9px;
