@@ -27,7 +27,7 @@ const PHASES: Phase[] = [
     label: 'Pre-meeting',
     title: 'Solo setup before we meet',
     intro:
-      "Everything below you can do alone across 90–120 minutes, one or two sittings. When the last item is checked, you're ready for our working session.",
+      "Everything below you can do alone in one or two sittings. When the last item is checked, you're ready for our working session.",
     items: [
       {
         id: 'pre-arch-check',
@@ -87,7 +87,7 @@ const PHASES: Phase[] = [
         id: 'pre-read-overview',
         title: 'Read the System Overview',
         description:
-          'Open 01_Read_First/BaxterLabs_System_Overview.md from your unzipped package. If Zettlr is installed, it opens there. This is the only mandatory pre-meeting reading. Give it 20–30 minutes. It sets the mental model for everything else.',
+          'Open 01_Read_First/BaxterLabs_System_Overview.md from your unzipped package. If Zettlr is installed, it opens there. This is the only mandatory pre-meeting reading. Give it a focused block. It sets the mental model for everything else.',
       },
     ],
   },
@@ -96,7 +96,7 @@ const PHASES: Phase[] = [
     label: 'Live meeting · Part 1',
     title: 'Credentials handoff and Claude Desktop connectors',
     intro:
-      "We'll work through this together. Plan 30–45 minutes. Have your Apify and Vibe Prospecting tokens from pre-meeting ready to paste.",
+      "We'll work through this together. Have your Apify and Vibe Prospecting tokens from pre-meeting ready to paste.",
     items: [
       {
         id: 'live1-supabase-key',
@@ -153,20 +153,26 @@ const PHASES: Phase[] = [
     label: 'Live meeting · Part 2',
     title: 'Dashboard access',
     intro:
-      "Plan 15 minutes. You'll log in for the first time and verify that your attribution and permissions are wired correctly.",
+      "From now on, the dashboard lives in Pake — a dedicated desktop app that opens app.baxterlabs.ai without a browser tab. You'll install Pake, reset your password, log in, and walk the sidebar to confirm your attribution and permissions are wired correctly.",
     items: [
+      {
+        id: 'live2-pake',
+        title: 'Install the Pake Windows desktop app',
+        description:
+          'George sends you a Windows installer for the Pake-wrapped dashboard. Install, pin it to your taskbar. Pake opens app.baxterlabs.ai as a desktop app — not a browser tab. This is your permanent entry point into the dashboard.',
+      },
       {
         id: 'live2-password-reset',
         title: 'Reset your dashboard password',
         url: 'https://app.baxterlabs.ai',
         description:
-          'Click "Forgot password". Enter alfonso@baxterlabs.ai. Check your Gmail for the reset email. Follow the link and set a new password.',
+          'Open Pake and click "Forgot password" on the login screen. Enter alfonso@baxterlabs.ai. Check your Gmail for the reset email. Follow the link and set a new password. If the Pake flow is awkward for the one-time reset, the link above works in a browser — but ongoing access is through Pake.',
       },
       {
         id: 'live2-login',
         title: 'Log into the dashboard',
         description:
-          'Use alfonso@baxterlabs.ai and your new password. You should land on the Overview page without errors.',
+          'Open the Pake app you just installed. Use alfonso@baxterlabs.ai and your new password. You should land on the Overview page without errors. The dashboard lives in Pake from now on — not a browser tab.',
       },
       {
         id: 'live2-sidebar-walk',
@@ -185,9 +191,9 @@ const PHASES: Phase[] = [
   {
     number: '03',
     label: 'Live meeting · Part 3',
-    title: 'Plugin installation',
+    title: 'Plugins and scheduled tasks',
     intro:
-      'Plan 30 minutes. We install the two shared plugins first to verify your install pipeline works, then install your voice-dependent forks.',
+      'We install the two shared plugins first to verify your install pipeline works, then install your voice-dependent forks. Once plugins are live, we set up your 10 Cowork scheduled tasks — the background jobs that keep your queues filled on their own.',
     items: [
       {
         id: 'live3-shared-plugins',
@@ -207,6 +213,12 @@ const PHASES: Phase[] = [
         description:
           "George runs a sales research command on Scion Staffing. You watch the pattern: dashboard button → clipboard → paste into Cowork → Supabase writes → dashboard refresh. You're now ready to run commands yourself.",
       },
+      {
+        id: 'live3-scheduled-tasks',
+        title: 'Install your 10 Cowork scheduled tasks',
+        description:
+          "Open Claude Desktop. For each task, paste the prompt from 02_Setup_Guide/alfonso_scheduled_task_prompts.md into Cowork, follow the 5-question flow (what / name / when / output / constraints). Install in priority order so value lands fastest: (1) News fetch, (2) LinkedIn commenting pre-brief, (3) Comment pull (first pass), (4) Comment pull (second pass), (5) Engagement metrics, (6) Content drafts, (7) Partner check-ins, (8) Video script prep, (9) Story bank prompt. Verify each appears in Cowork's scheduled tasks list.",
+      },
     ],
   },
   {
@@ -214,25 +226,25 @@ const PHASES: Phase[] = [
     label: 'Post-meeting · Voice',
     title: 'Voice excavation',
     intro:
-      "This is the longest pole. Work it across a week in two focused chats with Claude.ai. Your output unlocks your content and sales plugins — they'll start producing real drafts the moment your files land in Standards/alfonso/.",
+      "This is the longest pole. Work it in two focused chats with Claude.ai. Your output unlocks your content and sales plugins — they'll start producing real drafts the moment your files land in Standards/alfonso/.",
     items: [
       {
         id: 'post-read-voice-process',
         title: 'Read the Voice Excavation Process doc',
         description:
-          'Open 01_Read_First/BaxterLabs_Voice_Excavation_Process_v1_0.md in Zettlr. Read fully — about 30 minutes. Five phases. Understand the arc before you start any chat.',
+          'Open 01_Read_First/BaxterLabs_Voice_Excavation_Process_v1_0.md in Zettlr. Read it fully. Five phases. Understand the arc before you start any chat.',
       },
       {
         id: 'post-voice-chat-1',
         title: 'Voice excavation Chat 1 (Phases 1–2)',
         description:
-          'Open Claude.ai in Claude Desktop. Start a fresh chat. Plan 2–3 focused hours with no interruptions. Follow Phase 1 (corpus gathering) and Phase 2 (profile scaffold). Output: a usable v1.0 voice profile saved to Standards/alfonso/Alfonso_Voice_Profile_v1_0.md. At this point your content-alfonso plugin starts producing real output — you can begin drafting immediately while refining.',
+          'Open Claude.ai in Claude Desktop. Start a fresh chat. Plan a focused block with no interruptions. Follow Phase 1 (corpus gathering) and Phase 2 (profile scaffold). Output: a usable v1.0 voice profile saved to Standards/alfonso/Alfonso_Voice_Profile_v1_0.md. At this point your content-alfonso plugin starts producing real output — you can begin drafting immediately while refining.',
       },
       {
         id: 'post-voice-chat-2',
         title: 'Voice excavation Chat 2 (Phases 3–5)',
         description:
-          'Second focused 2–3 hour chat — another day is fine, often better. Run Phases 3, 4, 5. Output: refined voice profile, content-draft-prompt.md, news-commentary-prompt.md, comment-draft-prompt.md, outreach-prompt.md, and a voice sample. Save all to Standards/alfonso/. Your content-alfonso and sales-alfonso plugins pick up each file on their next run — no restart needed.',
+          'A second focused chat — a separate sitting is fine, often better. Run Phases 3, 4, 5. Output: refined voice profile, content-draft-prompt.md, news-commentary-prompt.md, comment-draft-prompt.md, outreach-prompt.md, and a voice sample. Save all to Standards/alfonso/. Your content-alfonso and sales-alfonso plugins pick up each file on their next run — no restart needed.',
       },
     ],
   },
@@ -241,7 +253,7 @@ const PHASES: Phase[] = [
     label: 'Post-meeting · Targets',
     title: 'LinkedIn targets and news sources',
     intro:
-      "Once your voice is locked, decide who you'll comment on and what news you'll watch. Each takes one focused Claude.ai chat. Aim for coverage that widens the firm's total reach, not coverage that overlaps George's.",
+      "Once your voice is locked, decide who you'll comment on and what news you'll watch. Aim for coverage that widens the firm's total reach, not coverage that overlaps George's.",
     items: [
       {
         id: 'post-linkedin-targets',
@@ -277,28 +289,16 @@ const PHASES: Phase[] = [
   },
   {
     number: '06',
-    label: 'Post-meeting · Activation',
-    title: 'Scheduled tasks and first real day',
+    label: 'Post-meeting · First day',
+    title: 'The system is live',
     intro:
-      "Install your 10 Cowork scheduled tasks in priority order, install the Pake wrapper, then work your first full day. When this phase is done, you're indistinguishable from a partner who's been here since day one.",
+      "Everything is installed, your voice is locked, and your scheduled tasks are running. This is the activation moment — work your first full day end-to-end and confirm the system is carrying its weight. When this phase is done, you're indistinguishable from a partner who's been here since day one.",
     items: [
-      {
-        id: 'post-scheduled-tasks',
-        title: 'Install your 10 Cowork scheduled tasks',
-        description:
-          "Open Claude Desktop. For each task, paste the prompt from 02_Setup_Guide/alfonso_scheduled_task_prompts.md into Cowork, follow the 5-question flow (what / name / when / output / constraints). Install in priority order so value lands fastest: (1) Daily news fetch, (2) LinkedIn commenting pre-brief, (3) AM comment pull, (4) PM comment pull, (5) Friday engagement metrics, (6) Content drafts, (7) Partner check-ins, (8) Video script prep, (9) Monthly story bank prompt. Verify each appears in Cowork's scheduled tasks list.",
-      },
-      {
-        id: 'post-pake',
-        title: 'Install the Pake Windows desktop app',
-        description:
-          'George sends you a Windows installer for the Pake-wrapped dashboard. Install, pin to taskbar. Opens app.baxterlabs.ai as a desktop app instead of a browser tab.',
-      },
       {
         id: 'post-first-day',
         title: 'Work your first full day',
         description:
-          "After your first full weekday with tasks running: commenting queue has 5 pre-brief opportunities in your voice, news digest has scored items from your sources, content drafts are available, outreach queue is populated. Work the surfaces as if you've been here from day one. You have been, in a way — the system was built assuming you'd arrive.",
+          "After your first full day with tasks running: commenting queue has pre-brief opportunities in your voice, news digest has scored items from your sources, content drafts are available, outreach queue is populated. Work the surfaces as if you've been here from day one. You have been, in a way — the system was built assuming you'd arrive.",
       },
     ],
   },
@@ -306,14 +306,41 @@ const PHASES: Phase[] = [
 
 type CompletedMap = Record<string, boolean>
 
+// One-time localStorage migration for items that moved between phases in v2:
+//   post-pake            → live2-pake
+//   post-scheduled-tasks → live3-scheduled-tasks
+// Safe to leave in place — renames persist after first run and the map
+// simply no longer contains the old keys on subsequent loads.
+const LEGACY_ID_RENAMES: Array<[string, string]> = [
+  ['post-pake', 'live2-pake'],
+  ['post-scheduled-tasks', 'live3-scheduled-tasks'],
+]
+
 function loadCompleted(): CompletedMap {
   if (typeof window === 'undefined') return {}
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return {}
     const parsed = JSON.parse(raw)
-    if (parsed && typeof parsed === 'object') return parsed as CompletedMap
-    return {}
+    if (!parsed || typeof parsed !== 'object') return {}
+    const map = parsed as CompletedMap
+
+    let migrated = false
+    for (const [oldKey, newKey] of LEGACY_ID_RENAMES) {
+      if (oldKey in map) {
+        if (map[oldKey] && !(newKey in map)) map[newKey] = true
+        delete map[oldKey]
+        migrated = true
+      }
+    }
+    if (migrated) {
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(map))
+      } catch {
+        // ignore quota/disabled storage
+      }
+    }
+    return map
   } catch {
     return {}
   }
@@ -534,8 +561,8 @@ function Hero() {
         Your <em className="font-display font-normal italic">onboarding</em> at BaxterLabs Advisory
       </h1>
       <p className="mt-8 font-headline text-[clamp(1.125rem,1.75vw,1.4rem)] leading-[1.55] text-charcoal">
-        This is your personal checklist. Work through it top to bottom across about two weeks. Your
-        progress saves automatically in this browser — bookmark the URL and come back whenever.
+        This is your personal checklist. Work through it top to bottom. Your progress saves
+        automatically in this browser — bookmark the URL and come back whenever.
       </p>
       <p className="mt-5 text-[0.95rem] leading-[1.7] text-[var(--muted)]">
         Phases unlock in sequence. Pre-meeting is solo setup. Live meeting is synchronous time with
