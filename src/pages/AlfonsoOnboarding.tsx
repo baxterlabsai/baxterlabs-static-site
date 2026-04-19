@@ -295,6 +295,12 @@ const PHASES: Phase[] = [
       "Everything is installed, your voice is locked, and your scheduled tasks are running. This is the activation moment — work your first full day end-to-end and confirm the system is carrying its weight. When this phase is done, you're indistinguishable from a partner who's been here since day one.",
     items: [
       {
+        id: 'post-read-lead-gen',
+        title: 'Read the lead gen plan',
+        description:
+          'Open the Pake app and navigate to Help → Lead Gen Plan in the left sidebar. This is the daily and weekly rhythm the firm runs on — how prospect outreach, content, commenting, discovery calls, and follow-ups fit together across a 90-day arc. Reading it before you work your first day is the difference between poking at the dashboard and running the playbook.',
+      },
+      {
         id: 'post-first-day',
         title: 'Work your first full day',
         description:
