@@ -8,6 +8,7 @@ import GetStarted from './pages/GetStarted'
 import BlogIndex from './pages/BlogIndex'
 import BlogPost from './pages/BlogPost'
 import AlfonsoOnboarding from './pages/AlfonsoOnboarding'
+import Partners from './pages/Partners'
 import NotFound from './pages/NotFound'
 
 function ScrollToTop() {
@@ -33,6 +34,7 @@ export default function App() {
         </Route>
 
         <Route path="/alfonso-onboarding" element={<AlfonsoOnboarding />} />
+        <Route path="/partners" element={<Partners />} />
 
         <Route path="*" element={<NotFound />} />
       </Routes>

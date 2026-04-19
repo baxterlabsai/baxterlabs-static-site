@@ -1,0 +1,506 @@
+import { useEffect } from 'react'
+
+export default function Partners() {
+  useEffect(() => {
+    document.title = 'BaxterLabs Advisory — Case Study Partner Invitation'
+  }, [])
+
+  return (
+    <div className="partners-page">
+      <style>{`
+        .partners-page {
+          --crimson: #7B1C2E;
+          --gold: #B8932A;
+          --gold-light: #D4AA4A;
+          --cream: #FAF7F2;
+          --charcoal: #1E1E1E;
+          --mid-gray: #5A5A5A;
+          --rule-gray: #D8D0C4;
+          --teal: #2A6472;
+
+          background: #E8E3DB;
+          font-family: 'Source Sans 3', sans-serif;
+          display: flex;
+          justify-content: center;
+          align-items: flex-start;
+          min-height: 100vh;
+          padding: 32px 16px;
+          color: var(--charcoal);
+        }
+        .partners-page *,
+        .partners-page *::before,
+        .partners-page *::after {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
+        .partners-page .page {
+          width: 100%;
+          max-width: 816px;
+          background: var(--cream);
+          display: flex;
+          flex-direction: column;
+          box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
+        }
+        .partners-page .top-rule { height: 6px; background: var(--crimson); }
+        .partners-page .gold-rule { height: 2px; background: var(--gold); margin: 0 48px; }
+
+        .partners-page .header {
+          padding: 28px 48px 20px;
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 24px;
+        }
+        .partners-page .wordmark { display: flex; flex-direction: column; }
+        .partners-page .wordmark img { height: 48px; width: auto; display: block; }
+        .partners-page .wordmark-sub {
+          font-size: 9px;
+          font-weight: 500;
+          color: var(--gold);
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          margin-top: 6px;
+        }
+        .partners-page .header-tag {
+          font-size: 9px;
+          font-weight: 600;
+          letter-spacing: 0.2em;
+          text-transform: uppercase;
+          color: var(--mid-gray);
+          margin-top: 6px;
+          text-align: right;
+        }
+
+        .partners-page .hero {
+          padding: 32px 48px 24px;
+          border-bottom: 1px solid var(--rule-gray);
+        }
+        .partners-page .hero-eyebrow {
+          font-size: 9.5px;
+          font-weight: 600;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+          color: var(--gold);
+          margin-bottom: 10px;
+        }
+        .partners-page .hero-headline {
+          font-family: 'Playfair Display', serif;
+          font-size: 32px;
+          font-weight: 700;
+          color: var(--crimson);
+          line-height: 1.18;
+          max-width: 580px;
+          margin-bottom: 14px;
+        }
+        .partners-page .hero-sub {
+          font-size: 13.5px;
+          font-weight: 300;
+          color: var(--mid-gray);
+          line-height: 1.65;
+          max-width: 600px;
+        }
+        .partners-page .hero-sub strong { color: var(--charcoal); font-weight: 600; }
+
+        .partners-page .body {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 240px;
+          gap: 0;
+          flex: 1;
+        }
+        .partners-page .body-left {
+          padding: 28px 36px 28px 48px;
+          border-right: 1px solid var(--rule-gray);
+        }
+        .partners-page .body-right { padding: 28px; background: #F2EDE5; }
+
+        .partners-page .section-label {
+          font-size: 8.5px;
+          font-weight: 700;
+          letter-spacing: 0.24em;
+          text-transform: uppercase;
+          color: var(--teal);
+          margin-bottom: 10px;
+          padding-bottom: 6px;
+          border-bottom: 1px solid var(--rule-gray);
+        }
+
+        .partners-page .deliverables-list { list-style: none; margin-bottom: 22px; }
+        .partners-page .deliverables-list li {
+          font-size: 12.5px;
+          color: var(--charcoal);
+          line-height: 1.5;
+          padding: 7px 0 7px 18px;
+          border-bottom: 1px solid var(--rule-gray);
+          position: relative;
+        }
+        .partners-page .deliverables-list li:last-child { border-bottom: none; }
+        .partners-page .deliverables-list li::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 6px;
+          height: 6px;
+          background: var(--gold);
+          border-radius: 50%;
+        }
+        .partners-page .deliverables-list li span {
+          display: block;
+          font-size: 11px;
+          color: var(--mid-gray);
+          font-weight: 300;
+          margin-top: 1px;
+        }
+
+        .partners-page .ask-list { list-style: none; margin-bottom: 22px; }
+        .partners-page .ask-list li {
+          font-size: 12.5px;
+          color: var(--charcoal);
+          line-height: 1.5;
+          padding: 5px 0 5px 18px;
+          position: relative;
+        }
+        .partners-page .ask-list li::before {
+          content: '—';
+          position: absolute;
+          left: 0;
+          color: var(--crimson);
+          font-weight: 600;
+          font-size: 11px;
+        }
+
+        .partners-page .process-steps { margin-bottom: 0; }
+        .partners-page .step {
+          display: flex;
+          gap: 12px;
+          padding: 6px 0;
+          border-bottom: 1px solid var(--rule-gray);
+          align-items: flex-start;
+        }
+        .partners-page .step:last-child { border-bottom: none; }
+        .partners-page .step-num {
+          width: 20px;
+          height: 20px;
+          min-width: 20px;
+          background: var(--crimson);
+          color: white;
+          font-size: 9px;
+          font-weight: 700;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-top: 2px;
+        }
+        .partners-page .step-text { font-size: 12px; color: var(--charcoal); line-height: 1.5; }
+        .partners-page .step-text strong { font-weight: 600; color: var(--charcoal); }
+
+        .partners-page .callout-box {
+          background: var(--crimson);
+          color: white;
+          padding: 18px;
+          margin-bottom: 18px;
+        }
+        .partners-page .callout-box .cb-label {
+          font-size: 8px;
+          font-weight: 700;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+          color: var(--gold-light);
+          margin-bottom: 8px;
+        }
+        .partners-page .callout-box .cb-headline {
+          font-family: 'Playfair Display', serif;
+          font-size: 18px;
+          font-weight: 700;
+          line-height: 1.25;
+          margin-bottom: 8px;
+        }
+        .partners-page .callout-box .cb-body {
+          font-size: 11px;
+          line-height: 1.6;
+          font-weight: 300;
+          opacity: 0.9;
+        }
+
+        .partners-page .sidebar-section { margin-bottom: 18px; }
+        .partners-page .sidebar-label {
+          font-size: 8px;
+          font-weight: 700;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+          color: var(--teal);
+          margin-bottom: 8px;
+          padding-bottom: 4px;
+          border-bottom: 1px solid var(--rule-gray);
+        }
+        .partners-page .sidebar-text {
+          font-size: 11.5px;
+          color: var(--charcoal);
+          line-height: 1.65;
+          font-weight: 300;
+        }
+        .partners-page .sidebar-text strong { font-weight: 600; color: var(--crimson); }
+
+        .partners-page .who-list { list-style: none; }
+        .partners-page .who-list li {
+          font-size: 11px;
+          color: var(--charcoal);
+          line-height: 1.5;
+          padding: 4px 0 4px 14px;
+          position: relative;
+          border-bottom: 1px solid var(--rule-gray);
+        }
+        .partners-page .who-list li:last-child { border-bottom: none; }
+        .partners-page .who-list li::before {
+          content: '✓';
+          position: absolute;
+          left: 0;
+          color: var(--teal);
+          font-size: 9px;
+          font-weight: 700;
+          top: 5px;
+        }
+
+        .partners-page .footer {
+          padding: 14px 48px;
+          border-top: 1px solid var(--rule-gray);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+        }
+        .partners-page .footer-content {
+          font-size: 10px;
+          color: var(--mid-gray);
+          text-align: center;
+          line-height: 1.7;
+          font-weight: 300;
+          letter-spacing: 0.02em;
+        }
+        .partners-page .footer-content strong { color: var(--crimson); font-weight: 600; }
+        .partners-page .gold-footer-rule { height: 4px; background: var(--gold); }
+
+        @media (max-width: 640px) {
+          .partners-page { padding: 0; }
+          .partners-page .page { box-shadow: none; }
+          .partners-page .header { padding: 20px 20px 14px; flex-wrap: wrap; }
+          .partners-page .wordmark img { height: 40px; }
+          .partners-page .header-tag { text-align: left; white-space: normal; }
+          .partners-page .gold-rule { margin: 0 20px; }
+          .partners-page .hero { padding: 24px 20px 20px; }
+          .partners-page .hero-headline { font-size: 24px; }
+          .partners-page .body { grid-template-columns: 1fr; }
+          .partners-page .body-left {
+            padding: 24px 20px;
+            border-right: none;
+            border-bottom: 1px solid var(--rule-gray);
+          }
+          .partners-page .body-right { padding: 24px 20px; }
+          .partners-page .footer { padding: 14px 20px; }
+        }
+
+        @media print {
+          .partners-page {
+            background: #ffffff;
+            padding: 0;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .partners-page .page { box-shadow: none; }
+        }
+      `}</style>
+
+      <div className="page">
+        <div className="top-rule" />
+
+        <div className="header">
+          <div className="wordmark">
+            <img src="/images/baxterlabs-logo.png" alt="BaxterLabs Advisory" />
+            <div className="wordmark-sub">Profit Leak &amp; Operational Efficiency</div>
+          </div>
+          <div className="header-tag">
+            Case Study Partner Invitation
+            <br />
+            Confidential — For Discussion Only
+          </div>
+        </div>
+
+        <div className="gold-rule" />
+
+        <div className="hero">
+          <div className="hero-eyebrow">A Selective Offer for Trusted Partners</div>
+          <div className="hero-headline">
+            We run the full diagnostic.
+            <br />
+            You get the findings. We get the story.
+          </div>
+          <div className="hero-sub">
+            BaxterLabs Advisory delivers a{' '}
+            <strong>14-day Profit Leak &amp; Operational Efficiency Diagnostic</strong> to
+            professional service firms — the same engagement we bring to paying clients at $12,500.
+            We are inviting a small number of firms we trust to participate as founding case study
+            partners, at no cost, in exchange for candid feedback and permission to reference the
+            findings in our marketing materials.
+          </div>
+        </div>
+
+        <div className="body">
+          <div className="body-left">
+            <div className="section-label">What You Receive</div>
+            <ul className="deliverables-list">
+              <li>
+                Executive Summary
+                <span>
+                  Board-ready 5–7 page summary of headline findings and top recommendations.
+                </span>
+              </li>
+              <li>
+                Full Diagnostic Report
+                <span>
+                  25–35 pages. Every identified profit leak quantified in dollars, with root cause
+                  analysis and source citations.
+                </span>
+              </li>
+              <li>
+                Implementation Roadmap
+                <span>
+                  Prioritized action plan with effort-vs-impact matrix, owners, and milestones.
+                </span>
+              </li>
+              <li>
+                Executive Presentation Deck
+                <span>
+                  12–18 slide deck built for your leadership debrief. Every finding visualized,
+                  every recommendation sequenced.
+                </span>
+              </li>
+              <li>
+                Profit Leak Quantification Workbook
+                <span>
+                  The underlying financial model — every calculation, benchmark comparison, and
+                  dollar figure, fully documented.
+                </span>
+              </li>
+              <li>
+                Retainer Proposal (Optional)
+                <span>
+                  If the findings warrant ongoing implementation support, we will prepare a
+                  proposal — no obligation.
+                </span>
+              </li>
+            </ul>
+
+            <div className="section-label" style={{ marginTop: 4 }}>
+              What We Ask
+            </div>
+            <ul className="ask-list">
+              <li>
+                At least two full years of P&amp;L and financial data plus the current stub year,
+                shared via our secure upload portal
+              </li>
+              <li>
+                Three 60-minute interviews with you and up to two members of your leadership team
+              </li>
+              <li>
+                Permission to reference findings (anonymized or named, your choice) in our case
+                study materials
+              </li>
+              <li>A brief candid conversation after delivery about your experience</li>
+            </ul>
+
+            <div className="section-label" style={{ marginTop: 4 }}>
+              How It Works
+            </div>
+            <div className="process-steps">
+              <div className="step">
+                <div className="step-num">1</div>
+                <div className="step-text">
+                  <strong>NDA &amp; Data Upload (Days 1–2)</strong> — We send a mutual NDA and a
+                  secure data request checklist. You upload financials via our client portal.
+                </div>
+              </div>
+              <div className="step">
+                <div className="step-num">2</div>
+                <div className="step-text">
+                  <strong>Research &amp; Analysis (Days 3–9)</strong> — We model your financials
+                  against industry benchmarks and conduct structured leadership interviews.
+                </div>
+              </div>
+              <div className="step">
+                <div className="step-num">3</div>
+                <div className="step-text">
+                  <strong>Report Assembly (Days 10–13)</strong> — Full diagnostic report, executive
+                  summary, presentation deck, and 90-day roadmap are produced.
+                </div>
+              </div>
+              <div className="step">
+                <div className="step-num">4</div>
+                <div className="step-text">
+                  <strong>Executive Debrief (Day 14)</strong> — We walk your team through every
+                  finding. Every dollar figure is explained and every recommendation is actionable.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="body-right">
+            <div className="callout-box">
+              <div className="cb-label">The Value Exchange</div>
+              <div className="cb-headline">Full $12,500 engagement. Zero cost to you.</div>
+              <div className="cb-body">
+                Every deliverable a paying client receives. The only difference is the invoice.
+              </div>
+            </div>
+
+            <div className="sidebar-section">
+              <div className="sidebar-label">Who This Is For</div>
+              <ul className="who-list">
+                <li>Professional service firm, $5M–$50M revenue</li>
+                <li>20–200 employees</li>
+                <li>Founder-led or owner-operated</li>
+                <li>Willing to share financial data under NDA</li>
+                <li>Open to findings being referenced (anonymized or named)</li>
+              </ul>
+            </div>
+
+            <div className="sidebar-section">
+              <div className="sidebar-label">Industries We Cover</div>
+              <ul className="who-list">
+                <li>Accounting &amp; advisory</li>
+                <li>Legal &amp; professional services</li>
+                <li>Staffing &amp; executive search</li>
+                <li>Architecture &amp; engineering</li>
+                <li>Management consulting</li>
+              </ul>
+            </div>
+
+            <div className="sidebar-section">
+              <div className="sidebar-label">About BaxterLabs</div>
+              <div className="sidebar-text">
+                <strong>George DeVries</strong> brings deep experience in business operations,
+                client relationships, and building growth-stage professional service businesses.{' '}
+                <strong>Alfonso Cordon</strong> brings an institutional finance and analytical
+                background from senior roles at <strong>Moody's Analytics</strong>. Together they
+                apply enterprise-grade rigor to the mid-market firms that have never had access to
+                it.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="footer">
+          <div className="footer-content">
+            <strong>George DeVries</strong>, Managing Partner{'\u2002'}·{'\u2002'}
+            george@baxterlabs.ai{'\u2002\u2002\u2002\u2002'}
+            <strong>Alfonso Cordon</strong>, Partner{'\u2002'}·{'\u2002'}alfonso@baxterlabs.ai
+            {'\u2002\u2002\u2002\u2002'}BaxterLabs.ai{'\u2002'}·{'\u2002'}Confidential
+          </div>
+        </div>
+
+        <div className="gold-footer-rule" />
+      </div>
+    </div>
+  )
+}
