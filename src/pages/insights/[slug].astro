@@ -1,0 +1,121 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import { marked } from 'marked'
+
+interface Post {
+  id: string
+  title: string
+  blog_slug: string
+  seo_title: string | null
+  seo_description: string | null
+  featured_image_url: string | null
+  published_date: string | null
+  body: string | null
+}
+
+export async function getStaticPaths() {
+  const api =
+    import.meta.env.BLOG_API_URL || 'https://baxterlabs-api.onrender.com/api/public/blog'
+  try {
+    const listRes = await fetch(api)
+    if (!listRes.ok) {
+      console.warn(`[insights/[slug]] blog list API returned ${listRes.status}; no slug routes generated`)
+      return []
+    }
+    const list = (await listRes.json()) as Array<{ blog_slug?: string }>
+    const slugs = list
+      .filter((p) => p && typeof p.blog_slug === 'string' && p.blog_slug.length > 0)
+      .map((p) => p.blog_slug as string)
+
+    const entries = await Promise.all(
+      slugs.map(async (slug) => {
+        try {
+          const res = await fetch(`${api}/${slug}`)
+          if (!res.ok) {
+            console.warn(`[insights/[slug]] post fetch failed for ${slug}: ${res.status}`)
+            return null
+          }
+          const post = (await res.json()) as Post
+          return { params: { slug: post.blog_slug }, props: { post } }
+        } catch (err) {
+          console.warn(`[insights/[slug]] post fetch threw for ${slug}: ${(err as Error).message}`)
+          return null
+        }
+      })
+    )
+    return entries.filter((e): e is { params: { slug: string }; props: { post: Post } } => e !== null)
+  } catch (err) {
+    console.warn(`[insights/[slug]] blog list fetch threw (${(err as Error).message}); no slug routes generated`)
+    return []
+  }
+}
+
+interface Props {
+  post: Post
+}
+
+const { post } = Astro.props as Props
+
+marked.setOptions({ gfm: true, breaks: false })
+const bodyHtml = post.body ? (marked.parse(post.body) as string) : ''
+
+const seoTitle = post.seo_title || post.title
+const seoDesc = post.seo_description || ''
+
+function formatDate(d: string | null) {
+  if (!d) return ''
+  return new Date(d).toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+---
+<BaseLayout
+  title={`${seoTitle} | BaxterLabs Advisory`}
+  description={seoDesc}
+  ogImage={post.featured_image_url || undefined}
+  canonical={`https://baxterlabs.ai/insights/${post.blog_slug}`}
+>
+  <section class="bg-ivory py-12 md:py-16">
+    <div class="max-w-[680px] mx-auto px-4 sm:px-6">
+      <a
+        href="/insights"
+        class="inline-flex items-center text-teal font-medium text-sm hover:underline mb-8"
+      >
+        ← Back to Insights
+      </a>
+
+      <header class="mb-8">
+        {post.published_date && (
+          <p class="text-sm text-charcoal/50 mb-2">
+            {formatDate(post.published_date)}
+          </p>
+        )}
+        <h1 class="font-display text-3xl md:text-4xl font-bold text-crimson leading-tight">
+          {post.title}
+        </h1>
+        <hr class="mt-6 border-t-2 border-gold" />
+      </header>
+
+      <article class="blog-prose" set:html={bodyHtml}></article>
+
+      <div class="mt-12 pt-8 border-t-2 border-gold">
+        <h2 class="font-display text-2xl font-bold text-crimson mb-3">
+          Is this pattern showing up in your firm?
+        </h2>
+        <p class="text-charcoal leading-relaxed mb-6">
+          BaxterLabs Advisory delivers 14-day profit diagnostics for professional
+          service firms with $5M–$50M in revenue. We find the margin leakage your
+          accountant doesn't report.
+        </p>
+        <a
+          href="/#services"
+          class="inline-flex items-center justify-center px-6 h-12 bg-teal text-white font-semibold rounded-lg transition-colors hover:bg-teal/90"
+        >
+          Learn More About the Diagnostic
+        </a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

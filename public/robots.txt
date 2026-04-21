@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /alfonso-onboarding
 
-Sitemap: https://www.baxterlabs.ai/sitemap.xml
+Sitemap: https://www.baxterlabs.ai/sitemap-index.xml

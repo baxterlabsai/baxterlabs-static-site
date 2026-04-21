@@ -1,0 +1,115 @@
+---
+interface Props {
+  pathname: string
+}
+
+const { pathname } = Astro.props
+
+const navLinks = [
+  { to: '/', label: 'Home' },
+  { to: '/services', label: 'Services' },
+  { to: '/about', label: 'About' },
+  { to: '/insights', label: 'Insights' },
+]
+
+function isActive(path: string, to: string) {
+  if (to === '/') return path === '/'
+  return path.startsWith(to)
+}
+---
+<nav class="fixed top-0 w-full z-50 glass-nav border-b border-surface-container" data-mobile-nav>
+  <div class="flex justify-between items-center px-6 md:px-12 py-4 max-w-full mx-auto">
+    <a href="/" class="flex items-center">
+      <img
+        alt="BaxterLabs Logo"
+        class="h-[83px] w-auto object-contain"
+        src="/images/baxterlabs-logo.png"
+      />
+    </a>
+
+    <div class="hidden md:flex gap-10 items-center">
+      {navLinks.map((link) => (
+        <a
+          href={link.to}
+          class={isActive(pathname, link.to)
+            ? 'text-primary font-bold border-b-2 border-primary transition-colors duration-300'
+            : 'text-on-surface-variant font-medium hover:text-primary transition-colors duration-300'}
+        >
+          {link.label}
+        </a>
+      ))}
+    </div>
+
+    <div class="flex items-center gap-4">
+      <a
+        href="/get-started"
+        class="hidden md:inline-block bg-gradient-to-br from-primary to-primary-container text-on-primary px-6 py-3 rounded-sm font-label text-sm uppercase tracking-wider font-bold shadow-sm active:scale-95 transition-all"
+      >
+        Start Your Diagnostic
+      </a>
+
+      <button
+        class="md:hidden p-2 text-on-surface"
+        data-mobile-toggle
+        aria-label="Toggle menu"
+        aria-expanded="false"
+      >
+        <svg data-icon="open" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+        <svg data-icon="close" class="w-6 h-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="md:hidden bg-surface border-t border-surface-container hidden" data-mobile-menu>
+    <div class="px-6 py-4 space-y-3">
+      {navLinks.map((link) => (
+        <a
+          href={link.to}
+          class={`block text-base font-medium py-2 transition-colors ${
+            isActive(pathname, link.to)
+              ? 'text-primary font-bold'
+              : 'text-on-surface-variant hover:text-primary'
+          }`}
+        >
+          {link.label}
+        </a>
+      ))}
+      <a
+        href="/get-started"
+        class="block text-center bg-gradient-to-br from-primary to-primary-container text-on-primary px-6 py-3 rounded-sm font-label text-sm uppercase tracking-wider font-bold"
+      >
+        Start Your Diagnostic
+      </a>
+    </div>
+  </div>
+</nav>
+
+<script>
+  const nav = document.querySelector<HTMLElement>('[data-mobile-nav]')
+  const btn = nav?.querySelector<HTMLButtonElement>('[data-mobile-toggle]')
+  const menu = nav?.querySelector<HTMLElement>('[data-mobile-menu]')
+  const openIcon = btn?.querySelector<SVGElement>('[data-icon="open"]')
+  const closeIcon = btn?.querySelector<SVGElement>('[data-icon="close"]')
+
+  btn?.addEventListener('click', () => {
+    const expanded = btn.getAttribute('aria-expanded') === 'true'
+    const next = !expanded
+    btn.setAttribute('aria-expanded', String(next))
+    menu?.classList.toggle('hidden', !next)
+    openIcon?.classList.toggle('hidden', next)
+    closeIcon?.classList.toggle('hidden', !next)
+  })
+
+  menu?.querySelectorAll('a').forEach((link) => {
+    link.addEventListener('click', () => {
+      btn?.setAttribute('aria-expanded', 'false')
+      menu.classList.add('hidden')
+      openIcon?.classList.remove('hidden')
+      closeIcon?.classList.add('hidden')
+    })
+  })
+</script>

@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import SEO from '../components/SEO'
 
 interface FormData {
   primary_contact_name: string
@@ -41,9 +40,12 @@ const EMPLOYEE_OPTIONS = [
 ]
 
 const CALENDLY_URL = 'https://calendly.com/george-baxterlabs'
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_URL =
+  import.meta.env.PUBLIC_API_URL ||
+  import.meta.env.VITE_API_URL ||
+  'http://localhost:8000'
 
-export default function GetStarted() {
+export default function GetStartedForm() {
   const [form, setForm] = useState<FormData>(initialFormData)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
@@ -141,11 +143,6 @@ export default function GetStarted() {
 
   return (
     <>
-      <SEO
-        title="Start Your Diagnostic | BaxterLabs Advisory"
-        description="Submit your details to begin the diagnostic review process. Each company is reviewed in advance using publicly available data and internal research models."
-      />
-
       {/* Header */}
       <section className="bg-surface px-6 md:px-12 py-16 md:py-20">
         <div className="max-w-2xl mx-auto text-center">
