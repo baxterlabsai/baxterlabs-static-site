@@ -1,0 +1,55 @@
+---
+interface Props {
+  formId: string
+  asset: 'field_guide' | 'self_assessment'
+  submitLabel?: string
+}
+
+const { formId, asset, submitLabel = 'Send the guide' } = Astro.props
+---
+<form class="rp-form" id={formId} data-asset={asset} novalidate>
+  <div class="rp-field">
+    <label for={`${formId}-name`}>Your name <span class="req">*</span></label>
+    <input id={`${formId}-name`} name="name" type="text" required autocomplete="name" />
+  </div>
+  <div class="rp-field">
+    <label for={`${formId}-email`}>Work email <span class="req">*</span></label>
+    <input id={`${formId}-email`} name="email" type="email" required autocomplete="email" />
+  </div>
+  <div class="rp-field">
+    <label for={`${formId}-firm`}>Firm name <span class="req">*</span></label>
+    <input id={`${formId}-firm`} name="firm" type="text" required autocomplete="organization" />
+  </div>
+  <div class="rp-field">
+    <label for={`${formId}-rev`}>Firm revenue <span class="req">*</span></label>
+    <select id={`${formId}-rev`} name="revenue" required>
+      <option value="">Select a range</option>
+      <option value="under-5">Under $5M</option>
+      <option value="5-10">$5M&ndash;$10M</option>
+      <option value="10-25">$10M&ndash;$25M</option>
+      <option value="25-50">$25M&ndash;$50M</option>
+      <option value="over-50">Over $50M</option>
+    </select>
+  </div>
+  <div class="rp-field rp-form-full">
+    <label for={`${formId}-role`}>Your role</label>
+    <select id={`${formId}-role`} name="role">
+      <option value="">Select a role (optional)</option>
+      <option>Owner</option>
+      <option>Managing Partner</option>
+      <option>CFO</option>
+      <option>COO</option>
+      <option>Other</option>
+    </select>
+  </div>
+
+  <div class="capture-error rp-form-full" data-error></div>
+
+  <div class="capture-submit-row rp-form-full">
+    <span class="capture-promise">We'll send it once. We won't sell your email. Unsubscribe any time.</span>
+    <button type="submit" class="rp-btn">
+      {submitLabel}
+      <span class="arrow">&rarr;</span>
+    </button>
+  </div>
+</form>

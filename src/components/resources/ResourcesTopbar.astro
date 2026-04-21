@@ -1,0 +1,20 @@
+---
+interface Props {
+  rightLinkHref?: string
+  rightLinkLabel?: string
+  leftLinkHref?: string
+  leftLinkLabel?: string
+}
+
+const {
+  rightLinkHref = '/get-started',
+  rightLinkLabel = 'Book a call',
+  leftLinkHref = '/',
+  leftLinkLabel = '← BaxterLabs',
+} = Astro.props
+---
+<div class="rp-topbar">
+  <a href={leftLinkHref}>{leftLinkLabel}</a>
+  <span class="rp-brand">BaxterLabs Advisory</span>
+  <a href={rightLinkHref}>{rightLinkLabel}</a>
+</div>

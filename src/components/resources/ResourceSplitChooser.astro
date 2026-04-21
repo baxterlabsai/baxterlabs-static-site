@@ -1,0 +1,250 @@
+---
+import LeadCaptureForm from './LeadCaptureForm.astro'
+import ResourcesFootnote from './ResourcesFootnote.astro'
+
+interface Props {
+  preselect?: 'guide' | 'assess' | null
+}
+const { preselect = null } = Astro.props
+---
+<main class="rp-page rp-wide" data-chooser data-preselect={preselect ?? ''}>
+
+  <header class="hub-head">
+    <div>
+      <div class="rp-eyebrow-row">
+        <span class="rp-eyebrow-rule"></span>
+        <span class="rp-eyebrow-txt">Free Resources &middot; For Managing Partners</span>
+      </div>
+      <h1 class="rp-display">Two ways to see<br/>what your <span class="roman">P&amp;L</span> won't.</h1>
+    </div>
+    <div>
+      <p class="rp-deck">
+        Most $5M&ndash;$50M professional service firms are losing between <em>$200K and $1M a year</em>
+        to five ordinary patterns that don't show up on the income statement. Start with either. They're designed to be read in one sitting.
+      </p>
+    </div>
+  </header>
+
+  <div class="hub-split" role="radiogroup" aria-label="Choose a resource">
+
+    <div class="hub-panel" data-panel="guide" role="radio" aria-checked="false" tabindex="0">
+      <div class="hub-panel-top">
+        <div>
+          <span class="hub-panel-mk">Field guide &middot; PDF &amp; Web</span>
+          <div style="height: 0.75rem"></div>
+          <div class="hub-toc" aria-hidden="true">
+            <div class="ln"><span class="num">I</span><span>Payroll Drift</span><span class="pg">$80K&ndash;$300K</span></div>
+            <div class="ln"><span class="num">II</span><span>Vendor Sprawl</span><span class="pg">$60K&ndash;$200K</span></div>
+            <div class="ln"><span class="num">III</span><span>Billing Lag</span><span class="pg">$50K&ndash;$250K</span></div>
+            <div class="ln"><span class="num">IV</span><span>Software Redundancy</span><span class="pg">$30K&ndash;$120K</span></div>
+            <div class="ln"><span class="num">V</span><span>Approval Bottlenecks</span><span class="pg">$40K&ndash;$200K</span></div>
+          </div>
+        </div>
+        <span class="hub-panel-num">01</span>
+      </div>
+
+      <h2 class="hub-h2">The <span class="roman">5</span> Profit Leaks<br/>Hiding in Every Firm</h2>
+      <p class="hub-desc">A field guide for owners and managing partners. Five categories, five real engagements, five diagnostic questions. The mechanism before anyone hires anyone to fix it.</p>
+
+      <div class="hub-time">12 minutes, coffee in hand</div>
+
+      <div class="hub-outcome">
+        <span class="hub-outcome-label">In this guide</span>5 categories &middot; 5 real-engagement examples &middot; 5 diagnostic questions
+      </div>
+
+      <div class="hub-cta-row">
+        <span class="hub-radio" aria-hidden="true"></span>
+        <span class="hub-radio-lbl">Send me the guide</span>
+      </div>
+    </div>
+
+    <div class="hub-panel is-cream" data-panel="assess" role="radio" aria-checked="false" tabindex="0">
+      <div class="hub-panel-top">
+        <div>
+          <span class="hub-panel-mk">Self-assessment &middot; Interactive</span>
+          <div style="height: 0.75rem"></div>
+          <div class="hub-pips" aria-hidden="true">
+            <span class="hub-pip is-filled"></span>
+            <span class="hub-pip is-filled"></span>
+            <span class="hub-pip is-filled"></span>
+            <span class="hub-pip is-filled"></span>
+            <span class="hub-pip is-filled"></span>
+            <span class="hub-pip is-filled"></span>
+            <span class="hub-pip is-filled"></span>
+            <span class="hub-pip is-filled"></span>
+            <span class="hub-pip"></span>
+            <span class="hub-pip"></span>
+            <span class="hub-pip"></span>
+            <span class="hub-pip"></span>
+            <span class="hub-pip-lbl">12 questions</span>
+          </div>
+        </div>
+        <span class="hub-panel-num">02</span>
+      </div>
+
+      <h2 class="hub-h2">The Profit Leak<br/>Self-Assessment</h2>
+      <p class="hub-desc">Twelve questions, a five-point honesty scale. You'll get a band, an exposure range in dollars, and a specific interpretation written for firms your size.</p>
+
+      <div class="hub-time">4 minutes, honest answers</div>
+
+      <div class="hub-outcome">
+        <span class="hub-outcome-label">Typical reader</span>finds $180K&ndash;$520K in annual exposure
+      </div>
+
+      <div class="hub-cta-row">
+        <span class="hub-radio" aria-hidden="true"></span>
+        <span class="hub-radio-lbl">Start the assessment</span>
+      </div>
+    </div>
+  </div>
+
+  <section class="capture-card" data-capture>
+    <div class="capture-head">
+      <div class="kicker">Where should we send it</div>
+      <div class="capture-title" data-capture-title>Send me the field guide.</div>
+      <p class="capture-sub" data-capture-sub>
+        I'll email a reader-friendly PDF and a link to the web version. <strong>No drip sequence.</strong> One email, the guide, done.
+      </p>
+    </div>
+
+    <div data-capture-body>
+      <div class="capture-alt" data-capture-alt>
+        The self-assessment captures your email <em>after</em> you see your score &mdash; so you can decide if the number's worth your inbox. <a href="/resources/self-assessment/take">Start the 12 questions &rarr;</a>
+      </div>
+
+      <LeadCaptureForm formId="hub-capture" asset="field_guide" submitLabel="Send the guide" />
+    </div>
+  </section>
+
+  <section class="success-card" data-success aria-live="polite">
+    <div class="kicker">On its way</div>
+    <div class="success-title">Check your inbox in about a minute.</div>
+    <p class="success-body">I've sent the field guide PDF and a link to the web reader to the email you gave. If you'd rather start reading now, you can open the web version below.</p>
+    <div class="success-actions">
+      <a class="rp-btn" href="/resources/five-profit-leaks/read">Open the web version <span class="arrow">&rarr;</span></a>
+      <a class="rp-btn is-ghost" href="/resources/self-assessment/take">Take the assessment <span class="arrow">&rarr;</span></a>
+    </div>
+  </section>
+
+  <ResourcesFootnote />
+</main>
+
+<script>
+  import { insertLeadMagnetCapture, type RevenueRange } from '../../lib/supabase'
+
+  type Which = 'guide' | 'assess' | null
+
+  const root = document.querySelector<HTMLElement>('[data-chooser]')
+  if (!root) throw new Error('chooser root missing')
+
+  const panels = Array.from(root.querySelectorAll<HTMLElement>('[data-panel]'))
+  const captureTitle = root.querySelector<HTMLElement>('[data-capture-title]')
+  const captureSub = root.querySelector<HTMLElement>('[data-capture-sub]')
+  const captureAlt = root.querySelector<HTMLElement>('[data-capture-alt]')
+  const captureCard = root.querySelector<HTMLElement>('[data-capture]')
+  const successCard = root.querySelector<HTMLElement>('[data-success]')
+  const form = root.querySelector<HTMLFormElement>('form#hub-capture')
+  const formFields = form ? Array.from(form.querySelectorAll<HTMLElement>('.rp-field, .capture-submit-row')) : []
+  const errorEl = form?.querySelector<HTMLElement>('[data-error]')
+  const submitBtn = form?.querySelector<HTMLButtonElement>('button[type="submit"]')
+
+  const GUIDE_TITLE = 'Send me the field guide.'
+  const GUIDE_SUB = "I'll email a reader-friendly PDF and a link to the web version. <strong>No drip sequence.</strong> One email, the guide, done."
+  const ASSESS_TITLE = 'You take the assessment first.'
+  const ASSESS_SUB = "We only ask for your email <strong>after</strong> you see your score. The number is the hook, and revealing it should earn the email, not the other way around."
+
+  function select(which: Which) {
+    const guide = which === 'guide'
+    const assess = which === 'assess'
+    for (const p of panels) {
+      const isSel = p.dataset.panel === which
+      p.classList.toggle('is-selected', isSel)
+      p.setAttribute('aria-checked', String(isSel))
+    }
+    if (!captureTitle || !captureSub || !captureAlt) return
+
+    if (assess) {
+      captureTitle.textContent = ASSESS_TITLE
+      captureSub.innerHTML = ASSESS_SUB
+      captureAlt.classList.add('visible')
+      for (const el of formFields) el.style.display = 'none'
+    } else {
+      captureTitle.textContent = GUIDE_TITLE
+      captureSub.innerHTML = GUIDE_SUB
+      captureAlt.classList.remove('visible')
+      for (const el of formFields) el.style.display = ''
+      // guide selected vs. null both show the form; null means no panel is visibly selected
+      if (!guide) {
+        for (const p of panels) {
+          p.classList.remove('is-selected')
+          p.setAttribute('aria-checked', 'false')
+        }
+      }
+    }
+  }
+
+  for (const p of panels) {
+    p.addEventListener('click', () => select(p.dataset.panel as Which))
+    p.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        select(p.dataset.panel as Which)
+      }
+    })
+  }
+
+  // Initial selection: data-preselect attr wins, then ?asset= query, else 'guide'
+  const params = new URLSearchParams(location.search)
+  const attrPre = (root.dataset.preselect || '').trim() || null
+  const queryPre = params.get('asset')
+  const initial: Which = (attrPre === 'guide' || attrPre === 'assess')
+    ? attrPre
+    : (queryPre === 'guide' || queryPre === 'assess')
+      ? queryPre
+      : 'guide'
+  select(initial)
+
+  // Form submit → Supabase insert → success card
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    if (!form.checkValidity()) { form.reportValidity(); return }
+    if (errorEl) { errorEl.classList.remove('visible'); errorEl.textContent = '' }
+
+    const fd = new FormData(form)
+    const name = String(fd.get('name') ?? '').trim()
+    const email = String(fd.get('email') ?? '').trim()
+    const firm = String(fd.get('firm') ?? '').trim()
+    const revenue = String(fd.get('revenue') ?? '').trim() as RevenueRange | ''
+    const role = String(fd.get('role') ?? '').trim()
+
+    if (!name || !email || !firm || !revenue) {
+      form.reportValidity()
+      return
+    }
+
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.style.opacity = '0.6' }
+    try {
+      await insertLeadMagnetCapture({
+        asset: 'field_guide',
+        name,
+        email,
+        company_name: firm,
+        revenue_range: revenue || null,
+        role: role || null,
+      })
+      captureCard?.style.setProperty('display', 'none')
+      successCard?.classList.add('visible')
+      if (successCard) {
+        const y = successCard.getBoundingClientRect().top + window.scrollY - 80
+        window.scrollTo({ top: y, behavior: 'smooth' })
+      }
+    } catch (err) {
+      if (errorEl) {
+        errorEl.textContent = "Something went wrong sending that. Try again, or email george@baxterlabs.ai directly."
+        errorEl.classList.add('visible')
+      }
+      console.error('[lead_magnet_captures insert]', err)
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '' }
+    }
+  })
+</script>

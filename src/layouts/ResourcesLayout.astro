@@ -1,0 +1,41 @@
+---
+import BarePageLayout from './BarePageLayout.astro'
+import ResourcesTopbar from '../components/resources/ResourcesTopbar.astro'
+import '../styles/resources.css'
+
+interface Props {
+  title: string
+  description: string
+  canonical?: string
+  ogImage?: string
+  rightLinkHref?: string
+  rightLinkLabel?: string
+  leftLinkHref?: string
+  leftLinkLabel?: string
+}
+
+const {
+  title,
+  description,
+  canonical,
+  ogImage,
+  rightLinkHref = '/get-started',
+  rightLinkLabel = 'Book a call',
+  leftLinkHref = '/',
+  leftLinkLabel = '← BaxterLabs',
+} = Astro.props
+---
+<BarePageLayout
+  title={title}
+  description={description}
+  canonical={canonical}
+  ogImage={ogImage}
+>
+  <ResourcesTopbar
+    rightLinkHref={rightLinkHref}
+    rightLinkLabel={rightLinkLabel}
+    leftLinkHref={leftLinkHref}
+    leftLinkLabel={leftLinkLabel}
+  />
+  <slot />
+</BarePageLayout>
