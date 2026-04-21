@@ -1,11 +1,37 @@
 ---
-import BarePageLayout from '../layouts/BarePageLayout.astro'
+import BaseLayout from '../layouts/BaseLayout.astro'
 import PositioningMapIsland from '../components/islands/PositioningMap'
 ---
-<BarePageLayout
+<BaseLayout
   title="The Positioning Map | BaxterLabs Advisory"
   description="Where BaxterLabs sits on the competitive map. A 2x2 view of depth, speed, rigor, and price versus Big 4, Fractional CFO, and Status Quo."
   canonical="https://baxterlabs.ai/positioning-map"
 >
   <PositioningMapIsland client:load />
-</BarePageLayout>
+
+  {/* CTA */}
+  <section class="bg-surface-container-highest px-6 md:px-12 py-24 border-t border-surface-container">
+    <div class="max-w-4xl mx-auto text-center">
+      <span class="font-label text-secondary uppercase tracking-[0.3em] text-xs font-bold block mb-6">
+        Ready to Map Your Leakage
+      </span>
+      <h2 class="font-display italic text-5xl md:text-6xl text-primary mb-8 leading-tight">
+        See where your firm stands.
+      </h2>
+      <p class="text-on-surface-variant text-lg md:text-xl mb-12 max-w-2xl mx-auto leading-relaxed">
+        The 14-day diagnostic delivers what no other quadrant can: audit-grade forensic analysis, quantified leak-by-leak, at a price a managing partner can approve without a board vote. Two partners. Fourteen days. Every finding traceable.
+      </p>
+      <div class="flex justify-center">
+        <a
+          href="/get-started"
+          class="bg-primary text-on-primary px-12 py-6 rounded-sm font-label text-sm uppercase tracking-[0.3em] font-bold shadow-xl hover:bg-primary-container transition-all"
+        >
+          Start Your Diagnostic
+        </a>
+      </div>
+      <p class="mt-8 text-sm text-on-surface-variant/60 font-medium">
+        A mutual confidentiality agreement (NDA) is executed prior to any data intake.
+      </p>
+    </div>
+  </section>
+</BaseLayout>

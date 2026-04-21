@@ -75,7 +75,7 @@ const MATRICES: Record<MatrixKey, MatrixData> = {
     players: [
       { id: 'bl', name: 'BaxterLabs Advisory', sub: 'Audit-grade \u00B7 one-time $12,500', quad: 'Upper-Right', x: 88, y: 86, labelPos: 'l' },
       { id: 'big4', name: 'Big 4 Consulting', sub: 'Institutional rigor, enterprise fee', quad: 'Upper-Left', x: 15, y: 80, labelPos: 'r' },
-      { id: 'fcfo', name: 'Fractional CFO', sub: 'Personal frameworks \u00B7 retainer', quad: 'Lower-Right', x: 72, y: 22, labelPos: 'l' },
+      { id: 'fcfo', name: 'Fractional CFO', sub: 'Ongoing advisory \u00B7 monthly retainer', quad: 'Lower-Right', x: 72, y: 22, labelPos: 'l' },
       { id: 'sq', name: 'Status Quo', sub: 'No methodology \u00B7 no direct spend', quad: 'At Origin', x: 50, y: 50, labelPos: 'r' },
     ],
     compare: [
@@ -698,29 +698,14 @@ export default function PositioningMap() {
           letter-spacing: 0.05em;
         }
 
-        /* ============ FOOTNOTE ============ */
-        .positioning-page .footnote {
-          margin-top: 3rem;
-          padding-top: 1.5rem;
-          border-top: 1px solid var(--bl-gray-light);
-          display: flex;
-          justify-content: space-between;
-          gap: 1.5rem;
-          flex-wrap: wrap;
+        /* ============ CONTEXT PARA ============ */
+        .positioning-page .context-para {
+          max-width: 60rem;
+          margin: -1rem 0 3rem;
           font-family: var(--font-body);
-          font-size: 0.7rem;
-          letter-spacing: 0.15em;
-          text-transform: uppercase;
-          color: var(--bl-gray-warm);
-        }
-        .positioning-page .footnote .brand {
-          font-family: var(--font-display);
-          font-style: italic;
-          font-weight: 700;
-          font-size: 0.85rem;
-          text-transform: none;
-          letter-spacing: 0;
-          color: var(--bl-crimson);
+          font-size: 1.0625rem;
+          line-height: 1.7;
+          color: var(--fg-2);
         }
       `}</style>
 
@@ -747,6 +732,10 @@ export default function PositioningMap() {
           </div>
         </header>
 
+        <p className="context-para">
+          Firms evaluating financial advisory typically weigh four options: a Big 4 engagement, a Fractional CFO, the status quo, or a forensic diagnostic firm. Each occupies a different position on the two dimensions that matter most &mdash; methodological rigor and accessibility of price and timeline. The map below plots where each option sits, and why the upper-right quadrant has been structurally empty until now.
+        </p>
+
         <div className="meta-strip">
           <div className="meta-item">
             <span className="meta-label">Segment</span>
@@ -766,7 +755,7 @@ export default function PositioningMap() {
           </div>
           <div className="meta-item">
             <span className="meta-label">Methodology</span>
-            <span className="meta-value">8-Phase, AI-Assisted Pipeline</span>
+            <span className="meta-value">8-Phase Forensic Protocol</span>
           </div>
         </div>
 
@@ -902,11 +891,6 @@ export default function PositioningMap() {
           </div>
         </div>
 
-        <div className="footnote">
-          <div>Positioning Map v1.1 &middot; Internal &middot; Apr 2026</div>
-          <div className="brand">BaxterLabs Advisory</div>
-          <div>Source: Positioning Memo &sect;2&ndash;3</div>
-        </div>
       </div>
     </main>
   )
