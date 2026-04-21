@@ -93,10 +93,7 @@ export default function PositioningMap() {
     const stored = window.localStorage.getItem(STORAGE_KEY)
     return stored === 'B' ? 'B' : 'A'
   })
-  const [userInteracted, setUserInteracted] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false
-    return window.localStorage.getItem(STORAGE_KEY) !== null
-  })
+  const [userInteracted, setUserInteracted] = useState<boolean>(false)
   const [isVisible, setIsVisible] = useState(true)
   const sectionRef = useRef<HTMLElement | null>(null)
 
@@ -714,7 +711,7 @@ export default function PositioningMap() {
           <div>
             <div className="eyebrow-row">
               <span className="eyebrow-rule" aria-hidden="true" />
-              <span className="eyebrow-txt">The Competitive Landscape &mdash; v1.1</span>
+              <span className="eyebrow-txt">The Competitive Landscape</span>
             </div>
             <h1 className="display">
               Where BaxterLabs <span className="roman">sits</span>
