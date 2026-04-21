@@ -32,16 +32,19 @@ export type CaptureInput = {
   role: string | null
 }
 
+// We generate the id client-side so the insert doesn't need RETURNING. Under
+// the anon/insert-only RLS posture there is no SELECT policy on the table, and
+// PostgreSQL blocks the RETURNING clause when no SELECT policy applies — the
+// error surfaces as a misleading "new row violates row-level security policy".
 export async function insertLeadMagnetCapture(
   input: CaptureInput
 ): Promise<{ id: string }> {
-  const { data, error } = await getSupabase()
+  const id = crypto.randomUUID()
+  const { error } = await getSupabase()
     .from('lead_magnet_captures')
-    .insert(input)
-    .select('id')
-    .single()
+    .insert({ id, ...input })
   if (error) throw error
-  return data
+  return { id }
 }
 
 export type ScoreInput = {

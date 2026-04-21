@@ -1,5 +1,9 @@
 -- Lead magnet funnel capture tables
 -- Public marketing-site prospect captures (anonymous INSERT only, no SELECT).
+--
+-- IMPORTANT: clients must generate row ids themselves and insert without
+-- RETURNING. PostgreSQL requires a SELECT policy for the RETURNING clause
+-- to succeed, and this table intentionally has none. See src/lib/supabase.ts.
 
 create table if not exists public.lead_magnet_captures (
   id uuid primary key default gen_random_uuid(),
