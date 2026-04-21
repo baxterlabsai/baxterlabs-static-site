@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import SEO from '../components/SEO'
 
 const STORAGE_KEY = 'baxterlabs_alfonso_onboarding_v1'
 
@@ -434,12 +433,7 @@ export default function AlfonsoOnboarding() {
   }
 
   return (
-    <div className="alfonso-onboarding min-h-screen bg-ivory text-charcoal">
-      <SEO
-        title="Alfonso Onboarding \u00B7 BaxterLabs Advisory"
-        description="Onboarding checklist for Alfonso Cordon \u2014 BaxterLabs Advisory platform setup."
-      />
-      <style>{`
+    <div className="alfonso-onboarding min-h-screen bg-ivory text-charcoal">      <style>{`
         .alfonso-onboarding {
           --line: rgba(45, 52, 54, 0.12);
           --line-strong: rgba(45, 52, 54, 0.22);

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import SEO from '../components/SEO'
 
 const STORAGE_KEY = 'baxterlabs_positioning_matrix_v1'
 const AUTO_ROTATE_MS = 7000
@@ -130,11 +129,6 @@ export default function PositioningMap() {
 
   return (
     <main ref={sectionRef} className="positioning-page">
-      <SEO
-        title="The Positioning Map | BaxterLabs Advisory"
-        description="Where BaxterLabs sits on the competitive map. A 2x2 view of depth, speed, rigor, and price versus Big 4, Fractional CFO, and Status Quo."
-        canonical="https://baxterlabs.ai/positioning-map"
-      />
       <style>{`
         .positioning-page {
           --bl-crimson: #66151C;

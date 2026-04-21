@@ -1,27 +1,33 @@
-import { useEffect } from 'react'
-
-interface Props {
-  isOpen: boolean
-  onClose: () => void
-}
+import { useEffect, useState } from 'react'
 
 const IMG = '/images/sample-deliverables/exec-summary'
+export const OPEN_EVENT = 'open-executive-summary'
 
-export default function ExecutiveSummaryLightbox({ isOpen, onClose }: Props) {
+export default function ExecutiveSummaryLightbox() {
+  const [isOpen, setIsOpen] = useState(false)
+
+  useEffect(() => {
+    const handleOpen = () => setIsOpen(true)
+    window.addEventListener(OPEN_EVENT, handleOpen)
+    return () => window.removeEventListener(OPEN_EVENT, handleOpen)
+  }, [])
+
   useEffect(() => {
     if (!isOpen) return
     document.body.style.overflow = 'hidden'
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') setIsOpen(false)
     }
     window.addEventListener('keydown', handleKey)
     return () => {
       document.body.style.overflow = ''
       window.removeEventListener('keydown', handleKey)
     }
-  }, [isOpen, onClose])
+  }, [isOpen])
 
   if (!isOpen) return null
+
+  const onClose = () => setIsOpen(false)
 
   return (
     <div
@@ -32,7 +38,6 @@ export default function ExecutiveSummaryLightbox({ isOpen, onClose }: Props) {
       aria-label="Sample Executive Summary"
     >
       <div className="relative w-full max-w-[900px] my-8 animate-[scaleIn_200ms_ease-out]">
-        {/* Close button */}
         <button
           onClick={onClose}
           className="sticky top-0 float-right z-10 ml-auto mr-2 mt-2 flex h-10 w-10 items-center justify-center rounded-full bg-[#2D3436]/80 text-white/90 hover:bg-[#2D3436] hover:text-white transition-colors shadow-lg"
@@ -41,10 +46,8 @@ export default function ExecutiveSummaryLightbox({ isOpen, onClose }: Props) {
           <span className="material-symbols-outlined text-xl">close</span>
         </button>
 
-        {/* Document container */}
         <div className="bg-[#FAF8F2] shadow-2xl rounded-sm overflow-hidden" style={{ clear: 'both' }}>
 
-          {/* ═══════════════ DISCLAIMER ═══════════════ */}
           <div className="mx-8 sm:mx-14 mt-10 mb-0 border-t border-b border-[#C9A84C]/30 bg-[#F6E7C8]/25 px-6 py-5">
             <p className="text-[12px] sm:text-[13px] leading-relaxed text-[#2D3436]/80">
               <span className="font-bold italic text-[#2D3436]/90 tracking-wide text-[11px] uppercase">Disclaimer:</span>{' '}
@@ -52,16 +55,13 @@ export default function ExecutiveSummaryLightbox({ isOpen, onClose }: Props) {
             </p>
           </div>
 
-          {/* ═══════════════ TITLE PAGE ═══════════════ */}
           <div className="px-10 sm:px-16 pt-10 pb-16 text-center border-b border-[#C9A84C]/30">
-            {/* Logo */}
             <img
               src="/images/baxterlabs-logo.png"
               alt="BaxterLabs"
               className="h-20 w-auto mx-auto mb-8 opacity-90"
             />
 
-            {/* Title block */}
             <p className="font-label text-xs uppercase tracking-[0.35em] text-[#005454] mb-3">BaxterLabs Advisory</p>
             <h1 className="font-headline text-4xl sm:text-5xl text-[#66151C] mb-3 leading-tight">Executive Summary</h1>
             <p className="font-headline italic text-xl sm:text-2xl text-[#005454] mb-10 leading-snug">
@@ -83,10 +83,8 @@ export default function ExecutiveSummaryLightbox({ isOpen, onClose }: Props) {
             </p>
           </div>
 
-          {/* ═══════════════ BODY ═══════════════ */}
           <div className="px-10 sm:px-16 py-14 space-y-12">
 
-            {/* ── Purpose of This Document ── */}
             <section>
               <SectionHeading>Purpose of This Document</SectionHeading>
               <BodyText>
@@ -94,7 +92,6 @@ export default function ExecutiveSummaryLightbox({ isOpen, onClose }: Props) {
               </BodyText>
             </section>
 
-            {/* ── Headline Finding ── */}
             <section>
               <SectionHeading>Headline Finding</SectionHeading>
               <div className="border-l-4 border-[#005454] bg-[#005454]/5 px-6 py-5 rounded-r-sm">
@@ -104,7 +101,6 @@ export default function ExecutiveSummaryLightbox({ isOpen, onClose }: Props) {
               </div>
             </section>
 
-            {/* Charts after Headline Finding */}
             <div className="space-y-8">
               <figure>
                 <img
@@ -124,7 +120,6 @@ export default function ExecutiveSummaryLightbox({ isOpen, onClose }: Props) {
 
             <Divider />
 
-            {/* ── Five Key Findings ── */}
             <section>
               <SectionHeading>Five Key Findings</SectionHeading>
               <div className="space-y-6">
@@ -152,7 +147,6 @@ export default function ExecutiveSummaryLightbox({ isOpen, onClose }: Props) {
 
             <Divider />
 
-            {/* ── Root Cause Analysis ── */}
             <section>
               <SectionHeading>Root Cause Analysis</SectionHeading>
               <BodyText>
@@ -166,7 +160,6 @@ export default function ExecutiveSummaryLightbox({ isOpen, onClose }: Props) {
               </BodyText>
             </section>
 
-            {/* Fragility Loop diagram */}
             <figure>
               <img
                 src={`${IMG}/diagram-fragility-loop.png`}
@@ -177,7 +170,6 @@ export default function ExecutiveSummaryLightbox({ isOpen, onClose }: Props) {
 
             <Divider />
 
-            {/* ── Quick Wins — highlighted callout ── */}
             <section className="border-2 border-[#C9A84C]/50 bg-gradient-to-br from-[#F6E7C8]/20 to-[#FAF8F2] rounded-sm px-8 sm:px-10 py-10 shadow-sm">
               <p className="font-label text-[10px] uppercase tracking-[0.3em] text-[#C9A84C] mb-2 font-bold">Board-Level Highlight</p>
               <SectionHeading>Quick Wins: 90-Day Capture Opportunity</SectionHeading>
@@ -199,7 +191,6 @@ export default function ExecutiveSummaryLightbox({ isOpen, onClose }: Props) {
 
             <Divider />
 
-            {/* ── Path Forward ── */}
             <section>
               <SectionHeading>Path Forward</SectionHeading>
               <BodyText>
@@ -218,7 +209,6 @@ export default function ExecutiveSummaryLightbox({ isOpen, onClose }: Props) {
 
             <Divider />
 
-            {/* ── Sign-off ── */}
             <div className="text-center pt-4 pb-2">
               <p className="text-sm text-[#2D3436]/70 mb-6">
                 George DeVries&nbsp;&nbsp;|&nbsp;&nbsp;Managing Partner&nbsp;&nbsp;|&nbsp;&nbsp;BaxterLabs Advisory
@@ -227,7 +217,6 @@ export default function ExecutiveSummaryLightbox({ isOpen, onClose }: Props) {
 
             <Divider />
 
-            {/* ═══════════════ ENDNOTES ═══════════════ */}
             <section>
               <SectionHeading>Endnotes (Audit Trail &amp; Source Validation)</SectionHeading>
               <div className="space-y-3 text-[12px] sm:text-[13px] leading-relaxed text-[#2D3436]/70">
@@ -270,7 +259,6 @@ export default function ExecutiveSummaryLightbox({ isOpen, onClose }: Props) {
 
             <Divider />
 
-            {/* ── Footer disclaimer ── */}
             <div className="text-center pb-2">
               <p className="text-[10px] text-[#2D3436]/40 uppercase tracking-wider max-w-lg mx-auto leading-relaxed">
                 This document is a sanitized and anonymized version of an actual BaxterLabs Advisory engagement deliverable. It does not represent any specific company, individual, or financial data.
@@ -282,8 +270,6 @@ export default function ExecutiveSummaryLightbox({ isOpen, onClose }: Props) {
     </div>
   )
 }
-
-/* ─── Sub-components ─── */
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -305,7 +291,6 @@ function Divider() {
   return <hr className="border-t border-[#C9A84C]/20" />
 }
 
-/** Superscript endnote reference — links to the endnote anchor */
 function Sup({ n }: { n: number }) {
   return (
     <sup>
@@ -323,7 +308,6 @@ function Sup({ n }: { n: number }) {
   )
 }
 
-/** Endnote entry with anchor target */
 function En({ n, children }: { n: number; children: React.ReactNode }) {
   return (
     <p id={`en-${n}`} className="scroll-mt-8">

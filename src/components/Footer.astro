@@ -1,0 +1,59 @@
+---
+interface Props {
+  pathname: string
+}
+
+const { pathname } = Astro.props
+
+const navLinks = [
+  { to: '/', label: 'Home' },
+  { to: '/services', label: 'Services' },
+  { to: '/about', label: 'About' },
+  { to: '/insights', label: 'Insights' },
+]
+
+function isActive(path: string, to: string) {
+  if (to === '/') return path === '/'
+  return path.startsWith(to)
+}
+
+const year = new Date().getFullYear()
+---
+<footer class="bg-surface-container-highest w-full py-20 border-t border-surface-container">
+  <div class="flex flex-col items-center gap-8 px-12 max-w-7xl mx-auto">
+    <a href="/" class="flex items-center">
+      <img
+        alt="BaxterLabs Logo"
+        class="h-[83px] w-auto object-contain"
+        src="/images/baxterlabs-logo.png"
+      />
+    </a>
+
+    <div class="flex flex-wrap justify-center gap-10">
+      {navLinks.map((link) => (
+        <a
+          href={link.to}
+          class={`font-label text-sm tracking-wide uppercase transition-opacity ${
+            isActive(pathname, link.to)
+              ? 'text-secondary font-bold border-b border-secondary'
+              : 'text-on-surface-variant hover:text-secondary'
+          }`}
+        >
+          {link.label}
+        </a>
+      ))}
+      <a
+        href="/get-started"
+        class="font-label text-sm tracking-wide uppercase text-primary underline font-bold"
+      >
+        Start Your Diagnostic
+      </a>
+    </div>
+
+    <div class="h-px w-full max-w-xs bg-outline-variant/30"></div>
+
+    <div class="font-body text-xs text-on-surface-variant/60 uppercase tracking-widest text-center">
+      &copy; {year} BaxterLabs Advisory. All rights reserved.
+    </div>
+  </div>
+</footer>
