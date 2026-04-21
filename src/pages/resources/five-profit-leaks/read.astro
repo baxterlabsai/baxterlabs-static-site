@@ -1,0 +1,156 @@
+---
+import ResourcesLayout from '../../../layouts/ResourcesLayout.astro'
+import FieldGuideSection from '../../../components/resources/FieldGuideSection.astro'
+import ResourcesFootnote from '../../../components/resources/ResourcesFootnote.astro'
+import { LEAK_SECTIONS } from '../../../data/field-guide'
+---
+<ResourcesLayout
+  title="The 5 Profit Leaks (Field Guide) | BaxterLabs Advisory"
+  description="A field guide for owners and managing partners of $5M–$50M professional service firms. Five categories of margin leakage, five real-engagement examples, five diagnostic questions — 12 minutes, coffee in hand."
+  canonical="https://baxterlabs.ai/resources/five-profit-leaks/read"
+  leftLinkHref="/resources"
+  leftLinkLabel="← All resources"
+  rightLinkHref="#cta"
+  rightLinkLabel="Book a call"
+>
+  <div class="fg-shell">
+
+    <aside class="fg-side">
+      <div class="fg-side-kicker">In this guide</div>
+      <ol class="fg-nav" id="fg-nav">
+        <li><a href="#intro" data-sec="intro"><span class="rn">&mdash;</span><span>Before we start</span></a></li>
+        <li><a href="#payroll" data-sec="payroll"><span class="rn">I</span><span>Payroll Drift</span></a></li>
+        <li><a href="#vendor" data-sec="vendor"><span class="rn">II</span><span>Vendor Sprawl</span></a></li>
+        <li><a href="#billing" data-sec="billing"><span class="rn">III</span><span>Billing Lag</span></a></li>
+        <li><a href="#software" data-sec="software"><span class="rn">IV</span><span>Software Redundancy</span></a></li>
+        <li><a href="#approval" data-sec="approval"><span class="rn">V</span><span>Approval Bottlenecks</span></a></li>
+        <li><a href="#closing" data-sec="closing"><span class="rn">&mdash;</span><span>What to do with this</span></a></li>
+      </ol>
+    </aside>
+
+    <main class="fg-main">
+
+      <header class="fg-hero">
+        <div class="rp-eyebrow-row">
+          <span class="rp-eyebrow-rule"></span>
+          <span class="rp-eyebrow-txt">Field Guide</span>
+        </div>
+        <h1>The <span class="roman">5</span> Profit Leaks<br/>hiding in every $<span class="roman">5</span>M&ndash;$<span class="roman">50</span>M<br/>professional service firm.</h1>
+        <p class="deck">A field guide for owners and managing partners. By George DeVries.</p>
+        <div class="fg-hero-meta">
+          <div class="rp-meta-item">
+            <span class="rp-meta-label">Reading time</span>
+            <span class="rp-meta-value">12 minutes</span>
+          </div>
+          <div class="rp-meta-item">
+            <span class="rp-meta-label">Typical range</span>
+            <span class="rp-meta-value">$200K to over $1M / year</span>
+          </div>
+          <div class="rp-meta-item">
+            <span class="rp-meta-label">Companion</span>
+            <span class="rp-meta-value"><a href="/resources/self-assessment/take" style="color:var(--bl-teal)">12-question self-assessment &rarr;</a></span>
+          </div>
+          <div class="rp-meta-item">
+            <span class="rp-meta-label">Printable</span>
+            <span class="rp-meta-value"><a href="/resources/BaxterLabs_Lead_Magnet_01_Five_Profit_Leaks.pdf" style="color:var(--bl-teal)">Download the PDF &rarr;</a></span>
+          </div>
+        </div>
+      </header>
+
+      <section class="fg-section" id="intro">
+        <div class="fg-section-head">
+          <span class="fg-rn">&mdash;</span>
+          <div>
+            <div class="fg-cat">Author's note</div>
+            <h2 class="fg-h2">Before we start.</h2>
+          </div>
+        </div>
+
+        <div class="fg-prose">
+          <p>I've spent my career inside professional service firms, sitting in the finance chair, managing the P&amp;L, and trying to figure out why the numbers on the income statement don't match the feeling in my gut. If you're reading this, I think you already know something is off. Revenue is growing. The team is growing. But profit isn't keeping pace, and you can't quite put your finger on why.</p>
+          <p>You're not wrong. That feeling is almost always right.</p>
+          <p>This guide walks through the five places I keep finding margin leaking in firms your size: payroll that's drifted past what the revenue supports, vendor sprawl no one owns, billing lag that's quietly financing your clients, software seats nobody's using, and approval bottlenecks that defer revenue you could already be earning. These aren't exotic problems. They're the ordinary ones that accumulate quietly while everyone is focused on winning the next client.</p>
+          <p>I wrote this because I think you deserve to see the mechanism before you hire anyone to fix it. If even one of these sections makes you uncomfortable, that discomfort is data. Trust it.</p>
+        </div>
+      </section>
+
+      {LEAK_SECTIONS.map((s) => (<FieldGuideSection section={s} />))}
+
+      <section class="fg-section" id="closing">
+        <div class="fg-section-head">
+          <span class="fg-rn">&mdash;</span>
+          <div>
+            <div class="fg-cat">Closing</div>
+            <h2 class="fg-h2">What to do with this.</h2>
+          </div>
+        </div>
+
+        <div class="fg-prose">
+          <p>You don't need to hire anyone to start. Pick one of the five sections that made you the most uncomfortable and do one thing this week. Pull a single vendor report and sort it by vendor name. Look for duplicates. Or run one utilization query and see if the hours your team is billing match the hours they're working. You already have the data. The question is whether anyone has looked at it through this lens.</p>
+        </div>
+
+        <div class="fg-summary">
+          <div class="fg-summary-head">
+            <div>
+              <div class="kicker">Five leaks, stacked</div>
+              <h3>The typical range, added up.</h3>
+            </div>
+          </div>
+          <div class="fg-summary-grid">
+            <div class="fg-summary-row"><span class="rn">I</span><span>Payroll Drift</span><span class="v">$80K&ndash;$300K</span></div>
+            <div class="fg-summary-row"><span class="rn">II</span><span>Vendor Sprawl</span><span class="v">$60K&ndash;$200K</span></div>
+            <div class="fg-summary-row"><span class="rn">III</span><span>Billing Lag &amp; Write-downs</span><span class="v">$50K&ndash;$250K</span></div>
+            <div class="fg-summary-row"><span class="rn">IV</span><span>Software Redundancy</span><span class="v">$30K&ndash;$120K</span></div>
+            <div class="fg-summary-row"><span class="rn">V</span><span>Approval Bottlenecks</span><span class="v">$40K&ndash;$200K</span></div>
+          </div>
+          <div class="fg-summary-total">
+            <span class="lbl">Stacked range</span>
+            <span class="v">$260K&nbsp;&ndash;&nbsp;$1.07M</span>
+          </div>
+        </div>
+
+        <div class="fg-prose" style="margin-top: 2.5rem;">
+          <p>If any of the five self-assessment questions in this guide felt uncomfortable to answer, the diagnostic is designed to put real numbers on exactly that feeling. It won't tell you something you don't already sense. It will make the invisible visible, give you a specific roadmap to fix what we find, and hand you a comprehensive package of materials you can take directly to your leadership or Board.</p>
+        </div>
+
+        <div class="fg-close-cta" id="cta">
+          <div class="kicker">Diagnostic &middot; Fixed scope</div>
+          <h3>A free 30-minute diagnostic review call.</h3>
+          <p>If you'd like to walk through your situation and see if BaxterLabs would be a good fit, I'm happy to talk it through. No cost, no obligation, just a conversation.</p>
+          <div class="price">$12,500 &middot; 14 days &middot; no scope creep</div>
+          <a href="/get-started" class="rp-btn">Book a diagnostic review call <span class="arrow">&rarr;</span></a>
+          <div class="sign-off">
+            <strong>George DeVries</strong> &middot; Managing Partner, BaxterLabs Advisory<br/>
+            george@baxterlabs.ai &middot; baxterlabs.ai
+          </div>
+        </div>
+      </section>
+
+      <ResourcesFootnote
+        rightHref="/resources/self-assessment/take"
+        rightLabel="Take the self-assessment →"
+      />
+    </main>
+  </div>
+
+  <script>
+    const links = Array.from(document.querySelectorAll<HTMLAnchorElement>('#fg-nav a'))
+    const byId = Object.fromEntries(links.map((a) => [a.dataset.sec ?? '', a]))
+    const sections = Array.from(document.querySelectorAll<HTMLElement>('section.fg-section'))
+
+    if (typeof IntersectionObserver !== 'undefined') {
+      const io = new IntersectionObserver(
+        (entries) => {
+          for (const e of entries) {
+            if (!e.isIntersecting) continue
+            for (const a of links) a.classList.remove('is-active')
+            const a = byId[e.target.id]
+            if (a) a.classList.add('is-active')
+          }
+        },
+        { rootMargin: '-20% 0px -60% 0px', threshold: 0 }
+      )
+      for (const s of sections) io.observe(s)
+    }
+  </script>
+</ResourcesLayout>

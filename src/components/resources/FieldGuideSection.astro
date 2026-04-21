@@ -1,0 +1,43 @@
+---
+import type { LeakSection } from '../../data/field-guide'
+
+interface Props {
+  section: LeakSection
+}
+const { section } = Astro.props
+---
+<section class="fg-section" id={section.id}>
+  <div class="fg-section-head">
+    <span class="fg-rn">{section.rn}</span>
+    <div>
+      <div class="fg-cat">{section.category}</div>
+      <h2 class="fg-h2">{section.title}</h2>
+    </div>
+  </div>
+
+  <div class="fg-prose">
+    {section.prose.map((p) => (<p set:html={p} />))}
+  </div>
+
+  <div class="fg-engagement">
+    <div class="ke" set:html={`From a real engagement &middot; ${section.engagementFirmLabel}`} />
+    {section.engagementParagraphs.map((p) => (<p set:html={p} />))}
+  </div>
+
+  <div class="fg-range">
+    <div>
+      <div class="lbl" set:html={section.rangeLabel} />
+      <span class="sub">{section.rangeSub}</span>
+    </div>
+    <div class="val" set:html={section.rangeValue} />
+  </div>
+
+  <div class="fg-ask">
+    <div class="kicker">Ask yourself</div>
+    <div class="q">{section.askYourself}</div>
+  </div>
+
+  {section.showEndCta && (
+    <div class="fg-end-cta">If this one is yours, <a href="#cta">we'd start here &rarr;</a></div>
+  )}
+</section>
