@@ -21,12 +21,22 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://baxterlabs.ai/blog</loc>
+    <loc>https://baxterlabs.ai/insights</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://baxterlabs.ai/blog/what-serious-acquirers-find-in-your-pl-before-you-do</loc>
+    <loc>https://baxterlabs.ai/partners</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://baxterlabs.ai/positioning-map</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://baxterlabs.ai/insights/what-serious-acquirers-find-in-your-pl-before-you-do</loc>
     <lastmod>2026-03-19</lastmod>
     <changefreq>never</changefreq>
     <priority>0.6</priority>

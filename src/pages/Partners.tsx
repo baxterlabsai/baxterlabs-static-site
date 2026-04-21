@@ -1,12 +1,13 @@
-import { useEffect } from 'react'
+import SEO from '../components/SEO'
 
 export default function Partners() {
-  useEffect(() => {
-    document.title = 'BaxterLabs Advisory — Case Study Partner Invitation'
-  }, [])
-
   return (
     <div className="partners-page">
+      <SEO
+        title="Case Study Partner Invitation | BaxterLabs Advisory"
+        description="A selective invitation: we run the full 14-day Profit Leak & Operational Efficiency Diagnostic at no cost, in exchange for candid feedback and permission to reference findings."
+        canonical="https://baxterlabs.ai/partners"
+      />
       <style>{`
         .partners-page {
           --crimson: #7B1C2E;
