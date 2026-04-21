@@ -1,8 +1,13 @@
 import { Link } from 'react-router-dom'
+import SEO from '../components/SEO'
 
 export default function NotFound() {
   return (
     <div className="min-h-screen bg-ivory flex flex-col">
+      <SEO
+        title="Page Not Found | BaxterLabs Advisory"
+        description="The page you're looking for doesn't exist or has been moved."
+      />
       <header className="bg-crimson">
         <div className="flex items-center justify-center py-5">
           <Link to="/">

@@ -12,7 +12,9 @@ const staticPages = [
   { loc: `${BASE}/about`, changefreq: 'monthly', priority: '0.8' },
   { loc: `${BASE}/services`, changefreq: 'monthly', priority: '0.8' },
   { loc: `${BASE}/get-started`, changefreq: 'monthly', priority: '0.7' },
-  { loc: `${BASE}/blog`, changefreq: 'weekly', priority: '0.8' },
+  { loc: `${BASE}/insights`, changefreq: 'weekly', priority: '0.8' },
+  { loc: `${BASE}/partners`, changefreq: 'monthly', priority: '0.6' },
+  { loc: `${BASE}/positioning-map`, changefreq: 'monthly', priority: '0.7' },
 ]
 
 function buildUrl({ loc, changefreq, priority, lastmod }) {
@@ -35,7 +37,7 @@ async function main() {
       if (!post.blog_slug) continue
       const lastmod = post.published_date ? post.published_date.slice(0, 10) : ''
       entries.push({
-        loc: `${BASE}/blog/${post.blog_slug}`,
+        loc: `${BASE}/insights/${post.blog_slug}`,
         changefreq: 'never',
         priority: '0.6',
         lastmod,

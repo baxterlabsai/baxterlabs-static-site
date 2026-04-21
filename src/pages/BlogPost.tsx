@@ -36,19 +36,6 @@ export default function BlogPost() {
       .finally(() => setLoading(false))
   }, [slug])
 
-  useEffect(() => {
-    if (!post) return
-    // Set canonical link
-    let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null
-    if (!link) {
-      link = document.createElement('link')
-      link.rel = 'canonical'
-      document.head.appendChild(link)
-    }
-    link.href = `https://baxterlabs.ai/blog/${post.blog_slug}`
-    return () => { if (link) link.remove() }
-  }, [post])
-
   const formatDate = (d: string | null) => {
     if (!d) return ''
     return new Date(d).toLocaleDateString('en-US', {
@@ -110,6 +97,7 @@ export default function BlogPost() {
         title={`${seoTitle} | BaxterLabs Advisory`}
         description={seoDesc}
         ogImage={post.featured_image_url || undefined}
+        canonical={`https://baxterlabs.ai/insights/${post.blog_slug}`}
       />
 
       <section className="bg-ivory py-12 md:py-16">
