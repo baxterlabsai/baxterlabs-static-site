@@ -9,6 +9,7 @@ import BlogIndex from './pages/BlogIndex'
 import BlogPost from './pages/BlogPost'
 import AlfonsoOnboarding from './pages/AlfonsoOnboarding'
 import Partners from './pages/Partners'
+import PositioningMap from './pages/PositioningMap'
 import NotFound from './pages/NotFound'
 
 function ScrollToTop() {
@@ -35,6 +36,7 @@ export default function App() {
 
         <Route path="/alfonso-onboarding" element={<AlfonsoOnboarding />} />
         <Route path="/partners" element={<Partners />} />
+        <Route path="/positioning-map" element={<PositioningMap />} />
 
         <Route path="*" element={<NotFound />} />
       </Routes>
