@@ -8,6 +8,18 @@ interface Props {
 const { formId, asset, submitLabel = 'Send the guide' } = Astro.props
 ---
 <form class="rp-form" id={formId} data-asset={asset} novalidate>
+  {/*
+    Honeypot — hidden from humans, visible to naïve bots. If filled, the
+    backend silently drops the submission. Do not remove.
+  */}
+  <input
+    type="text"
+    name="website_url"
+    tabindex="-1"
+    autocomplete="off"
+    aria-hidden="true"
+    style="display:none;"
+  />
   <div class="rp-field">
     <label for={`${formId}-name`}>Your name <span class="req">*</span></label>
     <input id={`${formId}-name`} name="name" type="text" required autocomplete="name" />
@@ -46,7 +58,7 @@ const { formId, asset, submitLabel = 'Send the guide' } = Astro.props
   <div class="capture-error rp-form-full" data-error></div>
 
   <div class="capture-submit-row rp-form-full">
-    <span class="capture-promise" data-capture-promise>No drip sequence. No follow-ups you didn't ask for. Straight to the guide.</span>
+    <span class="capture-promise" data-capture-promise>Prefer a number over a read? The 4-minute assessment is right above.</span>
     <button type="submit" class="rp-btn">
       {submitLabel}
       <span class="arrow">&rarr;</span>

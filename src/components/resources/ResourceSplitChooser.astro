@@ -124,9 +124,14 @@ const { preselect = null, basePath = '/resources' } = Astro.props
 </main>
 
 <script>
-  import { insertLeadMagnetCapture, type RevenueRange, type LeadMagnetAsset } from '../../lib/supabase'
+  import type { RevenueRange, LeadMagnetAsset } from '../../lib/supabase'
 
   type Which = 'guide' | 'assess' | null
+
+  // Writes go through the backend /api/lead-capture endpoint so field_guide
+  // submissions can be dual-written into lead_magnet_captures + enrolled in
+  // the Profit Leaks nurture sequence atomically. See Session 1 handoff.
+  const API_URL: string = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000'
 
   const root = document.querySelector<HTMLElement>('[data-chooser]')
   if (!root) throw new Error('chooser root missing')
@@ -151,7 +156,7 @@ const { preselect = null, basePath = '/resources' } = Astro.props
   const ASSESS_TITLE = "Who's taking this?"
   const ASSESS_SUB = "A few details, then the <span class=\"roman\">12</span> questions. You'll see your results on this page."
 
-  const GUIDE_PROMISE = "No drip sequence. No follow-ups you didn't ask for. Straight to the guide."
+  const GUIDE_PROMISE = "Prefer a number over a read? The 4-minute assessment is right above."
   const ASSESS_PROMISE = "No drip sequence. No follow-ups you didn't ask for. Straight to your results."
 
   let selected: Which = null
@@ -225,6 +230,12 @@ const { preselect = null, basePath = '/resources' } = Astro.props
     }
   }
 
+  function errorMessageFor(status: number): string {
+    if (status === 429) return "Too many submissions from this location. Please try again in a few minutes."
+    if (status === 400) return "Please check your details and try again."
+    return "Something went wrong saving that. Try again, or email george@baxterlabs.ai directly."
+  }
+
   form?.addEventListener('submit', async (e) => {
     e.preventDefault()
     if (!form.checkValidity()) { form.reportValidity(); return }
@@ -236,6 +247,9 @@ const { preselect = null, basePath = '/resources' } = Astro.props
     const firm = String(fd.get('firm') ?? '').trim()
     const revenue = String(fd.get('revenue') ?? '').trim() as RevenueRange | ''
     const role = String(fd.get('role') ?? '').trim()
+    // Honeypot — humans never see/reach this field. Pass-through to the
+    // backend, which silently drops the request if it's non-empty.
+    const honeypot = String(fd.get('website_url') ?? '')
 
     if (!name || !email || !firm || !revenue) {
       form.reportValidity()
@@ -246,14 +260,32 @@ const { preselect = null, basePath = '/resources' } = Astro.props
 
     if (submitBtn) { submitBtn.disabled = true; submitBtn.style.opacity = '0.6' }
     try {
-      await insertLeadMagnetCapture({
-        asset,
-        name,
-        email,
-        company_name: firm,
-        revenue_range: revenue || null,
-        role: role || null,
+      const res = await fetch(`${API_URL}/api/lead-capture`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          asset,
+          name,
+          email,
+          company_name: firm,
+          revenue_range: revenue,
+          role: role || null,
+          source_url: window.location.href,
+          website_url: honeypot,
+        }),
       })
+
+      if (!res.ok) {
+        throw Object.assign(new Error(`lead-capture ${res.status}`), { status: res.status })
+      }
+
+      const data = await res.json().catch(() => ({}))
+      // 'captured' and 'already_subscribed' both reveal the unlock UI —
+      // the visitor already gets the guide regardless of dedupe status.
+      if (data.status !== 'captured' && data.status !== 'already_subscribed') {
+        throw new Error(`unexpected status: ${data.status}`)
+      }
+
       configureSuccess(asset)
       captureCard?.style.setProperty('display', 'none')
       successCard?.classList.add('visible')
@@ -262,11 +294,12 @@ const { preselect = null, basePath = '/resources' } = Astro.props
         window.scrollTo({ top: y, behavior: 'smooth' })
       }
     } catch (err) {
+      const status = (err as { status?: number })?.status ?? 0
       if (errorEl) {
-        errorEl.textContent = "Something went wrong saving that. Try again, or email george@baxterlabs.ai directly."
+        errorEl.textContent = errorMessageFor(status)
         errorEl.classList.add('visible')
       }
-      console.error('[lead_magnet_captures insert]', err)
+      console.error('[lead-capture]', err)
       if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '' }
     }
   })
