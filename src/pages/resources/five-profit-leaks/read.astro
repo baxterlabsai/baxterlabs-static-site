@@ -1,17 +1,12 @@
 ---
 import ResourcesLayout from '../../../layouts/ResourcesLayout.astro'
 import FieldGuideSection from '../../../components/resources/FieldGuideSection.astro'
-import ResourcesFootnote from '../../../components/resources/ResourcesFootnote.astro'
 import { LEAK_SECTIONS } from '../../../data/field-guide'
 ---
 <ResourcesLayout
   title="The 5 Profit Leaks (Field Guide) | BaxterLabs Advisory"
   description="A field guide for owners and managing partners of $5M–$50M professional service firms. Five categories of margin leakage, five real-engagement examples, five diagnostic questions — 12 minutes, coffee in hand."
   canonical="https://baxterlabs.ai/resources/five-profit-leaks/read"
-  leftLinkHref="/resources"
-  leftLinkLabel="← All resources"
-  rightLinkHref="#cta"
-  rightLinkLabel="Book a call"
 >
   <div class="fg-shell">
 
@@ -126,10 +121,9 @@ import { LEAK_SECTIONS } from '../../../data/field-guide'
         </div>
       </section>
 
-      <ResourcesFootnote
-        rightHref="/resources/self-assessment/take"
-        rightLabel="Take the self-assessment →"
-      />
+      <div class="fg-end-cta" style="margin-top: 2rem;">
+        Ready for numbers on your own firm? <a href="/resources/self-assessment/take">Take the 12-question self-assessment &rarr;</a>
+      </div>
     </main>
   </div>
 

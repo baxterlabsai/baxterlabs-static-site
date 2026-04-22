@@ -663,7 +663,8 @@ body { background: var(--bl-ivory); min-height: 100vh; }
 
 .fg-side { position: static; }
 @media (min-width: 1024px) {
-  .fg-side { position: sticky; top: 3rem; align-self: start; height: fit-content; }
+  /* top offset clears the main site nav (fixed, ~7rem tall) */
+  .fg-side { position: sticky; top: 7rem; align-self: start; height: fit-content; }
 }
 .fg-side-kicker {
   font-family: var(--font-label);
@@ -744,7 +745,8 @@ body { background: var(--bl-ivory); min-height: 100vh; }
 section.fg-section {
   padding: 4rem 0 3rem;
   border-top: 1px solid var(--bl-gray-light);
-  scroll-margin-top: 2rem;
+  /* anchor below the fixed main nav when sidebar links scroll to a section */
+  scroll-margin-top: 7rem;
 }
 section.fg-section:first-of-type { border-top: none; padding-top: 0; }
 
@@ -1057,7 +1059,8 @@ section.fg-section:first-of-type { border-top: none; padding-top: 0; }
 .sa-cat {
   padding: 3rem 0 2.5rem;
   border-top: 1px solid var(--bl-gray-light);
-  scroll-margin-top: 1rem;
+  /* match fg-section scroll margin so progressive-reveal auto-scroll lands below the main nav */
+  scroll-margin-top: 7rem;
   transition: opacity 400ms var(--ease-out), filter 400ms var(--ease-out);
 }
 .sa-cat.is-locked {
@@ -1164,7 +1167,8 @@ section.fg-section:first-of-type { border-top: none; padding-top: 0; }
 .sa-rail { position: static; align-self: start; }
 @media (min-width: 1024px) {
   .sa-rail {
-    position: sticky; top: 2rem;
+    /* top offset clears the main site nav (fixed, ~7rem tall) */
+    position: sticky; top: 7rem;
     padding-left: 1.5rem;
     border-left: 1px solid var(--bl-gray-light);
   }
@@ -1282,6 +1286,10 @@ section.fg-section:first-of-type { border-top: none; padding-top: 0; }
   color: var(--bl-cream);
   border: 1px solid var(--bl-teal-dark);
   box-shadow: var(--shadow-2xl);
+  /* Extra breathing room below the High reveal — the gravitas-by-restraint
+     composition relied on negative space that the main site footer would
+     otherwise crowd. */
+  margin-bottom: 6rem;
 }
 .sa-reveal.band-high .exposure {
   color: var(--bl-cream);

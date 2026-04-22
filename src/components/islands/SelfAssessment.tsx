@@ -69,7 +69,7 @@ export default function SelfAssessment() {
       // Only scroll if the next category's first question is still unanswered
       const firstUnanswered = next.questions.some((q) => answers[q.qid] == null)
       if (!firstUnanswered) continue
-      const y = el.getBoundingClientRect().top + window.scrollY - 80
+      const y = el.getBoundingClientRect().top + window.scrollY - 130
       // Avoid scrolling back up if user is already below
       if (window.scrollY < y) {
         window.scrollTo({ top: y, behavior: 'smooth' })
@@ -142,14 +142,14 @@ export default function SelfAssessment() {
       setStage('results-unlocked')
       setTimeout(() => {
         if (bodyRef.current) {
-          const y = bodyRef.current.getBoundingClientRect().top + window.scrollY - 80
+          const y = bodyRef.current.getBoundingClientRect().top + window.scrollY - 130
           window.scrollTo({ top: y, behavior: 'smooth' })
         }
       }, 50)
     } catch (err) {
       console.error('[assessment gate submit]', err)
       setCaptureError(
-        "Something went wrong sending that. Try again, or email george@baxterlabs.ai directly."
+        "Something went wrong saving that. Try again, or email george@baxterlabs.ai directly."
       )
     } finally {
       setCaptureBusy(false)
@@ -452,12 +452,8 @@ function ResultsView(props: {
           {!unlocked && (
             <div className="sa-gate">
               <div className="kicker">Before the rest</div>
-              <h3>Want the full interpretation and what to do next? Send it to my inbox.</h3>
-              <p>
-                I'll email you this result with George's written interpretation for your band and
-                the specific starting points most firms at this score work on first. No drip
-                sequence. One email, the read-out, done.
-              </p>
+              <h3>Want the full interpretation and what to do next?</h3>
+              <p>A few details and George's written interpretation opens on this page.</p>
 
               <form className="rp-form" onSubmit={onGateSubmit} noValidate>
                 <div className="rp-field">
@@ -523,7 +519,7 @@ function ResultsView(props: {
                       color: 'var(--bl-gray-warm)',
                     }}
                   >
-                    We'll send it once. We won't sell your email.
+                    No drip sequence. No follow-ups you didn't ask for. Straight to your interpretation.
                   </span>
                   <button
                     type="submit"
@@ -531,7 +527,7 @@ function ResultsView(props: {
                     disabled={captureBusy}
                     style={captureBusy ? { opacity: 0.6 } : undefined}
                   >
-                    {captureBusy ? 'Sending…' : 'Send my interpretation'}
+                    {captureBusy ? 'Unlocking…' : 'Unlock my interpretation'}
                     <span className="arrow">&rarr;</span>
                   </button>
                 </div>
@@ -572,6 +568,15 @@ function ResultsView(props: {
               george@baxterlabs.ai &middot; baxterlabs.ai
             </div>
           </div>
+
+          {unlocked && (
+            <div className="fg-end-cta" style={{ margin: '0 0 2rem' }}>
+              Want the long-form version?{' '}
+              <a href="/resources/five-profit-leaks/read">
+                Read the field guide &rarr;
+              </a>
+            </div>
+          )}
 
           <details className={'sa-method' + (unlocked ? ' is-visible' : '')}>
             <summary>How the exposure range is calculated</summary>

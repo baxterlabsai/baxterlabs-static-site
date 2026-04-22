@@ -1,6 +1,5 @@
 ---
 import LeadCaptureForm from './LeadCaptureForm.astro'
-import ResourcesFootnote from './ResourcesFootnote.astro'
 
 interface Props {
   preselect?: 'guide' | 'assess' | null
@@ -54,7 +53,7 @@ const { preselect = null } = Astro.props
 
       <div class="hub-cta-row">
         <span class="hub-radio" aria-hidden="true"></span>
-        <span class="hub-radio-lbl">Send me the guide</span>
+        <span class="hub-radio-lbl">Get the guide</span>
       </div>
     </div>
 
@@ -100,37 +99,31 @@ const { preselect = null } = Astro.props
 
   <section class="capture-card" data-capture>
     <div class="capture-head">
-      <div class="kicker">Where should we send it</div>
-      <div class="capture-title" data-capture-title>Send me the field guide.</div>
+      <div class="kicker">A quick intro first</div>
+      <div class="capture-title" data-capture-title>Who's reading?</div>
       <p class="capture-sub" data-capture-sub>
-        I'll email a reader-friendly PDF and a link to the web version. <strong>No drip sequence.</strong> One email, the guide, done.
+        A few details, then the guide opens.
       </p>
     </div>
 
     <div data-capture-body>
-      <div class="capture-alt" data-capture-alt>
-        The self-assessment captures your email <em>after</em> you see your score &mdash; so you can decide if the number's worth your inbox. <a href="/resources/self-assessment/take">Start the 12 questions &rarr;</a>
-      </div>
-
-      <LeadCaptureForm formId="hub-capture" asset="field_guide" submitLabel="Send the guide" />
+      <LeadCaptureForm formId="hub-capture" asset="field_guide" submitLabel="Unlock" />
     </div>
   </section>
 
   <section class="success-card" data-success aria-live="polite">
-    <div class="kicker">On its way</div>
-    <div class="success-title">Check your inbox in about a minute.</div>
-    <p class="success-body">I've sent the field guide PDF and a link to the web reader to the email you gave. If you'd rather start reading now, you can open the web version below.</p>
-    <div class="success-actions">
-      <a class="rp-btn" href="/resources/five-profit-leaks/read">Open the web version <span class="arrow">&rarr;</span></a>
-      <a class="rp-btn is-ghost" href="/resources/self-assessment/take">Take the assessment <span class="arrow">&rarr;</span></a>
+    <div class="kicker">Unlocked</div>
+    <div class="success-title" data-success-title>The guide is ready.</div>
+    <p class="success-body" data-success-body>Open the web version below, or download the printable PDF. Either works.</p>
+    <div class="success-actions" data-success-actions>
+      <a class="rp-btn" data-success-primary href="/resources/five-profit-leaks/read">Open the web version <span class="arrow">&rarr;</span></a>
+      <a class="rp-btn is-ghost" data-success-secondary href="/resources/BaxterLabs_Lead_Magnet_01_Five_Profit_Leaks.pdf">Download the PDF <span class="arrow">&rarr;</span></a>
     </div>
   </section>
-
-  <ResourcesFootnote />
 </main>
 
 <script>
-  import { insertLeadMagnetCapture, type RevenueRange } from '../../lib/supabase'
+  import { insertLeadMagnetCapture, type RevenueRange, type LeadMagnetAsset } from '../../lib/supabase'
 
   type Which = 'guide' | 'assess' | null
 
@@ -140,46 +133,45 @@ const { preselect = null } = Astro.props
   const panels = Array.from(root.querySelectorAll<HTMLElement>('[data-panel]'))
   const captureTitle = root.querySelector<HTMLElement>('[data-capture-title]')
   const captureSub = root.querySelector<HTMLElement>('[data-capture-sub]')
-  const captureAlt = root.querySelector<HTMLElement>('[data-capture-alt]')
   const captureCard = root.querySelector<HTMLElement>('[data-capture]')
   const successCard = root.querySelector<HTMLElement>('[data-success]')
+  const successTitle = root.querySelector<HTMLElement>('[data-success-title]')
+  const successBody = root.querySelector<HTMLElement>('[data-success-body]')
+  const successPrimary = root.querySelector<HTMLAnchorElement>('[data-success-primary]')
+  const successSecondary = root.querySelector<HTMLAnchorElement>('[data-success-secondary]')
   const form = root.querySelector<HTMLFormElement>('form#hub-capture')
-  const formFields = form ? Array.from(form.querySelectorAll<HTMLElement>('.rp-field, .capture-submit-row')) : []
   const errorEl = form?.querySelector<HTMLElement>('[data-error]')
   const submitBtn = form?.querySelector<HTMLButtonElement>('button[type="submit"]')
+  const promiseEl = form?.querySelector<HTMLElement>('[data-capture-promise]')
 
-  const GUIDE_TITLE = 'Send me the field guide.'
-  const GUIDE_SUB = "I'll email a reader-friendly PDF and a link to the web version. <strong>No drip sequence.</strong> One email, the guide, done."
-  const ASSESS_TITLE = 'You take the assessment first.'
-  const ASSESS_SUB = "We only ask for your email <strong>after</strong> you see your score. The number is the hook, and revealing it should earn the email, not the other way around."
+  const GUIDE_TITLE = "Who's reading?"
+  const GUIDE_SUB = 'A few details, then the guide opens.'
+  const ASSESS_TITLE = "Who's taking this?"
+  const ASSESS_SUB = "A few details, then the <span class=\"roman\">12</span> questions. You'll see your results on this page."
+
+  const GUIDE_PROMISE = "No drip sequence. No follow-ups you didn't ask for. Straight to the guide."
+  const ASSESS_PROMISE = "No drip sequence. No follow-ups you didn't ask for. Straight to your results."
+
+  let selected: Which = null
 
   function select(which: Which) {
-    const guide = which === 'guide'
+    selected = which
     const assess = which === 'assess'
     for (const p of panels) {
       const isSel = p.dataset.panel === which
       p.classList.toggle('is-selected', isSel)
       p.setAttribute('aria-checked', String(isSel))
     }
-    if (!captureTitle || !captureSub || !captureAlt) return
+    if (!captureTitle || !captureSub) return
 
     if (assess) {
       captureTitle.textContent = ASSESS_TITLE
       captureSub.innerHTML = ASSESS_SUB
-      captureAlt.classList.add('visible')
-      for (const el of formFields) el.style.display = 'none'
+      if (promiseEl) promiseEl.textContent = ASSESS_PROMISE
     } else {
       captureTitle.textContent = GUIDE_TITLE
       captureSub.innerHTML = GUIDE_SUB
-      captureAlt.classList.remove('visible')
-      for (const el of formFields) el.style.display = ''
-      // guide selected vs. null both show the form; null means no panel is visibly selected
-      if (!guide) {
-        for (const p of panels) {
-          p.classList.remove('is-selected')
-          p.setAttribute('aria-checked', 'false')
-        }
-      }
+      if (promiseEl) promiseEl.textContent = GUIDE_PROMISE
     }
   }
 
@@ -204,7 +196,32 @@ const { preselect = null } = Astro.props
       : 'guide'
   select(initial)
 
-  // Form submit → Supabase insert → success card
+  function configureSuccess(asset: LeadMagnetAsset) {
+    if (asset === 'self_assessment') {
+      if (successTitle) successTitle.textContent = 'Unlocked. Ready when you are.'
+      if (successBody) successBody.textContent = 'Start the twelve questions below. You’ll see your band, exposure range, and a written interpretation as soon as you finish.'
+      if (successPrimary) {
+        successPrimary.href = '/resources/self-assessment/take'
+        successPrimary.innerHTML = 'Take the assessment <span class="arrow">&rarr;</span>'
+      }
+      if (successSecondary) {
+        successSecondary.href = '/resources/five-profit-leaks/read'
+        successSecondary.innerHTML = 'Read the field guide <span class="arrow">&rarr;</span>'
+      }
+    } else {
+      if (successTitle) successTitle.textContent = 'The guide is ready.'
+      if (successBody) successBody.textContent = 'Open the web version below, or download the printable PDF. Either works.'
+      if (successPrimary) {
+        successPrimary.href = '/resources/five-profit-leaks/read'
+        successPrimary.innerHTML = 'Open the web version <span class="arrow">&rarr;</span>'
+      }
+      if (successSecondary) {
+        successSecondary.href = '/resources/BaxterLabs_Lead_Magnet_01_Five_Profit_Leaks.pdf'
+        successSecondary.innerHTML = 'Download the PDF <span class="arrow">&rarr;</span>'
+      }
+    }
+  }
+
   form?.addEventListener('submit', async (e) => {
     e.preventDefault()
     if (!form.checkValidity()) { form.reportValidity(); return }
@@ -222,25 +239,28 @@ const { preselect = null } = Astro.props
       return
     }
 
+    const asset: LeadMagnetAsset = selected === 'assess' ? 'self_assessment' : 'field_guide'
+
     if (submitBtn) { submitBtn.disabled = true; submitBtn.style.opacity = '0.6' }
     try {
       await insertLeadMagnetCapture({
-        asset: 'field_guide',
+        asset,
         name,
         email,
         company_name: firm,
         revenue_range: revenue || null,
         role: role || null,
       })
+      configureSuccess(asset)
       captureCard?.style.setProperty('display', 'none')
       successCard?.classList.add('visible')
       if (successCard) {
-        const y = successCard.getBoundingClientRect().top + window.scrollY - 80
+        const y = successCard.getBoundingClientRect().top + window.scrollY - 130
         window.scrollTo({ top: y, behavior: 'smooth' })
       }
     } catch (err) {
       if (errorEl) {
-        errorEl.textContent = "Something went wrong sending that. Try again, or email george@baxterlabs.ai directly."
+        errorEl.textContent = "Something went wrong saving that. Try again, or email george@baxterlabs.ai directly."
         errorEl.classList.add('visible')
       }
       console.error('[lead_magnet_captures insert]', err)
