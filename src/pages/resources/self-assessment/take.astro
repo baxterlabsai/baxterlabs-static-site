@@ -1,0 +1,15 @@
+---
+import ResourcesLayout from '../../../layouts/ResourcesLayout.astro'
+import SelfAssessment from '../../../components/islands/SelfAssessment'
+---
+<ResourcesLayout
+  title="Profit Leak Self-Assessment | BaxterLabs Advisory"
+  description="Twelve questions, a five-point honesty scale. Get a band, an exposure range in dollars, and a specific interpretation written for $5M–$50M professional service firms."
+  canonical="https://baxterlabs.ai/resources/self-assessment/take"
+  leftLinkHref="/resources"
+  leftLinkLabel="← All resources"
+  rightLinkHref="/resources/five-profit-leaks/read"
+  rightLinkLabel="Read the field guide"
+>
+  <SelfAssessment client:load />
+</ResourcesLayout>
