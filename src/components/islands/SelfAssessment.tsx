@@ -27,7 +27,12 @@ type ResultState = {
 
 type Stage = 'assessment' | 'results-gated' | 'results-unlocked'
 
-export default function SelfAssessment() {
+interface Props {
+  basePath?: string
+}
+
+export default function SelfAssessment({ basePath = '/resources' }: Props) {
+  const bp = basePath.replace(/\/$/, '')
   const [revenue, setRevenue] = useState<AssessRevenueRange | ''>('')
   const [industry, setIndustry] = useState<string>('')
   const [answers, setAnswers] = useState<Answers>({})
@@ -182,6 +187,7 @@ export default function SelfAssessment() {
           onGateSubmit={onGateSubmit}
           bodyRef={bodyRef}
           resultsRef={resultsRef}
+          basePath={bp}
         />
       )}
     </>
@@ -406,8 +412,9 @@ function ResultsView(props: {
   onGateSubmit: (e: FormEvent<HTMLFormElement>) => void
   bodyRef: React.RefObject<HTMLDivElement | null>
   resultsRef: React.RefObject<HTMLDivElement | null>
+  basePath: string
 }) {
-  const { result, stage, captureError, captureBusy, onGateSubmit, bodyRef, resultsRef } = props
+  const { result, stage, captureError, captureBusy, onGateSubmit, bodyRef, resultsRef, basePath } = props
   const copy = BAND_COPY[result.band]
   const unlocked = stage === 'results-unlocked'
 
@@ -572,7 +579,7 @@ function ResultsView(props: {
           {unlocked && (
             <div className="fg-end-cta" style={{ margin: '0 0 2rem' }}>
               Want the long-form version?{' '}
-              <a href="/resources/five-profit-leaks/read">
+              <a href={`${basePath}/five-profit-leaks/read`}>
                 Read the field guide &rarr;
               </a>
             </div>

@@ -3,10 +3,11 @@ import LeadCaptureForm from './LeadCaptureForm.astro'
 
 interface Props {
   preselect?: 'guide' | 'assess' | null
+  basePath?: string
 }
-const { preselect = null } = Astro.props
+const { preselect = null, basePath = '/resources' } = Astro.props
 ---
-<main class="rp-page rp-wide" data-chooser data-preselect={preselect ?? ''}>
+<main class="rp-page rp-wide" data-chooser data-preselect={preselect ?? ''} data-base-path={basePath}>
 
   <header class="hub-head">
     <div>
@@ -116,7 +117,7 @@ const { preselect = null } = Astro.props
     <div class="success-title" data-success-title>The guide is ready.</div>
     <p class="success-body" data-success-body>Open the web version below, or download the printable PDF. Either works.</p>
     <div class="success-actions" data-success-actions>
-      <a class="rp-btn" data-success-primary href="/resources/five-profit-leaks/read">Open the web version <span class="arrow">&rarr;</span></a>
+      <a class="rp-btn" data-success-primary href={`${basePath}/five-profit-leaks/read`}>Open the web version <span class="arrow">&rarr;</span></a>
       <a class="rp-btn is-ghost" data-success-secondary href="/resources/BaxterLabs_Lead_Magnet_01_Five_Profit_Leaks.pdf">Download the PDF <span class="arrow">&rarr;</span></a>
     </div>
   </section>
@@ -129,6 +130,7 @@ const { preselect = null } = Astro.props
 
   const root = document.querySelector<HTMLElement>('[data-chooser]')
   if (!root) throw new Error('chooser root missing')
+  const basePath = (root.dataset.basePath || '/resources').replace(/\/$/, '')
 
   const panels = Array.from(root.querySelectorAll<HTMLElement>('[data-panel]'))
   const captureTitle = root.querySelector<HTMLElement>('[data-capture-title]')
@@ -201,21 +203,22 @@ const { preselect = null } = Astro.props
       if (successTitle) successTitle.textContent = 'Unlocked. Ready when you are.'
       if (successBody) successBody.textContent = 'Start the twelve questions below. You’ll see your band, exposure range, and a written interpretation as soon as you finish.'
       if (successPrimary) {
-        successPrimary.href = '/resources/self-assessment/take'
+        successPrimary.href = `${basePath}/self-assessment/take`
         successPrimary.innerHTML = 'Take the assessment <span class="arrow">&rarr;</span>'
       }
       if (successSecondary) {
-        successSecondary.href = '/resources/five-profit-leaks/read'
+        successSecondary.href = `${basePath}/five-profit-leaks/read`
         successSecondary.innerHTML = 'Read the field guide <span class="arrow">&rarr;</span>'
       }
     } else {
       if (successTitle) successTitle.textContent = 'The guide is ready.'
       if (successBody) successBody.textContent = 'Open the web version below, or download the printable PDF. Either works.'
       if (successPrimary) {
-        successPrimary.href = '/resources/five-profit-leaks/read'
+        successPrimary.href = `${basePath}/five-profit-leaks/read`
         successPrimary.innerHTML = 'Open the web version <span class="arrow">&rarr;</span>'
       }
       if (successSecondary) {
+        // PDF lives at /resources/... regardless of surface — it's a public asset, not a route
         successSecondary.href = '/resources/BaxterLabs_Lead_Magnet_01_Five_Profit_Leaks.pdf'
         successSecondary.innerHTML = 'Download the PDF <span class="arrow">&rarr;</span>'
       }

@@ -6,6 +6,7 @@ interface Props {
   description: string
   ogImage?: string
   canonical?: string
+  noindex?: boolean
 }
 
 const {
@@ -13,6 +14,7 @@ const {
   description,
   ogImage = '/images/baxterlabs-og.png',
   canonical,
+  noindex = false,
 } = Astro.props
 
 const pathname = Astro.url.pathname
@@ -26,6 +28,7 @@ const canonicalURL = canonical ?? new URL(normalizedPath, Astro.site).toString()
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/png" href="/images/baxterlabs-logo.png" />
     <link rel="canonical" href={canonicalURL} />
+    {noindex && <meta name="robots" content="noindex" />}
     <title>{title}</title>
     <meta name="description" content={description} />
     <meta property="og:title" content={title} />

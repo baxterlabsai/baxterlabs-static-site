@@ -1,0 +1,26 @@
+---
+import BarePageLayout from './BarePageLayout.astro'
+import GoTopbar from '../components/resources/GoTopbar.astro'
+import GoFootnote from '../components/resources/GoFootnote.astro'
+import '../styles/resources.css'
+
+interface Props {
+  title: string
+  description: string
+  canonical: string // required — always points to the /resources/* equivalent
+  ogImage?: string
+}
+
+const { title, description, canonical, ogImage } = Astro.props
+---
+<BarePageLayout
+  title={title}
+  description={description}
+  canonical={canonical}
+  ogImage={ogImage}
+  noindex={true}
+>
+  <GoTopbar />
+  <slot />
+  <GoFootnote />
+</BarePageLayout>

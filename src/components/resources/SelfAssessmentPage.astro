@@ -1,0 +1,9 @@
+---
+import SelfAssessment from '../islands/SelfAssessment'
+
+interface Props {
+  basePath?: string
+}
+const { basePath = '/resources' } = Astro.props
+---
+<SelfAssessment client:load basePath={basePath} />
