@@ -1,10 +1,22 @@
 ---
 // Minimal-chrome topbar for /go outreach routes.
-// 3-up layout preserves the centered brand (empty left slot keeps the
-// `justify-content: space-between` visual balance).
+// Mirrors the main site Header's logo + CTA treatment so /go reads as
+// part of baxterlabs.ai. No nav links (outreach-only surface).
 ---
-<div class="rp-topbar">
-  <span></span>
-  <span class="rp-brand">BaxterLabs Advisory</span>
-  <a href="/get-started">Book a call</a>
-</div>
+<header class="go-chrome w-full">
+  <div class="flex justify-between items-center px-6 md:px-12 py-4 max-w-full mx-auto">
+    <a href="/" class="flex items-center">
+      <img
+        alt="BaxterLabs Logo"
+        class="h-[83px] w-auto object-contain"
+        src="/images/baxterlabs-logo.png"
+      />
+    </a>
+    <a
+      href="/get-started"
+      class="bg-gradient-to-br from-primary to-primary-container text-on-primary px-6 py-3 rounded-sm font-label text-sm uppercase tracking-wider font-bold shadow-sm active:scale-95 transition-all"
+    >
+      Book a call
+    </a>
+  </div>
+</header>
