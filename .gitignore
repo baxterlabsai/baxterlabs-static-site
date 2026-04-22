@@ -32,6 +32,16 @@ master.env
 docs/*
 !docs/handoffs/
 !backend/docs/
+# Positioning-map design-handoff artifacts describe a live site-wide trust
+# asset; keep them tracked so documentation stays reconcilable with the live
+# /positioning-map surface for future authoring sessions. Three-rule sequence
+# is required because git can't re-include a file whose parent directory is
+# already excluded by `docs/*` — we un-ignore the positioning dir, re-ignore
+# its direct children (e.g., matrix exports, zips), then un-ignore the one
+# design-handoff subdir we want tracked.
+!docs/positioning/
+docs/positioning/*
+!docs/positioning/design_handoff_positioning_map/
 
 # Claude Code
 .claude/worktrees/

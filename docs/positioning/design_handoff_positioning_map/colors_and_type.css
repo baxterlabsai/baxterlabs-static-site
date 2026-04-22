@@ -1,0 +1,327 @@
+/* ============================================================
+   BaxterLabs Design System — Colors & Type
+   Derived from baxterlabs-static-site/src/index.css
+   ============================================================ */
+
+/* ---- FONTS (Google Fonts CDN — not self-hosted) -------------
+   Consumers should include these <link> tags in their <head>:
+
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,600;0,700;0,800;1,400&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+   ------------------------------------------------------------ */
+
+:root {
+  /* =============================================
+     COLOR — descriptive (brand) names
+     ============================================= */
+  --bl-crimson:       #66151C;   /* deep oxblood — primary */
+  --bl-crimson-bright:#851C2C;   /* primary-container (button gradient 2nd stop) */
+  --bl-teal:          #005454;   /* secondary — near-black teal */
+  --bl-teal-dark:     #003838;   /* teal hover */
+  --bl-cream:         #F6E7C8;   /* surface-container-highest */
+  --bl-ivory:         #FAF8F2;   /* surface / background */
+  --bl-white:         #FFFFFF;
+  --bl-charcoal:      #2D3436;   /* body text / on-surface */
+  --bl-gray-warm:     #6B7280;   /* metadata gray */
+  --bl-gray-light:    #E5E7EB;   /* borders / surface-container */
+  --bl-gold:          #C9A84C;   /* editorial accent (dividers, quick-wins) */
+  --bl-amber:         #D4A843;   /* warning */
+  --bl-green:         #2D6A4F;   /* positive delta */
+  --bl-red-soft:      #C0392B;   /* form error */
+  --bl-outline:       #debfc0;   /* dusty rose border */
+
+  /* =============================================
+     COLOR — Material / semantic aliases
+     (these are what tailwind + components reference)
+     ============================================= */
+  --color-primary:                  var(--bl-crimson);
+  --color-primary-container:        var(--bl-crimson-bright);
+  --color-on-primary:               var(--bl-white);
+  --color-secondary:                var(--bl-teal);
+  --color-on-surface:               var(--bl-charcoal);
+  --color-on-surface-variant:       var(--bl-charcoal);
+  --color-background:               var(--bl-ivory);
+  --color-surface:                  var(--bl-ivory);
+  --color-surface-container-low:    var(--bl-ivory);
+  --color-surface-container-lowest: var(--bl-white);
+  --color-surface-container-highest:var(--bl-cream);
+  --color-surface-container:        var(--bl-gray-light);
+  --color-outline-variant:          var(--bl-outline);
+
+  /* =============================================
+     FOREGROUND / BACKGROUND semantic shortcuts
+     ============================================= */
+  --fg-1: var(--bl-charcoal);           /* primary text */
+  --fg-2: rgba(45, 52, 54, 0.85);       /* body paragraphs */
+  --fg-3: rgba(45, 52, 54, 0.70);       /* supporting text */
+  --fg-4: rgba(45, 52, 54, 0.50);       /* fine print / metadata */
+  --fg-5: rgba(45, 52, 54, 0.30);       /* ghost labels */
+  --fg-inv-1: #FFFFFF;                  /* text on teal/crimson */
+  --fg-inv-2: rgba(255,255,255,0.80);
+  --fg-inv-3: rgba(255,255,255,0.60);
+  --fg-inv-4: rgba(255,255,255,0.30);
+
+  --bg-canvas:     var(--bl-ivory);
+  --bg-raised:     var(--bl-white);
+  --bg-emphasis:   var(--bl-cream);
+  --bg-secondary:  var(--bl-teal);
+  --bg-primary:    var(--bl-crimson);
+
+  /* =============================================
+     TYPE FAMILIES
+     ============================================= */
+  --font-display:  'Playfair Display', Georgia, serif;   /* H1, metric numerals, hero */
+  --font-headline: 'Newsreader', Georgia, serif;         /* H2/H3, pull quotes */
+  --font-body:     'Inter', system-ui, sans-serif;
+  --font-label:    'Inter', system-ui, sans-serif;
+  --font-icon:     'Material Symbols Outlined', sans-serif;
+
+  /* =============================================
+     TYPE SCALE
+     ============================================= */
+  --fs-hero:      clamp(2.25rem, 5vw + 0.5rem, 4.5rem);  /* H1 hero */
+  --fs-section:   clamp(2rem, 3vw + 0.5rem, 3rem);       /* H2 */
+  --fs-subhead:   1.5rem;      /* 24px — H3/card titles */
+  --fs-lead:      1.25rem;     /* 20px — intro paragraph */
+  --fs-body:      1rem;        /* 16px — default */
+  --fs-small:     0.875rem;    /* 14px */
+  --fs-caption:   0.75rem;     /* 12px — eyebrow */
+  --fs-micro:     0.625rem;    /* 10px — metric caption */
+
+  --lh-tight:    1.02;
+  --lh-snug:     1.2;
+  --lh-normal:   1.6;
+  --lh-relaxed:  1.7;
+
+  --tracking-tight:   -0.01em;
+  --tracking-normal:   0;
+  --tracking-wide:     0.05em;
+  --tracking-wider:    0.1em;
+  --tracking-widest:   0.2em;
+  --tracking-mega:     0.3em;   /* eyebrow labels */
+
+  /* =============================================
+     SHAPE + SHADOWS (sharp/square aesthetic)
+     ============================================= */
+  --radius:      0.125rem;   /* 2px default */
+  --radius-lg:   0.25rem;    /* 4px */
+  --radius-xl:   0.5rem;     /* 8px */
+  --radius-full: 9999px;     /* circles only */
+
+  --shadow-sm:  0 1px 2px 0 rgba(0,0,0,.05);
+  --shadow:     0 1px 3px 0 rgba(0,0,0,.10), 0 1px 2px 0 rgba(0,0,0,.06);
+  --shadow-lg:  0 10px 15px -3px rgba(0,0,0,.10), 0 4px 6px -2px rgba(0,0,0,.05);
+  --shadow-xl:  0 20px 25px -5px rgba(0,0,0,.10), 0 10px 10px -5px rgba(0,0,0,.04);
+  --shadow-2xl: 0 25px 50px -12px rgba(0,0,0,.25);
+
+  /* =============================================
+     SPACING (vertical rhythm — the big one)
+     ============================================= */
+  --space-section-y:    6rem;    /* py-24 */
+  --space-section-y-lg: 8rem;    /* py-32 */
+  --space-page-x:       1.5rem;
+  --space-page-x-md:    3rem;
+  --space-page-x-lg:    6rem;
+
+  /* =============================================
+     EASING / MOTION
+     ============================================= */
+  --ease-out:   cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast:   150ms;
+  --dur:        300ms;
+  --dur-slow:   500ms;
+}
+
+/* ============================================================
+   BASE ELEMENTS — semantic defaults
+   ============================================================ */
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  color: var(--fg-1);
+  background: var(--bg-canvas);
+  line-height: var(--lh-normal);
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---- Headings ------------------------------------------------ */
+
+h1, .bl-h1 {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: var(--fs-hero);
+  line-height: var(--lh-tight);
+  color: var(--color-primary);
+  margin: 0 0 0.5em;
+  letter-spacing: var(--tracking-tight);
+}
+
+h2, .bl-h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-section);
+  line-height: var(--lh-snug);
+  color: var(--color-secondary);
+  margin: 0 0 0.5em;
+}
+
+h3, .bl-h3 {
+  font-family: var(--font-headline);
+  font-weight: 700;
+  font-size: var(--fs-subhead);
+  line-height: var(--lh-snug);
+  color: var(--color-secondary);
+  margin: 0 0 0.5em;
+}
+
+h4, .bl-h4 {
+  font-family: var(--font-label);
+  font-weight: 700;
+  font-size: var(--fs-small);
+  line-height: var(--lh-snug);
+  color: var(--color-secondary);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  margin: 0 0 0.25em;
+}
+
+/* ---- Body paragraph styles ---------------------------------- */
+
+p, .bl-p {
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  line-height: var(--lh-normal);
+  color: var(--fg-2);
+  margin: 0 0 1em;
+}
+
+.bl-lead {
+  font-size: var(--fs-lead);
+  line-height: var(--lh-relaxed);
+  color: var(--fg-2);
+}
+
+.bl-small { font-size: var(--fs-small); }
+
+/* ---- Eyebrow / label ---------------------------------------- */
+
+.bl-eyebrow {
+  font-family: var(--font-label);
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-mega);
+  color: var(--color-secondary);
+  display: block;
+}
+
+.bl-metric-caption {
+  font-family: var(--font-label);
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-widest);
+  color: var(--color-secondary);
+}
+
+/* ---- Metric figure (big numbers) ---------------------------- */
+
+.bl-metric {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 2.25rem;      /* 36px */
+  line-height: 1.1;
+  color: var(--color-secondary);
+}
+
+/* ---- Pull quote --------------------------------------------- */
+
+.bl-pullquote {
+  font-family: var(--font-headline);
+  font-style: italic;
+  font-size: var(--fs-lead);
+  line-height: var(--lh-relaxed);
+  color: var(--color-secondary);
+  border-left: 2px solid var(--color-secondary);
+  padding-left: 2rem;
+  margin: 1.5rem 0;
+}
+
+/* ---- Inline elements ---------------------------------------- */
+
+a {
+  color: var(--color-secondary);
+  text-decoration: underline;
+  transition: color var(--dur) var(--ease-out);
+}
+a:hover { color: var(--bl-teal-dark); }
+
+strong { font-weight: 600; color: var(--fg-1); }
+em { font-style: italic; }
+
+code, .bl-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8125rem;
+  background: var(--bl-ivory);
+  padding: 0.125em 0.35em;
+  border-radius: var(--radius);
+}
+
+hr, .bl-rule {
+  border: none;
+  border-top: 1px solid var(--color-surface-container);
+  margin: 2rem 0;
+}
+
+.bl-rule-gold {
+  border: none;
+  height: 1px;
+  width: 4rem;
+  background: var(--bl-gold);
+  margin: 1.5rem auto;
+}
+
+/* ---- Glass navigation --------------------------------------- */
+
+.bl-glass-nav {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background-color: rgba(250, 248, 242, 0.85);
+  border-bottom: 1px solid var(--color-surface-container);
+}
+
+/* ---- Material Symbols default ------------------------------- */
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+.material-symbols-outlined.filled {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* ---- Keyframes ---------------------------------------------- */
+
+@keyframes bl-pulse-subtle {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(201, 168, 76, 0.5); }
+  50%      { box-shadow: 0 0 0 6px rgba(201, 168, 76, 0); }
+}
+@keyframes bl-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes bl-scale-in {
+  from { opacity: 0; transform: scale(0.97) translateY(12px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes bl-slide-in {
+  from { opacity: 0; transform: translateX(100%); }
+  to   { opacity: 1; transform: translateX(0); }
+}

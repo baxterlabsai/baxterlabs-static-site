@@ -744,7 +744,7 @@ export default function PositioningMap() {
           </div>
           <div className="meta-item">
             <span className="meta-label">Typical Recovery</span>
-            <span className="meta-value">$200K&ndash;$700K / year</span>
+            <span className="meta-value">$200K&ndash;$1M / year</span>
           </div>
           <div className="meta-item">
             <span className="meta-label">Delivery</span>

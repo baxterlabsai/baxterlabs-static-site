@@ -1,0 +1,1026 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BaxterLabs — The Positioning Map</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,600;0,700;0,800;1,400&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/colors_and_type.css">
+
+<style>
+  /* ============ LAYOUT SHELL ============ */
+  body {
+    background: var(--bl-ivory);
+    min-height: 100vh;
+  }
+
+  .page {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 6rem 1.5rem 8rem;
+  }
+  @media (min-width: 768px) { .page { padding: 7rem 3rem 8rem; } }
+  @media (min-width: 1024px) { .page { padding: 8rem 6rem 10rem; } }
+
+  /* ============ SECTION HEADER ============ */
+  .section-head {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    margin-bottom: 5rem;
+    align-items: end;
+  }
+  @media (min-width: 900px) {
+    .section-head { grid-template-columns: 5fr 7fr; gap: 4rem; }
+  }
+
+  .eyebrow-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .eyebrow-rule { height: 1px; background: var(--bl-gold); flex: 0 0 2.5rem; }
+  .eyebrow-txt {
+    font-family: var(--font-label);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--bl-teal);
+  }
+
+  h1.display {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 700;
+    font-size: clamp(2.4rem, 4vw + 0.5rem, 4rem);
+    line-height: 1.02;
+    letter-spacing: -0.015em;
+    color: var(--bl-crimson);
+    margin: 0;
+  }
+  h1.display .roman { font-style: normal; }
+
+  .deck-line {
+    font-family: var(--font-headline);
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--fg-2);
+    max-width: 38rem;
+  }
+  .deck-line em { color: var(--bl-teal); font-style: italic; }
+
+  /* ============ META STRIP ============ */
+  .meta-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem 3rem;
+    padding: 1.25rem 0;
+    margin-bottom: 3rem;
+    border-top: 1px solid var(--bl-gray-light);
+    border-bottom: 1px solid var(--bl-gray-light);
+  }
+  .meta-item { display: flex; flex-direction: column; gap: 0.3rem; }
+  .meta-label {
+    font-family: var(--font-label);
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--bl-gray-warm);
+  }
+  .meta-value {
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--bl-charcoal);
+  }
+  .meta-value.crimson { color: var(--bl-crimson); font-family: var(--font-display); font-style: italic; font-weight: 700; font-size: 1rem; }
+
+  /* ============ MATRIX TABS ============ */
+  .matrix-tabs {
+    display: inline-flex;
+    gap: 0;
+    margin-bottom: 2.5rem;
+    border: 1px solid var(--bl-gray-light);
+    background: var(--bl-white);
+  }
+  .matrix-tab {
+    padding: 0.75rem 1.5rem;
+    font-family: var(--font-label);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--bl-gray-warm);
+    background: transparent;
+    border: none;
+    border-right: 1px solid var(--bl-gray-light);
+    cursor: pointer;
+    transition: all var(--dur) var(--ease-out);
+  }
+  .matrix-tab:last-child { border-right: none; }
+  .matrix-tab.active {
+    background: var(--bl-teal);
+    color: var(--bl-white);
+  }
+  .matrix-tab:not(.active):hover { color: var(--bl-teal); background: var(--bl-cream); }
+
+  /* ============ MATRIX GRID (2 col: chart + legend/reading) ============ */
+  .matrix-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 3rem;
+  }
+  @media (min-width: 1000px) {
+    .matrix-layout { grid-template-columns: 7fr 5fr; gap: 4rem; }
+  }
+
+  /* ============ THE CHART ============ */
+  .chart-card {
+    background: var(--bl-white);
+    padding: 2.5rem 2.5rem 2rem;
+    position: relative;
+    box-shadow: var(--shadow-xl);
+    border: 1px solid var(--bl-gray-light);
+  }
+
+  .chart-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 2rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--bl-gray-light);
+  }
+  .chart-matrix-label {
+    font-family: var(--font-label);
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--bl-gold);
+  }
+  .chart-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-style: italic;
+    font-size: 1.35rem;
+    color: var(--bl-crimson);
+    line-height: 1.2;
+    margin: 0.3rem 0 0;
+  }
+  .chart-n {
+    font-family: var(--font-label);
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--bl-gray-warm);
+    text-align: right;
+  }
+
+  /* Chart box: y-label column + plot */
+  .chart-box {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1rem;
+  }
+
+  .y-axis {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    min-height: 500px;
+  }
+  .y-label-top, .y-label-bot {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-family: var(--font-label);
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--bl-gold);
+    white-space: nowrap;
+  }
+  .y-axis-title {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-family: var(--font-headline);
+    font-style: italic;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--bl-teal);
+    letter-spacing: 0.02em;
+  }
+
+  .plot-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .plot {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    width: 100%;
+    background: var(--bl-ivory);
+    border: 1px solid var(--bl-gray-light);
+    overflow: hidden;
+  }
+
+  /* Ticker marks bg grid */
+  .plot-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(to right, rgba(107, 114, 128, 0.08) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(107, 114, 128, 0.08) 1px, transparent 1px);
+    background-size: 10% 10%;
+  }
+
+  /* Highlight UR quadrant (gold tint) */
+  .quadrant-hl {
+    position: absolute;
+    top: 0; right: 0;
+    width: 50%; height: 50%;
+    background: linear-gradient(135deg, rgba(201, 168, 76, 0.14), rgba(201, 168, 76, 0.04));
+    border-left: 1px dashed rgba(201, 168, 76, 0.5);
+    border-bottom: 1px dashed rgba(201, 168, 76, 0.5);
+    pointer-events: none;
+  }
+  .quadrant-hl::after {
+    content: '';
+    position: absolute; top: 0; right: 0;
+    width: 0; height: 0;
+    border-style: solid;
+    border-width: 0 28px 28px 0;
+    border-color: transparent var(--bl-gold) transparent transparent;
+    opacity: 0.85;
+  }
+
+  /* Quadrant labels (corners) */
+  .q-label {
+    position: absolute;
+    font-family: var(--font-label);
+    font-size: 0.56rem;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--bl-gray-warm);
+    opacity: 0.7;
+    pointer-events: none;
+  }
+  .q-tl { top: 0.75rem; left: 0.75rem; }
+  .q-tr { top: 0.75rem; right: 0.75rem; color: var(--bl-gold); opacity: 1; }
+  .q-bl { bottom: 0.75rem; left: 0.75rem; }
+  .q-br { bottom: 0.75rem; right: 0.75rem; }
+
+  /* Origin cross (mid lines) */
+  .plot-mid-x, .plot-mid-y {
+    position: absolute;
+    background: rgba(45, 52, 54, 0.2);
+    pointer-events: none;
+  }
+  .plot-mid-x { left: 0; right: 0; top: 50%; height: 1px; }
+  .plot-mid-y { top: 0; bottom: 0; left: 50%; width: 1px; }
+
+  /* Plot dots */
+  .dot {
+    position: absolute;
+    transform: translate(-50%, 50%);
+  }
+  .dot-inner {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .dot-node {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--bl-gray-warm);
+    box-shadow: 0 0 0 4px rgba(107,114,128,0.15);
+    position: relative;
+    z-index: 2;
+  }
+  .dot.is-bl .dot-node {
+    background: var(--bl-teal);
+    box-shadow: 0 0 0 5px rgba(0, 84, 84, 0.14), 0 0 0 10px rgba(0, 84, 84, 0.06);
+    width: 18px; height: 18px;
+  }
+  .dot.is-bl .dot-node::after {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border-radius: 50%;
+    background: var(--bl-cream);
+  }
+
+  /* Dot halo pulse for BL */
+  .dot.is-bl::before {
+    content: '';
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    border: 1px solid var(--bl-teal);
+    transform: translate(-50%, -50%);
+    opacity: 0.25;
+    animation: bl-halo 2.8s ease-out infinite;
+  }
+  @keyframes bl-halo {
+    0%   { transform: translate(-50%, -50%) scale(0.6); opacity: 0.6; }
+    100% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
+  }
+
+  /* Label card attached to dot */
+  .dot-label {
+    position: absolute;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 0.72rem;
+    color: var(--bl-charcoal);
+    white-space: nowrap;
+    background: var(--bl-white);
+    padding: 0.2rem 0.5rem;
+    border: 1px solid var(--bl-gray-light);
+    letter-spacing: 0;
+  }
+  .dot-label .mini {
+    display: block;
+    font-family: var(--font-label);
+    font-size: 0.56rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--bl-gray-warm);
+    margin-top: 1px;
+  }
+  .dot.is-bl .dot-label {
+    background: var(--bl-teal);
+    color: var(--bl-white);
+    border-color: var(--bl-teal);
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 0.3rem 0.6rem 0.35rem;
+  }
+  .dot.is-bl .dot-label .mini {
+    color: rgba(255,255,255,0.7);
+  }
+
+  /* Label anchoring: use a connector line */
+  .dot-connector {
+    position: absolute;
+    background: rgba(45, 52, 54, 0.25);
+  }
+
+  /* X-axis title & labels */
+  .x-axis {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.25rem 0.5rem 0;
+  }
+  .x-label-left, .x-label-right {
+    font-family: var(--font-label);
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--bl-gold);
+  }
+  .x-axis-title {
+    font-family: var(--font-headline);
+    font-style: italic;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--bl-teal);
+  }
+
+  /* ============ SIDE / READING COLUMN ============ */
+  .side {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .side-eyebrow {
+    font-family: var(--font-label);
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--bl-teal);
+  }
+
+  .winner-block {
+    border-left: 2px solid var(--bl-teal);
+    padding: 0.3rem 0 0.3rem 1.25rem;
+  }
+  .winner-head {
+    font-family: var(--font-label);
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--bl-gray-warm);
+    margin-bottom: 0.4rem;
+  }
+  .winner-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-style: italic;
+    font-size: 1.6rem;
+    color: var(--bl-crimson);
+    line-height: 1.1;
+    margin-bottom: 0.4rem;
+  }
+  .winner-sub {
+    font-family: var(--font-headline);
+    font-size: 1rem;
+    line-height: 1.55;
+    color: var(--fg-2);
+    margin: 0;
+  }
+
+  /* Player list */
+  .players {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border-top: 1px solid var(--bl-gray-light);
+  }
+  .player-row {
+    display: grid;
+    grid-template-columns: 20px 1fr auto;
+    gap: 0.9rem;
+    align-items: center;
+    padding: 0.9rem 0;
+    border-bottom: 1px solid var(--bl-gray-light);
+  }
+  .player-swatch {
+    width: 12px; height: 12px;
+    background: var(--bl-gray-warm);
+    border-radius: 50%;
+    justify-self: center;
+  }
+  .player-row.is-bl .player-swatch { background: var(--bl-teal); box-shadow: 0 0 0 3px rgba(0,84,84,0.15); }
+  .player-name {
+    font-family: var(--font-headline);
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--bl-charcoal);
+    line-height: 1.2;
+  }
+  .player-sub {
+    font-family: var(--font-body);
+    font-size: 0.7rem;
+    color: var(--bl-gray-warm);
+    font-weight: 500;
+    margin-top: 2px;
+    letter-spacing: 0.02em;
+  }
+  .player-quad {
+    font-family: var(--font-label);
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--bl-gray-warm);
+    text-align: right;
+    white-space: nowrap;
+  }
+  .player-row.is-bl .player-quad { color: var(--bl-gold); }
+  .player-row.is-bl .player-name { color: var(--bl-teal); }
+
+  /* Price/speed stats */
+  .compare-head {
+    font-family: var(--font-label);
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--bl-gray-warm);
+    margin-bottom: 0.75rem;
+  }
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  .compare-cell {
+    background: var(--bl-ivory);
+    padding: 1rem 1.1rem;
+    border-left: 2px solid var(--bl-gold);
+  }
+  .compare-cell.is-bl { background: var(--bl-cream); border-left-color: var(--bl-crimson); }
+  .compare-who {
+    font-family: var(--font-label);
+    font-size: 0.56rem;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--bl-teal);
+    margin-bottom: 0.35rem;
+  }
+  .compare-cell.is-bl .compare-who { color: var(--bl-crimson); }
+  .compare-big {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 700;
+    font-size: 1.4rem;
+    line-height: 1;
+    color: var(--bl-charcoal);
+    margin-bottom: 0.25rem;
+  }
+  .compare-cell.is-bl .compare-big { color: var(--bl-crimson); font-style: normal; }
+  .compare-small {
+    font-family: var(--font-body);
+    font-size: 0.7rem;
+    color: var(--bl-gray-warm);
+    letter-spacing: 0.05em;
+  }
+
+  /* Bottom footnote */
+  .footnote {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--bl-gray-light);
+    display: flex;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    font-family: var(--font-body);
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--bl-gray-warm);
+  }
+  .footnote .brand {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--bl-crimson);
+  }
+
+  /* ============ TWEAKS PANEL ============ */
+  #tweaks-panel {
+    position: fixed;
+    right: 1.5rem; bottom: 1.5rem;
+    width: 280px;
+    background: var(--bl-white);
+    border: 1px solid var(--bl-gray-light);
+    box-shadow: var(--shadow-xl);
+    z-index: 200;
+    display: none;
+    font-family: var(--font-body);
+  }
+  #tweaks-panel.visible { display: block; }
+  .tweak-head {
+    padding: 0.85rem 1rem;
+    background: var(--bl-teal);
+    color: var(--bl-white);
+    font-family: var(--font-label);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+  }
+  .tweak-body { padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
+  .tweak-row { display: flex; flex-direction: column; gap: 0.4rem; }
+  .tweak-label {
+    font-family: var(--font-label);
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--bl-gray-warm);
+  }
+  .tweak-options {
+    display: flex; gap: 0;
+    border: 1px solid var(--bl-gray-light);
+  }
+  .tweak-btn {
+    flex: 1;
+    padding: 0.5rem;
+    font-family: var(--font-label);
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--bl-charcoal);
+    background: var(--bl-white);
+    border: none;
+    border-right: 1px solid var(--bl-gray-light);
+    cursor: pointer;
+  }
+  .tweak-btn:last-child { border-right: none; }
+  .tweak-btn.active { background: var(--bl-teal); color: var(--bl-white); }
+
+  /* Animations */
+  .fade-swap { animation: bl-fade-in 0.4s var(--ease-out); }
+</style>
+</head>
+<body>
+
+<main class="page">
+
+  <!-- Section header -->
+  <header class="section-head">
+    <div>
+      <div class="eyebrow-row">
+        <span class="eyebrow-rule"></span>
+        <span class="eyebrow-txt">The Competitive Landscape &mdash; v1.1</span>
+      </div>
+      <h1 class="display">Where BaxterLabs <span class="roman">sits</span><br/>on the map.</h1>
+    </div>
+    <div>
+      <p class="deck-line">
+        Four options exist for a professional service firm that suspects its margin is leaking.
+        Only one of them delivers <em>enterprise-grade diagnostic rigor</em> at a price a managing partner
+        can approve without a board vote.
+      </p>
+    </div>
+  </header>
+
+  <!-- Meta strip -->
+  <div class="meta-strip">
+    <div class="meta-item">
+      <span class="meta-label">Segment</span>
+      <span class="meta-value">$5M&ndash;$50M Professional Services</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Fixed Scope</span>
+      <span class="meta-value crimson">14 Days &middot; $12,500</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Typical Recovery</span>
+      <span class="meta-value">$200K&ndash;$1M / year</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Delivery</span>
+      <span class="meta-value">Two Partners, Personally</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Methodology</span>
+      <span class="meta-value">8-Phase, AI-Assisted Pipeline</span>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="matrix-tabs" role="tablist">
+    <button class="matrix-tab active" data-matrix="A" role="tab">Matrix A &middot; Depth &times; Speed</button>
+    <button class="matrix-tab" data-matrix="B" role="tab">Matrix B &middot; Rigor &times; Price</button>
+  </div>
+
+  <div class="matrix-layout">
+
+    <!-- CHART CARD -->
+    <div class="chart-card">
+      <div class="chart-title-row">
+        <div>
+          <div class="chart-matrix-label" id="chart-matrix-label">Matrix A</div>
+          <h2 class="chart-title" id="chart-title">Depth of Analysis &times; Speed of Delivery</h2>
+        </div>
+        <div class="chart-n">
+          <div>4 Players</div>
+          <div style="opacity:0.6; margin-top:2px;">1 Quadrant Wins</div>
+        </div>
+      </div>
+
+      <div class="chart-box">
+        <!-- Y axis column -->
+        <div class="y-axis">
+          <span class="y-label-top" id="y-label-top">High</span>
+          <span class="y-axis-title" id="y-axis-title">Depth of Analysis</span>
+          <span class="y-label-bot" id="y-label-bot">Low</span>
+        </div>
+
+        <!-- Plot + x axis -->
+        <div class="plot-wrap">
+          <div class="plot" id="plot">
+            <div class="plot-grid"></div>
+            <div class="quadrant-hl"></div>
+            <div class="plot-mid-x"></div>
+            <div class="plot-mid-y"></div>
+
+            <div class="q-label q-tl">Upper-Left</div>
+            <div class="q-label q-tr">Upper-Right &nbsp;&mdash;&nbsp; The Answer</div>
+            <div class="q-label q-bl">Origin</div>
+            <div class="q-label q-br">Lower-Right</div>
+
+            <!-- Dots injected by JS -->
+          </div>
+
+          <div class="x-axis">
+            <span class="x-label-left" id="x-label-left">Slow</span>
+            <span class="x-axis-title" id="x-axis-title">Speed of Delivery</span>
+            <span class="x-label-right" id="x-label-right">Fast</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SIDE COLUMN -->
+    <div class="side">
+      <div class="winner-block">
+        <div class="winner-head">The Upper-Right</div>
+        <div class="winner-title">BaxterLabs <span style="font-style:normal;">Advisory</span></div>
+        <p class="winner-sub" id="winner-sub">
+          High depth, fast delivery. The 8-phase pipeline produces what traditional firms take
+          90 days to build &mdash; delivered in 14.
+        </p>
+      </div>
+
+      <div>
+        <div class="compare-head">Players</div>
+        <div class="players" id="players">
+          <!-- rows injected -->
+        </div>
+      </div>
+
+      <div>
+        <div class="compare-head">The Spread</div>
+        <div class="compare-grid" id="compare-grid">
+          <!-- cells injected -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footnote -->
+  <div class="footnote">
+    <div>Positioning Map v1.1 &middot; Internal &middot; Apr 2026</div>
+    <div class="brand">BaxterLabs Advisory</div>
+    <div>Source: Positioning Memo &sect;2&ndash;3</div>
+  </div>
+</main>
+
+<!-- Tweaks -->
+<div id="tweaks-panel">
+  <div class="tweak-head">Tweaks</div>
+  <div class="tweak-body">
+    <div class="tweak-row">
+      <div class="tweak-label">Active Matrix</div>
+      <div class="tweak-options" id="tw-matrix">
+        <button class="tweak-btn active" data-v="A">Matrix A</button>
+        <button class="tweak-btn" data-v="B">Matrix B</button>
+      </div>
+    </div>
+    <div class="tweak-row">
+      <div class="tweak-label">Quadrant Highlight</div>
+      <div class="tweak-options" id="tw-hl">
+        <button class="tweak-btn active" data-v="gold">Gold Tint</button>
+        <button class="tweak-btn" data-v="off">Off</button>
+      </div>
+    </div>
+    <div class="tweak-row">
+      <div class="tweak-label">BL Pulse Halo</div>
+      <div class="tweak-options" id="tw-halo">
+        <button class="tweak-btn active" data-v="on">On</button>
+        <button class="tweak-btn" data-v="off">Off</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============ TWEAK DEFAULTS (edit mode) ============ */
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "matrix": "A",
+  "highlight": "gold",
+  "halo": "on"
+}/*EDITMODE-END*/;
+
+let tweaks = { ...TWEAK_DEFAULTS };
+
+/* ============ DATA ============ */
+// Coordinates use a percentage grid: x goes 0 (left) -> 100 (right), y goes 0 (bottom) -> 100 (top)
+// Label offset controls where the text card attaches relative to the dot.
+const MATRICES = {
+  A: {
+    matrixLabel: "Matrix A",
+    title: "Depth of Analysis \u00d7 Speed of Delivery",
+    yAxis: "Depth of Analysis",
+    yTop: "High", yBot: "Low",
+    xAxis: "Speed of Delivery",
+    xLeft: "Slow", xRight: "Fast",
+    winnerSub: "High depth, fast delivery. The 8-phase pipeline produces what traditional firms take 90 days to build \u2014 delivered in 14.",
+    players: [
+      { id: "bl",   name: "BaxterLabs Advisory", sub: "14 days \u00b7 $12,500 \u00b7 Two partners", quad: "Upper-Right", x: 86, y: 86, labelPos: "l" },
+      { id: "big4", name: "Big 4 Consulting",     sub: "Deloitte, PwC, EY, KPMG",               quad: "Upper-Left",  x: 20, y: 78, labelPos: "r" },
+      { id: "fcfo", name: "Fractional CFO",       sub: "$3K\u2013$8K / month, embedded",         quad: "Lower-Right", x: 78, y: 22, labelPos: "l" },
+      { id: "sq",   name: "Status Quo",           sub: "Instinct \u00b7 monthly P&L only",       quad: "Lower-Left",  x: 8,  y: 8,  labelPos: "r" }
+    ],
+    compare: [
+      { who: "BaxterLabs",   big: "14 days",    sub: "Fixed window", isBL: true },
+      { who: "Big 4",        big: "3\u20136 mo",      sub: "Committee-driven" },
+      { who: "BaxterLabs",   big: "$12,500",    sub: "Fixed fee", isBL: true },
+      { who: "Big 4",        big: "$150K\u2013$500K", sub: "Enterprise pricing" }
+    ]
+  },
+  B: {
+    matrixLabel: "Matrix B",
+    title: "Enterprise Rigor \u00d7 Accessibility",
+    yAxis: "Enterprise Rigor",
+    yTop: "High", yBot: "Low",
+    xAxis: "Accessibility / Price",
+    xLeft: "Expensive", xRight: "Accessible",
+    winnerSub: "Audit-grade artifacts at a price a managing partner can approve without a board vote. The quadrant neither Big 4 nor a Fractional CFO can occupy.",
+    players: [
+      { id: "bl",   name: "BaxterLabs Advisory", sub: "Audit-grade \u00b7 one-time $12,500", quad: "Upper-Right", x: 88, y: 86, labelPos: "l" },
+      { id: "big4", name: "Big 4 Consulting",     sub: "Institutional rigor, enterprise fee", quad: "Upper-Left",  x: 15, y: 80, labelPos: "r" },
+      { id: "fcfo", name: "Fractional CFO",       sub: "Personal frameworks \u00b7 retainer", quad: "Lower-Right", x: 72, y: 22, labelPos: "l" },
+      { id: "sq",   name: "Status Quo",           sub: "No methodology \u00b7 no direct spend", quad: "At Origin",   x: 50, y: 50, labelPos: "r", isOrigin: true }
+    ],
+    compare: [
+      { who: "BaxterLabs",   big: "$12,500",   sub: "Discretionary budget", isBL: true },
+      { who: "Big 4",        big: "0.6\u20132%",     sub: "Of firm revenue" },
+      { who: "BaxterLabs",   big: "Audit-grade", sub: "Citation provenance", isBL: true },
+      { who: "Fractional CFO", big: "Operational", sub: "Not forensic" }
+    ]
+  }
+};
+
+/* ============ RENDER ============ */
+const plot = document.getElementById('plot');
+const playersEl = document.getElementById('players');
+const compareEl = document.getElementById('compare-grid');
+
+function render() {
+  const m = MATRICES[tweaks.matrix];
+
+  // Text swaps
+  document.getElementById('chart-matrix-label').textContent = m.matrixLabel;
+  document.getElementById('chart-title').textContent = m.title;
+  document.getElementById('y-axis-title').textContent = m.yAxis;
+  document.getElementById('y-label-top').textContent = m.yTop;
+  document.getElementById('y-label-bot').textContent = m.yBot;
+  document.getElementById('x-axis-title').textContent = m.xAxis;
+  document.getElementById('x-label-left').textContent = m.xLeft;
+  document.getElementById('x-label-right').textContent = m.xRight;
+  document.getElementById('winner-sub').textContent = m.winnerSub;
+
+  // Remove old dots (anything after the 4 static children)
+  [...plot.querySelectorAll('.dot')].forEach(n => n.remove());
+
+  // Dots
+  m.players.forEach((p) => {
+    const dot = document.createElement('div');
+    dot.className = 'dot fade-swap' + (p.id === 'bl' ? ' is-bl' : '');
+    dot.style.left = p.x + '%';
+    dot.style.bottom = p.y + '%';
+    dot.style.transform = 'translate(-50%, 50%)';
+
+    const node = document.createElement('div');
+    node.className = 'dot-node';
+    dot.appendChild(node);
+
+    // Label card with connector
+    const label = document.createElement('div');
+    label.className = 'dot-label';
+    label.innerHTML = `${p.name}<span class="mini">${p.quad}</span>`;
+    label.style.position = 'absolute';
+    label.style.top = '50%';
+    label.style.whiteSpace = 'nowrap';
+
+    // Position label to left or right of node, anchoring by the correct edge
+    if (p.labelPos === 'r') {
+      label.style.left = '28px';
+      label.style.transform = 'translateY(-50%)';
+    } else {
+      // Anchor the label's RIGHT edge 28px left of the dot center
+      label.style.right = '28px';
+      label.style.transform = 'translateY(-50%)';
+    }
+
+    // Connector
+    const conn = document.createElement('div');
+    conn.className = 'dot-connector';
+    conn.style.position = 'absolute';
+    conn.style.top = '50%';
+    conn.style.height = '1px';
+    conn.style.width = '22px';
+    if (p.labelPos === 'r') { conn.style.left = '9px'; }
+    else { conn.style.right = '9px'; }
+    dot.appendChild(conn);
+
+    dot.appendChild(label);
+    plot.appendChild(dot);
+  });
+
+  // Player rows
+  playersEl.innerHTML = '';
+  m.players.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'player-row' + (p.id === 'bl' ? ' is-bl' : '');
+    row.innerHTML = `
+      <span class="player-swatch"></span>
+      <div>
+        <div class="player-name">${p.name}</div>
+        <div class="player-sub">${p.sub}</div>
+      </div>
+      <div class="player-quad">${p.quad}</div>
+    `;
+    playersEl.appendChild(row);
+  });
+
+  // Compare grid
+  compareEl.innerHTML = '';
+  m.compare.forEach(c => {
+    const cell = document.createElement('div');
+    cell.className = 'compare-cell' + (c.isBL ? ' is-bl' : '');
+    cell.innerHTML = `
+      <div class="compare-who">${c.who}</div>
+      <div class="compare-big">${c.big}</div>
+      <div class="compare-small">${c.sub}</div>
+    `;
+    compareEl.appendChild(cell);
+  });
+
+  // Apply tweaks
+  document.querySelector('.quadrant-hl').style.display = tweaks.highlight === 'gold' ? 'block' : 'none';
+  const haloStyle = tweaks.halo === 'on' ? 'running' : 'paused';
+  document.querySelectorAll('.dot.is-bl').forEach(el => el.style.setProperty('--halo-anim', haloStyle));
+  if (tweaks.halo === 'off') {
+    const sheet = document.getElementById('halo-off-style') || (() => {
+      const s = document.createElement('style'); s.id = 'halo-off-style';
+      document.head.appendChild(s); return s;
+    })();
+    sheet.textContent = '.dot.is-bl::before { animation: none !important; opacity: 0 !important; }';
+  } else {
+    const sheet = document.getElementById('halo-off-style');
+    if (sheet) sheet.textContent = '';
+  }
+
+  // Tab state
+  document.querySelectorAll('.matrix-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.matrix === tweaks.matrix);
+  });
+  document.querySelectorAll('#tw-matrix .tweak-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.v === tweaks.matrix);
+  });
+  document.querySelectorAll('#tw-hl .tweak-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.v === tweaks.highlight);
+  });
+  document.querySelectorAll('#tw-halo .tweak-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.v === tweaks.halo);
+  });
+}
+
+render();
+
+/* ============ Tab wiring ============ */
+document.querySelectorAll('.matrix-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    tweaks.matrix = tab.dataset.matrix;
+    render();
+    persist({ matrix: tweaks.matrix });
+  });
+});
+
+/* ============ Tweaks mode ============ */
+function persist(edits) {
+  window.parent.postMessage({ type: '__edit_mode_set_keys', edits }, '*');
+}
+
+window.addEventListener('message', (e) => {
+  const d = e.data || {};
+  if (d.type === '__activate_edit_mode') {
+    document.getElementById('tweaks-panel').classList.add('visible');
+  } else if (d.type === '__deactivate_edit_mode') {
+    document.getElementById('tweaks-panel').classList.remove('visible');
+  }
+});
+window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+
+// Tweak buttons
+function wireTweak(groupId, key) {
+  document.querySelectorAll(`#${groupId} .tweak-btn`).forEach(btn => {
+    btn.addEventListener('click', () => {
+      tweaks[key] = btn.dataset.v;
+      render();
+      persist({ [key]: tweaks[key] });
+    });
+  });
+}
+wireTweak('tw-matrix', 'matrix');
+wireTweak('tw-hl', 'highlight');
+wireTweak('tw-halo', 'halo');
+</script>
+
+</body>
+</html>
