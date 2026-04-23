@@ -1,0 +1,527 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import '../components/profit-leaks/pillar.css'
+import MarginErosionChart from '../components/profit-leaks/MarginErosionChart'
+import VendorSprawlCalc from '../components/profit-leaks/VendorSprawlCalc'
+import RevenuePayrollCalc from '../components/profit-leaks/RevenuePayrollCalc'
+import FragilityLoop from '../components/profit-leaks/FragilityLoop'
+import DecompositionBar from '../components/profit-leaks/DecompositionBar'
+
+const title = 'The 5 Profit Leaks Hiding in Every Professional Service Firm | BaxterLabs'
+const description = 'Most $5M to $50M firms lose 5 to 15 percent of EBITDA to hidden profit leaks. See the five categories, the structural cause, and one real diagnostic that found $3.585M across 19 findings.'
+const canonical = 'https://baxterlabs.ai/profit-leaks'
+
+// TODO: replace with custom dark-dossier og:image PNG (referenced in brief Section 10).
+// Using the default site OG as a placeholder until design delivers the asset.
+const ogImage = '/images/baxterlabs-og.png'
+
+const datePublished = '2026-04-23'
+
+const articleJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: 'The Five Profit Leaks Hiding in Every Firm.',
+  description,
+  author: {
+    '@type': 'Person',
+    name: 'George DeVries',
+  },
+  datePublished,
+  publisher: {
+    '@type': 'Organization',
+    name: 'BaxterLabs Advisory',
+    logo: {
+      '@type': 'ImageObject',
+      url: 'https://baxterlabs.ai/images/baxterlabs-logo.png',
+    },
+  },
+  mainEntityOfPage: {
+    '@type': 'WebPage',
+    '@id': canonical,
+  },
+}
+
+const breadcrumbJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://baxterlabs.ai/' },
+    { '@type': 'ListItem', position: 2, name: 'Profit Leaks', item: canonical },
+  ],
+}
+
+const organizationJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'BaxterLabs Advisory',
+  url: 'https://baxterlabs.ai/',
+  logo: 'https://baxterlabs.ai/images/baxterlabs-logo.png',
+  description: 'Forensic profit-leak diagnostics for $5M to $50M professional service firms.',
+}
+---
+<BaseLayout
+  title={title}
+  description={description}
+  canonical={canonical}
+  ogType="article"
+  ogImage={ogImage}
+>
+  <Fragment slot="head">
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(articleJsonLd)} />
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(breadcrumbJsonLd)} />
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(organizationJsonLd)} />
+  </Fragment>
+
+  <div class="pl-page">
+
+    {/* HERO */}
+    <section class="pl-hero" data-screen-label="01 Hero">
+      <div class="pl-hero-grid"></div>
+      <div class="pl-hero-bg"></div>
+      <div class="pl-hero-eyebrow">Profit Leaks &middot; A Pillar</div>
+      <h1 id="hero-headline">The <span class="num">5</span> Profit Leaks<br/>Hiding in Every Firm.</h1>
+      <p class="pl-hero-sub" id="hero-sub">
+        Most professional service firms in the <strong>$5M to $50M range</strong> are losing 5 to 15 percent of EBITDA to operational friction they have not yet quantified. The standard month-end close will not surface it. It is not designed to. Here is what a forensic look actually finds.
+      </p>
+      <div class="pl-hero-cta">
+        <a href="/get-started" class="pl-btn" id="hero-cta">Start Your Diagnostic <span class="arrow">&rarr;</span></a>
+        <a href="/go/five-profit-leaks" class="pl-btn is-ghost">Download the Field Guide <span class="arrow">&rarr;</span></a>
+      </div>
+      <span class="pl-nda">A mutual confidentiality agreement (NDA) is executed prior to any data intake.</span>
+    </section>
+
+    {/* SECTION 2: THE FEELING */}
+    <section class="pl-section" data-screen-label="02 The Feeling">
+      <div class="pl-inner pl-narrow">
+        <div class="pl-eyebrow"><span class="line"></span><span class="txt">02 &middot; The Feeling</span></div>
+        <h2 class="pl-h2">You Already Know <span class="roman">Something</span> Is Off.</h2>
+        <div class="pl-body">
+          <p>If you are running a professional service firm and revenue is growing but profit does not feel like it is keeping pace, you are not imagining it.</p>
+          <p>I keep hearing the same thing from managing partners in your range. Revenue is up 15, 20, sometimes 30 percent year over year. The team is bigger. The pipeline is full. But the cash in the bank at the end of the quarter does not feel right. Something is leaking, and the P&amp;L is not telling you where.</p>
+          <p><em>Do you feel that too?</em></p>
+          <p>If you do, the instinct is almost always right. You need to trust your gut. The reason the standard financial reporting cannot surface this is not because the data is missing. It is because the standard close is built to record what happened, not explain why. Finding the leak requires a different kind of look.</p>
+          <p>That is what this page is. A walkthrough of the five categories where I keep finding recoverable profit, the single structural reason they all exist, and one real diagnostic where the math added up to <strong>$3.585M</strong> across <strong>19 separate findings</strong>.</p>
+        </div>
+
+        <div class="pl-stat-mega">
+          <div class="fig" data-tier-hero>$450K to $1.5M</div>
+          <div class="lbl">Typical recoverable profit &middot; single diagnostic engagement at firms in your range</div>
+        </div>
+      </div>
+    </section>
+
+    {/* SECTION 3: ROOT CAUSE */}
+    <section class="pl-section" data-screen-label="03 Root Cause" style="background: var(--pl-white);">
+      <div class="pl-inner pl-narrow">
+        <div class="pl-eyebrow"><span class="line"></span><span class="txt">03 &middot; The Root Cause</span></div>
+        <h2 class="pl-h2">Growth Without <span class="roman">Infrastructure.</span></h2>
+        <div class="pl-body">
+          <p>The reason profit leaks are so hard to see is that they are not really five separate problems. They are symptoms of one structural condition.</p>
+          <p>Here is the pattern I keep seeing in firms your size. The firm grew. Revenue doubled, maybe tripled, over five to seven years. The team grew. Offices opened. Services expanded. Sometimes there were acquisitions. But the management infrastructure (pricing governance, vendor oversight, financial reporting, performance standards) did not scale at the same pace.</p>
+          <p>What that leaves is a firm that operates on autopilot in places it used to operate on judgment. Division managers set their own prices. Departments contract their own vendors. Subscriptions renew without review. Performance conversations happen annually if they happen at all. The founder is still running on instincts that worked at $5M, but the firm is at $25M or $40M now, and the gap between operational complexity and management infrastructure is where the margin escapes.</p>
+          <p>Every category below is a version of this same story. Pricing haste is really "no centralized rate governance." Vendor sprawl is really "no centralized procurement." Payroll outpacing revenue is really "no performance standards tied to output." When we run a diagnostic, we are not so much finding five isolated problems as mapping the five places the same infrastructure gap shows up.</p>
+        </div>
+
+        <div class="pl-root-box">
+          <div class="kicker">The Reframe</div>
+          <p class="pull">You cannot fix five separate problems simultaneously. But you can close the infrastructure gap, and the leaks close behind it.</p>
+        </div>
+      </div>
+    </section>
+
+    {/* SIZE SELECTOR (sticky) */}
+    <div class="pl-size-rail" id="size-rail">
+      <div class="pl-size-rail-inner">
+        <span class="lbl">Calibrate to your firm size</span>
+        <div class="pl-size-seg" role="radiogroup" aria-label="Firm revenue size">
+          <button class="pl-size-btn" data-tier="A" role="radio" aria-checked="false">$5M &ndash; $10M</button>
+          <button class="pl-size-btn active" data-tier="B" role="radio" aria-checked="true">$10M &ndash; $25M</button>
+          <button class="pl-size-btn" data-tier="C" role="radio" aria-checked="false">$25M &ndash; $50M</button>
+        </div>
+      </div>
+    </div>
+
+    {/* SECTION 4: THE FIVE LEAKS */}
+    <section class="pl-section" data-screen-label="04 The Five Leaks">
+      <div class="pl-inner">
+        <div class="pl-eyebrow"><span class="line"></span><span class="txt">04 &middot; The Five Leaks</span></div>
+        <h2 class="pl-h2">The Five Categories Where <span class="roman">the Money</span> Hides.</h2>
+        <p class="pl-body" style="max-width: 60rem;">
+          These five categories come from real diagnostic work across professional service firms. They are not theoretical. They are the patterns I keep seeing, and they group cleanly into three buckets: <strong>revenue leaks</strong>, <strong>cost leaks</strong>, and <strong>process leaks</strong>.
+        </p>
+
+        <div class="pl-leaks">
+
+          {/* Subcat A: Revenue */}
+          <div class="pl-subcat-head">
+            <span class="tag">4A &middot; Revenue Leaks</span>
+            <h3>Revenue Leaks.</h3>
+          </div>
+          <p class="pl-subcat-intro">
+            These are leaks that erode margin on the revenue side: pricing that drifted from the rate card, engagement terms that quietly expanded, contracts that renewed without being renegotiated. Revenue leaks are typically the largest category by dollar impact. <strong>In a recent diagnostic on a $52M firm, the revenue leaks alone totaled $1.8M.</strong>
+          </p>
+
+          {/* Leak 1: Pricing Haste */}
+          <div class="pl-leak" id="leak-1">
+            <div class="pl-leak-head">
+              <div class="pl-impact-badge">
+                <span class="l">Typical annual impact</span>
+                <span class="v" data-tier-l1>$150K &ndash; $500K</span>
+              </div>
+              <h4><span class="num">01</span>Pricing Decisions Made Out of Haste</h4>
+              <div class="pl-leak-tag">Priced once. Never revisited.</div>
+            </div>
+            <div>
+              <div class="pl-leak-body">
+                <p>This is the biggest leak by dollar impact in most firms I look at, and it is the hardest one to see from the inside.</p>
+                <p>Here is the mechanism: the firm sets a price for a service line or a client engagement early, often during a competitive pitch or a moment of pressure. The price sticks. The cost to deliver that service changes over two or three years (salaries increase, scope creeps informally, the team gets more experienced and more expensive) but the price does not. The margin on that engagement quietly erodes from 45 percent to 18 percent and nobody notices because the revenue line still looks healthy.</p>
+                <p>Have you reviewed your pricing against actual delivery costs in the last 12 months? Most firms I talk to have not. The ones that do almost always find <strong>at least three engagements priced 18 to 32 percent below</strong> what they should be charging based on current delivery costs and market rates.</p>
+              </div>
+              <div class="pl-action">
+                <div class="kicker">One thing you can do</div>
+                <p class="txt">Pick your three longest-running client engagements. Calculate the actual fully-loaded delivery cost (not just direct labor, include allocated overhead). Compare it to what you are billing. The gap is the leak.</p>
+              </div>
+
+              <MarginErosionChart client:visible />
+            </div>
+          </div>
+
+          {/* Leak 2: Below-Card */}
+          <div class="pl-leak" id="leak-2">
+            <div class="pl-leak-head">
+              <div class="pl-impact-badge">
+                <span class="l">Typical annual impact</span>
+                <span class="v" data-tier-l2>$100K &ndash; $400K</span>
+              </div>
+              <h4><span class="num">02</span>Below-the-Rate-Card Pricing Creep</h4>
+              <div class="pl-leak-tag">The rate card exists. Nobody enforces it.</div>
+            </div>
+            <div>
+              <div class="pl-leak-body">
+                <p>This is the companion to Leak 1 and it shows up almost everywhere I look. The firm has a rate card. It lives on a shared drive or in the CRM. But there is no approval escalation when a division manager or practice lead prices below the card floor to close a deal. Over two or three years, the firm ends up with 30 to 40 percent of its accounts priced below the floor, and nobody knows which ones.</p>
+                <p>In one diagnostic, the division-level estimate was that enforcing the rate card on just the most defensible 30 percent of below-card accounts would recover <strong>$400K in gross profit within 90 days</strong>. The dollar range on these findings is typically large because the base revenue is large (temp staffing volume, billable hours, ongoing retainers) and the percentage recovery is meaningful.</p>
+              </div>
+              <div class="pl-action">
+                <div class="kicker">One thing you can do</div>
+                <p class="txt">Ask your sales or practice leads to pull a list of the bottom decile of accounts by realized margin. If any of them are at or below your cost floor, that is the starting point.</p>
+              </div>
+              <div class="pl-static-stat">
+                In firms that enforce their existing rate card, the average recovery in Year 1 is <strong>5 to 10 percentage points</strong> of markup on roughly a third of below-card accounts.
+              </div>
+            </div>
+          </div>
+
+          {/* Subcat B: Cost */}
+          <div class="pl-subcat-head">
+            <span class="tag">4B &middot; Cost Leaks</span>
+            <h3>Cost Leaks.</h3>
+          </div>
+          <p class="pl-subcat-intro">
+            These are leaks on the cost side: money leaving the firm faster than it should, often through vendors and software that accumulated without anyone making a deliberate decision. Cost leaks are typically the second-largest category, and the easiest to act on quickly.
+          </p>
+
+          {/* Leak 3: Vendor Sprawl */}
+          <div class="pl-leak" id="leak-3">
+            <div class="pl-leak-head">
+              <div class="pl-impact-badge">
+                <span class="l">Typical annual impact</span>
+                <span class="v" data-tier-l3>$60K &ndash; $250K</span>
+              </div>
+              <h4><span class="num">03</span>Vendor Sprawl</h4>
+              <div class="pl-leak-tag">The vendors accumulated. Nobody decided.</div>
+            </div>
+            <div>
+              <div class="pl-leak-body">
+                <p>This is the most common leak I find, and it is almost always invisible to the people closest to it. Here is how it works: as a firm grows, different departments, offices, or practice groups start contracting with vendors independently. Procurement is informal. Approvals happen over email. Over three or four years, the firm ends up paying two or three different vendors for overlapping services, sometimes the same vendor under two different account numbers billed to two different cost centers.</p>
+                <p>Vendor consolidation negotiations typically recover <strong>20 to 40 percent of the duplicated spend within 60 days</strong>.</p>
+              </div>
+              <div class="pl-action">
+                <div class="kicker">One thing you can do this week</div>
+                <p class="txt">Pull your last four months of vendor invoices and sort them by vendor name. Scan for duplicates. Most firms find at least one. Some firms find thirty.</p>
+              </div>
+
+              <VendorSprawlCalc client:visible />
+            </div>
+          </div>
+
+          {/* Leak 4: Subscriptions */}
+          <div class="pl-leak" id="leak-4">
+            <div class="pl-leak-head">
+              <div class="pl-impact-badge">
+                <span class="l">Typical annual impact</span>
+                <span class="v" data-tier-l4>$30K &ndash; $100K</span>
+              </div>
+              <h4><span class="num">04</span>Subscription's Out of Control</h4>
+              <div class="pl-leak-tag">Tools nobody uses. Renewals nobody reviews.</div>
+            </div>
+            <div>
+              <div class="pl-leak-body">
+                <p>This one is almost universal. The firm adopted a tool three years ago for a specific project. The project ended. The subscription auto-renewed. Nobody owns the cancellation because nobody owns the subscription inventory.</p>
+                <p>I think the reason this leak persists is that each individual subscription is small enough to ignore. $200 a month does not trigger a review. But 40 subscriptions at $200 a month is $96,000 a year, and I keep finding firms with <strong>40 to 80 active subscriptions</strong> where fewer than half are actively used. At larger firms (above $25M) I have seen the number climb past 100 platforms with less than 30 percent utilization.</p>
+              </div>
+              <div class="pl-action">
+                <div class="kicker">The walkthrough</div>
+                <p class="txt">Export your subscription list from your accounting system. Flag anything that has not been logged into by more than two people in the last 90 days. That is your cancellation shortlist.</p>
+              </div>
+              <div class="pl-static-stat">
+                The average $15M professional service firm has <strong>47 active software subscriptions</strong>. The average $50M firm has over <strong>100</strong>. Fewer than half are actively used.
+              </div>
+            </div>
+          </div>
+
+          {/* Subcat C: Process */}
+          <div class="pl-subcat-head">
+            <span class="tag">4C &middot; Process Leaks</span>
+            <h3>Process Leaks.</h3>
+          </div>
+          <p class="pl-subcat-intro">
+            Process leaks are smallest in dollar terms but they are often the root cause of the other two. If the firm cannot see its financial state in time to react, pricing drifts go unchallenged, vendors proliferate, and underperformance compounds. <strong>Fixing process leaks is what makes the other fixes stick.</strong>
+          </p>
+
+          {/* Leak 5: Payroll */}
+          <div class="pl-leak" id="leak-5">
+            <div class="pl-leak-head">
+              <div class="pl-impact-badge">
+                <span class="l">Typical annual impact</span>
+                <span class="v" data-tier-l5>$120K &ndash; $450K</span>
+              </div>
+              <h4><span class="num">05</span>Payroll Outpacing Actual Produced Revenue</h4>
+              <div class="pl-leak-tag">More people. Same output.</div>
+            </div>
+            <div>
+              <div class="pl-leak-body">
+                <p>This is the one managing partners feel most acutely, even before they can quantify it. The team has grown. Payroll has grown faster. But the revenue produced per person has not kept pace.</p>
+                <p>I think the reason this happens is that professional service firms hire ahead of demand (which is often the right thing to do) but do not have a mechanism to track whether the new hire is producing at the rate the financial model assumed. The hire was justified by a projection. Nobody goes back to check the projection 12 months later.</p>
+                <p>The walkthrough: pull your total payroll cost by department or practice group. Pull the revenue each group produced over the same period. Divide. The number you get is your revenue-to-payroll ratio. For most professional service firms, a healthy ratio is <strong>2.5x to 3.5x</strong>. Below 2.0x, payroll is outpacing the revenue that headcount is actually producing.</p>
+              </div>
+
+              <RevenuePayrollCalc client:visible />
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    {/* SECTION 5: FRAGILITY LOOP */}
+    <section class="pl-section pl-loop-section" data-screen-label="05 Fragility Loop">
+      <div class="pl-inner">
+        <div class="pl-eyebrow"><span class="line"></span><span class="txt">05 &middot; The Fragility Loop</span></div>
+        <h2 class="pl-h2">The Loop You Do Not <span class="roman">Want to Be In.</span></h2>
+        <div class="pl-body pl-narrow" style="margin-left: 0;">
+          <p>There is a specific sequence that happens in firms where the profit leaks have been running for a while without correction. I call it the fragility loop because each cycle tightens the next.</p>
+          <p>It works like this. Margin compresses by 50 to 150 basis points over two or three years. Retained earnings do not keep up with working capital needs. The revolver gets drawn on more heavily. Interest expense rises. That interest expense further compresses the margin. And the next cycle starts with less room than the last.</p>
+          <p>Most firms do not realize they are in the loop until the loop produces a covenant test. At that point it is not an operational problem anymore. It is <em>a solvency event</em>, with lenders, boards, and sometimes equity contributions from the owner required to cure a technical breach.</p>
+          <p>The visual below uses real anonymized starting conditions from a recent BaxterLabs engagement: a <strong>$52M professional service firm</strong> that cured a covenant breach with a $200K equity contribution from the CEO in the prior fiscal year. Use their numbers, or enter your own, and see how many cycles the math takes to reach a breach.</p>
+        </div>
+
+        <FragilityLoop client:visible />
+
+        <div class="pl-body pl-narrow" style="margin-left: 0; margin-top: 3rem;">
+          <p>If any part of this loop feels familiar, that is the reason to run a diagnostic now rather than next fiscal year. <strong>Every cycle tightens the room you have to respond.</strong></p>
+        </div>
+      </div>
+    </section>
+
+    {/* SECTION 6: INSIDE ONE DIAGNOSTIC */}
+    <section class="pl-section pl-decomp-section" data-screen-label="06 Inside One Diagnostic">
+      <div class="pl-inner">
+        <div class="pl-eyebrow"><span class="line"></span><span class="txt">06 &middot; Inside One Diagnostic</span></div>
+        <h2 class="pl-h2"><span class="crimson">$3.585M</span> Across <span class="roman">19</span> Leaks.</h2>
+        <div class="pl-body pl-narrow" style="margin-left: 0;">
+          <p>In early 2026, BaxterLabs ran a diagnostic on a <strong>$52M national staffing and executive search firm</strong>. Twenty offices. Two prior acquisitions that had never been fully integrated. About 236 employees. Net income had gone negative in the most recent fiscal year, and the firm had just cured a technical covenant breach with a $200,000 equity contribution from the CEO.</p>
+          <p>The diagnostic found <strong>$3.585M</strong> in moderate-scenario recoverable profit across <strong>19 discrete leaks</strong>. That is 15 percent of the firm's gross profit. Here is where it was hiding.</p>
+        </div>
+
+        <DecompositionBar client:visible />
+
+        <div class="pl-body pl-narrow" style="margin-left: 0; margin-top: 3rem;">
+          <p>The largest findings were not where the firm's leadership expected. The biggest dollar impact came from pricing: legacy account rate drift and temp account pricing below the rate card floor. The CEO had not looked at account-level pricing in over a year. Division managers had de facto pricing authority without escalation.</p>
+          <p>Process leaks were smallest in dollar terms but they were the root cause of the other two. The CEO operated on financial data six to eight weeks stale. The outsourced fractional CFO delivered the monthly P&amp;L three to four weeks after month-end. A dashboard project had been scoped 14 months earlier and never completed. Without real-time visibility, margin compressions went unnoticed for quarters, pricing drift went unchallenged, and vendor proposals from senior staff sat on the CEO's desk for months.</p>
+          <p>The reframe for the CEO was that the firm did not have 19 problems. It had one problem showing up in 19 places: <em>the firm had outgrown its founder-led operating model, and the infrastructure to manage a 20-office firm had never been built.</em></p>
+          <p>One of the CEO's direct quotes from the interview captured it cleanly: <strong>"That's real money. I did not have that number."</strong></p>
+        </div>
+      </div>
+    </section>
+
+    {/* SECTION 7: TOTAL PICTURE */}
+    <section class="pl-section" data-screen-label="07 Total Picture">
+      <div class="pl-inner">
+        <div class="pl-eyebrow"><span class="line"></span><span class="txt">07 &middot; The Total Picture</span></div>
+        <h2 class="pl-h2">Add <span class="roman">Them</span> Up.</h2>
+        <p class="pl-body pl-narrow" style="margin-left: 0;">
+          Every firm has a different mix. But every firm I have looked at has at least three of these categories running simultaneously. When you add the ranges together, the total annual exposure at firms your size typically falls in this range:
+        </p>
+
+        <div class="pl-stats">
+          <div class="pl-stat is-hero">
+            <div class="l">Recoverable Profit</div>
+            <div class="v" data-tier-hero-2>$450K &ndash; $1.5M</div>
+            <div class="d">Typical finding from a single diagnostic engagement at your firm size.</div>
+          </div>
+          <div class="pl-stat">
+            <div class="l">Leak Categories</div>
+            <div class="v">5</div>
+            <div class="d">Forensic analysis across five operational dimensions.</div>
+          </div>
+          <div class="pl-stat">
+            <div class="l">Total Duration</div>
+            <div class="v">14 Days</div>
+            <div class="d">From data intake to delivered recovery roadmap.</div>
+          </div>
+          <div class="pl-stat">
+            <div class="l">Fixed Price</div>
+            <div class="v">$12,500</div>
+            <div class="d">No scope creep. No retainer. No ambiguity.</div>
+          </div>
+        </div>
+
+        <p class="pl-body" style="margin-top: 2.5rem; max-width: 60rem;">
+          The math on the diagnostic is straightforward. At the low end of the range for firms your size, the return on the $12,500 diagnostic fee is <strong data-tier-roi>36x</strong> at the floor. At the moderate case, it is typically much higher.
+        </p>
+      </div>
+    </section>
+
+    {/* SECTION 8: DIAGNOSTIC PROCESS */}
+    <section class="pl-section" data-screen-label="08 Diagnostic Process" style="background: var(--pl-white);">
+      <div class="pl-inner">
+        <div class="pl-eyebrow"><span class="line"></span><span class="txt">08 &middot; The Diagnostic Process</span></div>
+        <h2 class="pl-h2">What the Diagnostic <span class="roman">Actually</span> Does.</h2>
+        <p class="pl-body pl-narrow" style="margin-left: 0;">
+          Make the invisible visible. Three phases over 14 days.
+        </p>
+
+        <div class="pl-phases">
+          <div class="pl-phase">
+            <div class="num">01</div>
+            <h4>Forensic Data Integration</h4>
+            <p>Secure, encrypted pipeline for your financial data. General ledger, vendor invoices, payroll records, subscription logs, client contracts, billing history. No generic surveys. A mutual NDA is executed before any data intake.</p>
+          </div>
+          <div class="pl-phase">
+            <div class="num">02</div>
+            <h4>Leakage Diagnostics and Modeling</h4>
+            <p>Your data runs through the five leak categories above, cross-referenced against prior diagnostics and 25 years of operational experience. Every finding quantified to a specific dollar amount under three scenarios (conservative, moderate, aggressive).</p>
+          </div>
+          <div class="pl-phase">
+            <div class="num">03</div>
+            <h4>Executive Recovery Roadmap</h4>
+            <p>You receive an executive summary, a full diagnostic report by category, a sequenced implementation roadmap, a quantification workbook showing the math behind every finding, and an executive presentation deck for your leadership or Board.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {/* SECTION 9: TRUST FRAME */}
+    <section class="pl-section" data-screen-label="09 Trust Frame">
+      <div class="pl-inner">
+        <div class="pl-eyebrow"><span class="line"></span><span class="txt">09 &middot; Trust Frame</span></div>
+        <h2 class="pl-h2">Led by Partners. <span class="roman">Audited by</span> You.</h2>
+        <div class="pl-body pl-narrow" style="margin-left: 0;">
+          <p>Every BaxterLabs engagement is led exclusively by partners with 25 years of real-world P&amp;L ownership. No junior analysts. No subcontractors. No learning on your time.</p>
+          <p>The methodology is auditable end to end. Every finding includes the source data citation, the calculation methodology, and the specific line items that produced the number. You can trace any finding back to your own data. If you disagree with a finding, we walk through the math together until we agree.</p>
+          <p>We use advanced analytics to find patterns across your data, but the interpretation and the calls on what to recommend come from partners who have sat in the seat and owned the P&amp;L. The analytics tell us where to look. The experience tells us what the number means.</p>
+        </div>
+
+        <div class="pl-trust-signals">
+          <div class="pl-trust-signal"><strong>Mutual NDA</strong> executed before any data intake.</div>
+          <div class="pl-trust-signal"><strong>100% auditable</strong> findings with source citations.</div>
+          <div class="pl-trust-signal"><strong>Led exclusively by partners</strong>, not junior staff.</div>
+          <div class="pl-trust-signal"><strong>Fixed price</strong> at $12,500. No scope creep.</div>
+        </div>
+      </div>
+    </section>
+
+    {/* SECTION 10: SELF-ASSESSMENT */}
+    <section class="pl-section" data-screen-label="10 Self-Assessment CTA" id="section-assess" style="background: var(--pl-white);">
+      <div class="pl-inner pl-narrow">
+        <div class="pl-eyebrow"><span class="line"></span><span class="txt">10 &middot; Not Ready?</span></div>
+        <h2 class="pl-h2">Not Ready for a Diagnostic? <span class="roman">Start Here.</span></h2>
+        <div class="pl-body">
+          <p>The Profit Leak Self-Assessment takes 10 minutes and scores your firm across the five leak categories above. It will not replace a forensic diagnostic, but it will tell you which categories deserve a closer look.</p>
+          <p>If the results confirm what your gut is already telling you, the diagnostic is the next step.</p>
+        </div>
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1.5rem;">
+          <a href="/resources/self-assessment/take" class="pl-btn is-ghost">Take the Self-Assessment <span class="arrow">&rarr;</span></a>
+          <a href="/go/five-profit-leaks" class="pl-btn is-ghost">Download the Field Guide <span class="arrow">&rarr;</span></a>
+        </div>
+      </div>
+    </section>
+
+    {/* SECTION 11: FINAL CTA */}
+    <section class="pl-section pl-final" data-screen-label="11 Final CTA">
+      <div class="pl-inner pl-narrow">
+        <div class="pl-eyebrow" style="justify-content: center;"><span class="line" style="background: var(--pl-gold);"></span><span class="txt" style="color: var(--pl-gold);">11 &middot; The Next Step</span></div>
+        <h2 class="pl-h2">Make the Invisible <span class="roman">Visible.</span></h2>
+        <p class="pl-body" style="margin: 0 auto; max-width: 42rem;">
+          The diagnostic is a fixed-scope engagement. $12,500, 14 days, and you walk away with a specific roadmap to fix what we found. Typical finding at firms your size is <strong data-tier-hero-3 style="color: var(--pl-cream);">$450K to $1.5M</strong> in recoverable profit.
+        </p>
+        <p class="pl-body" style="margin: 1.5rem auto 2.5rem; max-width: 42rem;">
+          If something feels off in your margin, you need to trust your gut. It is almost always right.
+        </p>
+        <a href="/get-started" class="pl-btn" style="background: var(--pl-cream); color: var(--pl-crimson) !important;">Start Your Diagnostic <span class="arrow">&rarr;</span></a>
+        <span class="pl-nda" style="color: rgba(246,231,200,0.5);">A mutual confidentiality agreement (NDA) is executed prior to any data intake.</span>
+      </div>
+    </section>
+
+  </div>
+
+  <script is:inline>
+    (function () {
+      var TIER_DATA = {
+        A: { hero: '$200K to $700K', heroShort: '$200K &ndash; $700K', L1: '$50K &ndash; $200K', L2: '$30K &ndash; $150K', L3: '$30K &ndash; $120K', L4: '$15K &ndash; $60K', L5: '$60K &ndash; $200K', roi: '16x' },
+        B: { hero: '$450K to $1.5M', heroShort: '$450K &ndash; $1.5M', L1: '$150K &ndash; $500K', L2: '$100K &ndash; $400K', L3: '$60K &ndash; $250K', L4: '$30K &ndash; $100K', L5: '$120K &ndash; $450K', roi: '36x' },
+        C: { hero: '$1M to $3.5M', heroShort: '$1M &ndash; $3.5M', L1: '$400K &ndash; $1.5M', L2: '$250K &ndash; $800K', L3: '$150K &ndash; $500K', L4: '$60K &ndash; $250K', L5: '$250K &ndash; $850K', roi: '80x' }
+      };
+
+      function parseHashTier() {
+        var h = (window.location.hash || '').toLowerCase();
+        var m = h.match(/tier=([abc])/);
+        if (!m) return 'B';
+        return m[1].toUpperCase();
+      }
+
+      function applyTier(t) {
+        if (!TIER_DATA[t]) t = 'B';
+        var d = TIER_DATA[t];
+        document.querySelectorAll('[data-tier-hero]').forEach(function (el) { el.innerHTML = d.hero; });
+        document.querySelectorAll('[data-tier-hero-2]').forEach(function (el) { el.innerHTML = d.heroShort; });
+        document.querySelectorAll('[data-tier-hero-3]').forEach(function (el) { el.innerHTML = d.hero; });
+        document.querySelectorAll('[data-tier-l1]').forEach(function (el) { el.innerHTML = d.L1; });
+        document.querySelectorAll('[data-tier-l2]').forEach(function (el) { el.innerHTML = d.L2; });
+        document.querySelectorAll('[data-tier-l3]').forEach(function (el) { el.innerHTML = d.L3; });
+        document.querySelectorAll('[data-tier-l4]').forEach(function (el) { el.innerHTML = d.L4; });
+        document.querySelectorAll('[data-tier-l5]').forEach(function (el) { el.innerHTML = d.L5; });
+        document.querySelectorAll('[data-tier-roi]').forEach(function (el) { el.textContent = d.roi; });
+        document.querySelectorAll('.pl-size-btn').forEach(function (b) {
+          var on = b.getAttribute('data-tier') === t;
+          b.classList.toggle('active', on);
+          b.setAttribute('aria-checked', on ? 'true' : 'false');
+        });
+      }
+
+      function setHashTier(t) {
+        var h = 'tier=' + t.toLowerCase();
+        if (history && typeof history.replaceState === 'function') {
+          history.replaceState(null, '', '#' + h);
+        } else {
+          window.location.hash = h;
+        }
+      }
+
+      document.querySelectorAll('.pl-size-btn').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var t = b.getAttribute('data-tier');
+          if (!t || !TIER_DATA[t]) return;
+          setHashTier(t);
+          applyTier(t);
+        });
+      });
+
+      window.addEventListener('hashchange', function () {
+        applyTier(parseHashTier());
+      });
+
+      applyTier(parseHashTier());
+    })();
+  </script>
+</BaseLayout>
