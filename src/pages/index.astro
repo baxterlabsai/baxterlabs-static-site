@@ -1,267 +1,238 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
-import ExecutiveSummaryLightbox from '../components/islands/ExecutiveSummaryLightbox'
+import '../components/homepage/home.css'
+import LeakMeter from '../components/homepage/LeakMeter'
+import BreakEvenVisualizer from '../components/homepage/BreakEvenVisualizer'
+
+const title = 'BaxterLabs Advisory | Profit Leak Diagnostic for $5M-$50M Firms'
+const description = 'You feel it in the quarterly review: the number is not what it should be. BaxterLabs runs a 14-day forensic diagnostic for $5M to $50M professional service firms. Fixed price, $12,500, typical finding pays for itself 16 to 80 times over.'
+const canonical = 'https://baxterlabs.ai/'
+
+// TODO: replace with custom dark-dossier share card (1200x630).
+// Using the default site OG as a placeholder until design delivers the asset.
+const ogImage = '/images/baxterlabs-og.png'
+
+const organizationJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  '@id': 'https://baxterlabs.ai/#org',
+  name: 'BaxterLabs Advisory',
+  url: 'https://baxterlabs.ai/',
+  description: 'Profit leak diagnostic for $5M to $50M professional service firms.',
+  founder: { '@type': 'Person', name: 'George DeVries', jobTitle: 'Managing Partner' },
+}
+
+const serviceJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'ProfessionalService',
+  '@id': 'https://baxterlabs.ai/#service',
+  name: 'Profit Leak Diagnostic',
+  provider: { '@id': 'https://baxterlabs.ai/#org' },
+  serviceType: 'Forensic profit diagnostic',
+  areaServed: 'United States professional service firms, $5M-$50M revenue range',
+  offers: {
+    '@type': 'Offer',
+    price: '12500',
+    priceCurrency: 'USD',
+    description: '14-day fixed-scope diagnostic',
+  },
+}
+
+const breadcrumbJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://baxterlabs.ai/' },
+  ],
+}
 ---
 <BaseLayout
-  title="BaxterLabs Advisory | Executive Profit Recovery"
-  description="Most firms operate with significant, unidentified leakage. BaxterLabs delivers a 14-day executive diagnostic identifying specific, recoverable cash flow lost to misaligned financial controls."
+  title={title}
+  description={description}
+  canonical={canonical}
+  ogType="website"
+  ogImage={ogImage}
 >
-  {/* Hero Section */}
-  <section class="relative px-6 md:px-12 py-24 md:py-44 overflow-hidden bg-surface">
-    <div class="max-w-4xl mx-auto text-center">
-      <h1 class="font-display italic text-4xl md:text-7xl text-primary leading-[1.02] mb-4">
-        Quantify and Recover Material Annualized Profit Leakage.
-      </h1>
-      <p class="font-headline italic text-secondary/80 text-xl md:text-2xl mb-8">
-        Most firms don't know where profit is leaking. We make it visible.
-      </p>
-      <p class="font-headline font-bold text-secondary text-xl md:text-2xl mb-8 leading-snug">
-        Most firms operate with significant, unidentified leakage—often losing 5–12% of EBITDA to operational friction they haven't yet quantified.
-      </p>
-      <p class="font-body text-on-surface-variant text-lg md:text-xl max-w-2xl mx-auto leading-relaxed mb-12">
-        For professional service firms with $5M–$50M in revenue. A 14-day executive diagnostic identifying specific, recoverable cash flow lost to misaligned financial controls.
-      </p>
-      <div class="flex flex-col sm:flex-row gap-8 justify-center items-center">
-        <a
-          href="/get-started"
-          class="bg-primary text-on-primary px-12 py-5 rounded-sm font-label text-sm uppercase tracking-widest font-bold shadow-lg hover:bg-primary-container transition-all"
-        >
-          Start Your Diagnostic
-        </a>
-        <div class="flex flex-col items-center">
-          <button
-            type="button"
-            data-open-executive-summary
-            class="border-b border-secondary text-secondary px-6 py-3 font-label text-sm uppercase tracking-widest font-bold hover:text-primary hover:border-primary transition-all cursor-pointer"
-          >
-            View Sample Executive Summary
-          </button>
-          <p class="mt-2 text-[10px] text-on-surface/60 uppercase tracking-tighter">
-            Representative output illustrating the structure and depth of the 14-day diagnostic.
-          </p>
-        </div>
-      </div>
-      <p class="mt-10 text-sm text-on-surface-variant/70 max-w-xl mx-auto leading-relaxed">
-        Each engagement is executed through a structured, proprietary diagnostic process designed for speed, accuracy, and confidentiality.
-      </p>
-    </div>
-  </section>
+  <Fragment slot="head">
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(organizationJsonLd)} />
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(serviceJsonLd)} />
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(breadcrumbJsonLd)} />
+  </Fragment>
 
-  {/* Credibility Section */}
-  <section class="bg-surface-container-low px-6 md:px-12 py-24 border-y border-surface-container">
-    <div class="max-w-7xl mx-auto">
-      <div class="grid md:grid-cols-2 gap-16 items-start">
-        <div>
-          <span class="font-label text-secondary uppercase tracking-[0.3em] text-xs font-bold block mb-4">
-            Experienced Finance Operators
-          </span>
-          <h2 class="font-display text-4xl text-secondary leading-tight">
-            Led Exclusively by Partners with 25+ Years of Real-World P&amp;L Ownership.
-          </h2>
-        </div>
-        <div class="space-y-6">
-          <p class="text-on-surface-variant text-lg leading-relaxed">
-            Unlike software tools or generic consulting firms that deploy junior staff to learn on your time, we are experienced finance operators who have sat in the seat, managed the financials, and owned the outcomes. We operate as an extension of your executive team, leveraging 25+ years of real-world P&amp;L ownership to identify material leakage.
-          </p>
-          <div class="h-px w-24 bg-secondary"></div>
-          <p class="text-on-surface-variant font-medium italic">
-            "Precision is the difference between a forecast and a strategy."
-          </p>
-        </div>
-      </div>
-    </div>
-  </section>
+  <div class="hp-page">
 
-  {/* The 14-Day Diagnostic */}
-  <section class="bg-surface-container-lowest px-6 md:px-12 py-24">
-    <div class="max-w-7xl mx-auto">
-      <div class="text-center mb-16">
-        <h2 class="font-display text-4xl md:text-5xl text-secondary mb-4">
-          The 14-Day Executive Profit Leak Diagnostic
-        </h2>
-        <p class="text-secondary uppercase tracking-widest text-sm font-semibold">
-          Three Phases to Absolute Financial Clarity
+    {/* SECTION 1 — HERO */}
+    <section class="hp-hero" data-screen-label="01 Hero">
+      <div class="hp-hero-grid"></div>
+      <div class="hp-hero-bg"></div>
+      <div class="hp-hero-inner">
+        <div class="hp-hero-eyebrow">BaxterLabs Advisory</div>
+        <h1 class="hp-hero-h1">
+          <span class="roman">You feel it in the</span> <span class="crimson">quarterly review.</span>
+        </h1>
+        <p class="hp-hero-sub">
+          Revenue is growing. Headcount is growing. But the number at the bottom is not what it should be, and you cannot say exactly why. For professional service firms in the <strong>$5M to $50M range</strong>, that feeling is almost always right, and the gap between what your margin should be and what it is typically adds up to <strong>between 5 and 15 percent of EBITDA</strong>. This page shows you what that looks like in dollars per minute, what the diagnostic costs against what it typically finds, and what to do next if the numbers make you want to move.
         </p>
+        <div class="hp-hero-cta">
+          <a href="/get-started" class="hp-btn">Start Your Diagnostic <span class="arrow">→</span></a>
+          <a href="/profit-leaks" class="hp-btn is-ghost">Read the Full Analysis <span class="arrow">→</span></a>
+        </div>
+        <span class="hp-nda">A mutual confidentiality agreement (NDA) is executed prior to any data intake.</span>
       </div>
-      <div class="grid md:grid-cols-3 gap-8">
-        {/* Phase 1 */}
-        <div class="bg-surface-container-low p-10 rounded-sm flex flex-col justify-between group hover:border-secondary border border-transparent transition-all">
-          <div>
-            <span class="text-5xl font-display italic text-secondary/20 mb-6 block">01</span>
-            <h3 class="font-headline text-2xl font-bold text-secondary mb-4">Forensic Data Integration</h3>
-            <p class="text-on-surface-variant leading-relaxed">
-              We establish a secure, encrypted pipeline for your financial data. No generic surveys—just raw, unfiltered data ingestion for true analysis.
-            </p>
-          </div>
-          <div class="mt-8 flex items-center gap-2 text-secondary font-bold text-sm uppercase tracking-tighter">
-            <span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1">shield_person</span>
-            Secure Protocols
-          </div>
-        </div>
-        {/* Phase 2 */}
-        <div class="bg-secondary p-10 rounded-sm flex flex-col justify-between text-on-primary shadow-xl">
-          <div>
-            <span class="text-5xl font-display italic text-on-primary/30 mb-6 block">02</span>
-            <h3 class="font-headline text-2xl font-bold mb-4">Leakage Diagnostics &amp; Modeling</h3>
-            <p class="text-on-primary/80 leading-relaxed">
-              Our proprietary algorithms and 25 years of experience clash to find hidden overhead, inefficient capital allocation, and missed revenue triggers.
-            </p>
-          </div>
-          <div class="mt-8 flex items-center gap-2 font-bold text-sm uppercase tracking-tighter">
-            <span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1">analytics</span>
-            Deep Analysis
-          </div>
-        </div>
-        {/* Phase 3 */}
-        <div class="bg-surface-container-low p-10 rounded-sm flex flex-col justify-between group hover:border-secondary border border-transparent transition-all">
-          <div>
-            <span class="text-5xl font-display italic text-secondary/20 mb-6 block">03</span>
-            <h3 class="font-headline text-2xl font-bold text-secondary mb-4">Executive Recovery Roadmap</h3>
-            <p class="text-on-surface-variant leading-relaxed">
-              You receive a profit leak diagnostic and implementation package. No fluff. Just specific actions to recover significant EBITDA within 90 days.
-            </p>
-          </div>
-          <div class="mt-8 flex items-center gap-2 text-secondary font-bold text-sm uppercase tracking-tighter">
-            <span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1">assignment_turned_in</span>
-            Actionable Roadmap
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  {/* Trust Section (NDA/Data Integrity) */}
-  <section class="bg-primary text-on-primary px-6 md:px-12 py-24 overflow-hidden relative">
-    <div class="max-w-7xl mx-auto relative z-10 grid md:grid-cols-2 gap-12 items-center">
-      <div>
-        <div class="mb-6 inline-flex items-center gap-2 px-4 py-2 bg-on-primary/10 border border-on-primary/20 rounded-sm">
-          <span class="material-symbols-outlined text-sm">verified_user</span>
-          <span class="text-xs font-label uppercase tracking-widest font-bold">Standard Professional Practice</span>
-        </div>
-        <h2 class="font-display text-4xl md:text-5xl mb-8">Data Integrity &amp; Professional Standards.</h2>
-        <p class="text-on-primary/80 text-lg leading-relaxed mb-6">
-          We operate with the confidentiality of an internal finance team. As standard professional practice, a mutual confidentiality agreement (NDA) is executed prior to any data intake. All data is handled through a structured, controlled, and auditable protocol.
-        </p>
-        <div class="flex items-center gap-4 py-4 border-y border-on-primary/20">
-          <span class="material-symbols-outlined text-3xl">lock</span>
-          <p class="text-sm font-label uppercase tracking-widest font-semibold">STRICT GOVERNANCE PROTOCOLS</p>
+    {/* SECTION 2 — THE FEELING */}
+    <section class="hp-section hp-section--white" data-screen-label="02 The Feeling">
+      <div class="hp-inner hp-narrow">
+        <div class="hp-eyebrow"><span class="line"></span><span class="txt">02 &middot; The Feeling</span></div>
+        <h2 class="hp-h2">You already know <span class="roman">something is off.</span></h2>
+        <div class="hp-body">
+          <p>If you are running a professional service firm and revenue is growing but profit does not feel like it is keeping pace, you are not imagining it.</p>
+          <p>We keep hearing the same thing from managing partners in your range. Revenue is up 15, 20, sometimes 30 percent year over year. The team is bigger. The pipeline is full. But the cash in the bank at the end of the quarter does not feel right. Something is leaking, and the P&amp;L is not telling you where.</p>
+          <p><em>Do you feel that too?</em></p>
+          <p>If you do, the instinct is almost always right. That is the feeling this firm was built to address.</p>
         </div>
       </div>
-      {/* Human Advantage — teal box */}
-      <div class="bg-secondary p-8 rounded-sm border border-on-primary/10">
-        <div class="flex items-start gap-4 mb-6">
-          <span class="material-symbols-outlined text-surface-container-highest bg-on-primary/20 p-2 rounded-sm" style="font-variation-settings: 'FILL' 1">psychology</span>
-          <div>
-            <h4 class="font-bold text-xl mb-2 text-on-primary">The Human Advantage</h4>
-            <p class="text-sm text-on-primary/80 italic">
-              AI-enabled modeling is our tool, but experience is the artist. We use advanced analytics as a support system, ensuring every insight is triple-verified by senior human partners with real-world P&amp;L ownership.
-            </p>
-          </div>
-        </div>
-        <div class="text-xs uppercase tracking-tighter text-on-primary/50 text-right">Auditable &amp; Non-Generative Workflows</div>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  {/* Results Section */}
-  <section class="bg-surface-container-low px-6 md:px-12 py-24">
-    <div class="max-w-7xl mx-auto">
-      <div class="flex flex-col md:flex-row justify-between items-end gap-8 mb-16">
-        <div class="max-w-2xl">
-          <h2 class="font-display text-4xl text-secondary mb-4">Quantified, Prioritized, and Repeatable Outcomes.</h2>
-          <p class="text-on-surface-variant">
-            Every engagement produces a quantified, prioritized, and repeatable set of profit leaks for immediate recovery. Our methodology ensures consistent, auditable findings across every firm we analyze.
-          </p>
-        </div>
-        <div class="hidden md:block h-px flex-grow bg-outline-variant mx-12"></div>
-      </div>
-      <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div class="bg-surface-container-lowest p-8 rounded-sm shadow-sm border-b-4 border-secondary transition-transform hover:-translate-y-2">
-          <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-6 leading-tight">
-            Quantified forensic analysis of immediate recovery targets.
-          </p>
-          <h3 class="font-display text-4xl text-secondary mb-2">$425,000</h3>
-          <p class="text-xs text-secondary font-bold uppercase">ANNUAL RECURRING RECOVERY</p>
-        </div>
-        <div class="bg-surface-container-lowest p-8 rounded-sm shadow-sm border-b-4 border-primary transition-transform hover:-translate-y-2">
-          <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-6 leading-tight">
-            Every finding is backed by auditable data trails and repeatable methodology.
-          </p>
-          <h3 class="font-display text-4xl text-secondary mb-2">100%</h3>
-          <p class="text-xs text-secondary font-bold uppercase">AUDITABLE FINDINGS</p>
-        </div>
-        <div class="bg-surface-container-lowest p-8 rounded-sm shadow-sm border-b-4 border-secondary transition-transform hover:-translate-y-2">
-          <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-6 leading-tight">
-            Time from completion of last stakeholder interview to full executive recovery roadmap.
-          </p>
-          <h3 class="font-display text-4xl text-secondary mb-2">14 Days</h3>
-          <p class="text-xs text-secondary font-bold uppercase">TOTAL DURATION</p>
-        </div>
-        <div class="bg-surface-container-lowest p-8 rounded-sm shadow-sm border-b-4 border-primary transition-transform hover:-translate-y-2">
-          <p class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-6 leading-tight">
-            Median return on investment for the diagnostic engagement.
-          </p>
-          <h3 class="font-display text-4xl text-secondary mb-2">12.5x</h3>
-          <p class="text-xs text-secondary font-bold uppercase">ON ADVISORY FEE</p>
+    {/* SECTION 3 — METER EXPLAINER */}
+    <section class="hp-section" data-screen-label="03 Meter Explainer">
+      <div class="hp-inner hp-narrow">
+        <div class="hp-eyebrow"><span class="line"></span><span class="txt">03 &middot; About the Meter</span></div>
+        <h2 class="hp-h2" style="font-size: clamp(1.5rem, 2.2vw + 0.5rem, 2.25rem);">About the meter <span class="roman">in the corner.</span></h2>
+        <div class="hp-body">
+          <p>The meter running in the corner of this page is not a measurement of your firm. It is illustrative. It runs at the typical per-minute rate of recoverable profit for firms in the size range you selected, based on patterns from BaxterLabs diagnostic work.</p>
+          <p>For firms in the <strong>$5M to $50M range</strong>, the right order of magnitude is somewhere between <strong>fifty cents and four dollars every minute</strong>. Across an unexamined quarter, that is real money. Across an unexamined year, it is the difference between a comfortable operating cushion and a technical covenant breach.</p>
+          <p>The meter is running while you read. <em>If the number makes you uncomfortable, trust the discomfort.</em></p>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  {/* Implementation Section */}
-  <section class="bg-surface px-6 md:px-12 py-32 border-t border-surface-container">
-    <div class="max-w-4xl mx-auto text-center">
-      <span class="font-label text-secondary uppercase tracking-[0.3em] text-xs font-bold block mb-6">Post-Diagnostic Support</span>
-      <h2 class="font-display text-5xl text-secondary mb-8">Strategic Post-Diagnostic Execution.</h2>
-      <p class="text-on-surface-variant text-xl leading-relaxed mb-12">
-        The diagnostic identifies the leaks; the implementation retainer ensures they stay closed. For firms requiring continued excellence, we offer optional high-touch support to manage the execution of all recommended recovery strategies.
-      </p>
-      <div class="grid md:grid-cols-3 gap-8 mb-12 text-left">
-        <div class="flex items-start gap-3">
-          <span class="material-symbols-outlined text-secondary mt-1" style="font-variation-settings: 'FILL' 1">check_circle</span>
-          <span class="text-on-surface font-medium">Direct access to Lead Partner</span>
+    {/* SECTION 4 — BREAK-EVEN VISUALIZER */}
+    <section class="hp-section hp-section--white" data-screen-label="04 Break-Even Visualizer">
+      <div class="hp-inner">
+        <div class="hp-eyebrow"><span class="line"></span><span class="txt">04 &middot; The Math, Briefly</span></div>
+        <h2 class="hp-h2" style="max-width: 22ch;">The diagnostic is <span class="crimson">$12,500.</span> The finding is <span class="roman">many multiples.</span></h2>
+        <div class="hp-body hp-narrow" style="margin-left: 0;">
+          <p>That is the fixed price, paid once. The typical finding at firms your size recovers many multiples of that in annual profit. <strong>The math is worth pausing on.</strong></p>
         </div>
-        <div class="flex items-start gap-3">
-          <span class="material-symbols-outlined text-secondary mt-1" style="font-variation-settings: 'FILL' 1">check_circle</span>
-          <span class="text-on-surface font-medium">Monthly performance audits</span>
-        </div>
-        <div class="flex items-start gap-3">
-          <span class="material-symbols-outlined text-secondary mt-1" style="font-variation-settings: 'FILL' 1">check_circle</span>
-          <span class="text-on-surface font-medium">Executive change management</span>
+
+        <BreakEvenVisualizer client:visible />
+
+        <div class="hp-body hp-narrow" style="margin-left: 0; margin-top: 2.5rem;">
+          <p>At every firm size in our range, the diagnostic <strong>pays for itself at the floor</strong> of the recovery range. At the midpoint, the return multiples into territory where the question is no longer whether to do it but <em>why you waited</em>.</p>
         </div>
       </div>
-      <a href="/services" class="inline-block text-secondary font-bold border-b-2 border-secondary pb-1 hover:text-primary hover:border-primary transition-all">
-        Learn More About Implementation
-      </a>
-    </div>
-  </section>
+    </section>
 
-  {/* Final CTA */}
-  <section class="bg-surface-container-highest px-6 md:px-12 py-24 border-t border-surface-container">
-    <div class="max-w-4xl mx-auto text-center">
-      <h2 class="font-display text-5xl md:text-6xl text-primary mb-8 leading-tight">Secure Your Diagnostic.</h2>
-      <p class="text-on-surface-variant text-xl mb-12">Stop the bleed. Quantify the recovery. Selective client intake.</p>
-      <div class="flex justify-center">
-        <a
-          href="/get-started"
-          class="bg-primary text-on-primary px-12 py-6 rounded-sm font-label text-sm uppercase tracking-[0.3em] font-bold shadow-xl hover:bg-primary-container transition-all"
-        >
-          Start Your Diagnostic
-        </a>
+    {/* SECTION 5 — WHY BAXTERLABS */}
+    <section class="hp-section" data-screen-label="05 Why BaxterLabs">
+      <div class="hp-inner hp-narrow">
+        <div class="hp-eyebrow"><span class="line"></span><span class="txt">05 &middot; Why BaxterLabs</span></div>
+        <h2 class="hp-h2">Why <span class="roman">this firm</span> exists.</h2>
+        <div class="hp-body">
+          <p>We built BaxterLabs because we kept meeting managing partners who knew something was wrong but could not get a useful diagnostic. The tools available to them were either generic consulting engagements priced at six figures with multi-month timelines, or software dashboards that could display data but could not interpret it. Nothing in the middle was built to do what firms at your scale actually need.</p>
+          <p>What firms in the $5M to $50M range need is a <strong>forensic look, delivered in two weeks, priced so the math is obvious</strong>, led by someone who has actually run a P&amp;L. That is what BaxterLabs does. The diagnostic is the output. The point of view is that growth without infrastructure is the real problem, and the five leak categories we diagnose are where that gap shows up in the numbers.</p>
+          <p>The full point of view, with the 19-leak case study that produced $3.585M in findings at one recent engagement, lives on the <a href="/profit-leaks">Profit Leaks page</a>. That is the long version. The homepage is the short version.</p>
+        </div>
       </div>
-      <p class="mt-8 text-sm text-on-surface-variant/60 font-medium">
-        A mutual confidentiality agreement (NDA) is executed prior to any data intake.
-      </p>
-    </div>
-  </section>
+    </section>
 
-  <ExecutiveSummaryLightbox client:idle />
+    {/* SECTION 6 — THREE PATHS */}
+    <section class="hp-section hp-section--white" data-screen-label="06 Three Paths">
+      <div class="hp-inner">
+        <div class="hp-eyebrow"><span class="line"></span><span class="txt">06 &middot; Three Paths</span></div>
+        <h2 class="hp-h2">Three ways to <span class="roman">go from here.</span></h2>
+        <div class="hp-body hp-narrow" style="margin-left: 0;">
+          <p>Depending on where you are today, one of these three next steps fits.</p>
+        </div>
+
+        <div class="hp-paths">
+          <article class="hp-path-card">
+            <div class="kicker">01 &middot; Not Sure Yet</div>
+            <h3>The 4-minute Profit Leak Self-Assessment.</h3>
+            <p>Twelve questions, a scored result, and a specific interpretation written for firms your size. No email required to see your score.</p>
+            <a href="/resources/self-assessment/take" class="hp-btn is-ghost">Take the Assessment <span class="arrow">→</span></a>
+          </article>
+          <article class="hp-path-card">
+            <div class="kicker">02 &middot; Want the Full Thinking</div>
+            <h3>Read the Profit Leaks pillar.</h3>
+            <p>The five leak categories, the structural reason they exist, the fragility loop that compounds them, and an anonymized case with $3.585M in findings across 19 leaks.</p>
+            <a href="/profit-leaks" class="hp-btn is-ghost">Read the Analysis <span class="arrow">→</span></a>
+          </article>
+          <article class="hp-path-card">
+            <div class="kicker">03 &middot; Ready to Run One</div>
+            <h3>Start a diagnostic.</h3>
+            <p>14 days, $12,500, fixed scope. A mutual NDA is executed before any data intake. Two-week turnaround on the full findings report.</p>
+            <a href="/get-started" class="hp-btn">Start Your Diagnostic <span class="arrow">→</span></a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    {/* SECTION 7 — TRUST FRAME */}
+    <section class="hp-section" data-screen-label="07 Trust Frame">
+      <div class="hp-inner">
+        <div class="hp-eyebrow"><span class="line"></span><span class="txt">07 &middot; Trust Frame</span></div>
+        <h2 class="hp-h2">Led by partners. <span class="roman">Audited by you.</span></h2>
+        <div class="hp-body hp-narrow" style="margin-left: 0;">
+          <p>Every BaxterLabs engagement is led exclusively by partners with 25 years of real-world P&amp;L ownership. No junior analysts. No subcontractors. No learning on your time. The methodology is auditable end to end. Every finding includes the source data citation, the calculation methodology, and the specific line items that produced the number. <strong>If you disagree with a finding, we walk through the math together until we agree.</strong></p>
+        </div>
+
+        <div class="hp-trust-row">
+          <div class="hp-trust-item"><strong>Mutual NDA</strong>executed before any data intake</div>
+          <div class="hp-trust-item"><strong>100% auditable findings</strong>with source citations</div>
+          <div class="hp-trust-item"><strong>Led by partners</strong>not junior staff or subcontractors</div>
+          <div class="hp-trust-item"><strong>Fixed price, $12,500</strong>no scope creep, no change orders</div>
+        </div>
+      </div>
+    </section>
+
+    {/* SECTION 8 — FINAL CTA */}
+    <section class="hp-section hp-final" data-screen-label="08 Final CTA">
+      <div class="hp-inner hp-narrow">
+        <div class="hp-eyebrow"><span class="line"></span><span class="txt">08 &middot; While You Were Here</span></div>
+        <h2 class="hp-h2">While you were on this page, <span class="roman">your firm likely leaked.</span></h2>
+        <div class="hp-body">
+          <p>While you were on this page, your firm likely leaked <strong class="hp-final-num" id="final-leak">$0</strong>. That is illustrative, not measured. But it is the right order of magnitude. The diagnostic is $12,500. If the finding comes in at the floor of the range for firms your size, it pays for itself in <strong class="hp-final-num" id="final-days">about 28 days</strong>. At the midpoint, faster.</p>
+          <p>The question is not whether your firm has leaks. The question is whether you want to know where they are before the next covenant test, the next acquisition conversation, or the next quarterly review.</p>
+        </div>
+        <div style="margin-top: 2.5rem;">
+          <a href="/get-started" class="hp-btn is-cream">Start Your Diagnostic <span class="arrow">→</span></a>
+        </div>
+        <span class="hp-nda">A mutual confidentiality agreement (NDA) is executed prior to any data intake.</span>
+        <p class="hp-final-secondary">Prefer to read the full analysis first? <a href="/profit-leaks">Read the Profit Leaks page →</a></p>
+      </div>
+    </section>
+
+    {/* Leak Meter — fixed-positioned, but scoped under .hp-page so its
+        hp-meter / hp-meter-tab selectors match. client:load because the
+        epoch/session logic must init on mount, not on scroll. */}
+    <LeakMeter client:load />
+  </div>
 </BaseLayout>
 
 <script>
-  document.querySelectorAll<HTMLButtonElement>('[data-open-executive-summary]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      window.dispatchEvent(new Event('open-executive-summary'))
-    })
+  /* Final CTA live numbers — listens for LeakMeter's bl:leaktick event
+     and updates the static <span> placeholders. No React hydration
+     for this section. The meter dispatches bl:leaktick every 250ms
+     regardless of dismissed state (the tick effect stays active;
+     dismissal only swaps the rendered tab vs. aside), so these
+     numbers stay accurate even when the meter is collapsed. */
+  interface LeakTickDetail {
+    value: number
+    daysToBreakEven: number
+    tier: 'A' | 'B' | 'C'
+  }
+
+  const leakEl = document.getElementById('final-leak')
+  const daysEl = document.getElementById('final-days')
+  const fmtUSD = (n: number) => '$' + Math.floor(n).toLocaleString('en-US')
+
+  window.addEventListener('bl:leaktick', (e) => {
+    const d = (e as CustomEvent<LeakTickDetail>).detail
+    if (!d) return
+    if (leakEl) leakEl.textContent = fmtUSD(d.value)
+    if (daysEl) daysEl.textContent = 'about ' + d.daysToBreakEven + ' days'
   })
 </script>
