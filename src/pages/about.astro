@@ -1,145 +1,268 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import '../components/about/about.css'
+import '../components/homepage/leak-meter.css'
+import ScenarioMatcher from '../components/about/ScenarioMatcher'
+import LeakMeter from '../components/homepage/LeakMeter'
 
-const howWeWork = [
-  { num: '01', title: 'Direct Partner Involvement', desc: 'No translation layers. The partners who pitch the work are the ones who conduct the forensic analysis and deliver the findings.' },
-  { num: '02', title: 'Structured Repeatable Process', desc: 'We utilize a proprietary diagnostic framework that ensures consistency across audits while remaining adaptable to industry-specific nuances.' },
-  { num: '03', title: 'Quantified Financial Impact', desc: 'Observations are only useful if they are priced. Every diagnostic finding is accompanied by a calculated dollar-value impact.' },
-  { num: '04', title: 'Executive Decision-Making', desc: 'Our outputs are designed for Board and C-Suite review—concise, data-backed, and focused on immediate actionable levers.' },
-]
+const title = 'About BaxterLabs | Two Operators, Forty-One Years of P&L Ownership'
+const description =
+  'George DeVries and Alfonso Cordon. Twenty-five years and sixteen years of direct P&L ownership, respectively. Every engagement is led by both partners. Fixed price, mutual NDA, 100% auditable findings.'
+const canonical = 'https://baxterlabs.ai/about'
+
+// TODO: replace with custom dark-dossier share card (1200x630).
+// Using the default site OG as a placeholder until design delivers the asset.
+const ogImage = '/images/baxterlabs-og.png'
+
+const organizationJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  '@id': 'https://baxterlabs.ai/#org',
+  name: 'BaxterLabs Advisory',
+  url: 'https://baxterlabs.ai/',
+  description:
+    'Operator-led profit leak diagnostics for $5M to $50M professional service firms.',
+}
+
+const breadcrumbJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://baxterlabs.ai/' },
+    { '@type': 'ListItem', position: 2, name: 'About', item: 'https://baxterlabs.ai/about' },
+  ],
+}
+
+// Person entries use only {name, jobTitle, worksFor}, pulled from facts
+// already present in the bios below. No invented credentials, degrees,
+// board memberships, or employer histories beyond what the bios say.
+const georgeJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Person',
+  name: 'George DeVries',
+  jobTitle: 'Managing Partner',
+  worksFor: { '@id': 'https://baxterlabs.ai/#org' },
+}
+
+const alfonsoJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Person',
+  name: 'Alfonso Cordon',
+  jobTitle: 'Partner',
+  worksFor: { '@id': 'https://baxterlabs.ai/#org' },
+}
 ---
 <BaseLayout
-  title="About BaxterLabs Advisory | Operator-Led Financial Diagnostics"
-  description="Operator-led financial diagnostics. Built by finance operators who have owned financial outcomes. 25+ years of real-world P&L ownership."
+  title={title}
+  description={description}
+  canonical={canonical}
+  ogType="website"
+  ogImage={ogImage}
 >
-  {/* Opening/Positioning */}
-  <section class="px-6 md:px-12 mb-32 max-w-7xl mx-auto pt-8">
-    <div class="grid grid-cols-1 md:grid-cols-12 gap-12">
-      <div class="md:col-span-8">
-        <span class="font-label text-secondary uppercase tracking-[0.3em] text-xs font-bold block mb-4">Our Foundation</span>
-        <h1 class="font-display italic text-5xl md:text-7xl text-primary leading-tight mb-8">
-          Operator-Led Financial Diagnostics
+  <Fragment slot="head">
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(organizationJsonLd)} />
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(breadcrumbJsonLd)} />
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(georgeJsonLd)} />
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(alfonsoJsonLd)} />
+  </Fragment>
+
+  <div class="ab-page">
+
+    {/* SECTION 1 — HERO */}
+    <section class="ab-section ab-hero" data-screen-label="01 Hero">
+      <div class="ab-inner ab-narrow">
+        <h1 class="ab-h1">
+          Two Operators. <span class="roman">Forty-One</span> Years of P&amp;L Ownership <span class="crimson">Between Them.</span>
         </h1>
-      </div>
-      <div class="md:col-span-4 self-end">
-        <p class="text-on-surface-variant text-lg leading-relaxed font-body">
-          The firm is built by finance operators who have owned financial outcomes. Unlike traditional advisory models staffed by theoretical analysts, we deliver diagnostics rooted in the reality of day-to-day fiscal management.
+        <p class="ab-subhead">
+          Every engagement is led by both partners. George DeVries and Alfonso Cordon. Twenty-five years and sixteen years of direct financial accountability, respectively. Fixed price, mutual NDA, 100% auditable findings.
         </p>
+        <div class="ab-hero-cta">
+          <a href="/services" class="ab-btn">See the Diagnostic</a>
+          <a href="#partners" class="ab-btn is-ghost">Meet the Partners</a>
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  {/* Why This Exists */}
-  <section class="bg-surface-container-low py-32 px-6 md:px-12 border-y border-surface-container">
-    <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-20 items-start">
-      <div>
-        <h2 class="font-display text-4xl text-secondary mb-6">Why This Exists</h2>
-        <p class="text-on-surface-variant text-lg leading-relaxed mb-8">
-          There is a systemic gap between high-level advisory and ground-level execution. Strategy often dies in the translation to the general ledger. BaxterLabs was founded to bridge this divide through structured diagnostics that focus on one singular metric: quantified profit leakage.
-        </p>
-      </div>
-      <div class="space-y-12">
-        <div class="border-l-2 border-secondary pl-8">
-          <h4 class="font-label text-secondary text-sm uppercase tracking-widest font-bold mb-2">The Execution Gap</h4>
-          <p class="text-on-surface-variant text-sm">Traditional firms stop at the 'what.' We identify the 'how' by mapping financial strategy directly to operational workflows.</p>
-        </div>
-        <div class="border-l-2 border-secondary pl-8">
-          <h4 class="font-label text-secondary text-sm uppercase tracking-widest font-bold mb-2">Quantified Impact</h4>
-          <p class="text-on-surface-variant text-sm">We don't offer generalities. Our process isolates specific nodes where capital is inefficiently deployed or leaked.</p>
+    {/* SECTION 2 — WHY WE BUILT THIS */}
+    <section class="ab-section" data-screen-label="02 Why We Built This" style="background: var(--ab-white);">
+      <div class="ab-inner ab-narrow">
+        <div class="ab-eyebrow"><span class="line"></span><span class="txt">02 &middot; Why This Exists</span></div>
+        <h2 class="ab-h2">We kept meeting managing partners who <span class="roman">knew</span> something was leaking.</h2>
+        <div class="ab-body">
+          <p>Revenue growing. Profit not keeping pace. The gut sense that five to fifteen percent of EBITDA is bleeding out somewhere between the invoice and the P&amp;L close. They'd ask their CFO to pull a report. The CFO would pull six reports. None of them reconciled the gap.</p>
+          <p>The gap wasn't a data problem. It was a diagnostic problem. Most $5M to $50M professional service firms don't have the internal tooling to see their own profit structure at diagnostic resolution. And most advisory firms that do have that tooling work at the $100M+ scale, where the diagnostic itself costs more than the leaked profit.</p>
+          <p>We built BaxterLabs to close that gap. A fixed-scope, fixed-price diagnostic designed specifically for the middle of the market. Fourteen days from the last interview to delivery. Led by both partners on every engagement. We find the leaks, quantify them, cite every finding to source data, and hand you a roadmap with no dependencies on us.</p>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  {/* The Partners */}
-  <section class="py-32 px-6 md:px-12 max-w-7xl mx-auto">
-    <div class="text-center mb-20">
-      <p class="font-body text-sm text-secondary uppercase tracking-[0.3em] font-bold mb-6">Led by operators with real-world experience inside growing companies — not career consultants.</p>
-      <p class="font-display italic text-2xl text-secondary mb-4">"All engagements are led directly by partners. No junior teams. No handoffs."</p>
-      <h2 class="font-display text-4xl md:text-5xl text-secondary">The Partners</h2>
-    </div>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-24">
-      {/* George */}
-      <div class="flex flex-col items-center group">
-        <div class="w-72 h-72 rounded-full overflow-hidden mb-8 border-4 border-secondary/20 transition-transform duration-500 group-hover:scale-[1.02]">
-          <img
-            alt="George DeVries"
-            class="w-full h-full object-cover object-top transition-all duration-700"
-            src="/images/George.png"
-          />
-        </div>
-        <h3 class="font-display text-2xl text-primary mb-1">George DeVries</h3>
-        <p class="text-secondary font-label text-sm uppercase tracking-widest font-bold mb-6">Managing Partner</p>
-        <div class="text-on-surface-variant leading-relaxed max-w-2xl font-body text-sm space-y-4 text-left">
-          <p>I've spent 25 years inside the finance function of companies that were growing faster than their infrastructure. Venture-backed startups closing $100M+ rounds. Healthcare services organizations managing 600 people across six states. Food technology companies in the middle of $175M Series C. At every stage, the same pattern: the money was there, but nobody had built the systems to see where it was going.</p>
-          <p>I've generated over $8M in annual cost savings at a single organization. I've cut month-end close by five days. I've watched companies lose $200K+ a year to billing gaps they didn't know existed. What I've learned is that margin erosion rarely comes from one big mistake. It comes from a dozen small systems that nobody owns.</p>
-          <p>That's why I built BaxterLabs. Not to sell another advisory retainer, but to give firms a clean answer in two weeks: here's exactly what's leaking, here's what it's worth, here's where to start.</p>
-        </div>
+    {/* SECTION 3 — SCENARIO MATCHER */}
+    <section class="ab-section ab-matcher" data-screen-label="03 Scenario Matcher">
+      <div class="ab-inner">
+        <div class="ab-eyebrow"><span class="line"></span><span class="txt">03 &middot; Where's Your Friction?</span></div>
+        <h2 class="ab-h2" style="margin-bottom: 2rem;">Pick the situation that <span class="roman">matches</span> yours.</h2>
+        <ScenarioMatcher client:load />
       </div>
-      {/* Alfonso */}
-      <div class="flex flex-col items-center group">
-        <div class="w-72 h-72 rounded-full overflow-hidden mb-8 border-4 border-secondary/20 transition-transform duration-500 group-hover:scale-[1.02]">
-          <img
-            alt="Alfonso Cordon"
-            class="w-full h-full object-cover object-top transition-all duration-700"
-            src="/images/Alfonso.jpg"
-          />
-        </div>
-        <h3 class="font-display text-2xl text-primary mb-1">Alfonso Cordon</h3>
-        <p class="text-secondary font-label text-sm uppercase tracking-widest font-bold mb-6">Partner</p>
-        <div class="text-on-surface-variant leading-relaxed max-w-2xl font-body text-sm space-y-4 text-left">
-          <p>For 16 years at Moody's Analytics, I ran the finance function for businesses generating over $3 billion in annual recurring revenue. That means I've seen what scale actually looks like from the inside: the forecasting breakdowns, the pricing models that quietly underperform, the transition points where a business outgrows its financial infrastructure before anyone realizes it.</p>
-          <p>I led the finance work for a $400M line of business through a full shift from on-premise to SaaS. I built the pricing framework that drove 12% revenue growth and got adopted company-wide. Before that, at Bayer and Abbott, I managed financial consolidations across multiple countries and currencies. What you learn doing that work is how to find signal in complex data, and how quickly things drift when nobody's built the right monitoring in.</p>
-          <p>What drew me to BaxterLabs is the specificity of the model. We're not selling a strategy engagement or a roadmap. We're telling you, in two weeks, exactly where margin is leaving your business and what it's worth to get it back.</p>
-        </div>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  {/* How We Work */}
-  <section class="bg-surface-container-highest py-32 px-6 md:px-12 border-y border-surface-container">
-    <div class="max-w-7xl mx-auto">
-      <div class="grid grid-cols-1 md:grid-cols-12 gap-12">
-        <div class="md:col-span-4">
-          <h2 class="font-display text-4xl text-secondary">How We Work</h2>
-          <div class="mt-8 w-12 h-0.5 bg-secondary"></div>
-        </div>
-        <div class="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-y-16 gap-x-12">
-          {howWeWork.map((item) => (
-            <div class="flex flex-col gap-4">
-              <span class="text-secondary font-display italic text-3xl">{item.num}</span>
-              <h4 class="font-bold text-secondary uppercase tracking-tight font-label text-sm">{item.title}</h4>
-              <p class="text-on-surface-variant text-sm leading-relaxed">{item.desc}</p>
+    {/* SECTION 4 — THE PARTNERS (bios verbatim from handoff prototype) */}
+    <section class="ab-section ab-bios" data-screen-label="04 The Partners" id="partners">
+      <div class="ab-inner">
+        <div class="ab-eyebrow"><span class="line"></span><span class="txt">04 &middot; The Partners</span></div>
+        <h2 class="ab-h2" style="margin-bottom: 3rem;">Two operators. <span class="roman">Every</span> engagement.</h2>
+
+        {/* George DeVries */}
+        <div class="ab-bio">
+          <div class="ab-bio-header">
+            <img src="/images/George.png" alt="George DeVries" class="ab-bio-photo" width="80" height="80" />
+            <div>
+              <h3 class="ab-bio-name">George DeVries</h3>
+              <p class="ab-bio-title">Managing Partner</p>
             </div>
-          ))}
+          </div>
+          <div class="ab-bio-body">
+            <p id="george-p1">I've spent twenty-five years in finance roles inside growth-stage and middle-market operating companies. I've led financial operations for a multi-state healthcare services organization with over 600 employees across six states, managed cost structures through multiple expansions, and owned P&amp;L oversight during periods of significant operational scaling.</p>
+            <p id="george-p2">I've worked as CFO and finance executive at venture-backed firms raising successive rounds of growth capital. I've supported due diligence processes for investors, structured financial reporting for boards, and built the finance infrastructure to support aggressive growth targets without breaking the underlying cost model.</p>
+            <p id="george-p3">At a food-tech company I led the finance function through a $175M Series C, coordinating diligence, modeling growth scenarios, and preparing investor materials. I've also managed the operational aftermath of capital events, including integration of new hires, revised budgeting cadences, and the reporting overhead that comes with a new board composition.</p>
+            <p id="george-p4">In one diagnostic engagement at a national services organization I identified $8 million in annual cost savings through a combination of contract renegotiation, billing gap recovery, and margin leakage corrections. One billing-gap line alone was costing the firm over $200,000 a year, and nobody knew it existed. The findings were audited by the organization's existing finance team and accepted without material revision.</p>
+            <p id="george-p5">I've led month-end close cycle reductions from fifteen days to ten days at a firm with distributed operations and complex revenue recognition. The work required cross-functional process redesign, new reconciliation protocols, and changes to how operating units reported upward. The ten-day close held for two years after implementation.</p>
+            <p>BaxterLabs exists because I kept seeing firms with the same structural problems I'd solved inside prior organizations. The diagnostic we run is the diagnostic I'd want run on a firm I was leading.</p>
+          </div>
         </div>
-      </div>
-    </div>
-  </section>
 
-  {/* Trust Reinforcement */}
-  <section class="py-32 px-6 md:px-12 max-w-5xl mx-auto text-center">
-    <div class="bg-secondary p-12 md:p-20 rounded-sm relative overflow-hidden text-on-primary">
-      <div class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-bl-full"></div>
-      <span class="material-symbols-outlined text-4xl text-surface-container-highest mb-6 block" style="font-variation-settings: 'FILL' 1">verified_user</span>
-      <h2 class="font-display text-3xl md:text-4xl mb-8">Data Integrity &amp; Professional Standards.</h2>
-      <p class="text-on-primary/80 leading-relaxed max-w-2xl mx-auto mb-12 italic text-lg">
-        "Integrity in financial advisory is non-negotiable. Our protocols ensure that your data remains your most protected asset."
-      </p>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8 border-t border-on-primary/10">
-        <div class="p-4">
-          <p class="font-bold text-surface-container-highest uppercase text-[10px] tracking-widest mb-2">NDA Commitment</p>
-          <p class="text-on-primary/60 text-xs">Full legal non-disclosure binding on all project phases.</p>
-        </div>
-        <div class="p-4 border-x border-on-primary/10">
-          <p class="font-bold text-surface-container-highest uppercase text-[10px] tracking-widest mb-2">Encrypted & Controlled</p>
-          <p class="text-on-primary/60 text-xs">All data encrypted in transit and at rest with strict access controls.</p>
-        </div>
-        <div class="p-4">
-          <p class="font-bold text-surface-container-highest uppercase text-[10px] tracking-widest mb-2">Zero External Use</p>
-          <p class="text-on-primary/60 text-xs">No anonymized benchmarking or external sharing of client data.</p>
+        {/* Alfonso Cordon */}
+        <div class="ab-bio">
+          <div class="ab-bio-header">
+            <img src="/images/Alfonso.jpg" alt="Alfonso Cordon" class="ab-bio-photo" width="80" height="80" />
+            <div>
+              <h3 class="ab-bio-name">Alfonso Cordon</h3>
+              <p class="ab-bio-title">Partner</p>
+            </div>
+          </div>
+          <div class="ab-bio-body">
+            <p id="alfonso-p1">I spent sixteen years at Moody's Analytics, most recently as VP of Finance, overseeing financial planning, reporting, and operational finance for a division with over $3 billion in annual recurring revenue. I managed budgets, led quarterly and annual planning cycles, and worked directly with business unit leaders to reconcile forecast gaps and margin pressures.</p>
+            <p id="alfonso-p2">I led the financial workstream for a $400 million on-premise to SaaS business model transition at Moody's Analytics. The project required rebuilding revenue recognition frameworks, re-forecasting cash flow timing across a multi-year conversion window, and coordinating with product, sales, and customer success teams to manage the P&amp;L impact of the shift. The transition completed on schedule and the new model stabilized within the planned variance bands.</p>
+            <p id="alfonso-p3">I designed and implemented a pricing framework for a new SaaS offering that contributed to 12% revenue growth and was adopted company-wide. The framework included tiered packaging, volume-based pricing models, and margin guardrails that prevented discount erosion during the sales cycle.</p>
+            <p id="alfonso-p4">Before Moody's I held finance roles at Bayer and Abbott Laboratories, managing budgets and financial reporting for multi-country operations. I've worked through consolidations, reconciliations across different accounting systems, and the operational complexity of aligning finance processes across regions with different regulatory and reporting requirements.</p>
+            <p id="alfonso-p5">I've built financial planning infrastructure for organizations with complex product portfolios and recurring revenue models. That includes multi-dimensional budgeting, scenario planning tools, and reporting dashboards that surfaced margin and cash flow risks early enough to take corrective action.</p>
+            <p>BaxterLabs lets me apply the diagnostic rigor I used at $3B+ ARR scale to firms in the $5M to $50M range that don't typically get access to that kind of scrutiny. The work is the same. The scale is different. The findings are just as concrete.</p>
+          </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
+
+    {/* SECTION 5 — WHY TOGETHER (ledger) */}
+    <section class="ab-section ab-ledger" data-screen-label="05 Why Together">
+      <div class="ab-inner ab-narrow">
+        <div class="ab-eyebrow"><span class="line"></span><span class="txt">05 &middot; Why Together</span></div>
+        <h2 class="ab-h2">What the partnership <span class="roman">sees</span> that neither partner sees alone.</h2>
+        <div class="ab-body">
+          <p>George's twenty-five years inside growth-stage operators and Alfonso's sixteen years at enterprise-scale finance cover both ends of the scaling curve. The combination means we can diagnose a $12M firm scaling into complexity and a $40M firm with enterprise-shaped problems using the same rigor. That range is why the partnership exists.</p>
+        </div>
+
+        <table class="ab-ledger-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>George DeVries</th>
+              <th>Alfonso Cordon</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Years of P&amp;L Ownership</td>
+              <td>25 years across growth-stage and middle-market operating companies</td>
+              <td>16 years at enterprise-scale organizations ($3B+ ARR)</td>
+            </tr>
+            <tr>
+              <td>Largest Org Managed</td>
+              <td>600+ employees across six states (multi-state healthcare services)</td>
+              <td>$3 billion ARR division (Moody's Analytics VP of Finance)</td>
+            </tr>
+            <tr>
+              <td>Signature Transaction</td>
+              <td>$175M Series C (food-tech, led finance function through close)</td>
+              <td>$400M on-prem to SaaS transition (financial workstream lead)</td>
+            </tr>
+            <tr>
+              <td>Signature Outcome</td>
+              <td>$8M annual cost savings (national services org diagnostic)</td>
+              <td>12% revenue growth (pricing framework for new SaaS offering)</td>
+            </tr>
+            <tr>
+              <td>Industry Vantage</td>
+              <td>Healthcare services, food tech, venture-backed growth firms</td>
+              <td>Enterprise analytics, pharma (Bayer, Abbott), financial infrastructure</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    {/* SECTION 6 — TRUST FRAME (homepage pattern: exact H2 + body language) */}
+    <section class="ab-section ab-trust" data-screen-label="06 Trust Frame">
+      <div class="ab-inner ab-narrow">
+        <div class="ab-eyebrow"><span class="line"></span><span class="txt">06 &middot; Trust Frame</span></div>
+        <h2 class="ab-h2">Led by partners. <span class="roman">Audited by you.</span></h2>
+        <div class="ab-body">
+          <p>Every BaxterLabs engagement is led exclusively by partners with 25 years of real-world P&amp;L ownership. No junior analysts. No subcontractors. No learning on your time. The methodology is auditable end to end. Every finding includes the source data citation, the calculation methodology, and the specific line items that produced the number. <strong>If you disagree with a finding, we walk through the math together until we agree.</strong></p>
+        </div>
+        <div class="ab-trust-grid">
+          <div class="ab-trust-item">
+            <div class="ab-trust-kicker">Mutual NDA</div>
+            <p class="ab-trust-line">Executed before any data intake.</p>
+          </div>
+          <div class="ab-trust-item">
+            <div class="ab-trust-kicker">100% Auditable Findings</div>
+            <p class="ab-trust-line">With source citations on every line.</p>
+          </div>
+          <div class="ab-trust-item">
+            <div class="ab-trust-kicker">Led by Partners</div>
+            <p class="ab-trust-line">Not junior staff or subcontractors.</p>
+          </div>
+          <div class="ab-trust-item">
+            <div class="ab-trust-kicker">Fixed Price, $12,500</div>
+            <p class="ab-trust-line">No scope creep, no change orders.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {/* SECTION 7 — THREE PATHS (homepage pattern, verbatim URLs + copy) */}
+    <section class="ab-section ab-paths" data-screen-label="07 Three Paths">
+      <div class="ab-inner">
+        <div class="ab-eyebrow"><span class="line"></span><span class="txt">07 &middot; Three Paths</span></div>
+        <h2 class="ab-h2" style="margin-bottom: 2rem;">Three ways to <span class="roman">go from here.</span></h2>
+        <div class="ab-body">
+          <p>Depending on where you are today, one of these three next steps fits.</p>
+        </div>
+        <div class="ab-paths-grid">
+          <article class="ab-path-card">
+            <div class="ab-path-kicker">01 &middot; Not Sure Yet</div>
+            <h3 class="ab-path-title">The 4-minute Profit Leak Self-Assessment.</h3>
+            <p class="ab-path-desc">Twelve questions, a scored result, and a specific interpretation written for firms your size. No email required to see your score.</p>
+            <a href="/resources/self-assessment/take" class="ab-btn is-ghost">Take the Assessment <span aria-hidden="true">&rarr;</span></a>
+          </article>
+          <article class="ab-path-card">
+            <div class="ab-path-kicker">02 &middot; Want the Full Thinking</div>
+            <h3 class="ab-path-title">Read the Profit Leaks pillar.</h3>
+            <p class="ab-path-desc">The five leak categories, the structural reason they exist, the fragility loop that compounds them, and an anonymized case with $3.585M in findings across 19 leaks.</p>
+            <a href="/profit-leaks" class="ab-btn is-ghost">Read the Analysis <span aria-hidden="true">&rarr;</span></a>
+          </article>
+          <article class="ab-path-card">
+            <div class="ab-path-kicker">03 &middot; Ready to Run One</div>
+            <h3 class="ab-path-title">Start a diagnostic.</h3>
+            <p class="ab-path-desc">14 days, $12,500, fixed scope. A mutual NDA is executed before any data intake. Two-week turnaround on the full findings report.</p>
+            <a href="/get-started" class="ab-btn">Start Your Diagnostic <span aria-hidden="true">&rarr;</span></a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    {/* Leak Meter — pinned cross-page. Dismissed state and tier
+        selection persist via localStorage, so visitors arriving on
+        /about see whatever state they set on / or /services. */}
+    <LeakMeter client:load />
+  </div>
 </BaseLayout>

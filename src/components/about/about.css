@@ -1,0 +1,444 @@
+/* ============================================================
+   About — ported from docs/about/about-handoff/index.html
+   inline <style>. All selectors scoped under .ab-page.
+
+   Stripped from handoff: the body { } base rules (BaseLayout
+   owns the page background), the body::before dot pattern
+   (neither homepage nor services uses it), the .ab-topbar
+   preview nav (Header.astro handles this), and the .ab-footer
+   preview footer (Footer.astro handles this).
+
+   Scenario Matcher: the .ab-chip.active state and the
+   .ab-bio-body p.highlighted state are the two interactive
+   signatures the ScenarioMatcher island toggles. The 0.4s
+   background transition on .ab-bio-body p is intentional:
+   the highlight fades in after the scroll lands.
+   ============================================================ */
+
+.ab-page {
+  /* Surfaces */
+  --ab-ivory:     #FAF8F2;
+  --ab-white:     #FFFFFF;
+  --ab-cream:     #F6E7C8;
+
+  /* Brand accents */
+  --ab-crimson:   #66151C;
+  --ab-crimson-b: #851C2C;
+  --ab-teal:      #005454;
+  --ab-teal-d:    #003838;
+  --ab-gold:      #C9A84C;
+  --ab-charcoal:  #2D3436;
+
+  /* Rules and foreground tints */
+  --ab-rule:      rgba(45,52,54,0.10);
+  --ab-rule-2:    rgba(45,52,54,0.18);
+  --ab-fg-1:      #2D3436;
+  --ab-fg-2:      rgba(45,52,54,0.82);
+  --ab-fg-3:      rgba(45,52,54,0.60);
+  --ab-fg-4:      rgba(45,52,54,0.40);
+
+  background: var(--ab-ivory);
+  color: var(--ab-fg-1);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.ab-page .ab-section {
+  position: relative;
+  padding: 5rem 1.5rem;
+}
+@media (min-width: 768px) {
+  .ab-page .ab-section { padding: 7rem 3rem; }
+}
+@media (min-width: 1024px) {
+  .ab-page .ab-section { padding: 8rem 6rem; }
+}
+.ab-page .ab-inner { max-width: 1280px; margin: 0 auto; }
+.ab-page .ab-narrow { max-width: 780px; margin: 0 auto; }
+
+/* Typography */
+.ab-page .ab-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.ab-page .ab-eyebrow .line {
+  width: 2.5rem;
+  height: 1px;
+  background: var(--ab-gold);
+}
+.ab-page .ab-eyebrow .txt {
+  font-family: var(--font-label);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--ab-gold);
+}
+
+.ab-page .ab-h1 {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 2.75rem;
+  line-height: 1.1;
+  color: var(--ab-charcoal);
+  margin: 0 0 1rem 0;
+}
+@media (min-width: 768px) {
+  .ab-page .ab-h1 { font-size: 3.5rem; }
+}
+.ab-page .ab-h1 .crimson { color: var(--ab-crimson); font-style: normal; }
+.ab-page .ab-h1 .roman   { font-style: normal; color: var(--ab-teal); }
+
+.ab-page .ab-h2 {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 2.25rem;
+  line-height: 1.15;
+  color: var(--ab-charcoal);
+  margin: 0 0 1.25rem 0;
+}
+@media (min-width: 768px) {
+  .ab-page .ab-h2 { font-size: 2.75rem; }
+}
+.ab-page .ab-h2 .crimson { color: var(--ab-crimson); font-style: normal; }
+.ab-page .ab-h2 .roman   { font-style: normal; color: var(--ab-teal); }
+
+.ab-page .ab-subhead {
+  font-family: var(--font-body);
+  font-size: 1.125rem;
+  line-height: 1.65;
+  color: var(--ab-fg-2);
+  margin: 0 0 2rem 0;
+}
+
+.ab-page .ab-body {
+  font-family: var(--font-body);
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: var(--ab-fg-2);
+  margin: 0 0 1.5rem 0;
+}
+.ab-page .ab-body:last-child { margin-bottom: 0; }
+.ab-page .ab-body p {
+  margin: 0 0 1.5rem 0;
+}
+.ab-page .ab-body p:last-child { margin-bottom: 0; }
+
+.ab-page .ab-btn {
+  display: inline-block;
+  padding: 1rem 2rem;
+  font-family: var(--font-label);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ab-white);
+  background: linear-gradient(135deg, var(--ab-crimson), var(--ab-crimson-b));
+  border: none;
+  border-radius: 2px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.ab-page .ab-btn:hover { background: var(--ab-crimson-b); }
+.ab-page .ab-btn.is-ghost {
+  background: transparent;
+  border: 1px solid var(--ab-rule-2);
+  color: var(--ab-charcoal);
+}
+.ab-page .ab-btn.is-ghost:hover {
+  background: var(--ab-ivory);
+  border-color: var(--ab-charcoal);
+}
+
+/* Hero */
+.ab-page .ab-hero {
+  background: var(--ab-ivory);
+  text-align: center;
+}
+.ab-page .ab-hero-cta {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 2rem;
+}
+
+/* Scenario Matcher */
+.ab-page .ab-matcher {
+  background: var(--ab-white);
+  border-top: 1px solid var(--ab-rule);
+  border-bottom: 1px solid var(--ab-rule);
+}
+.ab-page .ab-matcher-title {
+  font-family: var(--font-label);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--ab-gold);
+  margin: 0 0 1rem 0;
+}
+.ab-page .ab-matcher-chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+.ab-page .ab-chip {
+  padding: 0.75rem 1rem;
+  font-family: var(--font-label);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--ab-charcoal);
+  background: var(--ab-ivory);
+  border: 1px solid var(--ab-rule);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+.ab-page .ab-chip:hover {
+  border-color: var(--ab-crimson);
+  background: var(--ab-white);
+}
+.ab-page .ab-chip.active {
+  border-color: var(--ab-crimson);
+  background: rgba(102,21,28,0.04);
+  color: var(--ab-crimson);
+  font-weight: 600;
+}
+.ab-page .ab-matcher-pointer {
+  display: none;
+  font-family: var(--font-label);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 0.05em;
+  color: var(--ab-crimson);
+  margin-top: 1rem;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.ab-page .ab-matcher-pointer.visible {
+  display: block;
+  opacity: 1;
+}
+
+/* Partner Bios */
+.ab-page .ab-bios { background: var(--ab-ivory); }
+.ab-page .ab-bio { margin-bottom: 4rem; }
+.ab-page .ab-bio:last-child { margin-bottom: 0; }
+.ab-page .ab-bio-header {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--ab-rule);
+}
+@media (max-width: 600px) {
+  .ab-page .ab-bio-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+}
+.ab-page .ab-bio-photo {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.ab-page .ab-bio-name {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 1.75rem;
+  color: var(--ab-crimson);
+  margin: 0 0 0.25rem 0;
+}
+.ab-page .ab-bio-title {
+  font-family: var(--font-label);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ab-fg-3);
+  margin: 0;
+}
+.ab-page .ab-bio-body { max-width: 780px; }
+.ab-page .ab-bio-body p {
+  font-family: var(--font-body);
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: var(--ab-fg-2);
+  margin: 0 0 1.5rem 0;
+  scroll-margin-top: 120px;
+  transition: background 0.4s ease;
+}
+.ab-page .ab-bio-body p:last-child { margin-bottom: 0; }
+.ab-page .ab-bio-body p.highlighted {
+  background: rgba(102,21,28,0.06);
+  padding: 1rem 1.25rem;
+  margin-left: -1.25rem;
+  margin-right: -1.25rem;
+  border-left: 3px solid var(--ab-crimson);
+}
+
+/* Why Together Ledger */
+.ab-page .ab-ledger {
+  background: var(--ab-white);
+  border-top: 1px solid var(--ab-rule);
+  border-bottom: 1px solid var(--ab-rule);
+}
+.ab-page .ab-ledger-table {
+  max-width: 920px;
+  margin: 2rem auto 0;
+  border-collapse: collapse;
+  width: 100%;
+}
+.ab-page .ab-ledger-table th {
+  font-family: var(--font-label);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--ab-gold);
+  text-align: left;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--ab-rule);
+}
+.ab-page .ab-ledger-table td {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--ab-fg-2);
+  padding: 1.25rem 1rem;
+  border-bottom: 1px solid var(--ab-rule);
+  vertical-align: top;
+}
+.ab-page .ab-ledger-table tr:last-child td { border-bottom: none; }
+.ab-page .ab-ledger-table td:first-child {
+  font-family: var(--font-label);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ab-fg-3);
+  width: 180px;
+}
+@media (max-width: 760px) {
+  .ab-page .ab-ledger-table { display: block; }
+  .ab-page .ab-ledger-table thead { display: none; }
+  .ab-page .ab-ledger-table tbody,
+  .ab-page .ab-ledger-table tr,
+  .ab-page .ab-ledger-table td { display: block; }
+  .ab-page .ab-ledger-table td {
+    padding: 0.75rem 0;
+    border: none;
+  }
+  .ab-page .ab-ledger-table td:first-child {
+    width: auto;
+    margin-bottom: 0.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--ab-rule);
+  }
+  .ab-page .ab-ledger-table tr:first-child td:first-child {
+    border-top: none;
+    padding-top: 0.75rem;
+  }
+}
+
+/* Trust Frame */
+.ab-page .ab-trust { background: var(--ab-ivory); }
+.ab-page .ab-trust-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+.ab-page .ab-trust-item {
+  padding: 1.5rem;
+  background: var(--ab-white);
+  border: 1px solid var(--ab-rule);
+  border-radius: 2px;
+}
+.ab-page .ab-trust-kicker {
+  font-family: var(--font-label);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--ab-gold);
+  margin-bottom: 0.5rem;
+}
+.ab-page .ab-trust-line {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--ab-fg-2);
+  margin: 0;
+}
+
+/* Three Paths */
+.ab-page .ab-paths {
+  background: var(--ab-white);
+  border-top: 1px solid var(--ab-rule);
+}
+.ab-page .ab-paths-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+.ab-page .ab-path-card {
+  padding: 2rem;
+  background: var(--ab-ivory);
+  border: 1px solid var(--ab-rule);
+  border-radius: 2px;
+  transition: all 0.2s;
+}
+.ab-page .ab-path-card:hover {
+  border-color: var(--ab-crimson);
+  box-shadow: 0 2px 8px rgba(102,21,28,0.08);
+}
+.ab-page .ab-path-kicker {
+  font-family: var(--font-label);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--ab-gold);
+  margin-bottom: 0.75rem;
+}
+.ab-page .ab-path-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: var(--ab-crimson);
+  margin: 0 0 0.75rem 0;
+}
+.ab-page .ab-path-desc {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--ab-fg-2);
+  margin: 0 0 1.5rem 0;
+}
+
+/* Motion-sensitivity: skip scroll animation and highlight fade-in.
+   The island reads this via matchMedia to branch behavior;
+   this block also disables the CSS transition so the highlight
+   appears instantly regardless of when the class is applied. */
+@media (prefers-reduced-motion: reduce) {
+  .ab-page .ab-bio-body p { transition: none; }
+  .ab-page .ab-matcher-pointer { transition: none; }
+}
