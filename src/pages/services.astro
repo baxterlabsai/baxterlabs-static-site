@@ -102,18 +102,32 @@ const breadcrumbJsonLd = {
             <span>Sample Deliverable &middot; 01 of 06</span>
             <span class="dot"></span>
           </div>
-          <div class="sv-sample-body">
-            <div class="sv-sample-doc-label">Executive Summary &middot; Anonymized</div>
-            <div class="sv-sample-h">Headline Finding</div>
-            <div class="sv-sample-range">$2.784M &ndash; $4.384M</div>
-            <div class="sv-sample-range-cap">Recoverable Annual Profit &middot; 90% Confidence</div>
-            <div class="sv-sample-chart">
-              <div class="sv-sample-row"><span>Pricing</span><div class="sv-sample-bar"><div class="sv-sample-bar-fill" style="width: 92%;"></div></div><span class="v">$1.2M</span></div>
-              <div class="sv-sample-row"><span>Ops</span><div class="sv-sample-bar"><div class="sv-sample-bar-fill" style="width: 68%;"></div></div><span class="v">$890K</span></div>
-              <div class="sv-sample-row"><span>Vendor</span><div class="sv-sample-bar"><div class="sv-sample-bar-fill" style="width: 46%;"></div></div><span class="v">$610K</span></div>
-              <div class="sv-sample-row"><span>Payroll</span><div class="sv-sample-bar"><div class="sv-sample-bar-fill" style="width: 32%;"></div></div><span class="v">$420K</span></div>
-              <div class="sv-sample-row"><span>Tech</span><div class="sv-sample-bar"><div class="sv-sample-bar-fill" style="width: 18%;"></div></div><span class="v">$240K</span></div>
+          <div class="sv-sample-body sv-sample-preview">
+            <div class="sv-sample-preview-hover" aria-hidden="true">
+              <span class="sv-sample-preview-pill">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                Preview Document
+              </span>
             </div>
+            <div class="sv-sample-preview-title">
+              <img src="/images/baxterlabs-logo.png" alt="" class="sv-sample-preview-logo" />
+              <p class="sv-sample-preview-eyebrow">BaxterLabs Advisory</p>
+              <h3 class="sv-sample-preview-h1">Executive Summary</h3>
+              <p class="sv-sample-preview-subtitle">Profit Leak &amp; Operational Efficiency Diagnostic</p>
+              <div class="sv-sample-preview-rule"></div>
+              <p class="sv-sample-preview-prepared">Prepared for</p>
+              <p class="sv-sample-preview-firm">Regional Staffing Firm (Illustrative Example)</p>
+            </div>
+            <div class="sv-sample-preview-finding">
+              <p class="sv-sample-preview-heading">Headline Finding</p>
+              <div class="sv-sample-preview-box">
+                <p>BaxterLabs Advisory has identified <strong>$2,784,000</strong> to <strong>$4,384,000</strong> in annual profit leak opportunity across the Firm, with a moderate estimate of <strong>$3,585,000</strong>.</p>
+              </div>
+            </div>
+            <div class="sv-sample-preview-chart">
+              <img src="/images/sample-deliverables/exec-summary/chart-profit-leak-by-category.png" alt="" />
+            </div>
+            <div class="sv-sample-preview-fade" aria-hidden="true"></div>
           </div>
           <div class="sv-sample-footer">
             <span class="cta">View Sample &rarr;</span>
@@ -204,7 +218,7 @@ const breadcrumbJsonLd = {
         <ServicesTierCalibrator client:visible />
 
         <div class="sv-body sv-narrow" style="margin-left: 0; margin-top: 2.5rem;">
-          <p>At every firm size in our range, the diagnostic pays for itself at the floor of the recovery range. The question is not whether the math works. The question is why most firms have not run one yet.</p>
+          <p>At every firm size in our range, the diagnostic <strong>pays for itself at the floor</strong> of the recovery range. The question is not whether the math works. <em>The question is why most firms have not run one yet.</em></p>
           <p>For the full walkthrough of the five leak categories and a $3.585M anonymized case study, read our <a href="/profit-leaks">Profit Leaks analysis &rarr;</a></p>
         </div>
       </div>

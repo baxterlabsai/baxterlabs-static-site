@@ -144,7 +144,7 @@ export default function ServicesTierCalibrator() {
             {t.ratio}x
           </div>
           <div className="sv-be-ratio-lbl">
-            Floor return on a $12,500 diagnostic
+            return at the floor<br />of the recovery range
           </div>
         </div>
       </div>

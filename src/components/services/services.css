@@ -256,6 +256,102 @@
   letter-spacing: 0.2em; text-transform: uppercase; color: var(--sv-fg-4);
 }
 
+/* Mini preview of the Executive Summary first page inside the tile.
+   The outer .sv-sample-tile / .sv-sample-head / .sv-sample-footer are
+   Claude Design's; only the body content is swapped to a hand-authored
+   miniature that mirrors the ExecutiveSummaryLightbox's opening page. */
+.sv-page .sv-sample-body.sv-sample-preview {
+  padding: 0; position: relative; overflow: hidden;
+}
+.sv-page .sv-sample-preview-title {
+  padding: 1.5rem 1.25rem 1rem; text-align: center;
+}
+.sv-page .sv-sample-preview-logo {
+  display: block; height: 28px; width: auto;
+  margin: 0 auto 0.75rem; opacity: 0.9;
+}
+.sv-page .sv-sample-preview-eyebrow {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-label); font-size: 0.5rem; font-weight: 700;
+  letter-spacing: 0.32em; text-transform: uppercase; color: var(--sv-teal);
+}
+.sv-page .sv-sample-preview-h1 {
+  margin: 0 0 0.2rem;
+  font-family: var(--font-display); font-style: italic; font-weight: 700;
+  font-size: 1.25rem; line-height: 1.1; color: var(--sv-crimson);
+  letter-spacing: -0.01em;
+}
+.sv-page .sv-sample-preview-subtitle {
+  margin: 0 0 0.85rem;
+  font-family: var(--font-headline); font-style: italic; font-weight: 400;
+  font-size: 0.68rem; line-height: 1.25; color: var(--sv-teal);
+}
+.sv-page .sv-sample-preview-rule {
+  width: 40px; height: 1px; background: var(--sv-gold);
+  margin: 0 auto 0.85rem;
+}
+.sv-page .sv-sample-preview-prepared {
+  margin: 0 0 0.2rem;
+  font-family: var(--font-label); font-size: 0.44rem; font-weight: 700;
+  letter-spacing: 0.28em; text-transform: uppercase; color: var(--sv-fg-4);
+}
+.sv-page .sv-sample-preview-firm {
+  margin: 0;
+  font-family: var(--font-headline); font-size: 0.72rem;
+  color: var(--sv-charcoal);
+}
+.sv-page .sv-sample-preview-finding {
+  padding: 0 1.25rem 0.75rem;
+}
+.sv-page .sv-sample-preview-heading {
+  margin: 0 0 0.4rem;
+  font-family: var(--font-label); font-size: 0.55rem; font-weight: 700;
+  letter-spacing: 0.22em; text-transform: uppercase; color: var(--sv-crimson);
+}
+.sv-page .sv-sample-preview-box {
+  border-left: 2px solid var(--sv-teal);
+  background: rgba(0,84,84,0.05);
+  padding: 0.55rem 0.75rem;
+}
+.sv-page .sv-sample-preview-box p {
+  margin: 0;
+  font-family: var(--font-headline); font-size: 0.62rem; line-height: 1.5;
+  color: var(--sv-fg-2);
+}
+.sv-page .sv-sample-preview-box strong { color: var(--sv-crimson); font-weight: 600; }
+.sv-page .sv-sample-preview-chart {
+  padding: 0.25rem 1.25rem 1.5rem;
+}
+.sv-page .sv-sample-preview-chart img {
+  display: block; width: 100%; height: auto;
+  opacity: 0.9;
+  border: 1px solid rgba(0,84,84,0.1);
+}
+.sv-page .sv-sample-preview-fade {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: 80px; pointer-events: none;
+  background: linear-gradient(to top, var(--sv-white) 0%, rgba(255,255,255,0) 100%);
+}
+.sv-page .sv-sample-preview-hover {
+  position: absolute; inset: 0; z-index: 3;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(45,52,54,0.06);
+  opacity: 0; transition: opacity 200ms ease;
+  pointer-events: none;
+}
+.sv-page .sv-sample-tile:hover .sv-sample-preview-hover,
+.sv-page .sv-sample-tile:focus-visible .sv-sample-preview-hover {
+  opacity: 1;
+}
+.sv-page .sv-sample-preview-pill {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  background: var(--sv-white); color: var(--sv-crimson);
+  padding: 0.5rem 0.85rem;
+  font-family: var(--font-label); font-size: 0.58rem; font-weight: 700;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  box-shadow: 0 10px 25px -10px rgba(45,52,54,0.35);
+}
+
 /* ============ TIMELINE ============ */
 .sv-page .sv-tl-wrap {
   margin-top: 3rem;
@@ -711,5 +807,6 @@
   .sv-page .sv-be-ratio-fig,
   .sv-page .sv-tl-seg,
   .sv-page .sv-sample-tile,
+  .sv-page .sv-sample-preview-hover,
   .sv-page .sv-btn .arrow { transition: none !important; }
 }
