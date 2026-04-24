@@ -134,7 +134,7 @@ export const BAND_LABELS: Record<Band, string> = {
 export const BAND_COPY: Record<Band, { headline: string; body: string }> = {
   low: {
     headline: "You're in good shape, and you probably already know that.",
-    body: "If your score falls here, your firm is tracking most of these areas and acting on what you find. That's less common than you'd think in the $5M to $50M range, and it means the financial visibility most firms are still building, you've already got. I'd still encourage you to look at any question where you scored a 3 or higher, because even well-run firms tend to have a corner or two where things accumulate quietly. But the exposure estimate below should feel consistent with what you already sense. Your instincts on this are right.",
+    body: "If your score falls here, your firm is tracking most of these areas and acting on what you find. That's less common than you'd think in the $5M to $50M range, and it means the financial visibility most firms are still building, you've already got. We'd still encourage you to look at any question where you scored a 3 or higher, because even well-run firms tend to have a corner or two where things accumulate quietly. But the exposure estimate below should feel consistent with what you already sense. Your instincts on this are right.",
   },
   moderate: {
     headline: 'Something feels off, and this is probably why.',
@@ -142,7 +142,7 @@ export const BAND_COPY: Record<Band, { headline: string; body: string }> = {
   },
   high: {
     headline: "You've got real blind spots, and they're costing you real money.",
-    body: "A score in this range tells me your firm has grown past the point where informal controls can keep up, but the financial infrastructure hasn't caught up yet. That's not a criticism of how you've run the business. It's a pattern I see in almost every firm that grows quickly through the $5M to $50M range. Revenue growth creates complexity, and the finance function that worked at $5M doesn't surface the same things at $15M or $25M. The exposure estimate below is going to be a meaningful number. The good news is that most of what's leaking is recoverable once you can see it. The hard part isn't fixing the leaks. It's making them visible in the first place.",
+    body: "A score in this range tells us your firm has grown past the point where informal controls can keep up, but the financial infrastructure hasn't caught up yet. That's not a criticism of how you've run the business. It's a pattern we see in almost every firm that grows quickly through the $5M to $50M range. Revenue growth creates complexity, and the finance function that worked at $5M doesn't surface the same things at $15M or $25M. The exposure estimate below is going to be a meaningful number. The good news is that most of what's leaking is recoverable once you can see it. The hard part isn't fixing the leaks. It's making them visible in the first place.",
   },
 }
 

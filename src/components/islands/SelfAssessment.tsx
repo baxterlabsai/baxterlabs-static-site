@@ -252,7 +252,7 @@ function AssessmentView(props: {
 
         <div className="sa-setup">
           <div className="kicker">Two quick inputs first</div>
-          <h2>Tell me about your firm.</h2>
+          <h2>Tell us about your firm.</h2>
           <div className="rp-form">
             <div className="rp-field">
               <label htmlFor="sa-revenue">

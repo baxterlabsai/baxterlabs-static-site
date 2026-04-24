@@ -31,7 +31,7 @@ export const LEAK_SECTIONS: LeakSection[] = [
     rangeSub: 'Recoverable profit per year',
     rangeValue: '$80K&ndash;$300K',
     askYourself:
-      'If I asked you right now to show me the revenue produced by each person hired in the last 12 months, could you pull that report in under 60 seconds?',
+      'If we asked you right now to show us the revenue produced by each person hired in the last 12 months, could you pull that report in under 60 seconds?',
     showEndCta: true,
   },
   {
@@ -40,11 +40,11 @@ export const LEAK_SECTIONS: LeakSection[] = [
     category: 'Leak Two',
     title: 'Vendor Sprawl.',
     prose: [
-      'What I keep seeing looks like this. Every department buys what it needs when it needs it. Nobody owns the vendor list. Renewals happen automatically. And over time, the firm ends up paying three different vendors for things that overlap significantly, because each purchase made sense in isolation.',
+      'What we keep seeing looks like this. Every department buys what it needs when it needs it. Nobody owns the vendor list. Renewals happen automatically. And over time, the firm ends up paying three different vendors for things that overlap significantly, because each purchase made sense in isolation.',
     ],
     engagementFirmLabel: '$12M consulting firm',
     engagementParagraphs: [
-      'I looked at the vendor ledger and found 47 active vendor relationships. Fourteen of those vendors had been added in the prior two years with no competitive bid and no renewal review. When we consolidated overlapping services and renegotiated three contracts that had auto-renewed at list price, the recoverable amount was <span class="big">$145K annually</span>.',
+      'We looked at the vendor ledger and found 47 active vendor relationships. Fourteen of those vendors had been added in the prior two years with no competitive bid and no renewal review. When we consolidated overlapping services and renegotiated three contracts that had auto-renewed at list price, the recoverable amount was <span class="big">$145K annually</span>.',
       'The managing partner had no idea the firm was spending $38K a year on two separate document management platforms purchased by two different practice groups.',
     ],
     rangeLabel: 'Typical range &middot; $5M&ndash;$50M firms',
@@ -91,7 +91,7 @@ export const LEAK_SECTIONS: LeakSection[] = [
     rangeSub: 'Recoverable profit per year',
     rangeValue: '$30K&ndash;$120K',
     askYourself:
-      'If your software contracts all renewed tomorrow, could you tell me how many active users you have on each platform?',
+      'If your software contracts all renewed tomorrow, could you tell us how many active users you have on each platform?',
     showEndCta: true,
   },
   {
@@ -100,7 +100,7 @@ export const LEAK_SECTIONS: LeakSection[] = [
     category: 'Leak Five',
     title: 'Approval Bottlenecks.',
     prose: [
-      'I keep seeing this one in firms that have grown past the size where one-person oversight made sense. One partner or owner approves everything: pricing decisions, hiring decisions, vendor selections, client proposals. The intent is quality control. The effect is a queue. And every day something sits in that queue, the firm is deferring revenue it could already be earning.',
+      'We keep seeing this one in firms that have grown past the size where one-person oversight made sense. One partner or owner approves everything: pricing decisions, hiring decisions, vendor selections, client proposals. The intent is quality control. The effect is a queue. And every day something sits in that queue, the firm is deferring revenue it could already be earning.',
     ],
     engagementFirmLabel: '$15M professional service firm',
     engagementParagraphs: [
