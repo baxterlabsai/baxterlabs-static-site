@@ -389,10 +389,17 @@
 }
 .sv-page .sv-tl-scale .phase.p0 { color: var(--sv-fg-4); }
 .sv-page .sv-tl-scale .phase.p1 { color: var(--sv-crimson); }
-.sv-page .sv-tl-scale .days {
-  grid-column: 2;
-  display: grid; grid-template-columns: repeat(14, 1fr); gap: 2px;
+/* Wrapper mirrors the track body's 1fr 7fr split so day numbers
+   align with the track cells below. The 1fr spacer takes the P0
+   column's horizontal slot; the 7fr column holds the 14 day numbers. */
+.sv-page .sv-tl-scale .days-wrap {
+  display: grid;
+  grid-template-columns: 1fr 7fr;
+  gap: 8px;
   margin-top: 0.35rem;
+}
+.sv-page .sv-tl-scale .days {
+  display: grid; grid-template-columns: repeat(14, 1fr); gap: 2px;
   font-family: 'JetBrains Mono', monospace; font-style: normal; font-weight: 500;
   font-size: 0.6rem; letter-spacing: 0; color: var(--sv-fg-3);
   text-align: center;

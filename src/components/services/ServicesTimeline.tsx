@@ -64,18 +64,26 @@ export default function ServicesTimeline() {
                 <span>Days 1 – 14 · Clock running</span>
               </div>
             </div>
-            <div className="days">
-              {DAYS_1_14.map((d) => (
-                <button
-                  key={d.n}
-                  className={currentDay === d.n ? 'active' : ''}
-                  onClick={() => setCurrentDay(d.n)}
-                  type="button"
-                  aria-label={`Day ${d.n} of 14`}
-                >
-                  {d.n}
-                </button>
-              ))}
+            {/* days-wrap mirrors the track body's 1fr 7fr split so the
+                Day N rail button sits directly above the Day N track
+                cell. Without the wrapper the rail numbers span 100% of
+                the content column while track cells span only 7/8,
+                producing a ~1 column visual shift. */}
+            <div className="days-wrap">
+              <div className="days-spacer" aria-hidden="true" />
+              <div className="days">
+                {DAYS_1_14.map((d) => (
+                  <button
+                    key={d.n}
+                    className={currentDay === d.n ? 'active' : ''}
+                    onClick={() => setCurrentDay(d.n)}
+                    type="button"
+                    aria-label={`Day ${d.n} of 14`}
+                  >
+                    {d.n}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
