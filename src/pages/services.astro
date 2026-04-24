@@ -1,307 +1,353 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
+import '../components/services/services.css'
 import ExecutiveSummaryLightbox from '../components/islands/ExecutiveSummaryLightbox'
+import ServicesTimeline from '../components/services/ServicesTimeline'
+import ServicesTierCalibrator from '../components/services/ServicesTierCalibrator'
+import LeakMeter from '../components/homepage/LeakMeter'
 
-const deliverables = [
-  { icon: 'analytics', label: 'Executive Summary' },
-  { icon: 'fact_check', label: 'Full Diagnostic Report' },
-  { icon: 'architecture', label: 'Implementation Roadmap' },
-  { icon: 'calculate', label: 'Profit Leak Quantification Workbook' },
-  { icon: 'present_to_all', label: 'Executive Presentation Deck' },
-  { icon: 'handshake', label: 'Retainer Proposal' },
-]
+const title = 'BaxterLabs Advisory | The 14-Day Profit Leak Diagnostic | $12,500 Fixed'
+const description = 'A 14-day forensic diagnostic for professional service firms with $5M to $50M in annual revenue. Fixed price, $12,500. Six executive-ready deliverables including a full diagnostic report, quantification workbook, and implementation roadmap. The 14-day clock starts after stakeholder interviews complete.'
+const canonical = 'https://baxterlabs.ai/services'
 
-const deliverableDetails = [
-  {
-    icon: 'analytics',
-    label: 'Executive Summary',
-    what: 'A board-ready overview of key findings, risk exposure, and high-priority recovery actions.',
-    why: 'Gives leadership a clear, defensible picture of where margin is leaking and what to address first — designed to drive decisions, not sit in a drawer.',
-  },
-  {
-    icon: 'fact_check',
-    label: 'Full Diagnostic Report',
-    what: 'Complete analysis of every identified profit leak with root cause identification and quantified P&L impact.',
-    why: 'Ensures your team fixes the actual problem behind each leak, not just the visible symptom.',
-  },
-  {
-    icon: 'architecture',
-    label: 'Implementation Roadmap',
-    what: 'A prioritized 90-day action plan sequenced by impact and tied directly to diagnostic findings.',
-    why: 'Turns analysis into execution your team can begin immediately, without outside dependencies.',
-  },
-  {
-    icon: 'calculate',
-    label: 'Profit Leak Quantification Workbook',
-    what: 'The underlying financial model showing exactly where margin is eroding and the recovery potential per category.',
-    why: 'Lets you prioritize fixes by actual dollar recovery value rather than intuition or guesswork.',
-  },
-  {
-    icon: 'present_to_all',
-    label: 'Executive Presentation Deck',
-    what: 'A structured slide deck summarizing findings, priorities, and recommended actions for stakeholder alignment.',
-    why: 'Provides a ready-made format for presenting the diagnostic to boards, partners, or leadership teams.',
-  },
-  {
-    icon: 'handshake',
-    label: 'Retainer Proposal',
-    what: 'A scoped proposal for ongoing advisory and implementation support, included optionally with every engagement.',
-    why: 'Provides a clear path forward for firms that want external governance during execution — with no obligation.',
-  },
-]
+// TODO: replace with dark-dossier share card (1200x630). Using the
+// default site OG as a placeholder until design delivers the asset.
+const ogImage = '/images/baxterlabs-og.png'
 
-const diagnosticSteps = [
-  { num: '01', title: 'Data Collection', desc: 'Structured gathering and analysis of internal financial data and operational workflows.' },
-  { num: '02', title: 'Identification', desc: 'Precision detection and quantification of leakage points across the value chain.' },
-  { num: '03', title: 'Executive Debrief', desc: 'Direct presentation of high-level findings and immediate strategic priorities.' },
-  { num: '04', title: 'Package Delivery', desc: 'Handover of the complete documentation package and implementation roadmap.' },
-]
+const organizationJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  '@id': 'https://baxterlabs.ai/#org',
+  name: 'BaxterLabs Advisory',
+  url: 'https://baxterlabs.ai/',
+}
 
-const dataHandling = [
-  { icon: 'gavel', title: 'Mutual NDA', desc: 'Execution of a standard non-disclosure agreement prior to any data exchange.' },
-  { icon: 'encrypted', title: 'Encrypted & Access-Controlled', desc: 'All client data is encrypted in transit and at rest, with strict access controls and confidentiality protocols governing every engagement.' },
-  { icon: 'block', title: 'No External Use', desc: 'Client data is never aggregated, shared with third parties, or used outside the scope of the engagement. Confidential handling of client information is non-negotiable.' },
-  { icon: 'delete_forever', title: 'Destruction Protocol', desc: 'Option for full secure return or verified destruction of all datasets post-delivery.' },
-]
+const serviceJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Service',
+  '@id': 'https://baxterlabs.ai/services#service',
+  name: 'Profit Leak Diagnostic',
+  serviceType: '14-day forensic profit diagnostic',
+  provider: { '@id': 'https://baxterlabs.ai/#org' },
+  areaServed: 'United States professional service firms, $5M-$50M revenue range',
+  offers: {
+    '@type': 'Offer',
+    price: '12500',
+    priceCurrency: 'USD',
+    description: '14-day fixed-scope diagnostic, clock begins after last stakeholder interview',
+  },
+  hasOfferCatalog: {
+    '@type': 'OfferCatalog',
+    name: 'Diagnostic Deliverables',
+    itemListElement: [
+      { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Executive Summary' } },
+      { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Full Diagnostic Report' } },
+      { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Implementation Roadmap' } },
+      { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Profit Leak Quantification Workbook' } },
+      { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Executive Presentation Deck' } },
+      { '@type': 'Offer', itemOffered: { '@type': 'Service', name: 'Retainer Proposal (optional)' } },
+    ],
+  },
+}
+
+const breadcrumbJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://baxterlabs.ai/' },
+    { '@type': 'ListItem', position: 2, name: 'Services', item: 'https://baxterlabs.ai/services' },
+  ],
+}
 ---
 <BaseLayout
-  title="14-Day Executive Profit Leak Diagnostic | BaxterLabs"
-  description="A rigorous, structured diagnostic engineered for firms with $5M–$50M in annual revenue. We identify significant, recoverable cash flow lost to misaligned financial controls."
+  title={title}
+  description={description}
+  canonical={canonical}
+  ogType="website"
+  ogImage={ogImage}
 >
-  {/* Hero */}
-  <section class="px-8 md:px-16 lg:px-24 py-24 md:py-32">
-    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
-      <div>
-        <h1 class="text-5xl md:text-7xl font-headline italic font-semibold text-primary leading-tight mb-12 tracking-tight">
-          The 14-Day Executive <br />Profit Leak Diagnostic.
-        </h1>
-        <p class="text-xl md:text-2xl text-on-surface-variant font-light leading-relaxed mb-6">
-          A rigorous, structured diagnostic engineered for firms with <span class="text-on-surface font-medium">$5M–$50M in annual revenue</span>. We identify significant, recoverable cash flow lost to misaligned financial controls and operational friction.
-        </p>
-        <p class="text-on-surface-variant/70 text-sm leading-relaxed">
-          This is not an open-ended consulting engagement. It is a structured diagnostic process with defined inputs, timelines, and outputs.
-        </p>
-      </div>
-      {/* Deliverables snapshot */}
-      <div class="bg-surface-container-lowest border border-outline-variant/20 rounded-sm shadow-lg lg:mt-4 overflow-hidden">
-        <div class="bg-secondary px-10 py-5">
-          <span class="font-label text-on-primary uppercase tracking-[0.3em] text-xs font-bold">What You Receive</span>
-        </div>
-        <div class="px-10 py-8">
-          <div class="grid grid-cols-2 gap-x-8 gap-y-5">
-            {deliverables.map((d) => (
-              <div class="flex items-center gap-3">
-                <span class="material-symbols-outlined text-secondary text-lg shrink-0" style="font-variation-settings: 'FILL' 1">{d.icon}</span>
-                <span class="text-on-surface font-medium text-sm leading-tight">{d.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div class="px-10 pb-8">
-          <div class="flex items-center gap-3 pt-5 border-t border-outline-variant/20">
-            <span class="material-symbols-outlined text-secondary text-lg">schedule</span>
-            <p class="text-xs text-on-surface-variant font-label font-medium uppercase tracking-widest">Complete executive-ready package in 14 days</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
+  <Fragment slot="head">
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(organizationJsonLd)} />
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(serviceJsonLd)} />
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(breadcrumbJsonLd)} />
+  </Fragment>
 
-  {/* How the Diagnostic Translates Into Action */}
-  <section class="bg-surface-container-low py-32 px-8 md:px-16 lg:px-24 border-y border-surface-container">
-    <div class="max-w-5xl mx-auto">
-      <div class="mb-20">
-        <span class="text-secondary font-semibold uppercase tracking-widest text-xs mb-4 block">Beyond the Package</span>
-        <h2 class="text-4xl font-headline text-secondary mb-4">How the Diagnostic Translates Into Action</h2>
-        <p class="text-on-surface-variant text-lg font-medium opacity-80">Each component of the diagnostic is designed to move from identification to quantified action.</p>
-      </div>
-      <div class="space-y-16">
-        {deliverableDetails.map((d) => (
-          <div class="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-x-8 gap-y-4 items-start">
-            <span class="material-symbols-outlined text-secondary text-3xl mt-1" style="font-variation-settings: 'FILL' 1">{d.icon}</span>
-            <div>
-              <h3 class="text-xl font-semibold text-on-surface mb-3 font-headline italic">{d.label}</h3>
-              <p class="text-on-surface-variant text-base leading-relaxed mb-2">{d.what}</p>
-              <p class="text-secondary/80 text-sm leading-relaxed font-medium">{d.why}</p>
+  <div class="sv-page">
+
+    {/* SECTION 1 — HERO + PROMOTED PREVIEW */}
+    <section class="sv-hero" data-screen-label="01 Hero">
+      <div class="sv-hero-grid"></div>
+      <div class="sv-hero-inner">
+        <div>
+          <div class="sv-hero-eyebrow">BaxterLabs Advisory</div>
+          <h1>
+            <span class="roman">Fourteen days from</span>
+            <span class="crimson">last interview</span>
+            <span class="roman">to final findings.</span>
+          </h1>
+          <p class="sv-hero-sub">
+            A rigorous forensic diagnostic for professional service firms with <strong>$5M to $50M</strong> in annual revenue. Fixed scope, fixed price, <strong>$12,500</strong>. We identify where margin is leaking, quantify each leak in dollars, and deliver a prioritized roadmap your team can execute without us.
+          </p>
+          <div class="sv-hero-cta">
+            <a href="/get-started" class="sv-btn">Start Your Diagnostic <span class="arrow">&rarr;</span></a>
+            <button type="button" class="sv-hero-cta-secondary" data-open-executive-summary>
+              View Sample Executive Summary &rarr;
+            </button>
+          </div>
+          <span class="sv-nda">A mutual confidentiality agreement (NDA) is executed prior to any data intake.</span>
+        </div>
+
+        <button type="button" class="sv-sample-tile" data-open-executive-summary aria-label="View sample executive summary">
+          <div class="sv-sample-head">
+            <span>Sample Deliverable &middot; 01 of 06</span>
+            <span class="dot"></span>
+          </div>
+          <div class="sv-sample-body">
+            <div class="sv-sample-doc-label">Executive Summary &middot; Anonymized</div>
+            <div class="sv-sample-h">Headline Finding</div>
+            <div class="sv-sample-range">$2.784M &ndash; $4.384M</div>
+            <div class="sv-sample-range-cap">Recoverable Annual Profit &middot; 90% Confidence</div>
+            <div class="sv-sample-chart">
+              <div class="sv-sample-row"><span>Pricing</span><div class="sv-sample-bar"><div class="sv-sample-bar-fill" style="width: 92%;"></div></div><span class="v">$1.2M</span></div>
+              <div class="sv-sample-row"><span>Ops</span><div class="sv-sample-bar"><div class="sv-sample-bar-fill" style="width: 68%;"></div></div><span class="v">$890K</span></div>
+              <div class="sv-sample-row"><span>Vendor</span><div class="sv-sample-bar"><div class="sv-sample-bar-fill" style="width: 46%;"></div></div><span class="v">$610K</span></div>
+              <div class="sv-sample-row"><span>Payroll</span><div class="sv-sample-bar"><div class="sv-sample-bar-fill" style="width: 32%;"></div></div><span class="v">$420K</span></div>
+              <div class="sv-sample-row"><span>Tech</span><div class="sv-sample-bar"><div class="sv-sample-bar-fill" style="width: 18%;"></div></div><span class="v">$240K</span></div>
             </div>
           </div>
-        ))}
-      </div>
-    </div>
-  </section>
-
-  {/* How the Diagnostic Works */}
-  <section class="bg-secondary text-on-primary py-32 px-8 md:px-16 lg:px-24 relative overflow-hidden">
-    <div class="max-w-7xl mx-auto relative z-10">
-      <h2 class="text-4xl md:text-5xl font-headline italic mb-6 text-center">How the Diagnostic Works</h2>
-      <p class="text-on-primary/60 text-sm text-center mb-24 max-w-xl mx-auto">
-        Each engagement begins with pre-call analysis using publicly available data and internal research models.
-      </p>
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-12">
-        {diagnosticSteps.map((step) => (
-          <div class="relative">
-            <span class="text-7xl font-display font-bold opacity-10 absolute -top-12 -left-6 italic">{step.num}</span>
-            <h4 class="text-xl font-semibold mb-4">{step.title}</h4>
-            <p class="text-on-primary/70 text-sm leading-relaxed">{step.desc}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  </section>
-
-  {/* Delivery Model */}
-  <section class="py-32 px-8 md:px-16 lg:px-24 bg-surface">
-    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
-      <div>
-        <h2 class="text-4xl font-headline text-secondary mb-8">Delivery Model</h2>
-        <p class="text-xl text-on-surface-variant leading-relaxed mb-8">
-          Findings are presented in an <span class="text-secondary font-bold italic">executive debrief</span>, followed by delivery of the full diagnostic package.
-        </p>
-        <p class="text-on-surface-variant mb-12 text-lg">
-          We prioritize intellectual clarity. The debrief ensures leadership fully understands the 'why' before being handed the 'how' within the comprehensive documentation.
-        </p>
-        <div class="p-8 border-l-4 border-secondary bg-surface-container-low shadow-sm">
-          <span class="text-xs font-bold text-secondary uppercase tracking-[0.2em] mb-4 block">Primary Preview</span>
-          <button type="button" data-open-executive-summary class="flex flex-col text-left group cursor-pointer">
-            <span class="flex items-center gap-3 text-2xl font-headline italic font-bold text-secondary transition-colors group-hover:text-primary">
-              View Sample Executive Summary
-              <span class="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
-            </span>
-            <span class="text-sm text-on-surface-variant mt-2 font-medium opacity-80">
-              Representative output illustrating the structure and depth of the diagnostic. No downloads required.
-            </span>
-          </button>
-        </div>
-      </div>
-      <div class="relative">
-        <button
-          type="button"
-          data-open-executive-summary
-          class="aspect-[4/5] w-full bg-[#FAF8F2] rounded-sm shadow-2xl p-8 sm:p-10 relative overflow-hidden border border-outline-variant/10 text-left cursor-pointer group transition-shadow hover:shadow-3xl"
-          aria-label="Preview Sample Executive Summary"
-        >
-          {/* Fade-out overlay at bottom */}
-          <div class="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#FAF8F2] to-transparent z-10 pointer-events-none"></div>
-          {/* Hover prompt */}
-          <div class="absolute inset-0 flex items-center justify-center z-20 opacity-0 group-hover:opacity-100 transition-opacity bg-black/5">
-            <span class="bg-white/95 shadow-lg rounded-sm px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-secondary flex items-center gap-2">
-              <span class="material-symbols-outlined text-base">visibility</span>
-              Preview Document
-            </span>
-          </div>
-          {/* Mini title page replica */}
-          <div class="text-center">
-            <p class="text-[7px] uppercase tracking-[0.2em] text-[#C9A84C] font-bold mb-3">Sample Deliverable</p>
-            <img
-              src="/images/baxterlabs-logo.png"
-              alt=""
-              class="h-10 w-auto mx-auto mb-4 opacity-80"
-            />
-            <p class="font-label text-[7px] uppercase tracking-[0.25em] text-secondary mb-1">BaxterLabs Advisory</p>
-            <p class="font-headline text-lg sm:text-xl text-primary leading-tight mb-1">Executive Summary</p>
-            <p class="font-headline italic text-[11px] text-secondary mb-4">Profit Leak &amp; Operational Efficiency Diagnostic</p>
-            <div class="w-8 h-px bg-[#C9A84C] mx-auto mb-4"></div>
-            <p class="text-[8px] uppercase tracking-wider text-on-surface-variant/50 mb-1">Prepared for</p>
-            <p class="font-headline text-xs text-on-surface/80 mb-6">Regional Staffing Firm (Illustrative Example)</p>
-          </div>
-          {/* Mini content hint */}
-          <div class="space-y-3 mt-2">
-            <p class="font-headline text-[10px] text-primary font-bold">Headline Finding</p>
-            <div class="border-l-2 border-secondary/30 pl-3">
-              <p class="text-[8px] leading-relaxed text-on-surface/60">
-                BaxterLabs Advisory has identified <span class="font-bold text-primary">$2,784,000</span> to <span class="font-bold text-primary">$4,384,000</span> in annual profit leak opportunity&hellip;
-              </p>
-            </div>
-            <div class="mt-3">
-              <img
-                src="/images/sample-deliverables/exec-summary/chart-profit-leak-by-category.png"
-                alt=""
-                class="w-full rounded-sm opacity-70"
-              />
-            </div>
+          <div class="sv-sample-footer">
+            <span class="cta">View Sample &rarr;</span>
+            <span class="meta">PDF &middot; 14 pages</span>
           </div>
         </button>
-        <div class="absolute -bottom-12 -right-12 w-64 h-64 bg-secondary/5 rounded-full blur-[80px] -z-10"></div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  {/* Data Handling & Confidentiality */}
-  <section class="py-32 px-8 md:px-16 lg:px-24 bg-surface-container-low border-y border-surface-container">
-    <div class="max-w-4xl mx-auto">
-      <div class="text-center mb-16">
-        <span class="material-symbols-outlined text-secondary text-5xl mb-6" style="font-variation-settings: 'FILL' 1">shield</span>
-        <h2 class="text-4xl font-headline text-secondary mb-4">Data Handling &amp; Confidentiality</h2>
-        <p class="text-on-surface-variant font-medium max-w-2xl mx-auto">All engagements operate under strict confidentiality protocols and are executed through a controlled, access-managed workflow designed for sensitive financial and operational data.</p>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-10 text-left">
-        {dataHandling.map((item) => (
-          <div class="flex gap-4 p-4 hover:bg-surface-container-lowest transition-colors rounded-sm">
-            <span class="material-symbols-outlined text-secondary text-2xl">{item.icon}</span>
-            <p class="text-sm text-on-surface-variant">
-              <strong class="text-on-surface block mb-1 text-base">{item.title}</strong>
-              {item.desc}
-            </p>
-          </div>
-        ))}
-      </div>
-    </div>
-  </section>
+    {/* SECTION 2 — THE 14-DAY TIMELINE */}
+    <section class="sv-section sv-section--white" data-screen-label="02 The 14-Day Timeline">
+      <div class="sv-inner">
+        <div class="sv-eyebrow"><span class="line"></span><span class="txt">02 &middot; The Engagement</span></div>
+        <h2 class="sv-h2">How the engagement <span class="roman">actually runs.</span></h2>
+        <div class="sv-body sv-narrow" style="margin-left: 0;">
+          <p>We don't run an open-ended discovery process. We run a procedure. Here is what happens, day by day, and where your team's time is actually needed.</p>
+        </div>
 
-  {/* Optional Implementation Support */}
-  <section class="py-32 px-8 md:px-16 lg:px-24 bg-surface">
-    <div class="max-w-4xl mx-auto text-center">
-      <span class="text-secondary font-bold uppercase tracking-[0.3em] text-xs mb-8 block">Continuous Excellence</span>
-      <h2 class="text-5xl font-headline text-secondary mb-8 italic">Strategic Post-Diagnostic Execution.</h2>
-      <p class="text-on-surface-variant text-xl leading-relaxed mb-16">
-        While the diagnostic provides a standalone roadmap for internal execution, we offer a <span class="text-secondary font-bold">Retainer</span> for firms requiring external governance and technical advisory during implementation.
-      </p>
-      <div class="grid md:grid-cols-3 gap-8 mb-16 text-left">
-        <div class="flex items-start gap-3">
-          <span class="material-symbols-outlined text-secondary mt-1" style="font-variation-settings: 'FILL' 1">check_circle</span>
-          <span class="text-on-surface font-medium">Direct access to Lead Partner</span>
-        </div>
-        <div class="flex items-start gap-3">
-          <span class="material-symbols-outlined text-secondary mt-1" style="font-variation-settings: 'FILL' 1">check_circle</span>
-          <span class="text-on-surface font-medium">Monthly performance audits</span>
-        </div>
-        <div class="flex items-start gap-3">
-          <span class="material-symbols-outlined text-secondary mt-1" style="font-variation-settings: 'FILL' 1">check_circle</span>
-          <span class="text-on-surface font-medium">Executive change management</span>
+        <ServicesTimeline client:visible />
+
+        <div class="sv-body sv-narrow" style="margin-left: 0; margin-top: 2.5rem;">
+          <p>The clock not starting until the last interview is complete means the timeline we promise is a timeline we control. Most consulting engagements promise a delivery date and then blame you when it slips. <strong>We promise fourteen days from a moment we can actually measure.</strong></p>
         </div>
       </div>
-      <a href="/services" class="inline-block text-secondary font-bold border-b-2 border-secondary pb-1 hover:text-primary hover:border-primary transition-all">
-        Learn More About Implementation
-      </a>
-    </div>
-  </section>
+    </section>
 
-  {/* Final CTA */}
-  <section class="py-32 px-8 md:px-16 lg:px-24 bg-surface-container-highest border-t border-surface-container">
-    <div class="max-w-5xl mx-auto p-12 md:p-20 text-center relative overflow-hidden bg-surface-container-lowest shadow-2xl rounded-sm">
-      <div class="absolute top-0 right-0 w-80 h-80 bg-secondary/5 rounded-full blur-[100px] -z-10 -mr-40 -mt-40"></div>
-      <h2 class="text-5xl md:text-6xl font-headline text-primary mb-8 leading-tight italic">Start Your Diagnostic.</h2>
-      <p class="text-on-surface-variant text-xl mb-16 max-w-2xl mx-auto leading-relaxed">
-        Stop the bleed. Quantify the recovery. Selective client intake.
-      </p>
-      <div class="flex flex-col items-center">
-        <a
-          href="/get-started"
-          class="bg-primary text-on-primary px-16 py-6 rounded-sm text-sm font-bold uppercase tracking-[0.3em] shadow-xl hover:bg-primary-container transition-all transform hover:scale-105"
-        >
-          Start Your Diagnostic
-        </a>
-        <p class="mt-8 text-xs text-on-surface-variant/60 font-medium uppercase tracking-[0.2em]">Consultation for Revenue $5M - $50M</p>
+    {/* SECTION 3 — DELIVERABLES */}
+    <section class="sv-section" data-screen-label="03 Deliverables">
+      <div class="sv-inner">
+        <div class="sv-eyebrow"><span class="line"></span><span class="txt">03 &middot; What You Get</span></div>
+        <h2 class="sv-h2">Six deliverables. <span class="roman">Executive-ready. No scope creep.</span></h2>
+        <div class="sv-body sv-narrow" style="margin-left: 0;">
+          <p>Every engagement produces the same six artifacts. Each one is positioned for a specific decision or conversation.</p>
+        </div>
+
+        <div class="sv-dx">
+          <article class="sv-dx-card">
+            <div class="n"><span>01</span><span class="tag">For the board</span></div>
+            <h4>Executive Summary</h4>
+            <p class="desc">A board-ready overview of findings, risk exposure, and priority recovery actions.</p>
+            <p class="use"><em>Use it to drive the decision conversation with partners and the board.</em></p>
+          </article>
+          <article class="sv-dx-card">
+            <div class="n"><span>02</span><span class="tag">For your team</span></div>
+            <h4>Full Diagnostic Report</h4>
+            <p class="desc">Complete analysis of every identified profit leak with root-cause identification and quantified P&amp;L impact.</p>
+            <p class="use"><em>Use it when your team needs to address the actual problem, not the visible symptom.</em></p>
+          </article>
+          <article class="sv-dx-card">
+            <div class="n"><span>03</span><span class="tag">For execution</span></div>
+            <h4>Implementation Roadmap</h4>
+            <p class="desc">A prioritized 90-day action plan sequenced by impact and tied directly to findings.</p>
+            <p class="use"><em>Use it to turn analysis into execution without external dependencies.</em></p>
+          </article>
+          <article class="sv-dx-card">
+            <div class="n"><span>04</span><span class="tag">For the finance team</span></div>
+            <h4>Profit Leak Quantification Workbook</h4>
+            <p class="desc">The underlying financial model showing exactly where margin is eroding and the recovery potential per category.</p>
+            <p class="use"><em>Use it to prioritize fixes by actual dollar value rather than intuition.</em></p>
+          </article>
+          <article class="sv-dx-card">
+            <div class="n"><span>05</span><span class="tag">For stakeholders</span></div>
+            <h4>Executive Presentation Deck</h4>
+            <p class="desc">A structured slide deck summarizing findings, priorities, and recommended actions for stakeholder alignment.</p>
+            <p class="use"><em>Use it to present the diagnostic to the board, partners, or leadership teams.</em></p>
+          </article>
+          <article class="sv-dx-card optional">
+            <div class="n"><span>06</span><span class="tag">Optional</span></div>
+            <h4>Retainer Proposal</h4>
+            <p class="desc">A scoped proposal for ongoing advisory and implementation support. Ships with every diagnostic; accepting it is optional.</p>
+            <p class="use"><em>This is not part of the diagnostic pricing. Decline it and the diagnostic still includes everything above.</em></p>
+          </article>
+        </div>
+
+        <p class="sv-dx-close">Every finding in every deliverable is cited back to the source data. <strong>If you disagree with a finding, we walk through the math together.</strong></p>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <ExecutiveSummaryLightbox client:idle />
+    {/* SECTION 4 — THE ARITHMETIC */}
+    <section class="sv-section sv-section--white" data-screen-label="04 The Arithmetic">
+      <div class="sv-inner">
+        <div class="sv-eyebrow"><span class="line"></span><span class="txt">04 &middot; The Arithmetic</span></div>
+        <h2 class="sv-h2">The math at <span class="roman">your firm size.</span></h2>
+        <div class="sv-body sv-narrow" style="margin-left: 0;">
+          <p>The diagnostic is <strong>$12,500</strong>. Fixed. Paid once. Here is what that typically recovers, calibrated to your firm's revenue range.</p>
+        </div>
+
+        <ServicesTierCalibrator client:visible />
+
+        <div class="sv-body sv-narrow" style="margin-left: 0; margin-top: 2.5rem;">
+          <p>At every firm size in our range, the diagnostic pays for itself at the floor of the recovery range. The question is not whether the math works. The question is why most firms have not run one yet.</p>
+          <p>For the full walkthrough of the five leak categories and a $3.585M anonymized case study, read our <a href="/profit-leaks">Profit Leaks analysis &rarr;</a></p>
+        </div>
+      </div>
+    </section>
+
+    {/* SECTION 5 — COMPARISON */}
+    <section class="sv-section" data-screen-label="05 Comparison Matrix">
+      <div class="sv-inner">
+        <div class="sv-eyebrow"><span class="line"></span><span class="txt">05 &middot; The Alternatives</span></div>
+        <h2 class="sv-h2">How this compares <span class="roman">to the alternatives.</span></h2>
+        <div class="sv-body sv-narrow" style="margin-left: 0;">
+          <p>There are three other things a firm your size might do instead of running this diagnostic. Here is how they compare on the dimensions that matter.</p>
+        </div>
+
+        <div class="sv-cx">
+          <table class="sv-cx-table">
+            <thead>
+              <tr>
+                <th class="dim">Dimension</th>
+                <th>Traditional Consulting</th>
+                <th>Software Dashboard</th>
+                <th>Fractional CFO</th>
+                <th class="bl">BaxterLabs Diagnostic</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="dim">Cost</td>
+                <td>$200K &ndash; $500K+</td>
+                <td>$15K &ndash; $50K / year</td>
+                <td>$5K &ndash; $15K / month ongoing</td>
+                <td class="bl"><strong>$12,500 fixed, once</strong></td>
+              </tr>
+              <tr>
+                <td class="dim">Timeline</td>
+                <td>3 &ndash; 6 months</td>
+                <td>Ongoing (data only)</td>
+                <td>Ongoing (no endpoint)</td>
+                <td class="bl"><strong>14 days from last interview</strong></td>
+              </tr>
+              <tr>
+                <td class="dim">Who delivers</td>
+                <td>Partner-sold, associate-staffed</td>
+                <td>Software (no interpretation)</td>
+                <td>One person, generalist</td>
+                <td class="bl"><strong>Partners only, 25 years P&amp;L ownership</strong></td>
+              </tr>
+              <tr>
+                <td class="dim">What you get</td>
+                <td>Strategic recommendations</td>
+                <td>Dashboards and data</td>
+                <td>Ongoing finance support</td>
+                <td class="bl"><strong>Quantified findings with source citations, prioritized roadmap</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="sv-body sv-narrow" style="margin-left: 0; margin-top: 2rem;">
+          <p>Traditional consulting is excellent for strategy transformations at $200M+ firms. It was never designed for what $5M to $50M firms need. Software dashboards are good at displaying the numbers and bad at interpreting them. Fractional CFOs solve a real problem but not this one; they provide ongoing finance support, not a forensic diagnostic with an endpoint. <strong>The BaxterLabs Diagnostic was built specifically for the gap in the middle.</strong></p>
+        </div>
+      </div>
+    </section>
+
+    {/* SECTION 6 — DATA HANDLING */}
+    <section class="sv-section sv-section--white" data-screen-label="06 Data Handling">
+      <div class="sv-inner">
+        <div class="sv-eyebrow"><span class="line"></span><span class="txt">06 &middot; Confidentiality</span></div>
+        <h2 class="sv-h2">How we handle <span class="roman">your financial data.</span></h2>
+        <div class="sv-body sv-narrow" style="margin-left: 0;">
+          <p>All engagements operate under strict confidentiality. Client data is handled through a controlled, access-managed workflow designed for sensitive financial information.</p>
+        </div>
+
+        <div class="sv-pi">
+          <article class="sv-pi-card">
+            <div class="sv-pi-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3L4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6l-8-3z"/></svg>
+            </div>
+            <h5>Mutual NDA</h5>
+            <p>Executed before any data is exchanged. Standard non-disclosure, both directions.</p>
+          </article>
+          <article class="sv-pi-card">
+            <div class="sv-pi-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
+            </div>
+            <h5>Encrypted &amp; Access-Controlled</h5>
+            <p>All client data encrypted in transit and at rest. Access restricted to the partner team and the specific engagement.</p>
+          </article>
+          <article class="sv-pi-card">
+            <div class="sv-pi-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M5.5 5.5l13 13"/></svg>
+            </div>
+            <h5>No External Use</h5>
+            <p>Your data is never aggregated, shared with third parties, or used outside the scope of your engagement. Confidential handling is non-negotiable.</p>
+          </article>
+          <article class="sv-pi-card">
+            <div class="sv-pi-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 3h7l5 5v13H7V3z"/><path d="M14 3v6h6"/><path d="M10 15l4-4M10 11l4 4"/></svg>
+            </div>
+            <h5>Destruction Protocol</h5>
+            <p>At the end of the engagement, you can choose full secure return or verified destruction of all datasets. Default is destruction at 30 days post-delivery unless you request retention.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    {/* SECTION 7 — FINAL CTA */}
+    <section class="sv-section sv-final" data-screen-label="07 Final CTA">
+      <div class="sv-inner sv-narrow">
+        <div class="sv-eyebrow"><span class="line"></span><span class="txt">07 &middot; Start Your Diagnostic</span></div>
+        <h2 class="sv-h2" style="text-align: center;">Start your <span class="roman">diagnostic.</span></h2>
+        <div class="sv-body">
+          <p>Stop the bleed. Quantify the recovery. <strong>Selective client intake; we take a limited number of engagements per quarter to protect delivery quality.</strong></p>
+        </div>
+        <div style="margin-top: 2.5rem;">
+          <a href="/get-started" class="sv-btn is-cream">Start Your Diagnostic <span class="arrow">&rarr;</span></a>
+        </div>
+        <span class="sv-nda">Consultation for revenue $5M &ndash; $50M &middot; A mutual confidentiality agreement (NDA) is executed prior to any data intake.</span>
+        <div class="sv-body" style="margin-top: 2rem; font-size: 0.95rem;">
+          <p>Want to read the full methodology first? <a href="/profit-leaks">Read the Profit Leaks analysis &rarr;</a></p>
+        </div>
+      </div>
+    </section>
+
+    {/* Executive Summary lightbox — listens for 'open-executive-summary'
+        events dispatched by the [data-open-executive-summary] buttons
+        below. client:idle so it mounts after the page is interactive. */}
+    <ExecutiveSummaryLightbox client:idle />
+
+    {/* Leak Meter — pinned interactive. Same mount pattern as the
+        homepage. Dismissed state persists via localStorage; a visitor
+        who dismissed the meter on / arrives on /services with it still
+        dismissed. Tier state syncs with ServicesTierCalibrator via the
+        bl:tierchange custom event. */}
+    <LeakMeter client:load />
+  </div>
 </BaseLayout>
 
 <script>
-  document.querySelectorAll<HTMLButtonElement>('[data-open-executive-summary]').forEach((btn) => {
-    btn.addEventListener('click', () => {
+  // Wire every [data-open-executive-summary] trigger (hero tile + hero
+  // secondary link) to the existing lightbox island's open event.
+  document.querySelectorAll<HTMLElement>('[data-open-executive-summary]').forEach((el) => {
+    el.addEventListener('click', () => {
       window.dispatchEvent(new Event('open-executive-summary'))
     })
   })
