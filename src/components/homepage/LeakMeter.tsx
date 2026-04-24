@@ -175,43 +175,43 @@ export default function LeakMeter() {
     return (
       <button
         type="button"
-        className={`hp-meter-tab${mountedToView ? ' visible' : ''}`}
+        className={`bl-leak-meter-tab${mountedToView ? ' visible' : ''}`}
         onClick={restore}
         aria-label="Show Leak Meter"
       >
         Show Leak Meter
-        <span className="hp-meter-tab-tip">Stored in your browser only</span>
+        <span className="bl-leak-meter-tab-tip">Stored in your browser only</span>
       </button>
     )
   }
 
   return (
     <aside
-      className={`hp-meter${mountedToView ? ' visible' : ''}`}
+      className={`bl-leak-meter${mountedToView ? ' visible' : ''}`}
       aria-live="polite"
       aria-label="Leak Meter, illustrative"
     >
-      <div className="hp-meter-head">
-        <span className="hp-meter-label">Leak Meter · Illustrative</span>
+      <div className="bl-leak-meter-head">
+        <span className="bl-leak-meter-label">Leak Meter · Illustrative</span>
         <button
           type="button"
-          className="hp-meter-dismiss"
+          className="bl-leak-meter-dismiss"
           onClick={dismiss}
           aria-label="Dismiss meter"
         >
           ✕
         </button>
       </div>
-      <div className="hp-meter-num">{fmtUSD(value)}</div>
-      <div className="hp-meter-sub">
+      <div className="bl-leak-meter-num">{fmtUSD(value)}</div>
+      <div className="bl-leak-meter-sub">
         Since you first visited, at {TIERS[tier].label} firm size
       </div>
       {showFirstVisit && (
-        <div className="hp-meter-firstvisit">
+        <div className="bl-leak-meter-firstvisit">
           Your first visit was {daysSinceStart} day{daysSinceStart === 1 ? '' : 's'} ago.
         </div>
       )}
-      <div className="hp-meter-seg" role="radiogroup" aria-label="Firm size tier">
+      <div className="bl-leak-meter-seg" role="radiogroup" aria-label="Firm size tier">
         {(['A', 'B', 'C'] as const).map((t) => (
           <button
             key={t}
@@ -225,7 +225,7 @@ export default function LeakMeter() {
           </button>
         ))}
       </div>
-      <div className="hp-meter-disclaim">
+      <div className="bl-leak-meter-disclaim">
         Derived from typical recovery patterns at firms your size, not a
         measurement of your firm.
       </div>

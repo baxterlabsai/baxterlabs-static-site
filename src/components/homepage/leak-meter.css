@@ -1,0 +1,179 @@
+/* =============================================================
+   Leak Meter — component-owned stylesheet.
+
+   Rules are scoped under component-owned classes (.bl-leak-meter
+   for the pinned card, .bl-leak-meter-tab for the dismissed-state
+   tab) rather than any page-level class, so the meter's styles
+   are portable: mount the component on any page and the rules
+   match regardless of the surrounding .hp-page / .sv-page / etc.
+   wrapper.
+
+   Integration: each page that mounts <LeakMeter /> must also
+   import this stylesheet from its Astro frontmatter, e.g.
+       import '../components/homepage/leak-meter.css'
+   Astro's Vite pipeline does not reliably bundle CSS imports
+   declared inside React island .tsx files (the CSS gets dropped
+   and the component renders unstyled); the page-level import
+   puts the rules into the page's bundled stylesheet. Currently
+   imported from src/pages/index.astro and src/pages/services.astro.
+
+   Do NOT move these rules back into a page stylesheet or
+   duplicate them per-page. Same principle as the localStorage
+   keys in LeakMeter.tsx: the component owns its state AND its
+   styling; pages mount it and pull in the shared stylesheet.
+
+   Three brand colors are redefined locally as --lm-* custom
+   properties so the stylesheet is self-sufficient (doesn't rely
+   on any page-scope tokens). Font families still come from
+   global.css via var(--font-label) etc. — those are global.
+   ============================================================= */
+
+.bl-leak-meter,
+.bl-leak-meter-tab {
+  --lm-teal-d: #003838;
+  --lm-cream: #F6E7C8;
+  --lm-crimson: #66151C;
+}
+
+/* Pinned meter card (default state) — anchors below the site header,
+   which is 116px tall (83px logo + 32px py-4 + 1px border); adding
+   16px breathing room clears the "Start Your Diagnostic" button. */
+.bl-leak-meter {
+  position: fixed;
+  top: 8.25rem; right: 1.25rem;
+  z-index: 90;
+  width: 240px;
+  background: var(--lm-teal-d);
+  color: var(--lm-cream);
+  border: 1px solid rgba(246,231,200,0.18);
+  box-shadow: 0 10px 30px rgba(45,52,54,0.25);
+  padding: 0.85rem 0.9rem 0.9rem;
+  transform: translateY(-20px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 400ms ease, opacity 400ms ease;
+}
+.bl-leak-meter.visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.bl-leak-meter-head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 0.55rem;
+}
+.bl-leak-meter-label {
+  font-family: var(--font-label);
+  font-size: 0.55rem; font-weight: 700;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: rgba(246,231,200,0.55);
+}
+.bl-leak-meter-dismiss {
+  background: transparent; border: none; cursor: pointer;
+  color: rgba(246,231,200,0.6);
+  font-size: 0.85rem; line-height: 1;
+  padding: 2px 4px;
+}
+.bl-leak-meter-dismiss:hover { color: var(--lm-cream); }
+
+.bl-leak-meter-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  font-size: 1.6rem;
+  line-height: 1.05;
+  color: var(--lm-cream);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.bl-leak-meter-sub {
+  margin-top: 0.35rem;
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  color: rgba(246,231,200,0.55);
+  letter-spacing: 0.02em;
+  line-height: 1.45;
+}
+.bl-leak-meter-firstvisit {
+  margin-top: 0.35rem;
+  font-family: var(--font-headline);
+  font-style: italic;
+  font-size: 0.65rem;
+  color: rgba(246,231,200,0.55);
+}
+.bl-leak-meter-seg {
+  display: flex;
+  margin-top: 0.7rem;
+  border: 1px solid rgba(246,231,200,0.18);
+}
+.bl-leak-meter-seg button {
+  flex: 1;
+  padding: 0.35rem 0.25rem;
+  background: transparent;
+  border: none;
+  border-right: 1px solid rgba(246,231,200,0.12);
+  color: rgba(246,231,200,0.65);
+  font-family: var(--font-label);
+  font-size: 0.54rem; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  cursor: pointer;
+}
+.bl-leak-meter-seg button:last-child { border-right: none; }
+.bl-leak-meter-seg button.active {
+  background: var(--lm-crimson);
+  color: var(--lm-cream);
+}
+.bl-leak-meter-disclaim {
+  margin-top: 0.55rem;
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 0.55rem;
+  color: rgba(246,231,200,0.42);
+  line-height: 1.4;
+}
+
+/* Collapsed tab — tracks the meter's top offset so it appears in the
+   same vertical slot when the visitor has dismissed the meter. */
+.bl-leak-meter-tab {
+  position: fixed;
+  top: 8.25rem; right: 0;
+  z-index: 90;
+  background: var(--lm-teal-d);
+  color: var(--lm-cream);
+  padding: 0.55rem 0.8rem;
+  font-family: var(--font-label);
+  font-size: 0.55rem; font-weight: 700;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  cursor: pointer;
+  border: 1px solid rgba(246,231,200,0.18);
+  border-right: none;
+  box-shadow: -4px 4px 12px rgba(45,52,54,0.15);
+  display: none;
+}
+.bl-leak-meter-tab.visible { display: block; }
+.bl-leak-meter-tab-tip {
+  display: block;
+  font-style: italic;
+  font-weight: 400;
+  color: rgba(246,231,200,0.45);
+  letter-spacing: 0.02em;
+  text-transform: none;
+  font-size: 0.52rem;
+  margin-top: 0.2rem;
+}
+
+/* Mobile — meter pins to the bottom, tab moves to bottom-right. */
+@media (max-width: 680px) {
+  .bl-leak-meter {
+    top: auto; right: 0; left: 0; bottom: 0;
+    width: auto;
+    transform: translateY(20px);
+    border-left: none; border-right: none; border-bottom: none;
+  }
+  .bl-leak-meter.visible { transform: translateY(0); }
+  .bl-leak-meter-tab {
+    top: auto; right: 1rem; bottom: 0;
+    border: 1px solid rgba(246,231,200,0.18);
+    border-bottom: none;
+  }
+}

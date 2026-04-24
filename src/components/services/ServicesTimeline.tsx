@@ -8,9 +8,10 @@ const DAYS_1_14: Day[] = DAYS.slice(1)
 const isEmptyClient = (cl: string) => cl.toLowerCase().startsWith('none')
 
 export default function ServicesTimeline() {
-  // Boot on Day 1 to match the handoff's default. Day 0 is reachable by
-  // clicking the P0 cell or using ArrowLeft from Day 1.
-  const [currentDay, setCurrentDay] = useState<number>(1)
+  // Boot on Day 0 (Phase 0 "clock not running"). Opening on Day 0 puts
+  // the operational-honesty payload in front of every visitor first; Days
+  // 1-14 are reachable by clicking the day scale or pressing ArrowRight.
+  const [currentDay, setCurrentDay] = useState<number>(0)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
