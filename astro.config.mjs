@@ -10,7 +10,9 @@ export default defineConfig({
     react(),
     sitemap({
       filter: (page) =>
-        !page.includes('/alfonso-onboarding') && !page.includes('/go'),
+        !page.includes('/alfonso-onboarding') &&
+        !page.includes('/go') &&
+        !page.includes('/partners'),
     }),
   ],
   vite: {
