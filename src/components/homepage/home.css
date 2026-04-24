@@ -208,9 +208,12 @@
 }
 
 /* ============ LEAK METER ============ */
+/* top offset anchors the meter below the site header. Header is 116px
+   tall on the live site (83px logo + 32px py-4 + 1px border); adding
+   16px breathing room so it clears the "Start Your Diagnostic" button. */
 .hp-page .hp-meter {
   position: fixed;
-  top: 1.25rem; right: 1.25rem;
+  top: 8.25rem; right: 1.25rem;
   z-index: 90;
   width: 240px;
   background: var(--hp-teal-d);
@@ -298,10 +301,11 @@
   color: rgba(246,231,200,0.55);
 }
 
-/* Collapsed tab */
+/* Collapsed tab — tracks the meter's top offset so it appears in the
+   same vertical slot when the visitor has dismissed the meter. */
 .hp-page .hp-meter-tab {
   position: fixed;
-  top: 1.25rem; right: 0;
+  top: 8.25rem; right: 0;
   z-index: 90;
   background: var(--hp-teal-d);
   color: var(--hp-cream);
