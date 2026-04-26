@@ -167,7 +167,7 @@ export default function DecompositionBar() {
         Moderate-scenario findings. Conservative was $2.784M. Aggressive was $4.384M.
       </p>
       <p className="pl-disclaim">
-        Anonymized data from a real BaxterLabs engagement. Firm identity and proprietary details have been redacted with client consent.
+        Findings from a BaxterLabs methodology demonstration on a real $52M staffing firm. Firm identity withheld; source documents modeled.
       </p>
     </div>
   )
