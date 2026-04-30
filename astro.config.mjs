@@ -12,7 +12,8 @@ export default defineConfig({
       filter: (page) =>
         !page.includes('/alfonso-onboarding') &&
         !page.includes('/go') &&
-        !page.includes('/partners'),
+        !page.includes('/partners') &&
+        !page.includes('/unsubscribed'),
     }),
   ],
   vite: {

@@ -21,3 +21,14 @@ services:
       - source: /index.html
         destination: /
         type: 301
+      # Stale /sitemap.xml from a prior build pipeline persists on the
+      # Render origin even though current Astro builds only emit
+      # sitemap-index.xml + sitemap-0.xml. 301 to the canonical index.
+      - source: /sitemap.xml
+        destination: /sitemap-index.xml
+        type: 301
+      # www.baxterlabs.ai/* should always 301 to the apex. Render returns
+      # an internal error on the www host for /robots.txt without this.
+      - source: https://www.baxterlabs.ai/(.*)
+        destination: https://baxterlabs.ai/$1
+        type: 301

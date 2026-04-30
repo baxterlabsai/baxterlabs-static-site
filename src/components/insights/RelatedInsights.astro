@@ -1,0 +1,40 @@
+---
+export interface RelatedPost {
+  title: string
+  blog_slug: string
+  excerpt: string
+}
+
+interface Props {
+  currentSlug: string
+  posts: RelatedPost[]
+  limit?: number
+}
+
+const { currentSlug, posts, limit = 2 } = Astro.props
+
+const related = posts
+  .filter((p) => p.blog_slug && p.blog_slug !== currentSlug)
+  .slice(0, limit)
+---
+{related.length > 0 && (
+  <section class="mt-12 pt-8 border-t-2 border-gold">
+    <h2 class="font-display text-2xl font-bold text-crimson mb-6">
+      Related Insights
+    </h2>
+    <ul class="space-y-6 list-none p-0">
+      {related.map((p) => (
+        <li>
+          <a href={`/insights/${p.blog_slug}`} class="block group">
+            <h3 class="font-display text-lg font-semibold text-teal group-hover:underline mb-1">
+              {p.title}
+            </h3>
+            <p class="text-charcoal/70 text-sm leading-relaxed">
+              {p.excerpt}
+            </p>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </section>
+)}

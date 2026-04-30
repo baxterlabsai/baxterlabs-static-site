@@ -6,7 +6,7 @@ import LeakMeter from '../components/homepage/LeakMeter'
 import BreakEvenVisualizer from '../components/homepage/BreakEvenVisualizer'
 
 const title = 'Profit Leak Diagnostic for $5M-$50M Firms | BaxterLabs Advisory'
-const description = 'You feel it in the quarterly review: the number is not what it should be. BaxterLabs runs a 14-day forensic diagnostic for $5M to $50M professional service firms. Fixed price, $12,500, typical finding pays for itself 16 to 80 times over.'
+const description = 'BaxterLabs runs a 14-day forensic profit diagnostic for $5M to $50M professional service firms. $12,500 fixed. Typical finding pays back 16 to 80x.'
 const canonical = 'https://baxterlabs.ai/'
 
 // TODO: replace with custom dark-dossier share card (1200x630).
@@ -19,6 +19,7 @@ const organizationJsonLd = {
   '@id': 'https://baxterlabs.ai/#org',
   name: 'BaxterLabs Advisory',
   url: 'https://baxterlabs.ai/',
+  logo: 'https://baxterlabs.ai/images/baxterlabs-logo.png',
   description: 'Profit leak diagnostic for $5M to $50M professional service firms.',
   founder: { '@type': 'Person', name: 'George DeVries', jobTitle: 'Managing Partner' },
 }
@@ -28,7 +29,14 @@ const serviceJsonLd = {
   '@type': 'ProfessionalService',
   '@id': 'https://baxterlabs.ai/#service',
   name: 'Profit Leak Diagnostic',
-  provider: { '@id': 'https://baxterlabs.ai/#org' },
+  description: '14-day forensic profit leak diagnostic for $5M to $50M professional service firms. Fixed price, partner-led, six executive-ready deliverables.',
+  url: 'https://baxterlabs.ai/services',
+  provider: {
+    '@type': 'Organization',
+    '@id': 'https://baxterlabs.ai/#org',
+    name: 'BaxterLabs Advisory',
+    url: 'https://baxterlabs.ai/',
+  },
   serviceType: 'Forensic profit diagnostic',
   areaServed: 'United States professional service firms, $5M-$50M revenue range',
   offers: {
@@ -37,14 +45,6 @@ const serviceJsonLd = {
     priceCurrency: 'USD',
     description: '14-day fixed-scope diagnostic',
   },
-}
-
-const breadcrumbJsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'BreadcrumbList',
-  itemListElement: [
-    { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://baxterlabs.ai/' },
-  ],
 }
 ---
 <BaseLayout
@@ -57,7 +57,6 @@ const breadcrumbJsonLd = {
   <Fragment slot="head">
     <script is:inline type="application/ld+json" set:html={JSON.stringify(organizationJsonLd)} />
     <script is:inline type="application/ld+json" set:html={JSON.stringify(serviceJsonLd)} />
-    <script is:inline type="application/ld+json" set:html={JSON.stringify(breadcrumbJsonLd)} />
   </Fragment>
 
   <div class="hp-page">

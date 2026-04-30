@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
+import RelatedInsights, { type RelatedPost } from '../../components/insights/RelatedInsights.astro'
 import { marked } from 'marked'
 
 interface Post {
@@ -13,6 +14,12 @@ interface Post {
   body: string | null
 }
 
+interface ListEntry {
+  title?: string
+  blog_slug?: string
+  excerpt?: string
+}
+
 export async function getStaticPaths() {
   const api =
     import.meta.env.BLOG_API_URL || 'https://baxterlabs-api.onrender.com/api/public/blog'
@@ -22,10 +29,15 @@ export async function getStaticPaths() {
       console.warn(`[insights/[slug]] blog list API returned ${listRes.status}; no slug routes generated`)
       return []
     }
-    const list = (await listRes.json()) as Array<{ blog_slug?: string }>
-    const slugs = list
-      .filter((p) => p && typeof p.blog_slug === 'string' && p.blog_slug.length > 0)
-      .map((p) => p.blog_slug as string)
+    const list = (await listRes.json()) as ListEntry[]
+    const allPosts: RelatedPost[] = list
+      .filter((p): p is Required<ListEntry> =>
+        !!p && typeof p.blog_slug === 'string' && p.blog_slug.length > 0 &&
+        typeof p.title === 'string' && typeof p.excerpt === 'string'
+      )
+      .map((p) => ({ title: p.title, blog_slug: p.blog_slug, excerpt: p.excerpt }))
+
+    const slugs = allPosts.map((p) => p.blog_slug)
 
     const entries = await Promise.all(
       slugs.map(async (slug) => {
@@ -36,14 +48,14 @@ export async function getStaticPaths() {
             return null
           }
           const post = (await res.json()) as Post
-          return { params: { slug: post.blog_slug }, props: { post } }
+          return { params: { slug: post.blog_slug }, props: { post, allPosts } }
         } catch (err) {
           console.warn(`[insights/[slug]] post fetch threw for ${slug}: ${(err as Error).message}`)
           return null
         }
       })
     )
-    return entries.filter((e): e is { params: { slug: string }; props: { post: Post } } => e !== null)
+    return entries.filter((e): e is { params: { slug: string }; props: { post: Post; allPosts: RelatedPost[] } } => e !== null)
   } catch (err) {
     console.warn(`[insights/[slug]] blog list fetch threw (${(err as Error).message}); no slug routes generated`)
     return []
@@ -52,14 +64,18 @@ export async function getStaticPaths() {
 
 interface Props {
   post: Post
+  allPosts: RelatedPost[]
 }
 
-const { post } = Astro.props as Props
+const { post, allPosts } = Astro.props as Props
 
 marked.setOptions({ gfm: true, breaks: false })
 const bodyHtml = post.body ? (marked.parse(post.body) as string) : ''
 
-const seoTitle = post.seo_title || post.title
+const baseTitle = post.seo_title || post.title
+const renderedTitle = baseTitle.includes('BaxterLabs')
+  ? baseTitle
+  : `${baseTitle} | BaxterLabs`
 const seoDesc = post.seo_description || ''
 
 function formatDate(d: string | null) {
@@ -72,7 +88,7 @@ function formatDate(d: string | null) {
 }
 ---
 <BaseLayout
-  title={`${seoTitle} | BaxterLabs Advisory`}
+  title={renderedTitle}
   description={seoDesc}
   ogImage={post.featured_image_url || undefined}
   canonical={`https://baxterlabs.ai/insights/${post.blog_slug}`}
@@ -116,6 +132,8 @@ function formatDate(d: string | null) {
           Learn More About the Diagnostic
         </a>
       </div>
+
+      <RelatedInsights currentSlug={post.blog_slug} posts={allPosts} />
     </div>
   </section>
 </BaseLayout>
