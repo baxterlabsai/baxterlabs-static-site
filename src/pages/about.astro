@@ -1,9 +1,9 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import '../components/about/about.css'
-import '../components/homepage/leak-meter.css'
 import ScenarioMatcher from '../components/about/ScenarioMatcher'
-import LeakMeter from '../components/homepage/LeakMeter'
+// LeakMeter unmounted (Phase Zero pass 2): leaked-dollar ticker was magnitude
+// asserted as our finding. File retained for future rework.
 
 const title = 'About BaxterLabs | Two Operators, Forty-One Years of P&L Ownership'
 const description =
@@ -260,9 +260,5 @@ const alfonsoJsonLd = {
       </div>
     </section>
 
-    {/* Leak Meter — pinned cross-page. Dismissed state and tier
-        selection persist via localStorage, so visitors arriving on
-        /about see whatever state they set on / or /services. */}
-    <LeakMeter client:load />
   </div>
 </BaseLayout>

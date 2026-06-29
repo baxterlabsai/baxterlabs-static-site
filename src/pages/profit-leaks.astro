@@ -9,7 +9,8 @@
 // clearly-labelled illustrative sample (DecompositionBar).
 import BaseLayout from '../layouts/BaseLayout.astro'
 import '../components/profit-leaks/pillar.css'
-import MarginErosionChart from '../components/profit-leaks/MarginErosionChart'
+// MarginErosionChart unmounted (Phase Zero pass 2): its only content was an
+// asserted 45→32→18% margin pattern. File retained for future rework.
 import FragilityLoop from '../components/profit-leaks/FragilityLoop'
 import DecompositionBar from '../components/profit-leaks/DecompositionBar'
 
@@ -170,8 +171,6 @@ const organizationJsonLd = {
                 <div class="kicker">One thing you can do</div>
                 <p class="txt">Pick your three longest-running client engagements. Calculate the actual fully-loaded delivery cost (not just direct labor, include allocated overhead). Compare it to what you are billing. The gap is the leak.</p>
               </div>
-
-              <MarginErosionChart client:visible />
             </div>
           </div>
 

@@ -1,11 +1,10 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import '../components/services/services.css'
-import '../components/homepage/leak-meter.css'
 import ExecutiveSummaryLightbox from '../components/islands/ExecutiveSummaryLightbox'
 import ServicesTimeline from '../components/services/ServicesTimeline'
-import ServicesTierCalibrator from '../components/services/ServicesTierCalibrator'
-import LeakMeter from '../components/homepage/LeakMeter'
+// ServicesTierCalibrator + LeakMeter unmounted (Phase Zero pass 2): both
+// rendered asserted recovery/leak magnitudes. Files retained for future rework.
 
 const title = '14-Day Profit Leak Diagnostic, $12,500 Fixed | BaxterLabs'
 const description = '14-day forensic diagnostic for $5M to $50M professional service firms. $12,500 fixed. Six executive deliverables. Clock starts after stakeholder interviews.'
@@ -211,15 +210,9 @@ const breadcrumbJsonLd = {
     <section class="sv-section sv-section--white" data-screen-label="04 The Arithmetic">
       <div class="sv-inner">
         <div class="sv-eyebrow"><span class="line"></span><span class="txt">04 &middot; The Arithmetic</span></div>
-        <h2 class="sv-h2">The math at <span class="roman">your firm size.</span></h2>
+        <h2 class="sv-h2">The math is <span class="roman">simple.</span></h2>
         <div class="sv-body sv-narrow" style="margin-left: 0;">
-          <p>The diagnostic is <strong>$12,500</strong>. Fixed. Paid once. Here is what that typically recovers, calibrated to your firm's revenue range.</p>
-        </div>
-
-        <ServicesTierCalibrator client:visible />
-
-        <div class="sv-body sv-narrow" style="margin-left: 0; margin-top: 2.5rem;">
-          <p>At every firm size in our range, the diagnostic <strong>pays for itself at the floor</strong> of the recovery range. The question is not whether the math works. <em>The question is why most firms have not run one yet.</em></p>
+          <p>The diagnostic is <strong>$12,500</strong>. Fixed. Paid once. It's a small, known cost set against margin that has been leaking quietly for years. We find the leaks, quantify each one against your own data, and hand you a roadmap. <em>The question is not whether the math works. The question is why most firms have not run one yet.</em></p>
           <p>For the full walkthrough of the leak categories and an illustrative sample diagnostic, read our <a href="/profit-leaks">Profit Leaks analysis &rarr;</a></p>
         </div>
       </div>
@@ -349,12 +342,6 @@ const breadcrumbJsonLd = {
         below. client:idle so it mounts after the page is interactive. */}
     <ExecutiveSummaryLightbox client:idle />
 
-    {/* Leak Meter — pinned interactive. Same mount pattern as the
-        homepage. Dismissed state persists via localStorage; a visitor
-        who dismissed the meter on / arrives on /services with it still
-        dismissed. Tier state syncs with ServicesTierCalibrator via the
-        bl:tierchange custom event. */}
-    <LeakMeter client:load />
   </div>
 </BaseLayout>
 
