@@ -220,7 +220,7 @@ export default function FragilityLoop() {
   if (state.year === 0) {
     line = (
       <>
-        Illustrative starting conditions for a firm at risk. Press <strong>play</strong> to watch the loop run, or switch to your firm&rsquo;s numbers.
+        Starting conditions from a $52M national staffing firm. Press <strong>play</strong> to watch the loop run.
       </>
     )
   } else if (breached) {
@@ -385,7 +385,7 @@ export default function FragilityLoop() {
               role="radio"
               aria-checked={mode === 'anchor'}
             >
-              Illustrative example
+              Diagnostic anchor
             </button>
             <button
               className={mode === 'custom' ? 'active' : ''}

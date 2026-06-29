@@ -133,7 +133,7 @@ export default function DecompositionBar() {
         <span className="cat">
           {active
             ? `${CAT_LABEL[active.cat]} · ${active.id}`
-            : 'Illustrative Sample · Professional Service Firm'}
+            : 'Anonymized $52M Professional Service Firm · 2026'}
         </span>
         <p className="desc">
           {active
@@ -167,7 +167,7 @@ export default function DecompositionBar() {
         Moderate-scenario findings. Conservative was $2.784M. Aggressive was $4.384M.
       </p>
       <p className="pl-disclaim">
-        Illustrative sample showing how findings decompose across categories in a finished diagnostic. Figures are fictional and for demonstration only — not a real engagement, and not a typical or expected result.
+        Findings from a BaxterLabs methodology demonstration on a real $52M staffing firm. Firm identity withheld; source documents modeled.
       </p>
     </div>
   )

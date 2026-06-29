@@ -1,11 +1,12 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import '../components/homepage/home.css'
-// LeakMeter + BreakEvenVisualizer unmounted (Phase Zero pass 2): both rendered
-// asserted recovery/leak magnitudes. Files + tiers.ts retained for future rework.
+import '../components/homepage/leak-meter.css'
+import LeakMeter from '../components/homepage/LeakMeter'
+import BreakEvenVisualizer from '../components/homepage/BreakEvenVisualizer'
 
 const title = 'Profit Leak Diagnostic for $5M-$50M Firms | BaxterLabs Advisory'
-const description = 'BaxterLabs runs a 14-day forensic profit diagnostic for $5M to $50M professional service firms. $12,500 fixed. Partner-led, fixed-scope, mechanism over guesswork.'
+const description = 'BaxterLabs runs a 14-day forensic profit diagnostic for $5M to $50M professional service firms. $12,500 fixed. Typical finding pays back 16 to 80x.'
 const canonical = 'https://baxterlabs.ai/'
 
 // TODO: replace with custom dark-dossier share card (1200x630).
@@ -63,13 +64,14 @@ const serviceJsonLd = {
     {/* SECTION 1 — HERO */}
     <section class="hp-hero" data-screen-label="01 Hero">
       <div class="hp-hero-grid"></div>
+      <div class="hp-hero-bg"></div>
       <div class="hp-hero-inner">
         <div class="hp-hero-eyebrow">BaxterLabs Advisory</div>
         <h1 class="hp-hero-h1">
           <span class="roman">You feel it in the</span> <span class="crimson">quarterly review.</span>
         </h1>
         <p class="hp-hero-sub">
-          Revenue is growing. Headcount is growing. But the number at the bottom is not what it should be, and you cannot say exactly why. For professional service firms in the <strong>$5M to $50M range</strong>, that feeling is almost always right. The margin escapes through a handful of ordinary mechanisms the standard month-end close was never built to surface. This page walks through where it goes, what the diagnostic costs, and what to do next if it makes you want to move.
+          Revenue is growing. Headcount is growing. But the number at the bottom is not what it should be, and you cannot say exactly why. For professional service firms in the <strong>$5M to $50M range</strong>, that feeling is almost always right, and the gap between what your margin should be and what it is typically adds up to <strong>between 5 and 15 percent of EBITDA</strong>. This page shows you what that looks like in dollars per minute, what the diagnostic costs against what it typically finds, and what to do next if the numbers make you want to move.
         </p>
         <div class="hp-hero-cta">
           <a href="/get-started" class="hp-btn">Start Your Diagnostic <span class="arrow">→</span></a>
@@ -93,27 +95,32 @@ const serviceJsonLd = {
       </div>
     </section>
 
-    {/* SECTION 3 — WHERE IT GOES */}
-    <section class="hp-section" data-screen-label="03 Where It Goes">
+    {/* SECTION 3 — METER EXPLAINER */}
+    <section class="hp-section" data-screen-label="03 Meter Explainer">
       <div class="hp-inner hp-narrow">
-        <div class="hp-eyebrow"><span class="line"></span><span class="txt">03 &middot; Where It Goes</span></div>
-        <h2 class="hp-h2" style="font-size: clamp(1.5rem, 2.2vw + 0.5rem, 2.25rem);">It leaks through <span class="roman">ordinary mechanisms.</span></h2>
+        <div class="hp-eyebrow"><span class="line"></span><span class="txt">03 &middot; About the Meter</span></div>
+        <h2 class="hp-h2" style="font-size: clamp(1.5rem, 2.2vw + 0.5rem, 2.25rem);">About the meter <span class="roman">in the corner.</span></h2>
         <div class="hp-body">
-          <p>The margin doesn't vanish in one dramatic place. It escapes through a handful of ordinary mechanisms that each look reasonable in the moment: a rate that drifts from what you actually collect, work that's earned but never invoiced, payroll that grows a step ahead of the revenue it produces, vendor and software spend nobody owns, and cash that ages too long in receivables.</p>
-          <p>None of them trip an alarm on their own. That's exactly why they accumulate. The standard month-end close records what happened; it isn't built to explain where the margin went.</p>
-          <p>The full walkthrough lives on the <a href="/profit-leaks">Profit Leaks page</a>. <em>If something here already feels familiar, trust that.</em></p>
+          <p>The meter running in the corner of this page is not a measurement of your firm. It is illustrative. It runs at the typical per-minute rate of recoverable profit for firms in the size range you selected, based on patterns from BaxterLabs diagnostic work.</p>
+          <p>For firms in the <strong>$5M to $50M range</strong>, the right order of magnitude is somewhere between <strong>fifty cents and four dollars every minute</strong>. Across an unexamined quarter, that is real money. Across an unexamined year, it is the difference between a comfortable operating cushion and a technical covenant breach.</p>
+          <p>The meter is running while you read. <em>If the number makes you uncomfortable, trust the discomfort.</em></p>
         </div>
       </div>
     </section>
 
-    {/* SECTION 4 — THE MATH */}
-    <section class="hp-section hp-section--white" data-screen-label="04 The Math">
+    {/* SECTION 4 — BREAK-EVEN VISUALIZER */}
+    <section class="hp-section hp-section--white" data-screen-label="04 Break-Even Visualizer">
       <div class="hp-inner">
         <div class="hp-eyebrow"><span class="line"></span><span class="txt">04 &middot; The Math, Briefly</span></div>
-        <h2 class="hp-h2" style="max-width: 22ch;">The diagnostic is <span class="crimson">$12,500.</span> <span class="roman">Fixed.</span></h2>
+        <h2 class="hp-h2" style="max-width: 22ch;">The diagnostic is <span class="crimson">$12,500.</span> The finding is <span class="roman">many multiples.</span></h2>
         <div class="hp-body hp-narrow" style="margin-left: 0;">
-          <p>One fixed price, paid once, against margin that has been leaking quietly for years. We find the leaks, quantify each one against your own data, and hand you a roadmap. <strong>You decide what's worth recovering with the numbers in front of you.</strong></p>
-          <p>No retainer, no scope creep, no open-ended engagement. The output is a specific, sourced figure for each leak and the sequence to fix it.</p>
+          <p>That is the fixed price, paid once. The typical finding at firms your size recovers many multiples of that in annual profit. <strong>The math is worth pausing on.</strong></p>
+        </div>
+
+        <BreakEvenVisualizer client:visible />
+
+        <div class="hp-body hp-narrow" style="margin-left: 0; margin-top: 2.5rem;">
+          <p>At every firm size in our range, the diagnostic <strong>pays for itself at the floor</strong> of the recovery range. At the midpoint, the return multiples into territory where the question is no longer whether to do it but <em>why you waited</em>.</p>
         </div>
       </div>
     </section>
@@ -125,8 +132,8 @@ const serviceJsonLd = {
         <h2 class="hp-h2">Why <span class="roman">this firm</span> exists.</h2>
         <div class="hp-body">
           <p>We built BaxterLabs because we kept meeting managing partners who knew something was wrong but could not get a useful diagnostic. The tools available to them were either generic consulting engagements priced at six figures with multi-month timelines, or software dashboards that could display data but could not interpret it. Nothing in the middle was built to do what firms at your scale actually need.</p>
-          <p>What firms in the $5M to $50M range need is a <strong>forensic look, delivered in two weeks, priced so the math is obvious</strong>, led by someone who has actually run a P&amp;L. That is what BaxterLabs does. The diagnostic is the output. The point of view is that growth without infrastructure is the real problem, and the leak categories we diagnose are where that gap shows up in the numbers.</p>
-          <p>The full point of view, including an illustrative sample diagnostic that shows what a finished engagement looks like, lives on the <a href="/profit-leaks">Profit Leaks page</a>. That is the long version. The homepage is the short version.</p>
+          <p>What firms in the $5M to $50M range need is a <strong>forensic look, delivered in two weeks, priced so the math is obvious</strong>, led by someone who has actually run a P&amp;L. That is what BaxterLabs does. The diagnostic is the output. The point of view is that growth without infrastructure is the real problem, and the five leak categories we diagnose are where that gap shows up in the numbers.</p>
+          <p>The full point of view, with the 19-leak case study that produced $3.585M in findings at one recent engagement, lives on the <a href="/profit-leaks">Profit Leaks page</a>. That is the long version. The homepage is the short version.</p>
         </div>
       </div>
     </section>
@@ -150,7 +157,7 @@ const serviceJsonLd = {
           <article class="hp-path-card">
             <div class="kicker">02 &middot; Want the Full Thinking</div>
             <h3>Read the Profit Leaks pillar.</h3>
-            <p>The leak categories, the structural reason they exist, the fragility loop that compounds them, and an illustrative sample diagnostic showing how the findings stack up.</p>
+            <p>The five leak categories, the structural reason they exist, the fragility loop that compounds them, and an anonymized case with $3.585M in findings across 19 leaks.</p>
             <a href="/profit-leaks" class="hp-btn is-ghost">Read the Analysis <span class="arrow">→</span></a>
           </article>
           <article class="hp-path-card">
@@ -185,9 +192,9 @@ const serviceJsonLd = {
     <section class="hp-section hp-final" data-screen-label="08 Final CTA">
       <div class="hp-inner hp-narrow">
         <div class="hp-eyebrow"><span class="line"></span><span class="txt">08 &middot; While You Were Here</span></div>
-        <h2 class="hp-h2">The leaks don't pause <span class="roman">while you decide.</span></h2>
+        <h2 class="hp-h2">While you were on this page, <span class="roman">your firm likely leaked.</span></h2>
         <div class="hp-body">
-          <p>The margin escaping through these mechanisms doesn't wait for a quarterly review to notice it. The diagnostic is $12,500, fixed, and it turns "something feels off" into a sourced list of where the money goes and what to do about it.</p>
+          <p>While you were on this page, your firm likely leaked <strong class="hp-final-num" id="final-leak">$0</strong>. That is illustrative, not measured. But it is the right order of magnitude. The diagnostic is $12,500. If the finding comes in at the floor of the range for firms your size, it pays for itself in <strong class="hp-final-num" id="final-days">about 28 days</strong>. At the midpoint, faster.</p>
           <p>The question is not whether your firm has leaks. The question is whether you want to know where they are before the next covenant test, the next acquisition conversation, or the next quarterly review.</p>
         </div>
         <div style="margin-top: 2.5rem;">
@@ -197,5 +204,35 @@ const serviceJsonLd = {
         <p class="hp-final-secondary">Prefer to read the full analysis first? <a href="/profit-leaks">Read the Profit Leaks page →</a></p>
       </div>
     </section>
+
+    {/* Leak Meter — fixed-positioned, but scoped under .hp-page so its
+        hp-meter / hp-meter-tab selectors match. client:load because the
+        epoch/session logic must init on mount, not on scroll. */}
+    <LeakMeter client:load />
   </div>
 </BaseLayout>
+
+<script>
+  /* Final CTA live numbers — listens for LeakMeter's bl:leaktick event
+     and updates the static <span> placeholders. No React hydration
+     for this section. The meter dispatches bl:leaktick every 250ms
+     regardless of dismissed state (the tick effect stays active;
+     dismissal only swaps the rendered tab vs. aside), so these
+     numbers stay accurate even when the meter is collapsed. */
+  interface LeakTickDetail {
+    value: number
+    daysToBreakEven: number
+    tier: 'A' | 'B' | 'C'
+  }
+
+  const leakEl = document.getElementById('final-leak')
+  const daysEl = document.getElementById('final-days')
+  const fmtUSD = (n: number) => '$' + Math.floor(n).toLocaleString('en-US')
+
+  window.addEventListener('bl:leaktick', (e) => {
+    const d = (e as CustomEvent<LeakTickDetail>).detail
+    if (!d) return
+    if (leakEl) leakEl.textContent = fmtUSD(d.value)
+    if (daysEl) daysEl.textContent = 'about ' + d.daysToBreakEven + ' days'
+  })
+</script>

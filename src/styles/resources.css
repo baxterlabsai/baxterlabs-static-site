@@ -841,17 +841,6 @@ section.fg-section:first-of-type { border-top: none; padding-top: 0; }
   color: var(--bl-crimson);
   white-space: nowrap;
 }
-/* Recoverability is now a short phrase, not a dollar figure — let it wrap
-   and sit at a readable body scale instead of the big display number. */
-.fg-range .val.val-text {
-  font-size: 1rem;
-  font-style: italic;
-  font-weight: 600;
-  white-space: normal;
-  max-width: 22rem;
-  text-align: right;
-  line-height: 1.4;
-}
 .fg-range .sub {
   display: block;
   font-family: var(--font-body);
@@ -964,21 +953,6 @@ section.fg-section:first-of-type { border-top: none; padding-top: 0; }
   font-style: italic; font-weight: 700;
   font-size: 1.35rem;
   color: var(--bl-crimson);
-}
-/* Tier words and the how-to-read line replace the old dollar figures —
-   render them as readable text rather than big display numerals. */
-.fg-summary-row .v.v-text {
-  font-size: 0.78rem;
-  font-style: normal;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--bl-teal);
-}
-.fg-summary-total .v.v-text {
-  font-size: 0.95rem;
-  text-align: right;
-  max-width: 18rem;
 }
 
 .fg-close-cta {
@@ -1378,54 +1352,6 @@ section.fg-section:first-of-type { border-top: none; padding-top: 0; }
   margin-top: 0.25rem;
 }
 .sa-reveal.band-high .meta-row .v { color: var(--bl-cream); }
-
-/* Qualitative signal read — replaces the old dollar exposure figure. */
-.sa-signals { margin: 0 0 0.5rem; }
-.sa-signals-lede {
-  font-family: var(--font-headline);
-  font-style: italic;
-  font-size: clamp(1.15rem, 1.4vw + 0.6rem, 1.5rem);
-  line-height: 1.35;
-  margin: 0 0 1.5rem;
-  max-width: 40ch;
-}
-.sa-signals-lede strong { font-style: normal; font-weight: 700; }
-.sa-signals-grid { display: flex; flex-direction: column; gap: 0.5rem; }
-.sa-signal-row {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 0.75rem 1rem;
-  align-items: baseline;
-  padding: 0.7rem 0.9rem;
-  border: 1px solid var(--bl-gray-light);
-  border-left: 3px solid var(--bl-gold);
-  background: rgba(255, 255, 255, 0.4);
-}
-.sa-signal-row.level-high { border-left-color: var(--bl-crimson); }
-.sa-signal-name {
-  font-family: var(--font-headline);
-  font-style: italic; font-weight: 700;
-  font-size: 1.05rem;
-}
-.sa-signal-tier {
-  font-family: var(--font-label);
-  font-size: 0.6rem; font-weight: 700;
-  letter-spacing: 0.18em; text-transform: uppercase;
-  opacity: 0.65;
-}
-.sa-signal-level {
-  font-family: var(--font-label);
-  font-size: 0.62rem; font-weight: 700;
-  letter-spacing: 0.16em; text-transform: uppercase;
-  color: var(--bl-teal);
-}
-.sa-signal-row.level-high .sa-signal-level { color: var(--bl-crimson); }
-.sa-reveal.band-high .sa-signal-row {
-  border-color: rgba(246, 231, 200, 0.2);
-  background: rgba(246, 231, 200, 0.06);
-}
-.sa-reveal.band-high .sa-signal-level { color: var(--bl-gold); }
-.sa-reveal.band-high .sa-signal-row.level-high .sa-signal-level { color: var(--bl-cream); }
 
 .sa-gate {
   margin: 0 0 2rem;

@@ -15,7 +15,7 @@ export default function VendorSprawlCalc() {
 
   return (
     <div className="pl-calc" style={{ marginTop: '1.5rem' }}>
-      <div className="title">Vendor leakage &middot; estimated exposure</div>
+      <div className="title">Vendor sprawl &middot; estimated exposure</div>
       <div className="pl-calc-grid">
         <div className="pl-calc-field">
           <label htmlFor="vend-spend">Annual vendor spend ($)</label>

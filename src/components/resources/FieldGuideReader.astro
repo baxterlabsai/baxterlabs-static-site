@@ -14,12 +14,11 @@ const bp = basePath.replace(/\/$/, '')
     <div class="fg-side-kicker">In this guide</div>
     <ol class="fg-nav" id="fg-nav">
       <li><a href="#intro" data-sec="intro"><span class="rn">&mdash;</span><span>Before we start</span></a></li>
-      <li><a href="#price" data-sec="price"><span class="rn">I</span><span>Price Leakage</span></a></li>
-      <li><a href="#billing" data-sec="billing"><span class="rn">II</span><span>Billing Leakage</span></a></li>
-      <li><a href="#labor" data-sec="labor"><span class="rn">III</span><span>Labor Leakage</span></a></li>
-      <li><a href="#vendor" data-sec="vendor"><span class="rn">IV</span><span>Vendor Leakage</span></a></li>
-      <li><a href="#software" data-sec="software"><span class="rn">V</span><span>Software Leakage</span></a></li>
-      <li><a href="#collection" data-sec="collection"><span class="rn">VI</span><span>Collection Drag</span></a></li>
+      <li><a href="#payroll" data-sec="payroll"><span class="rn">I</span><span>Payroll Drift</span></a></li>
+      <li><a href="#vendor" data-sec="vendor"><span class="rn">II</span><span>Vendor Sprawl</span></a></li>
+      <li><a href="#billing" data-sec="billing"><span class="rn">III</span><span>Billing Lag</span></a></li>
+      <li><a href="#software" data-sec="software"><span class="rn">IV</span><span>Software Redundancy</span></a></li>
+      <li><a href="#approval" data-sec="approval"><span class="rn">V</span><span>Approval Bottlenecks</span></a></li>
       <li><a href="#closing" data-sec="closing"><span class="rn">&mdash;</span><span>What to do with this</span></a></li>
     </ol>
   </aside>
@@ -31,7 +30,7 @@ const bp = basePath.replace(/\/$/, '')
         <span class="rp-eyebrow-rule"></span>
         <span class="rp-eyebrow-txt">Field Guide</span>
       </div>
-      <h1>The Profit Leaks<br/>hiding in every $<span class="roman">5</span>M&ndash;$<span class="roman">50</span>M<br/>professional service firm.</h1>
+      <h1>The <span class="roman">5</span> Profit Leaks<br/>hiding in every $<span class="roman">5</span>M&ndash;$<span class="roman">50</span>M<br/>professional service firm.</h1>
       <p class="deck">A field guide for owners and managing partners. By George DeVries.</p>
       <div class="fg-hero-meta">
         <div class="rp-meta-item">
@@ -39,8 +38,8 @@ const bp = basePath.replace(/\/$/, '')
           <span class="rp-meta-value">12 minutes</span>
         </div>
         <div class="rp-meta-item">
-          <span class="rp-meta-label">What it covers</span>
-          <span class="rp-meta-value">The leak categories we diagnose</span>
+          <span class="rp-meta-label">Typical range</span>
+          <span class="rp-meta-value">$200K to $1M / year</span>
         </div>
         <div class="rp-meta-item">
           <span class="rp-meta-label">Companion</span>
@@ -65,7 +64,7 @@ const bp = basePath.replace(/\/$/, '')
       <div class="fg-prose">
         <p>We've spent our careers inside professional service firms, sitting in the finance chair, managing the P&amp;L, and trying to figure out why the numbers on the income statement don't match what we were seeing in the business. If you're reading this, we think you already know something is off. Revenue is growing. The team is growing. But profit isn't keeping pace, and you can't quite put your finger on why.</p>
         <p>You're not wrong. That feeling is almost always right.</p>
-        <p>This guide walks through the places we keep finding margin leaking in firms your size. Three lead: price leakage, where the rate you set and the rate you collect drift apart; billing leakage, where earned work never turns into an invoice; and labor leakage, where labor cost drifts out of step with the revenue it produces. Two more are the fast wins we pick up along the way: vendor leakage, the indirect spend nobody owns, and software leakage, the subscriptions that renew long after anyone's using them. And one sits underneath the rest where receivables come up: collection drag, cash you've earned aging too long before it lands. These aren't exotic problems. They're the ordinary ones that accumulate quietly while everyone is focused on winning the next client.</p>
+        <p>This guide walks through the five places we keep finding margin leaking in firms your size: payroll that's drifted past what the revenue supports, vendor sprawl no one owns, billing lag that's quietly financing your clients, software seats nobody's using, and approval bottlenecks that defer revenue you could already be earning. These aren't exotic problems. They're the ordinary ones that accumulate quietly while everyone is focused on winning the next client.</p>
         <p>We wrote this because we think you deserve to see the mechanism before you hire anyone to fix it. If even one of these sections makes you uncomfortable, that discomfort is data. Trust it.</p>
       </div>
     </section>
@@ -82,32 +81,31 @@ const bp = basePath.replace(/\/$/, '')
       </div>
 
       <div class="fg-prose">
-        <p>You don't need to hire anyone to start. Pick the section that made you the most uncomfortable and do one thing this week. Pull a single vendor report and sort it by vendor name. Look for duplicates. Or run one utilization query and see if the hours your team is billing match the hours they're working. You already have the data. The question is whether anyone has looked at it through this lens.</p>
+        <p>You don't need to hire anyone to start. Pick one of the five sections that made you the most uncomfortable and do one thing this week. Pull a single vendor report and sort it by vendor name. Look for duplicates. Or run one utilization query and see if the hours your team is billing match the hours they're working. You already have the data. The question is whether anyone has looked at it through this lens.</p>
       </div>
 
       <div class="fg-summary">
         <div class="fg-summary-head">
           <div>
-            <div class="kicker">The leaks, stacked</div>
-            <h3>Where we keep finding it.</h3>
+            <div class="kicker">Five leaks, stacked</div>
+            <h3>The typical range, added up.</h3>
           </div>
         </div>
         <div class="fg-summary-grid">
-          <div class="fg-summary-row"><span class="rn">I</span><span>Price Leakage</span><span class="v v-text">Headline</span></div>
-          <div class="fg-summary-row"><span class="rn">II</span><span>Billing Leakage</span><span class="v v-text">Headline</span></div>
-          <div class="fg-summary-row"><span class="rn">III</span><span>Labor Leakage</span><span class="v v-text">Headline</span></div>
-          <div class="fg-summary-row"><span class="rn">IV</span><span>Vendor Leakage</span><span class="v v-text">Quick win</span></div>
-          <div class="fg-summary-row"><span class="rn">V</span><span>Software Leakage</span><span class="v v-text">Quick win</span></div>
-          <div class="fg-summary-row"><span class="rn">VI</span><span>Collection Drag</span><span class="v v-text">Secondary</span></div>
+          <div class="fg-summary-row"><span class="rn">I</span><span>Payroll Drift</span><span class="v">$80K&ndash;$300K</span></div>
+          <div class="fg-summary-row"><span class="rn">II</span><span>Vendor Sprawl</span><span class="v">$60K&ndash;$200K</span></div>
+          <div class="fg-summary-row"><span class="rn">III</span><span>Billing Lag &amp; Write-downs</span><span class="v">$50K&ndash;$250K</span></div>
+          <div class="fg-summary-row"><span class="rn">IV</span><span>Software Redundancy</span><span class="v">$30K&ndash;$120K</span></div>
+          <div class="fg-summary-row"><span class="rn">V</span><span>Approval Bottlenecks</span><span class="v">$40K&ndash;$200K</span></div>
         </div>
         <div class="fg-summary-total">
-          <span class="lbl">How to read it</span>
-          <span class="v v-text">Three lead, two are fast wins, one sits underneath</span>
+          <span class="lbl">Stacked range</span>
+          <span class="v">$260K&nbsp;&ndash;&nbsp;$1.07M</span>
         </div>
       </div>
 
       <div class="fg-prose" style="margin-top: 2.5rem;">
-        <p>If any of the diagnostic questions in this guide felt uncomfortable to answer, the diagnostic is designed to put real numbers on exactly that feeling. It won't tell you something you don't already sense. It will make the invisible visible, give you a specific roadmap to fix what we find, and hand you a comprehensive package of materials you can take directly to your leadership or Board.</p>
+        <p>If any of the five self-assessment questions in this guide felt uncomfortable to answer, the diagnostic is designed to put real numbers on exactly that feeling. It won't tell you something you don't already sense. It will make the invisible visible, give you a specific roadmap to fix what we find, and hand you a comprehensive package of materials you can take directly to your leadership or Board.</p>
       </div>
 
       <div class="fg-close-cta" id="cta">

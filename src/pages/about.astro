@@ -1,9 +1,9 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro'
 import '../components/about/about.css'
+import '../components/homepage/leak-meter.css'
 import ScenarioMatcher from '../components/about/ScenarioMatcher'
-// LeakMeter unmounted (Phase Zero pass 2): leaked-dollar ticker was magnitude
-// asserted as our finding. File retained for future rework.
+import LeakMeter from '../components/homepage/LeakMeter'
 
 const title = 'About BaxterLabs | Two Operators, Forty-One Years of P&L Ownership'
 const description =
@@ -90,7 +90,7 @@ const alfonsoJsonLd = {
         <div class="ab-eyebrow"><span class="line"></span><span class="txt">02 &middot; Why This Exists</span></div>
         <h2 class="ab-h2">We kept meeting managing partners who <span class="roman">knew</span> something was leaking.</h2>
         <div class="ab-body">
-          <p>Revenue growing. Profit not keeping pace. The gut sense that real margin is bleeding out somewhere between the invoice and the P&amp;L close. They'd ask their CFO to pull a report. The CFO would pull six reports. None of them reconciled the gap.</p>
+          <p>Revenue growing. Profit not keeping pace. The gut sense that five to fifteen percent of EBITDA is bleeding out somewhere between the invoice and the P&amp;L close. They'd ask their CFO to pull a report. The CFO would pull six reports. None of them reconciled the gap.</p>
           <p>The gap wasn't a data problem. It was a diagnostic problem. Most $5M to $50M professional service firms don't have the internal tooling to see their own profit structure at diagnostic resolution. And most advisory firms that do have that tooling work at the $100M+ scale, where the diagnostic itself costs more than the leaked profit.</p>
           <p>We built BaxterLabs to close that gap. A fixed-scope, fixed-price diagnostic designed specifically for the middle of the market. Fourteen days from the last interview to delivery. Led by both partners on every engagement. We find the leaks, quantify them, cite every finding to source data, and hand you a roadmap with no dependencies on us.</p>
         </div>
@@ -247,7 +247,7 @@ const alfonsoJsonLd = {
           <article class="ab-path-card">
             <div class="ab-path-kicker">02 &middot; Want the Full Thinking</div>
             <h3 class="ab-path-title">Read the Profit Leaks pillar.</h3>
-            <p class="ab-path-desc">The leak categories, the structural reason they exist, the fragility loop that compounds them, and an illustrative sample diagnostic showing how the findings stack up.</p>
+            <p class="ab-path-desc">The five leak categories, the structural reason they exist, the fragility loop that compounds them, and an anonymized case with $3.585M in findings across 19 leaks.</p>
             <a href="/profit-leaks" class="ab-btn is-ghost">Read the Analysis <span aria-hidden="true">&rarr;</span></a>
           </article>
           <article class="ab-path-card">
@@ -260,5 +260,9 @@ const alfonsoJsonLd = {
       </div>
     </section>
 
+    {/* Leak Meter — pinned cross-page. Dismissed state and tier
+        selection persist via localStorage, so visitors arriving on
+        /about see whatever state they set on / or /services. */}
+    <LeakMeter client:load />
   </div>
 </BaseLayout>

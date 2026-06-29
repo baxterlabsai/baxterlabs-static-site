@@ -20,16 +20,16 @@ const { section } = Astro.props
   </div>
 
   <div class="fg-engagement">
-    <div class="ke">What it looks like in the field</div>
-    {section.fieldNote.map((p) => (<p set:html={p} />))}
+    <div class="ke" set:html={`From a real engagement &middot; ${section.engagementFirmLabel}`} />
+    {section.engagementParagraphs.map((p) => (<p set:html={p} />))}
   </div>
 
   <div class="fg-range">
     <div>
-      <div class="lbl">{section.tierLabel}</div>
-      <span class="sub">Recoverability</span>
+      <div class="lbl" set:html={section.rangeLabel} />
+      <span class="sub">{section.rangeSub}</span>
     </div>
-    <div class="val val-text" set:html={section.recoverability} />
+    <div class="val" set:html={section.rangeValue} />
   </div>
 
   <div class="fg-ask">

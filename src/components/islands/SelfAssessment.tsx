@@ -7,11 +7,9 @@ import {
   BAND_LABELS,
   INDUSTRIES,
   computeResult,
-  computeSignals,
-  computeExposureRange,
+  formatCurrency,
   type AssessRevenueRange,
   type Band,
-  type CategorySignal,
 } from '../../data/assessment'
 import { insertLeadMagnetCapture, insertSelfAssessmentScore } from '../../lib/supabase'
 
@@ -20,7 +18,8 @@ type Answers = Record<number, 1 | 2 | 3 | 4 | 5>
 type ResultState = {
   score: number
   band: Band
-  signals: CategorySignal[]
+  low: number
+  high: number
   revenue: AssessRevenueRange
   industry: string
   answers: Answers
@@ -89,11 +88,12 @@ export default function SelfAssessment({ basePath = '/resources' }: Props) {
 
   function onReveal() {
     if (!canSubmit) return
-    const { band } = computeResult(totalScore)
+    const { band, low, high } = computeResult(totalScore, revenue as AssessRevenueRange)
     setResult({
       score: totalScore,
       band,
-      signals: computeSignals(answers),
+      low,
+      high,
       revenue,
       industry,
       answers: { ...answers },
@@ -134,18 +134,14 @@ export default function SelfAssessment({ basePath = '/resources' }: Props) {
         captureId = res.id
         captureIdRef.current = captureId
       }
-      // Exposure is no longer shown to the visitor (Phase Zero: no figures in
-      // public copy). We still record a directional estimate on the lead row
-      // for internal follow-up only.
-      const exposure = computeExposureRange(result.score, result.revenue)
       await insertSelfAssessmentScore({
         capture_id: captureId,
         answers: result.answers as unknown as Record<string, number>,
         total_score: result.score,
         band: result.band,
         revenue_range: result.revenue,
-        exposure_low: Math.round(exposure.low),
-        exposure_high: Math.round(exposure.high),
+        exposure_low: Math.round(result.low),
+        exposure_high: Math.round(result.high),
         industry: result.industry || null,
       })
       setStage('results-unlocked')
@@ -229,7 +225,7 @@ function AssessmentView(props: {
 
   const remaining = 12 - answered
   const submitNote = canSubmit
-    ? 'All answered. See where you stand.'
+    ? 'All answered. Reveal your exposure.'
     : answered === 12
       ? 'Add your revenue range and industry at the top to reveal.'
       : `${remaining} ${remaining === 1 ? 'question' : 'questions'} to go.`
@@ -249,8 +245,8 @@ function AssessmentView(props: {
           </h1>
           <p className="deck">
             Twelve questions, a five-point honesty scale. When you're done you'll see a band, a
-            read on which leak categories are showing the strongest signals, and a specific
-            interpretation written for firms your size.
+            dollar exposure range calibrated to your revenue, and a specific interpretation
+            written for firms your size.
           </p>
         </header>
 
@@ -308,7 +304,7 @@ function AssessmentView(props: {
                 <div className="sa-cat-head">
                   <span className="sa-cat-rn">{cat.rn}</span>
                   <div>
-                    <div className="sa-cat-kicker">{cat.tierLabel} &middot; Leak {cat.rn}</div>
+                    <div className="sa-cat-kicker">Leak {cat.rn}</div>
                     <h2 className="sa-cat-title">{cat.title}.</h2>
                     <p className="sa-cat-lead">{cat.lead}</p>
                   </div>
@@ -355,7 +351,7 @@ function AssessmentView(props: {
             style={canSubmit ? undefined : { opacity: 0.4, cursor: 'not-allowed' }}
             onClick={onReveal}
           >
-            See where you stand <span className="arrow">&rarr;</span>
+            Reveal my exposure <span className="arrow">&rarr;</span>
           </button>
         </div>
       </main>
@@ -439,7 +435,13 @@ function ResultsView(props: {
             <div className="band-label">{BAND_LABELS[result.band]}</div>
             <h2 className="headline">{copy.headline}</h2>
 
-            <SignalRead signals={result.signals} />
+            <div className="exposure-kicker">Estimated annual profit-leak exposure</div>
+            <div className="exposure">
+              {formatCurrency(result.low)} &ndash; {formatCurrency(result.high)}
+            </div>
+            <div className="range-sub">
+              Annual, based on {REV_LABELS[result.revenue]} midpoint
+            </div>
 
             <div className="meta-row">
               <div>
@@ -584,72 +586,35 @@ function ResultsView(props: {
           )}
 
           <details className={'sa-method' + (unlocked ? ' is-visible' : '')}>
-            <summary>How the read is calculated</summary>
+            <summary>How the exposure range is calculated</summary>
             <div className="m-body">
               <p>
-                This is not a guarantee, a quote, or a measurement of your firm. It's a
-                directional read built from your own answers across the leak categories we
-                diagnose.
+                The exposure range is not a guarantee and not a quote. It's an estimate based on
+                three inputs: your total score, the midpoint of the revenue range you selected,
+                and the exposure percentages that these five categories typically represent in
+                professional service firms.
               </p>
               <p>
                 Your total score places you in one of three bands: Low (12–25), Moderate (26–40),
-                or High (41–60). Within that, each category is scored on its own. The lower you
-                rated your control in a category, the stronger the signal that it deserves a
-                closer look. That's what the read above is pointing at.
+                or High (41–60). Each band maps to an exposure percentage range: Low is 1–2% of
+                your revenue midpoint, Moderate is 3–5%, and High is 6–10%. The revenue midpoints
+                are $7.5M for the $5M–$10M range, $17.5M for the $10M–$25M range, and $37.5M for
+                the $25M–$50M range.
               </p>
               <p>
-                The point isn't a number. It's a sense of which categories to look at first. A
-                forensic diagnostic is what puts an actual, defensible figure on any of it.
+                So if you selected the $10M–$25M range and scored 34, your exposure estimate
+                would be 3–5% of $17.5M, which is $525K to $875K. That's the range displayed.
+              </p>
+              <p>
+                These percentages come from the patterns we observe in profit leak diagnostics
+                across professional service firms in the $5M to $50M range. Your actual
+                recoverable profit could be higher or lower. The estimate is meant to give you a
+                directional sense of scale, not a precise figure.
               </p>
             </div>
           </details>
         </div>
       </main>
-    </div>
-  )
-}
-
-// Qualitative read that replaces the old dollar exposure block. Surfaces the
-// categories showing the strongest leak signals — no figures.
-function SignalRead({ signals }: { signals: CategorySignal[] }) {
-  const flagged = signals.filter((s) => s.level === 'high' || s.level === 'elevated')
-  const names = flagged.map((s) => s.title)
-  const joined =
-    names.length === 0
-      ? ''
-      : names.length === 1
-        ? names[0]
-        : names.length === 2
-          ? `${names[0]} and ${names[1]}`
-          : `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`
-
-  return (
-    <div className="sa-signals">
-      <div className="exposure-kicker">Where your signals are strongest</div>
-      {flagged.length === 0 ? (
-        <p className="sa-signals-lede">
-          Nothing is jumping out across the categories. Your controls look reasonably solid. Glance
-          at any single question you scored a 3 or higher and you've covered the corners.
-        </p>
-      ) : (
-        <>
-          <p className="sa-signals-lede">
-            You're showing elevated signals in <strong>{joined}</strong>. That's where a diagnostic
-            would dig first — and where it puts real numbers on what you're sensing.
-          </p>
-          <div className="sa-signals-grid">
-            {flagged.map((s) => (
-              <div className={`sa-signal-row level-${s.level}`} key={s.id}>
-                <span className="sa-signal-name">{s.title}</span>
-                <span className="sa-signal-tier">{s.tierLabel}</span>
-                <span className="sa-signal-level">
-                  {s.level === 'high' ? 'Strong signal' : 'Worth a look'}
-                </span>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
     </div>
   )
 }
