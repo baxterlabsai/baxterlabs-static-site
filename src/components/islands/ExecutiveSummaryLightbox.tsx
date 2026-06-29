@@ -51,7 +51,7 @@ export default function ExecutiveSummaryLightbox() {
           <div className="mx-8 sm:mx-14 mt-10 mb-0 border-t border-b border-[#C9A84C]/30 bg-[#F6E7C8]/25 px-6 py-5">
             <p className="text-[12px] sm:text-[13px] leading-relaxed text-[#2D3436]/80">
               <span className="font-bold italic text-[#2D3436]/90 tracking-wide text-[11px] uppercase">Disclaimer:</span>{' '}
-              This document is a sanitized and anonymized version of an actual BaxterLabs Advisory engagement deliverable. It does not represent any specific company, individual, or financial data. The analytical structures, methodologies, deliverable format, and depth of findings reflect the rigor of a standard BaxterLabs engagement.
+              This document is an illustrative sample, not a real engagement. It uses fictional figures to demonstrate the format, structure, and depth of a finished BaxterLabs diagnostic. It does not represent any specific company, individual, or financial data, and the numbers should not be read as typical or expected results.
             </p>
           </div>
 
@@ -132,7 +132,7 @@ export default function ExecutiveSummaryLightbox() {
                 </Finding>
 
                 <Finding number={3} title="Underperforming Recruiter Optimization" amount="$420,000" confidence="moderate">
-                  The bottom 20% of individual recruiters (approximately 12 to 15 people) generate revenue below their fully loaded compensation cost, with the top quartile producing 3.5&times; the revenue of the bottom quartile.<Sup n={9} /> The productivity dispersion is amplified by two compounding factors: a dedicated recruiter trainer with &ldquo;strong individual recruiting skills and limited training or instructional design experience&rdquo; who has failed to accelerate onboarding trajectory, and a Light Industrial Division 1 management gap that Executive Interviewee A characterized as &ldquo;the single biggest structural issue in the business.&rdquo;<Sup n={10} /> The remediation path requires a performance management framework with minimum production thresholds, structured improvement plans, and coaching investment in the top two quartiles.<Sup n={11} /> Category: Cost Leak (C10).
+                  The bottom 20% of individual recruiters (approximately 12 to 15 people) generate revenue below their fully loaded compensation cost, with the top quartile producing 3.5&times; the revenue of the bottom quartile.<Sup n={9} /> The productivity dispersion is amplified by two compounding factors: a dedicated recruiter trainer with &ldquo;strong individual recruiting skills and limited training or instructional design experience&rdquo; who has failed to accelerate onboarding trajectory, and a Light Industrial Division 1 management gap that Executive Interviewee A characterized as &ldquo;the single biggest structural issue in the business.&rdquo;<Sup n={10} /> The remediation path requires minimum production thresholds backed by a structured accountability and ramp-out process, with coaching investment concentrated in the top two quartiles.<Sup n={11} /> Category: Cost Leak (C10).
                 </Finding>
 
                 <Finding number={4} title="Below-Card Temp Account Pricing" amount="$400,000" confidence="moderate">
@@ -230,7 +230,7 @@ export default function ExecutiveSummaryLightbox() {
                 <En n={8}>[Estimated: 160 bps &times; $52,000,000 = $832,000 (low); 180 bps &times; $52,000,000 = $936,000 (high). 40% addressable = $333,000 conservative; 60% addressable = $562,000 aggressive. Moderate $448,000. See Profit Leak Workbook, Row 10.]</En>
                 <En n={9}>[Stated: INT-02, Executive Interviewee A-Q2. Bottom 20% of individual recruiters (approximately 12 to 15 people) generating revenue below fully loaded compensation cost. Top quartile generates approximately 3.5&times; the revenue of the bottom quartile.]</En>
                 <En n={10}>[Stated: INT-02, Q11. Direct quote on trainer: &ldquo;strong individual recruiting skills and limited training or instructional design experience.&rdquo; Stated: INT-02, Q11. Direct quote on Division 1 manager: &ldquo;the single biggest structural issue in the business.&rdquo;]</En>
-                <En n={11}>[Derived: Automation and Optimization Recommendations, the Firm. Recruiter optimization requires performance management framework with minimum production thresholds, structured PIPs, and management development.]</En>
+                <En n={11}>[Derived: Automation and Optimization Recommendations, the Firm. Recruiter optimization requires minimum production thresholds with a structured accountability and ramp-out process, structured PIPs, and management development.]</En>
                 <En n={12}>[Stated: INT-02, Executive Interviewee A-Q4. Rate card exists as spreadsheet on shared drive. No enforcement mechanism, no automated renewal flagging, no approval escalation.]</En>
                 <En n={13}>[Stated: INT-02, Q13. Executive Interviewee A described the $300,000 to $500,000 estimate as the result of an internal exercise he conducted to assess repricing potential.]</En>
                 <En n={14}>[Derived: Operational Bottleneck Analysis, Bottleneck 1, Risk Factors. Tiered rollout: captive and sole-source accounts first, competitive accounts after demonstrating margin recovery.]</En>
@@ -261,7 +261,7 @@ export default function ExecutiveSummaryLightbox() {
 
             <div className="text-center pb-2">
               <p className="text-[10px] text-[#2D3436]/40 uppercase tracking-wider max-w-lg mx-auto leading-relaxed">
-                This document is a sanitized and anonymized version of an actual BaxterLabs Advisory engagement deliverable. It does not represent any specific company, individual, or financial data.
+                This document is an illustrative sample, not a real engagement. It uses fictional figures to demonstrate the format and depth of a finished BaxterLabs diagnostic. It does not represent any specific company, individual, or financial data.
               </p>
             </div>
           </div>

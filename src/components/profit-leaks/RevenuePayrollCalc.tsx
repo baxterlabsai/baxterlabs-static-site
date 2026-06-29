@@ -3,7 +3,7 @@ import { useState } from 'react'
 type Band = { label: string; cls: 'green' | 'amber' | 'red' }
 
 function bandFor(ratio: number): Band {
-  if (ratio < 2.0) return { label: 'Payroll outpacing revenue', cls: 'red' }
+  if (ratio < 2.0) return { label: 'Labor cost ahead of revenue', cls: 'red' }
   if (ratio < 2.5) return { label: 'Monitor', cls: 'amber' }
   return { label: 'Healthy', cls: 'green' }
 }

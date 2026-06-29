@@ -19,8 +19,8 @@ const { preselect = null, basePath = '/resources' } = Astro.props
     </div>
     <div>
       <p class="rp-deck">
-        Most $5M&ndash;$50M professional service firms are losing between <em>$200K and $1M a year</em>
-        to five ordinary patterns that don't show up on the income statement. Start with either. They're designed to be read in one sitting.
+        Most $5M&ndash;$50M professional service firms are quietly losing margin to a handful of
+        ordinary patterns that don't show up on the income statement. Start with either. They're designed to be read in one sitting.
       </p>
     </div>
   </header>
@@ -33,23 +33,24 @@ const { preselect = null, basePath = '/resources' } = Astro.props
           <span class="hub-panel-mk">Field guide &middot; PDF &amp; Web</span>
           <div style="height: 0.75rem"></div>
           <div class="hub-toc" aria-hidden="true">
-            <div class="ln"><span class="num">I</span><span>Payroll Drift</span><span class="pg">$80K&ndash;$300K</span></div>
-            <div class="ln"><span class="num">II</span><span>Vendor Sprawl</span><span class="pg">$60K&ndash;$200K</span></div>
-            <div class="ln"><span class="num">III</span><span>Billing Lag</span><span class="pg">$50K&ndash;$250K</span></div>
-            <div class="ln"><span class="num">IV</span><span>Software Redundancy</span><span class="pg">$30K&ndash;$120K</span></div>
-            <div class="ln"><span class="num">V</span><span>Approval Bottlenecks</span><span class="pg">$40K&ndash;$200K</span></div>
+            <div class="ln"><span class="num">I</span><span>Price Leakage</span><span class="pg">Headline</span></div>
+            <div class="ln"><span class="num">II</span><span>Billing Leakage</span><span class="pg">Headline</span></div>
+            <div class="ln"><span class="num">III</span><span>Labor Leakage</span><span class="pg">Headline</span></div>
+            <div class="ln"><span class="num">IV</span><span>Vendor Leakage</span><span class="pg">Quick win</span></div>
+            <div class="ln"><span class="num">V</span><span>Software Leakage</span><span class="pg">Quick win</span></div>
+            <div class="ln"><span class="num">VI</span><span>Collection Drag</span><span class="pg">Secondary</span></div>
           </div>
         </div>
         <span class="hub-panel-num">01</span>
       </div>
 
-      <h2 class="hub-h2">The <span class="roman">5</span> Profit Leaks<br/>Hiding in Every Firm</h2>
-      <p class="hub-desc">A field guide for owners and managing partners. Five categories, five real engagements, five diagnostic questions. The mechanism before anyone hires anyone to fix it.</p>
+      <h2 class="hub-h2">The Profit Leaks<br/>Hiding in Every Firm</h2>
+      <p class="hub-desc">A field guide for owners and managing partners. The leak categories we diagnose, what each one looks like in the field, and a diagnostic question for each. The mechanism before anyone hires anyone to fix it.</p>
 
       <div class="hub-time">12 minutes, coffee in hand</div>
 
       <div class="hub-outcome">
-        <span class="hub-outcome-label">In this guide</span>5 categories &middot; 5 real-engagement examples &middot; 5 diagnostic questions
+        <span class="hub-outcome-label">In this guide</span>Three headline leaks &middot; two quick wins &middot; one secondary
       </div>
 
       <div class="hub-cta-row">
@@ -83,12 +84,12 @@ const { preselect = null, basePath = '/resources' } = Astro.props
       </div>
 
       <h2 class="hub-h2">The Profit Leak<br/>Self-Assessment</h2>
-      <p class="hub-desc">Twelve questions, a five-point honesty scale. You'll get a band, an exposure range in dollars, and a specific interpretation written for firms your size.</p>
+      <p class="hub-desc">Twelve questions, a five-point honesty scale. You'll get a band, a read on which leak categories are showing the strongest signals, and a specific interpretation written for firms your size.</p>
 
       <div class="hub-time">4 minutes, honest answers</div>
 
       <div class="hub-outcome">
-        <span class="hub-outcome-label">Typical reader</span>finds $180K&ndash;$520K in annual exposure
+        <span class="hub-outcome-label">Typical reader</span>finds out where to look first
       </div>
 
       <div class="hub-cta-row">
@@ -206,7 +207,7 @@ const { preselect = null, basePath = '/resources' } = Astro.props
   function configureSuccess(asset: LeadMagnetAsset) {
     if (asset === 'self_assessment') {
       if (successTitle) successTitle.textContent = 'Unlocked. Ready when you are.'
-      if (successBody) successBody.textContent = 'Start the twelve questions below. You’ll see your band, exposure range, and a written interpretation as soon as you finish.'
+      if (successBody) successBody.textContent = 'Start the twelve questions below. You’ll see your band, the leak categories showing the strongest signals, and a written interpretation as soon as you finish.'
       if (successPrimary) {
         successPrimary.href = `${basePath}/self-assessment/take`
         successPrimary.innerHTML = 'Take the assessment <span class="arrow">&rarr;</span>'

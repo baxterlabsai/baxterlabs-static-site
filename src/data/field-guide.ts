@@ -1,117 +1,140 @@
+// BaxterLabs locked leak categories (Phase Zero, 2026-06-28):
+// Price / Billing / Labor (headline), Vendor / Software (quick-win),
+// Collection Drag (secondary).
+// RETIRED — do not reintroduce: performance management, price realization,
+// discount leakage, vendor sprawl, subscription/SaaS waste, hasty pricing,
+// approval bottlenecks.
+// No dollar or percent magnitudes here — mechanism and recoverability only.
+
+export type LeakTier = 'headline' | 'quick-win' | 'secondary'
+
 export type LeakSection = {
   id: string
   rn: string
+  tier: LeakTier
+  tierLabel: string
   category: string
   title: string
   prose: string[]
-  engagementFirmLabel: string
-  engagementParagraphs: string[]
-  rangeLabel: string
-  rangeSub: string
-  rangeValue: string
+  fieldNote: string[]
+  recoverability: string
   askYourself: string
   showEndCta?: boolean
 }
 
 export const LEAK_SECTIONS: LeakSection[] = [
   {
-    id: 'payroll',
+    id: 'price',
     rn: 'I',
+    tier: 'headline',
+    tierLabel: 'Headline leak',
     category: 'Leak One',
-    title: 'Payroll Drift.',
+    title: 'Price Leakage.',
     prose: [
-      "Here's what this tends to look like. The firm is growing, so leadership hires ahead of demand. New people come on. Revenue keeps climbing. But nobody goes back to check whether each new hire is producing revenue that justifies their fully loaded cost.",
+      "The price you set and the price you actually collect aren't the same number. Discounts that quietly became defaults, rates that never got reset at renewal, escalators nobody applied, margin handed back one approval at a time.",
+      "None of it looks like a problem in the moment. Each concession made sense for the deal in front of you. But they don't reverse on their own, and a few years in, the gap between your rate card and your realized rate is the single biggest leak we find.",
     ],
-    engagementFirmLabel: '40-person, $8M firm',
-    engagementParagraphs: [
-      'Over 18 months they&rsquo;d added nine people. Revenue had grown 22% in the same period, which felt great. But when we traced revenue production back to each role, four of those nine hires had no direct revenue attribution and no documented justification tying them to a specific capacity need. The fully loaded cost of those four roles was <span class="big">$340K per year</span>.',
-      'Not all of that was recoverable, but roughly <span class="big">$180K to $260K</span> was margin that had quietly walked out the door through reactive hiring.',
+    fieldNote: [
+      "Here's how it tends to show up. A rate gets set during a competitive pitch and then never moves, even as the cost to deliver climbs. A renewal comes up and nobody reopens the price. A division lead prices under the floor to close, and there's no escalation to catch it. The revenue line still looks healthy, so the erosion stays invisible.",
     ],
-    rangeLabel: 'Typical range &middot; $5M&ndash;$50M firms',
-    rangeSub: 'Recoverable profit per year',
-    rangeValue: '$80K&ndash;$300K',
+    recoverability: 'Often the largest recoverable category, and most of it is a governance fix rather than a market one.',
     askYourself:
-      'If we asked you right now to show us the revenue produced by each person hired in the last 12 months, could you pull that report in under 60 seconds?',
-    showEndCta: true,
-  },
-  {
-    id: 'vendor',
-    rn: 'II',
-    category: 'Leak Two',
-    title: 'Vendor Sprawl.',
-    prose: [
-      'What we keep seeing looks like this. Every department buys what it needs when it needs it. Nobody owns the vendor list. Renewals happen automatically. And over time, the firm ends up paying three different vendors for things that overlap significantly, because each purchase made sense in isolation.',
-    ],
-    engagementFirmLabel: '$12M consulting firm',
-    engagementParagraphs: [
-      'We looked at the vendor ledger and found 47 active vendor relationships. Fourteen of those vendors had been added in the prior two years with no competitive bid and no renewal review. When we consolidated overlapping services and renegotiated three contracts that had auto-renewed at list price, the recoverable amount was <span class="big">$145K annually</span>.',
-      'The managing partner had no idea the firm was spending $38K a year on two separate document management platforms purchased by two different practice groups.',
-    ],
-    rangeLabel: 'Typical range &middot; $5M&ndash;$50M firms',
-    rangeSub: 'Recoverable profit per year',
-    rangeValue: '$60K&ndash;$200K',
-    askYourself:
-      'Do you feel confident that you could name every vendor your firm paid last quarter and what each one does?',
+      'If we asked you to show the realized margin on your three longest-running engagements against what your rate card says they should earn, could you pull that in under 60 seconds?',
     showEndCta: true,
   },
   {
     id: 'billing',
-    rn: 'III',
-    category: 'Leak Three',
-    title: 'Billing Lag.',
+    rn: 'II',
+    tier: 'headline',
+    tierLabel: 'Headline leak',
+    category: 'Leak Two',
+    title: 'Billing Leakage.',
     prose: [
-      "Here&rsquo;s the pattern. The work gets done. The invoice goes out sometime later. The client pays sometime after that. And in the gap between work-complete and cash-received, the firm&rsquo;s working capital is tied up funding operations out of pocket. Worse, write-downs accumulate quietly because nobody is tracking the delta between billable hours worked and hours that actually make it onto an invoice.",
+      "Work you've already earned that never turns into an invoice. Time that doesn't get captured, scope that creeps in unbilled, jobs that close before the billing catches up to them.",
+      "This one hurts twice. The revenue never lands, and because it was never recorded, it doesn't even show up as a loss. It's simply absent from the P&L, which is exactly why it runs for years without anyone naming it.",
     ],
-    engagementFirmLabel: '$22M staffing firm',
-    engagementParagraphs: [
-      'The firm had an average of 34 days between project completion and invoice delivery. Their DSO (days sales outstanding) was another 52 days on top of that. So the firm was financing <span class="big">86 days</span> of operations on every engagement before seeing cash.',
-      'When we measured the write-downs that were happening between timesheets and invoices, the firm was losing $12K to $18K per month in billable time that never got billed. That&rsquo;s <span class="big">$144K to $216K per year</span> that showed up nowhere on the P&amp;L because it was never recorded as revenue in the first place.',
+    fieldNote: [
+      "The pattern is a gap between work-complete and invoice-sent that nobody owns. Hours worked don't all make it onto a bill. Extra scope gets absorbed because reopening the conversation feels awkward. An approval sits in someone's inbox and the invoice waits behind it. None of it is dramatic. It just quietly leaves money on the table.",
     ],
-    rangeLabel: 'Typical range &middot; billing lag + write-downs',
-    rangeSub: 'Recoverable profit per year',
-    rangeValue: '$50K&ndash;$250K',
+    recoverability: 'Recoverable once the gap between earned and billed is actually measured.',
     askYourself:
-      "Does it feel like your cash position should be stronger than it is, given the revenue you're producing?",
+      "Does it feel like your cash position should be stronger than it is, given the work you're actually delivering?",
+    showEndCta: true,
+  },
+  {
+    id: 'labor',
+    rn: 'III',
+    tier: 'headline',
+    tierLabel: 'Headline leak',
+    category: 'Leak Three',
+    title: 'Labor Leakage.',
+    prose: [
+      "Labor cost drifting out of step with the revenue it produces. People you're paying for who aren't billing, utilization sliding without anyone clocking it, senior people doing work that should sit lower.",
+      "Firms hire ahead of demand, which is often the right call. The leak isn't the hire. It's that nobody goes back to check whether the revenue the hire was supposed to produce actually showed up.",
+    ],
+    fieldNote: [
+      "It's the leak managing partners feel before they can name it. The team grew. Payroll grew faster. Revenue per person quietly slid, and because every individual hire was justified at the time, the aggregate drift never gets a second look. The projection that justified the headcount rarely gets revisited twelve months on.",
+    ],
+    recoverability: 'Recoverable by tying headcount back to the revenue it was meant to produce.',
+    askYourself:
+      'If we asked you to show the revenue produced by each person hired in the last twelve months, could you pull that report this week?',
+    showEndCta: true,
+  },
+  {
+    id: 'vendor',
+    rn: 'IV',
+    tier: 'quick-win',
+    tierLabel: 'Quick win',
+    category: 'Leak Four',
+    title: 'Vendor Leakage.',
+    prose: [
+      "Indirect and recurring spend nobody owns. A vendor list growing faster than the business, the same thing bought at five different prices, the occasional payment that slips out twice.",
+      "This is one of the fast ones. The fix doesn't need a strategy; it needs someone to actually look. That's why it usually lands in the first wave of recovery rather than the long haul.",
+    ],
+    fieldNote: [
+      "As a firm grows, departments and offices start contracting on their own. Procurement is informal, approvals happen over email, and a few years in you're paying two or three vendors for overlapping things, sometimes the same vendor under two account numbers billed to two cost centers. Each purchase made sense alone. Together they're a leak nobody decided on.",
+    ],
+    recoverability: 'A quick win — low effort, found and acted on fast.',
+    askYourself:
+      'Could you name every vendor your firm paid last quarter and say what each one does?',
     showEndCta: true,
   },
   {
     id: 'software',
-    rn: 'IV',
-    category: 'Leak Four',
-    title: 'Software Redundancy.',
+    rn: 'V',
+    tier: 'quick-win',
+    tierLabel: 'Quick win',
+    category: 'Leak Five',
+    title: 'Software Leakage.',
     prose: [
-      'The shape of this one is familiar. The firm adopts a new platform. The old one stays active because a few people still use it, or because nobody remembers to cancel it. Seats get purchased for employees who left six months ago. And renewal notices go to a distribution list that nobody monitors closely.',
+      "Subscriptions that auto-renew long after anyone's using them. Seats nobody logs into, overlapping tools three teams bought separately, renewals nobody stops to question.",
+      "The other fast one. Each line is small enough to ignore, which is exactly how the stack quietly doubles. The cancellation list is usually shorter to build than anyone expects.",
     ],
-    engagementFirmLabel: '$9M architecture firm',
-    engagementParagraphs: [
-      'The firm was paying for 74 licensed seats across four project management and collaboration tools. <span class="big">23 of those seats</span> hadn&rsquo;t been logged into in over 90 days. Two of the four tools did essentially the same thing, purchased 18 months apart by different office locations.',
-      'The annual spend on redundant and unused software was <span class="big">$67K</span>. Not a staggering number on its own, but it had been compounding for three years because every renewal was automatic and nobody had done a seat-count review before any of them.',
+    fieldNote: [
+      "A tool gets adopted for a project. The project ends. The subscription renews itself. Seats stay live for people who left. Renewal notices route to a list nobody reads. Two tools end up doing the same job because different offices bought them eighteen months apart. None of it is a decision; it's the absence of one.",
     ],
-    rangeLabel: 'Typical range &middot; $5M&ndash;$50M firms',
-    rangeSub: 'Recoverable profit per year',
-    rangeValue: '$30K&ndash;$120K',
+    recoverability: 'A quick win — cancel-and-consolidate, usually inside a single renewal cycle.',
     askYourself:
-      'If your software contracts all renewed tomorrow, could you tell us how many active users you have on each platform?',
+      'If your software contracts all renewed tomorrow, could you say how many active users sit on each platform?',
     showEndCta: true,
   },
   {
-    id: 'approval',
-    rn: 'V',
-    category: 'Leak Five',
-    title: 'Approval Bottlenecks.',
+    id: 'collection',
+    rn: 'VI',
+    tier: 'secondary',
+    tierLabel: 'Secondary',
+    category: 'Leak Six',
+    title: 'Collection Drag.',
     prose: [
-      'We keep seeing this one in firms that have grown past the size where one-person oversight made sense. One partner or owner approves everything: pricing decisions, hiring decisions, vendor selections, client proposals. The intent is quality control. The effect is a queue. And every day something sits in that queue, the firm is deferring revenue it could already be earning.',
+      "Cash you've earned sitting in receivables too long. It mostly pays, eventually, but in the meantime it's financing the client's business instead of yours.",
+      "This isn't lost money the way the others are. It's money arriving late enough that it costs you to wait for it, drawn on the revolver and paid for in interest while it ages.",
     ],
-    engagementFirmLabel: '$15M professional service firm',
-    engagementParagraphs: [
-      'A single managing partner approved all new engagement proposals. The average time from proposal-ready to signed engagement was <span class="big">11 days</span>. When we looked at the bottleneck, 7 of those 11 days were the proposal sitting in the partner&rsquo;s inbox.',
-      "Across the firm&rsquo;s pipeline, the delayed revenue from that 7-day queue was worth roughly <span class=\"big\">$190K per year</span> in deferred billings. The partner wasn&rsquo;t being negligent. There was simply too much running through one person, and nobody had built a delegation framework with clear authority limits because the firm had grown past the size where one-person approval made sense.",
+    fieldNote: [
+      "Invoices go out, then sit. Nobody's negligent; collections just isn't anyone's full-time job, so the oldest receivables quietly stretch. The longer cash takes to land, the more of your own operations you're funding out of pocket while the client holds onto yours.",
     ],
-    rangeLabel: 'Typical range &middot; deferred revenue',
-    rangeSub: 'Per year',
-    rangeValue: '$40K&ndash;$200K',
+    recoverability: 'Recoverable as working capital — it tightens the gap between earned and collected.',
     askYourself:
-      "Does it feel like decisions in your firm are waiting on one person more often than they should be?",
+      'Do you know how long your cash takes to land after the work is done, and are you actively managing that number?',
     showEndCta: false,
   },
 ]
